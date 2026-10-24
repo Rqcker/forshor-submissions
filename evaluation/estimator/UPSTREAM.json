@@ -1,0 +1,6 @@
+{
+  "repository": "courtneyjzapata/forshor-resource-estimation",
+  "commit": "fe58769bbd4ec6dfcc59e67771252e3382c051ba",
+  "qualtran": "0.7.0",
+  "note": "Pinned source; no estimator equations changed. Qualtran 0.7.0 reproduces the website baseline."
+}

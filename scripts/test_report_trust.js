@@ -58,7 +58,7 @@ async function main() {
   await run('happy path returns the PR number and head SHA', async () => {
     const github = fakeGithub({
       associated: [
-        { number: 7, base: { ref: 'submission/template' }, head: { sha: HEAD } },
+        { number: 7, base: { ref: 'main' }, head: { sha: HEAD } },
       ],
       files: [{ filename: 'TableGeneration/Submission/Policy.lean' }],
     });
@@ -73,7 +73,7 @@ async function main() {
   await run('helper files under Policy/ are admitted', async () => {
     const github = fakeGithub({
       associated: [
-        { number: 8, base: { ref: 'submission/template' }, head: { sha: HEAD } },
+        { number: 8, base: { ref: 'main' }, head: { sha: HEAD } },
       ],
       files: [
         { filename: 'TableGeneration/Submission/Policy.lean' },
@@ -89,7 +89,7 @@ async function main() {
   await run('a PR that edits the workflow is refused', async () => {
     const github = fakeGithub({
       associated: [
-        { number: 9, base: { ref: 'submission/template' }, head: { sha: HEAD } },
+        { number: 9, base: { ref: 'main' }, head: { sha: HEAD } },
       ],
       files: [
         { filename: 'TableGeneration/Submission/Policy.lean' },
@@ -105,7 +105,7 @@ async function main() {
   await run('a PR with no changed files is refused', async () => {
     const github = fakeGithub({
       associated: [
-        { number: 20, base: { ref: 'submission/template' }, head: { sha: HEAD } },
+        { number: 20, base: { ref: 'main' }, head: { sha: HEAD } },
       ],
       files: [],
     });
@@ -122,7 +122,7 @@ async function main() {
     }
     const github = fakeGithub({
       associated: [
-        { number: 21, base: { ref: 'submission/template' }, head: { sha: HEAD } },
+        { number: 21, base: { ref: 'main' }, head: { sha: HEAD } },
       ],
       files,
     });
@@ -135,7 +135,7 @@ async function main() {
   await run('a PR that does not touch Policy.lean is refused', async () => {
     const github = fakeGithub({
       associated: [
-        { number: 22, base: { ref: 'submission/template' }, head: { sha: HEAD } },
+        { number: 22, base: { ref: 'main' }, head: { sha: HEAD } },
       ],
       files: [{ filename: 'TableGeneration/Submission/Policy/Helper.lean' }],
     });
@@ -147,7 +147,7 @@ async function main() {
 
   await run('a PR against the wrong base is refused', async () => {
     const github = fakeGithub({
-      associated: [{ number: 10, base: { ref: 'main' }, head: { sha: HEAD } }],
+      associated: [{ number: 10, base: { ref: 'submission/template' }, head: { sha: HEAD } }],
       files: [{ filename: 'TableGeneration/Submission/Policy.lean' }],
     });
     await expectThrows(
@@ -167,8 +167,8 @@ async function main() {
   await run('two PRs at the same head SHA are refused', async () => {
     const github = fakeGithub({
       associated: [
-        { number: 11, base: { ref: 'submission/template' }, head: { sha: HEAD } },
-        { number: 12, base: { ref: 'submission/template' }, head: { sha: HEAD } },
+        { number: 11, base: { ref: 'main' }, head: { sha: HEAD } },
+        { number: 12, base: { ref: 'main' }, head: { sha: HEAD } },
       ],
     });
     await expectThrows(
@@ -191,7 +191,7 @@ async function main() {
     // the commit; its head must still be exactly the run's head.
     const github = fakeGithub({
       associated: [
-        { number: 13, base: { ref: 'submission/template' }, head: { sha: OTHER } },
+        { number: 13, base: { ref: 'main' }, head: { sha: OTHER } },
       ],
     });
     await expectThrows(

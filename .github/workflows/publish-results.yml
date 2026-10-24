@@ -1,0 +1,106 @@
+name: Publish Verified Results
+on:
+  workflow_run:
+    workflows: [Verify Table Generation]
+    types: [completed]
+permissions: {}
+jobs:
+  publish:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+      id-token: write
+    env:
+      SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+      PUBLISHER_URL: ${{ vars.PUBLISHER_URL }}
+    steps:
+      - name: Checkout trusted publisher code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Test archive trust boundaries
+        run: node scripts/test_report_trust.js
+      - name: Download verifier output as data
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: table-generation-submission-${{ github.event.workflow_run.id }}
+          path: artifacts
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Validate PR identity and archive accepted results
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const fs = require('fs');
+            const reporting = require('./scripts/ci/table_generation_report.js');
+            const run = context.payload.workflow_run;
+            if (run.path !== '.github/workflows/table-generation-submission.yml') throw new Error('Unexpected verifier workflow');
+            const identity = await reporting.resolveTrustedPullRequest(github, context, run);
+            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: identity.number });
+            await reporting.persistBenchmarkResults({ github, context, core });
+            fs.writeFileSync('evaluation-metadata.json', JSON.stringify({
+              repository: `${context.repo.owner}/${context.repo.repo}`,
+              headSha: identity.headSha, runId: String(run.id), githubLogin: pr.user.login,
+              pullRequestUrl: pr.html_url, submittedAt: pr.created_at,
+              evaluatedAt: new Date().toISOString()
+            }));
+      - name: Checkout accepted archive only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: submission-results
+          path: archive
+          persist-credentials: false
+      - name: Record immutable archive revision
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          p = Path('evaluation-metadata.json')
+          data = json.loads(p.read_text())
+          data['archiveCommit'] = subprocess.check_output(['git', '-C', 'archive', 'rev-parse', 'HEAD'], text=True).strip()
+          p.write_text(json.dumps(data))
+          PY
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: evaluation/requirements.lock
+      - name: Install the pinned estimator environment
+        run: |
+          python -m pip install -r evaluation/requirements.lock
+          python - <<'PY' >> "$GITHUB_ENV"
+          import importlib.util
+          from pathlib import Path
+          print('ONECLICK_QUALTRAN=' + str(Path(importlib.util.find_spec('qualtran').origin).parent.parent))
+          PY
+      - name: Check every original resource estimate against the pinned baseline
+        run: python -m unittest discover -s evaluation -p 'test_*.py'
+      - name: Obtain short-lived publisher identity
+        id: google
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          workload_identity_provider: projects/769861884059/locations/global/workloadIdentityPools/forshor-staging/providers/github-submissions
+          service_account: forshor-results-ci@quantum-pilot-services.iam.gserviceaccount.com
+          token_format: id_token
+          id_token_audience: ${{ vars.PUBLISHER_URL }}
+          create_credentials_file: false
+      - name: Read the current private publication
+        env:
+          PUBLISHER_TOKEN: ${{ steps.google.outputs.id_token }}
+        run: curl --fail-with-body --silent --show-error -H "Authorization:Bearer $PUBLISHER_TOKEN" "$PUBLISHER_URL/state" --output current-state.json
+      - name: Evaluate the accepted catalog using the existing website model
+        run: python evaluation/estimate.py --archive archive --state current-state.json --metadata evaluation-metadata.json --out publish-input.json
+      - name: Publish a consistent versioned snapshot on Google
+        env:
+          PUBLISHER_TOKEN: ${{ steps.google.outputs.id_token }}
+        run: |
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization:Bearer $PUBLISHER_TOKEN" -H 'Content-Type:application/json' \
+            --data-binary @publish-input.json "$PUBLISHER_URL/publish"

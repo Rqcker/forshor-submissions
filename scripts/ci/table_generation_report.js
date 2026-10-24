@@ -14,7 +14,7 @@ const RESULT_MARKER = '<!-- table-generation-submission-result -->';
 // pull request from the GitHub API, then confirms the run could only have used
 // the base branch's workflow: the PR targets `submission/template` and changes
 // nothing outside the submission surface.
-const SUBMISSION_BASE_REF = 'submission/template';
+const SUBMISSION_BASE_REF = 'main';
 const SUBMISSION_POLICY_FILE = 'TableGeneration/Submission/Policy.lean';
 const SUBMISSION_HELPER_PREFIX = 'TableGeneration/Submission/Policy/';
 

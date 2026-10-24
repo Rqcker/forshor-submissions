@@ -1,3 +1,24 @@
+# Private ForShor submission pipeline
+
+This is Zapata’s private sprint copy of `VerifiedQC/ShorTableOptimization`, pinned initially to `5a70873b25b1f54a3043d3153caad7ded350abc1`. The upstream verifier contract, Lean statements, benchmark targets, and scientific estimator equations are preserved.
+
+For this copy, submission PRs target **main**. Change only `TableGeneration/Submission/Policy.lean` and optional Lean helper files under `TableGeneration/Submission/Policy/`. The template intentionally handles no targets. A known-valid existing implementation is used for the first end-to-end test; no new research is required.
+
+1. `Verify Table Generation` checks the submission with the trusted base verifier and Lean. It has no publication credentials.
+2. `Publish Verified Results` runs from main after success, resolves the PR and changed files through GitHub’s API, and archives verified source/results on `submission-results`. It does not execute the submitted source.
+3. The pinned estimator in `evaluation/estimator` evaluates the accepted catalog with the same Qualtran model as the existing website. Golden tests reproduce every original plan’s metrics/breakdowns and all table champions before publication.
+4. A short-lived, repository/workflow-restricted Google identity calls the IAM-protected results publisher. Google validates the shared v1 contract and uploads a complete immutable snapshot before atomically advancing the dashboard pointer.
+5. Private staging serves those results through its existing password-protected Google host. Updating data does not rebuild or redeploy the frontend.
+
+Estimator upstream: `courtneyjzapata/forshor-resource-estimation@fe58769bbd4ec6dfcc59e67771252e3382c051ba`. Qualtran is pinned to **0.7.0**, which reproduces the current published baseline; the source checkout’s expected vendored dependency was absent. Python dependencies are pinned in `evaluation/requirements.lock`. No estimator equations are modified.
+
+Website: https://github.com/zapatacomputing/forshor-site
+Ticket: https://linear.app/zapata-quantum/issue/QP-393
+
+The original upstream README follows. Its public-repository branch/promotion instructions are background; this private pipeline uses main and publishes to private staging only.
+
+---
+
 # Shor Table Optimization
 
 A benchmark for machine-found, machine-checked interpolation tables.

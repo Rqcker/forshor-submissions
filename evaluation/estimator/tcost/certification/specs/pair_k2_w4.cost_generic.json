@@ -1,0 +1,64 @@
+{
+ "factory": "tcost.bloqs:make_chain_bloq",
+ "params": {
+  "mode": "PhaseProduct",
+  "chain": [
+   {
+    "mode": "PhaseProduct",
+    "k": 2,
+    "point_order": [
+     "0",
+     "inf",
+     "1"
+    ],
+    "operations": [
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      1,
+      0
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      -1,
+      0
+     ]
+    ]
+   }
+  ],
+  "w": 4,
+  "phi": null
+ },
+ "domain": {
+  "mode": "list",
+  "cases": [
+   {
+    "x": 0,
+    "z": 0
+   }
+  ],
+  "note": "one input only: the generic-angle circuit contains ZPowGate(theta), which has no classical action, so bloq_gate's action seam cannot pass here by construction; this spec records the decomposition, cost seam and logical profile of the ranked configuration."
+ },
+ "depth": false,
+ "profile": {
+  "name": "ChainPhaseProduct(pair_k2_w4,cost_generic)",
+  "rotation_eps": 0.00013333333333333334
+ },
+ "lane": "qualtran-vendored-0.8.0.dev0",
+ "regenerate": "PYTHONPATH=. AUTORESEARCHER_LANE=qualtran-vendored-0.8.0.dev0 python <ResearchSkills>/_tools/bloq_gate.py --spec tcost/certification/specs/pair_k2_w4.cost_generic.json --out tcost/certification/results/pair_k2_w4.cost_generic.witness.json --profile tcost/certification/results/pair_k2_w4.cost_generic.profile.json --schema-dir <ResearchSkills>/_templates"
+}

@@ -6,3 +6,9 @@ lake-packages/
 artifacts/
 __pycache__/
 *.pyc
+
+.venv/
+.pytest_cache/
+*.egg-info/
+publish-input.json
+current-state.json
