@@ -34,6 +34,7 @@ class ExistingModelTests(unittest.TestCase):
                 self.assertEqual(a, e, (board, key))
 
     def test_winners_and_individual_champions_are_preserved(self):
+        json.dumps(self.result)  # The real publisher input must be serializable.
         self.assertEqual(self.result['legacy']['best'], self.state['legacy']['best'])
         self.assertEqual(self.result['legacy']['tables'], self.state['legacy']['tables'])
         self.assertEqual(self.result['legacy']['history'], self.state['legacy']['history'])

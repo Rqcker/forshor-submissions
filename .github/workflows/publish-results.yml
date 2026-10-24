@@ -90,6 +90,7 @@ jobs:
           service_account: forshor-results-ci@quantum-pilot-services.iam.gserviceaccount.com
           token_format: id_token
           id_token_audience: ${{ vars.PUBLISHER_URL }}
+          id_token_include_email: true
           create_credentials_file: false
       - name: Read the current private publication
         env:
