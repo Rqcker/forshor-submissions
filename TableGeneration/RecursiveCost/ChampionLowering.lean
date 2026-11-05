@@ -1,8 +1,8 @@
 import TableGeneration.RecursiveCost.Catalog
 import TableGeneration.RecursiveCost.CompanionTransport
-import FastMultiplication.ShorVerification.Implementation.Shor.Lowering.LowerGate
-import FastMultiplication.Emit.Lower.Registers
-import FastMultiplication.Emit.Lower.Decide
+import ForShor.ShorVerification.Implementation.Compiler.Proofs.SingleTable
+import ForShor.Emit.Lower.Registers
+import ForShor.Emit.Lower.Decide
 
 /-!
 # Pricing a promoted champion through the companion's recursive lowering
