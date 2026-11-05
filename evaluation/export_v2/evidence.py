@@ -67,7 +67,10 @@ def stomirror_from_envelope(envelope: Dict[str, Any], policy_json: Dict[str, Any
     if rec.get("verdict") != "accepted":
         stage = (rec.get("rejection") or {}).get("stage")
         return None, f"the harness did not accept it ({rec.get('verdict')}, stage {stage})"
-    if rec.get("widths_rule") != "exact" or rec.get("target_width") != model["n"]:
+    # The two harnesses name the width rule differently: check_banded_policy writes `widths_rule`, check_ptp_policy writes `widths`.
+    # (Found by running both for real: the first draft read only `widths_rule` and refused a genuinely accepted PTP record.)
+    rule = rec.get("widths_rule", rec.get("widths"))
+    if rule != "exact" or rec.get("target_width") != model["n"]:
         return None, "the record is not an exact-width check at the model's width"
     if rec.get("mode") != policy_json["mode"] or rec.get("bands") != [{"threshold": b["threshold"], "k": b["k"]} for b in policy_json["bands"]]:
         return None, "the record's mode or bands differ from the policy's"

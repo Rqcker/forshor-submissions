@@ -30,15 +30,32 @@ valid evidence is still listed, unranked.
 ## What the real data says (2026-11-05)
 
 * The engine's frontier rows (17 PhaseProduct, 9 PhaseTripleProduct, at four deltas) are **104 row-policies but only 6 distinct
-  policies** (4 PhaseProduct, 2 PhaseTripleProduct). Policy-level evidence needs 6 harness runs, not 104.
-* **None of them has valid evidence for this epoch.** The 31 seed records are earlier planner outputs, re-planned over only their
-  own tables, so only 4 of the 104 row-policies even match a seed; and no existing record satisfies the toolchain rule: the demo's
-  mirror records name Lean 4.28.0 and a tree hash, and the only ForShor-verified seeds ran on ForShor 10fe620, not this epoch's
-  pin 6d55ad9. Under the ranking rule every planner row is therefore currently unranked.
-* The only built Lean trees on the machine that ran the demo are at Lean 4.28 / ForShor fadcf92. The interim STO fork
-  (`~/Desktop/ShorTableOptimization_temp-main`, Lean 4.36.0-rc1, ForShor 6d55ad9) is not built. Producing evidence means building it
-  (about 7 min cold with the Mathlib cache and ~7.5 GB peak per the fork's notes) and then running `run-mirror` (PhaseProduct about
-  100 s each, PhaseTripleProduct about 7 to 13 minutes each, up to ~6 GB).
+  policies** (4 PhaseProduct, 2 PhaseTripleProduct). The 31 seed records are earlier planner outputs, and no existing record satisfies
+  the toolchain rule (the demo's mirror records name Lean 4.28.0 and a tree hash; the ForShor-verified seeds ran on 10fe620, not the pin).
+* **The interim STO fork was built** at its pins (Lean 4.36.0-rc1, ForShor 6d55ad9; `lake build` of the documented targets, 8406 jobs,
+  about 8.5 minutes with the Mathlib cache) and its harnesses were run on the planner policies:
+
+  | Policy | Ladder | Result | Time |
+  | --- | --- | --- | --- |
+  | PhaseProduct `1bc92ac6` | k = 6, 4, 3 | **accepted** (all stages, both kernel replays) | 138 s |
+  | PhaseTripleProduct `627bb6e3` | one band, k = 4 | **accepted** | 103 s |
+  | PhaseProduct `80132d41` | k = 8, 4, 3 | **rejected at stage `timeout`**: the evaluation-tier report ran past the harness's 60-minute budget | 3645 s |
+  | PhaseProduct `92d5b75d`, `ab119309`; PhaseTripleProduct `48063efa` | all start with k = 8 | **not run** | |
+
+  A timeout is a resource limit, not a mathematical rejection: it says nothing about whether the policy is correct, and it yields no
+  evidence. The three not run share the 8-way top band that timed out, and no record in the demo's data has an 8-way first band
+  (all accepted ones start at k = 6), so they were not given another hour each on a likely repeat. No root cause is established for the
+  slow stage (`scripts/BandedPolicyReport.lean`, run by the interpreter as `lake env lean --run`); that is untested.
+* **Consequence:** the policies that verified are the oldest, simplest rows (the earliest PhaseTripleProduct row at all four deltas, and
+  the earliest PhaseProduct row at two non-default deltas). The strong current frontier policies are the k = 8 ones, which are the ones
+  the harness could not verify. With evidence for 2 of 6 policies, 8 of 104 row-policies are ranked (one PhaseTripleProduct row at
+  every delta, one PhaseProduct row at two deltas), so a ranked baseline is far weaker than the true frontier. Unverified rows are still
+  listed, unranked.
+* **Two bugs the real runs found:** (1) the harnesses name the width-rule field differently (`widths_rule` in check_banded_policy,
+  `widths` in check_ptp_policy); the first converter read only the first and refused a genuinely accepted PhaseTripleProduct record.
+  The real records are now test fixtures (`pytests/data/real`). (2) After the harness reported its timeout, the `lean --run` process it
+  had started kept running at full CPU with no parent; the harness's timeout kills the wrapper but not the interpreter. It also blocked
+  the next check, because the harness waits while two or more Lean processes run. It had to be killed by hand.
 
 ## Tests
 
@@ -49,4 +66,5 @@ FORSHOR_SITE_DIR=/path/to/forshor-site python -m pytest export_v2/pytests -q --r
 The tests live in `pytests/` (no `__init__.py`) on purpose: CI's `python -m unittest discover -s evaluation` runs in the pinned
 Qualtran 0.7.0 environment and must not import the vendored engine.
 
-The harness runner is verified only against a stub script: it has **not** been run against a real Lean tree.
+The harness runner (`run_mirror`) was run against a real built tree on 2026-11-05 for the policies in the table above; its tests use
+a stub for speed, plus the real records as fixtures.
