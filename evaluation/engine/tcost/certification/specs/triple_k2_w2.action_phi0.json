@@ -1,0 +1,399 @@
+{
+ "factory": "tcost.bloqs:make_chain_bloq",
+ "params": {
+  "mode": "PhaseTripleProduct",
+  "chain": [
+   {
+    "mode": "PhaseTripleProduct",
+    "k": 2,
+    "point_order": [
+     "1",
+     "0",
+     "-1",
+     "inf"
+    ],
+    "operations": [
+     [
+      "addScaled",
+      1,
+      0,
+      1,
+      0
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      -1,
+      0
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      1,
+      0
+     ]
+    ]
+   }
+  ],
+  "w": 2,
+  "phi": "0"
+ },
+ "domain": {
+  "mode": "list",
+  "cases": [
+   {
+    "x": -2,
+    "y": -2,
+    "z": -2
+   },
+   {
+    "x": -2,
+    "y": -2,
+    "z": -1
+   },
+   {
+    "x": -2,
+    "y": -2,
+    "z": 0
+   },
+   {
+    "x": -2,
+    "y": -2,
+    "z": 1
+   },
+   {
+    "x": -2,
+    "y": -1,
+    "z": -2
+   },
+   {
+    "x": -2,
+    "y": -1,
+    "z": -1
+   },
+   {
+    "x": -2,
+    "y": -1,
+    "z": 0
+   },
+   {
+    "x": -2,
+    "y": -1,
+    "z": 1
+   },
+   {
+    "x": -2,
+    "y": 0,
+    "z": -2
+   },
+   {
+    "x": -2,
+    "y": 0,
+    "z": -1
+   },
+   {
+    "x": -2,
+    "y": 0,
+    "z": 0
+   },
+   {
+    "x": -2,
+    "y": 0,
+    "z": 1
+   },
+   {
+    "x": -2,
+    "y": 1,
+    "z": -2
+   },
+   {
+    "x": -2,
+    "y": 1,
+    "z": -1
+   },
+   {
+    "x": -2,
+    "y": 1,
+    "z": 0
+   },
+   {
+    "x": -2,
+    "y": 1,
+    "z": 1
+   },
+   {
+    "x": -1,
+    "y": -2,
+    "z": -2
+   },
+   {
+    "x": -1,
+    "y": -2,
+    "z": -1
+   },
+   {
+    "x": -1,
+    "y": -2,
+    "z": 0
+   },
+   {
+    "x": -1,
+    "y": -2,
+    "z": 1
+   },
+   {
+    "x": -1,
+    "y": -1,
+    "z": -2
+   },
+   {
+    "x": -1,
+    "y": -1,
+    "z": -1
+   },
+   {
+    "x": -1,
+    "y": -1,
+    "z": 0
+   },
+   {
+    "x": -1,
+    "y": -1,
+    "z": 1
+   },
+   {
+    "x": -1,
+    "y": 0,
+    "z": -2
+   },
+   {
+    "x": -1,
+    "y": 0,
+    "z": -1
+   },
+   {
+    "x": -1,
+    "y": 0,
+    "z": 0
+   },
+   {
+    "x": -1,
+    "y": 0,
+    "z": 1
+   },
+   {
+    "x": -1,
+    "y": 1,
+    "z": -2
+   },
+   {
+    "x": -1,
+    "y": 1,
+    "z": -1
+   },
+   {
+    "x": -1,
+    "y": 1,
+    "z": 0
+   },
+   {
+    "x": -1,
+    "y": 1,
+    "z": 1
+   },
+   {
+    "x": 0,
+    "y": -2,
+    "z": -2
+   },
+   {
+    "x": 0,
+    "y": -2,
+    "z": -1
+   },
+   {
+    "x": 0,
+    "y": -2,
+    "z": 0
+   },
+   {
+    "x": 0,
+    "y": -2,
+    "z": 1
+   },
+   {
+    "x": 0,
+    "y": -1,
+    "z": -2
+   },
+   {
+    "x": 0,
+    "y": -1,
+    "z": -1
+   },
+   {
+    "x": 0,
+    "y": -1,
+    "z": 0
+   },
+   {
+    "x": 0,
+    "y": -1,
+    "z": 1
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "z": -2
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "z": -1
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "z": 0
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "z": 1
+   },
+   {
+    "x": 0,
+    "y": 1,
+    "z": -2
+   },
+   {
+    "x": 0,
+    "y": 1,
+    "z": -1
+   },
+   {
+    "x": 0,
+    "y": 1,
+    "z": 0
+   },
+   {
+    "x": 0,
+    "y": 1,
+    "z": 1
+   },
+   {
+    "x": 1,
+    "y": -2,
+    "z": -2
+   },
+   {
+    "x": 1,
+    "y": -2,
+    "z": -1
+   },
+   {
+    "x": 1,
+    "y": -2,
+    "z": 0
+   },
+   {
+    "x": 1,
+    "y": -2,
+    "z": 1
+   },
+   {
+    "x": 1,
+    "y": -1,
+    "z": -2
+   },
+   {
+    "x": 1,
+    "y": -1,
+    "z": -1
+   },
+   {
+    "x": 1,
+    "y": -1,
+    "z": 0
+   },
+   {
+    "x": 1,
+    "y": -1,
+    "z": 1
+   },
+   {
+    "x": 1,
+    "y": 0,
+    "z": -2
+   },
+   {
+    "x": 1,
+    "y": 0,
+    "z": -1
+   },
+   {
+    "x": 1,
+    "y": 0,
+    "z": 0
+   },
+   {
+    "x": 1,
+    "y": 0,
+    "z": 1
+   },
+   {
+    "x": 1,
+    "y": 1,
+    "z": -2
+   },
+   {
+    "x": 1,
+    "y": 1,
+    "z": -1
+   },
+   {
+    "x": 1,
+    "y": 1,
+    "z": 0
+   },
+   {
+    "x": 1,
+    "y": 1,
+    "z": 1
+   }
+  ],
+  "note": "exhaustive signed QInt inputs. phi = 0: every leaf cell is skipped, so this seam checks the arithmetic/extension scaffold and clean ancillas only -- the phase action is tcost.certify T1/T1d/T2."
+ },
+ "depth": false,
+ "profile": {
+  "name": "ChainPhaseProduct(triple_k2_w2,action_phi0)",
+  "rotation_eps": null
+ },
+ "lane": "qualtran-vendored-0.8.0.dev0",
+ "regenerate": "PYTHONPATH=. AUTORESEARCHER_LANE=qualtran-vendored-0.8.0.dev0 python <ResearchSkills>/_tools/bloq_gate.py --spec tcost/certification/specs/triple_k2_w2.action_phi0.json --out tcost/certification/results/triple_k2_w2.action_phi0.witness.json --profile tcost/certification/results/triple_k2_w2.action_phi0.profile.json --schema-dir <ResearchSkills>/_templates"
+}

@@ -1,0 +1,72 @@
+{
+ "name": "table 71b9796739feb5ec972f8c53cd77a3af495c89b56d64e3602db3d987c8223c83",
+ "mode": "PhaseTripleProduct",
+ "bands": [
+  {
+   "threshold": 2048,
+   "k": 2,
+   "point_order": [
+    "0",
+    "inf",
+    "-1",
+    "1"
+   ],
+   "operations": [
+    [
+     "phaseProduct",
+     0
+    ],
+    [
+     "phaseProduct",
+     1
+    ],
+    [
+     "addScaled",
+     0,
+     1,
+     -1,
+     0
+    ],
+    [
+     "shiftL",
+     1,
+     1
+    ],
+    [
+     "addScaled",
+     1,
+     0,
+     1,
+     0
+    ],
+    [
+     "phaseProduct",
+     0
+    ],
+    [
+     "phaseProduct",
+     1
+    ],
+    [
+     "addScaled",
+     1,
+     0,
+     -1,
+     0
+    ],
+    [
+     "shiftR",
+     1,
+     1
+    ],
+    [
+     "addScaled",
+     0,
+     1,
+     1,
+     0
+    ]
+   ]
+  }
+ ]
+}

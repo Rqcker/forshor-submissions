@@ -1,0 +1,253 @@
+{
+ "benchmark": {
+  "weights": {
+   "arithmetic_operation_count": 1,
+   "parallel_phase_product_layer_count": 5
+  }
+ },
+ "results": [
+  {
+   "mode": "PhaseProduct",
+   "k": 3,
+   "arithmetic_operation_count": 11,
+   "parallel_phase_product_layer_count": 2,
+   "phase_product_count": 5,
+   "total_operation_count": 16,
+   "weighted_cost": 21
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 4,
+   "arithmetic_operation_count": 26,
+   "parallel_phase_product_layer_count": 3,
+   "phase_product_count": 7,
+   "total_operation_count": 33,
+   "weighted_cost": 41
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 5,
+   "arithmetic_operation_count": 44,
+   "parallel_phase_product_layer_count": 4,
+   "phase_product_count": 9,
+   "total_operation_count": 53,
+   "weighted_cost": 64
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 6,
+   "arithmetic_operation_count": 66,
+   "parallel_phase_product_layer_count": 5,
+   "phase_product_count": 11,
+   "total_operation_count": 77,
+   "weighted_cost": 91
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 7,
+   "arithmetic_operation_count": 92,
+   "parallel_phase_product_layer_count": 6,
+   "phase_product_count": 13,
+   "total_operation_count": 105,
+   "weighted_cost": 122
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 8,
+   "arithmetic_operation_count": 122,
+   "parallel_phase_product_layer_count": 7,
+   "phase_product_count": 15,
+   "total_operation_count": 137,
+   "weighted_cost": 157
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 9,
+   "arithmetic_operation_count": 156,
+   "parallel_phase_product_layer_count": 8,
+   "phase_product_count": 17,
+   "total_operation_count": 173,
+   "weighted_cost": 196
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 10,
+   "arithmetic_operation_count": 194,
+   "parallel_phase_product_layer_count": 9,
+   "phase_product_count": 19,
+   "total_operation_count": 213,
+   "weighted_cost": 239
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 11,
+   "arithmetic_operation_count": 236,
+   "parallel_phase_product_layer_count": 10,
+   "phase_product_count": 21,
+   "total_operation_count": 257,
+   "weighted_cost": 286
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 12,
+   "arithmetic_operation_count": 282,
+   "parallel_phase_product_layer_count": 11,
+   "phase_product_count": 23,
+   "total_operation_count": 305,
+   "weighted_cost": 337
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 13,
+   "arithmetic_operation_count": 332,
+   "parallel_phase_product_layer_count": 12,
+   "phase_product_count": 25,
+   "total_operation_count": 357,
+   "weighted_cost": 392
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 14,
+   "arithmetic_operation_count": 386,
+   "parallel_phase_product_layer_count": 13,
+   "phase_product_count": 27,
+   "total_operation_count": 413,
+   "weighted_cost": 451
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 15,
+   "arithmetic_operation_count": 444,
+   "parallel_phase_product_layer_count": 14,
+   "phase_product_count": 29,
+   "total_operation_count": 473,
+   "weighted_cost": 514
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 16,
+   "arithmetic_operation_count": 506,
+   "parallel_phase_product_layer_count": 15,
+   "phase_product_count": 31,
+   "total_operation_count": 537,
+   "weighted_cost": 581
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 4,
+   "arithmetic_operation_count": 38,
+   "parallel_phase_product_layer_count": 4,
+   "phase_product_count": 10,
+   "total_operation_count": 48,
+   "weighted_cost": 58
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 5,
+   "arithmetic_operation_count": 66,
+   "parallel_phase_product_layer_count": 6,
+   "phase_product_count": 13,
+   "total_operation_count": 79,
+   "weighted_cost": 96
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 6,
+   "arithmetic_operation_count": 94,
+   "parallel_phase_product_layer_count": 7,
+   "phase_product_count": 16,
+   "total_operation_count": 110,
+   "weighted_cost": 129
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 7,
+   "arithmetic_operation_count": 140,
+   "parallel_phase_product_layer_count": 9,
+   "phase_product_count": 19,
+   "total_operation_count": 159,
+   "weighted_cost": 185
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 8,
+   "arithmetic_operation_count": 180,
+   "parallel_phase_product_layer_count": 10,
+   "phase_product_count": 22,
+   "total_operation_count": 202,
+   "weighted_cost": 230
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 9,
+   "arithmetic_operation_count": 236,
+   "parallel_phase_product_layer_count": 12,
+   "phase_product_count": 25,
+   "total_operation_count": 261,
+   "weighted_cost": 296
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 10,
+   "arithmetic_operation_count": 286,
+   "parallel_phase_product_layer_count": 13,
+   "phase_product_count": 28,
+   "total_operation_count": 314,
+   "weighted_cost": 351
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 11,
+   "arithmetic_operation_count": 356,
+   "parallel_phase_product_layer_count": 15,
+   "phase_product_count": 31,
+   "total_operation_count": 387,
+   "weighted_cost": 431
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 12,
+   "arithmetic_operation_count": 416,
+   "parallel_phase_product_layer_count": 16,
+   "phase_product_count": 34,
+   "total_operation_count": 450,
+   "weighted_cost": 496
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 13,
+   "arithmetic_operation_count": 500,
+   "parallel_phase_product_layer_count": 18,
+   "phase_product_count": 37,
+   "total_operation_count": 537,
+   "weighted_cost": 590
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 14,
+   "arithmetic_operation_count": 570,
+   "parallel_phase_product_layer_count": 19,
+   "phase_product_count": 40,
+   "total_operation_count": 610,
+   "weighted_cost": 665
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 15,
+   "arithmetic_operation_count": 668,
+   "parallel_phase_product_layer_count": 21,
+   "phase_product_count": 43,
+   "total_operation_count": 711,
+   "weighted_cost": 773
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 16,
+   "arithmetic_operation_count": 748,
+   "parallel_phase_product_layer_count": 22,
+   "phase_product_count": 46,
+   "total_operation_count": 794,
+   "weighted_cost": 858
+  }
+ ]
+}

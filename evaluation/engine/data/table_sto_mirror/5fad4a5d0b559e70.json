@@ -1,0 +1,28 @@
+{
+ "tool": "check_banded_policy",
+ "started": "2026-10-28T14:14:19.131705+00:00",
+ "policy_sha256": "651062365dac91a3bbee20556e5ba455b5eb4cdf420af858c51a9487b7544cff",
+ "target_width": 2048,
+ "seconds": {
+  "stage": 16.65,
+  "data": 17.37
+ },
+ "verdict": "rejected",
+ "mode": "PhaseTripleProduct",
+ "bands": [
+  {
+   "threshold": 2048,
+   "k": 7
+  }
+ ],
+ "workdir": "/Users/joshua/Desktop/github_packages/sto_site/.cache/sto_policy_work",
+ "lean_sha256": {
+  "Submitted.lean": "083873ad8abb0b3a048b32e4b1a571f5481bc4fee685fddb054fe8ada7563965",
+  "SubmittedCert.lean": "6efaa7ff52f582d1c5750d7c2305c56a31811e9e818cb43122cc46a729835440"
+ },
+ "rejection": {
+  "stage": "timeout",
+  "reason": "Command '['lake', 'env', 'lean', '--run', 'scripts/BandedPolicyReport.lean', '--', '2048']' timed out after 1800 seconds"
+ },
+ "finished": "2026-10-28T14:44:57.709344+00:00"
+}

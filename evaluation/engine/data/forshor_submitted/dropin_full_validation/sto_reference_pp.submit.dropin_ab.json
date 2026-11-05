@@ -1,0 +1,148 @@
+{
+ "policy": "/Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/policies/ref_pp.site_policy.json",
+ "mode": "PhaseProduct",
+ "delta": 0.01,
+ "board": {
+  "T": 13951779.839838771,
+  "ladder": [
+   {
+    "width": 2048,
+    "k": 6,
+    "table": "58147b7627fb",
+    "digest": "2ca2c221dacb"
+   },
+   {
+    "width": 364,
+    "k": 2,
+    "table": "6f7d25984ff8",
+    "digest": "af60631769e8"
+   },
+   {
+    "width": 184,
+    "k": 2,
+    "table": "6f7d25984ff8",
+    "digest": "af60631769e8"
+   },
+   {
+    "width": 94,
+    "k": 2,
+    "table": "6f7d25984ff8",
+    "digest": "af60631769e8"
+   },
+   {
+    "width": 49,
+    "k": 2,
+    "table": "6f7d25984ff8",
+    "digest": "af60631769e8"
+   },
+   {
+    "width": 26,
+    "k": null,
+    "table": "leaf",
+    "digest": null
+   }
+  ],
+  "widths_notice": "This policy declares a width ladder or widths (ladder). The board ignores them: it derives the exact widths itself (the least width at which every reachable register value and child operand fits, floor limbs) and prices at those."
+ },
+ "sto": {
+  "verdict": "accepted",
+  "stage": null,
+  "reason": null,
+  "exact_ladder": [
+   {
+    "width": 2048,
+    "k": 6
+   },
+   {
+    "width": 364,
+    "k": 2
+   },
+   {
+    "width": 184,
+    "k": 2
+   },
+   {
+    "width": 94,
+    "k": 2
+   },
+   {
+    "width": 49,
+    "k": 2
+   },
+   {
+    "width": 26,
+    "k": null
+   }
+  ],
+  "exact_ladder_kernel_proved": true,
+  "seconds": 160.4,
+  "peak_gb": 6.49,
+  "wall_s": 160.6
+ },
+ "forshor": {
+  "verdict": "verified",
+  "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_dropin_ab",
+  "commit": "10fe620",
+  "seconds": {
+   "stage": 55.0,
+   "waited_for_lean_slot": 0.0,
+   "lean": 330.4,
+   "python": 0.1,
+   "price": 0.3
+  },
+  "wall_s": 405.2,
+  "full_run_T": 4915468013499.388,
+  "T_document": 4915468013499.388,
+  "T_converted_policy": 4915468013499.388
+ },
+ "agreement": {
+  "bands": true,
+  "price": true,
+  "submitted_bands": [
+   [
+    2048,
+    6
+   ],
+   [
+    385,
+    3
+   ],
+   [
+    140,
+    2
+   ],
+   [
+    73,
+    2
+   ],
+   [
+    40,
+    2
+   ]
+  ],
+  "forshor_bands": [
+   [
+    2048,
+    6
+   ],
+   [
+    385,
+    3
+   ],
+   [
+    140,
+    2
+   ],
+   [
+    73,
+    2
+   ],
+   [
+    40,
+    2
+   ]
+  ]
+ },
+ "verdict": "accepted",
+ "wall_s": 576.3
+}

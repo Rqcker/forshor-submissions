@@ -1,0 +1,68 @@
+{
+ "policy_id": "P52ec6fce9b57",
+ "source": "Lean (TableGeneration.Policies.Accepted.P52ec6fce9b57)",
+ "targets": [
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 2,
+   "generated_points": [
+    "1",
+    "0",
+    "-1",
+    "inf"
+   ],
+   "point_order": [
+    "1",
+    "0",
+    "-1",
+    "inf"
+   ],
+   "operations": [
+    [
+     "addScaled",
+     1,
+     0,
+     1,
+     0
+    ],
+    [
+     "phaseProduct",
+     1
+    ],
+    [
+     "phaseProduct",
+     0
+    ],
+    [
+     "addScaled",
+     1,
+     0,
+     -1,
+     0
+    ],
+    [
+     "addScaled",
+     0,
+     1,
+     -1,
+     0
+    ],
+    [
+     "phaseProduct",
+     0
+    ],
+    [
+     "phaseProduct",
+     1
+    ],
+    [
+     "addScaled",
+     0,
+     1,
+     1,
+     0
+    ]
+   ]
+  }
+ ]
+}

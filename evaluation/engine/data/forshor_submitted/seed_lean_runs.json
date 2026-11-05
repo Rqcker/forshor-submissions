@@ -1,0 +1,1596 @@
+{
+ "runs": {
+  "S29d5189f0a0b:override": {
+   "id": "S29d5189f0a0b",
+   "variant": "pre_exact",
+   "budget": "override",
+   "max_heartbeats": 400000000,
+   "limit_s": 1800,
+   "mem_cap_gb": 8.0,
+   "site_policy": "site_policy.pre_exact.json",
+   "site_policy_sha256": "449d591748d39fe307ac712155be92bea070e567036b11284087338f9aae3c83",
+   "template_sha256": "c07c71dec96ee609bd384585e14659aaf0a7c1cba76f32d772a6f041ced62084",
+   "forshor": {
+    "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_latest_build",
+    "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+    "commit_short": "10fe620",
+    "label": "ForShor latest (10fe620, Lean v4.36.0-rc1)",
+    "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+    "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+    "source": "cp -c -R of /Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/baseline (git worktree at ForShor 10fe620, git status empty, Lean sources equal to ~/Desktop/ForShor HEAD); the worktree's .git pointer file was removed from this copy so that no git command here touches the other worktree's index",
+    "default_tree": true
+   },
+   "command": "./run.sh forshor engine/data/forshor_submitted/S29d5189f0a0b/site_policy.pre_exact.json --from-policy --max-heartbeats 400000000",
+   "checked_at": "2026-10-28T19:33:27Z",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "Fa1b46509f4b7",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "15529f23510e30c403b4b1cb7d06686fc5b8bc9d1b7fe47ffc5df61bbaf3959a",
+   "lean_version": "Lean (version 4.36.0-rc1, arm64-apple-darwin24.6.0, commit c9afcddf514a6772bd4d649f7cfc04eff0b9f15e, Release)",
+   "reference_document": {
+    "source": "emitted by the trusted tree's built forshor_policy_submission",
+    "binary_sha256": "106d7d35793cabaf9b0d5fc65ee3a802cc8cdbed5f3701c2c90b6b1dec9b0452",
+    "sha256": "45f767565b2891fb51bbfc46dd11602cc0f2399cf085d2557072e8de8e5b3102",
+    "fixed": {
+     "benchmark": {
+      "bits": 2048,
+      "trial_count": "386"
+     },
+     "precision": {
+      "eta": "2^-150",
+      "m": "1427247692705959881058285969449495136382746621"
+     }
+    },
+    "checked_in_agrees": true
+   },
+   "printed_trial_count": "386",
+   "run": {
+    "build_s": 161.5,
+    "print_s": 48.3,
+    "build_peak_rss_mb": 3726.7,
+    "print_peak_rss_mb": 3647.5,
+    "build_peak_tree_mb": 837.0,
+    "print_peak_tree_mb": 627.0,
+    "mem_cap_gb": 8.0,
+    "seconds": {
+     "stage": 47.0,
+     "waited_for_lean_slot": 0.0,
+     "lean": 209.8,
+     "python": 0.1
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "price": {
+    "T_document": 3619807796643.9946,
+    "T_converted_policy": 3619807796643.9946,
+    "site_full_run_T": 3619807796643.9946,
+    "agrees_with_site": true,
+    "seconds": 0.4
+   },
+   "evidence": "seed_lean/S29d5189f0a0b.pre_exact.override.forshor_policy.json",
+   "seconds": 271.3
+  },
+  "S6794489f14f1:override": {
+   "id": "S6794489f14f1",
+   "variant": "pre_exact",
+   "budget": "override",
+   "max_heartbeats": 400000000,
+   "limit_s": 1800,
+   "mem_cap_gb": 8.0,
+   "site_policy": "site_policy.pre_exact.json",
+   "site_policy_sha256": "4d76f604070607e4c8e15d16aab9f432a529dd1e1b8c168efa54d8349ba6acf7",
+   "template_sha256": "cec85e81f45395519075d199badd238a0b7b3d314f2082f26cfbb003e9a6f239",
+   "forshor": {
+    "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_latest_build",
+    "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+    "commit_short": "10fe620",
+    "label": "ForShor latest (10fe620, Lean v4.36.0-rc1)",
+    "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+    "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+    "source": "cp -c -R of /Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/baseline (git worktree at ForShor 10fe620, git status empty, Lean sources equal to ~/Desktop/ForShor HEAD); the worktree's .git pointer file was removed from this copy so that no git command here touches the other worktree's index",
+    "default_tree": true
+   },
+   "command": "./run.sh forshor engine/data/forshor_submitted/S6794489f14f1/site_policy.pre_exact.json --from-policy --max-heartbeats 400000000",
+   "checked_at": "2026-10-28T19:41:20Z",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "F5b4039ec26b6",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "15529f23510e30c403b4b1cb7d06686fc5b8bc9d1b7fe47ffc5df61bbaf3959a",
+   "lean_version": "Lean (version 4.36.0-rc1, arm64-apple-darwin24.6.0, commit c9afcddf514a6772bd4d649f7cfc04eff0b9f15e, Release)",
+   "reference_document": {
+    "source": "emitted by the trusted tree's built forshor_policy_submission",
+    "binary_sha256": "106d7d35793cabaf9b0d5fc65ee3a802cc8cdbed5f3701c2c90b6b1dec9b0452",
+    "sha256": "45f767565b2891fb51bbfc46dd11602cc0f2399cf085d2557072e8de8e5b3102",
+    "fixed": {
+     "benchmark": {
+      "bits": 2048,
+      "trial_count": "386"
+     },
+     "precision": {
+      "eta": "2^-150",
+      "m": "1427247692705959881058285969449495136382746621"
+     }
+    },
+    "checked_in_agrees": true
+   },
+   "printed_trial_count": "386",
+   "run": {
+    "build_s": 225.3,
+    "print_s": 42.3,
+    "build_peak_rss_mb": 3801.0,
+    "print_peak_rss_mb": 3646.5,
+    "build_peak_tree_mb": 921.0,
+    "print_peak_tree_mb": 666.0,
+    "mem_cap_gb": 8.0,
+    "seconds": {
+     "stage": 26.7,
+     "waited_for_lean_slot": 0.0,
+     "lean": 267.6,
+     "python": 0.1
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "price": {
+    "T_document": 3883253638141.58,
+    "T_converted_policy": 3883253638141.58,
+    "site_full_run_T": 3883253638141.58,
+    "agrees_with_site": true,
+    "seconds": 0.4
+   },
+   "evidence": "seed_lean/S6794489f14f1.pre_exact.override.forshor_policy.json",
+   "seconds": 302.7
+  },
+  "S707dd51bf951:default": {
+   "id": "S707dd51bf951",
+   "variant": "pre_exact",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "mem_cap_gb": 8.0,
+   "site_policy": "site_policy.pre_exact.json",
+   "site_policy_sha256": "3adca8aca696186314100528f4cb0b3d3a8fba5feb424f48ce94be401e357d6a",
+   "template_sha256": "389ef5bb8cc1a7d97b27f404947737b7aeb1cc6d3654518fa65b143a76157777",
+   "forshor": {
+    "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_latest_build",
+    "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+    "commit_short": "10fe620",
+    "label": "ForShor latest (10fe620, Lean v4.36.0-rc1)",
+    "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+    "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+    "source": "cp -c -R of /Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/baseline (git worktree at ForShor 10fe620, git status empty, Lean sources equal to ~/Desktop/ForShor HEAD); the worktree's .git pointer file was removed from this copy so that no git command here touches the other worktree's index",
+    "default_tree": true
+   },
+   "command": "./run.sh forshor engine/data/forshor_submitted/S707dd51bf951/site_policy.pre_exact.json --from-policy",
+   "checked_at": "2026-10-28T19:29:00Z",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "Fb7d528a51104",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "15529f23510e30c403b4b1cb7d06686fc5b8bc9d1b7fe47ffc5df61bbaf3959a",
+   "lean_version": "Lean (version 4.36.0-rc1, arm64-apple-darwin24.6.0, commit c9afcddf514a6772bd4d649f7cfc04eff0b9f15e, Release)",
+   "reference_document": {
+    "source": "emitted by the trusted tree's built forshor_policy_submission",
+    "binary_sha256": "106d7d35793cabaf9b0d5fc65ee3a802cc8cdbed5f3701c2c90b6b1dec9b0452",
+    "sha256": "45f767565b2891fb51bbfc46dd11602cc0f2399cf085d2557072e8de8e5b3102",
+    "fixed": {
+     "benchmark": {
+      "bits": 2048,
+      "trial_count": "386"
+     },
+     "precision": {
+      "eta": "2^-150",
+      "m": "1427247692705959881058285969449495136382746621"
+     }
+    },
+    "checked_in_agrees": true
+   },
+   "printed_trial_count": "386",
+   "run": {
+    "build_s": 86.5,
+    "print_s": 34.1,
+    "build_peak_rss_mb": 3687.9,
+    "print_peak_rss_mb": 3646.6,
+    "build_peak_tree_mb": 749.0,
+    "print_peak_tree_mb": 621.0,
+    "mem_cap_gb": 8.0,
+    "seconds": {
+     "stage": 83.4,
+     "waited_for_lean_slot": 0.0,
+     "lean": 120.6,
+     "python": 0.1
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "price": {
+    "T_document": 3806886378792.656,
+    "T_converted_policy": 3806886378792.656,
+    "site_full_run_T": 3806886378792.656,
+    "agrees_with_site": true,
+    "seconds": 0.3
+   },
+   "evidence": "seed_lean/S707dd51bf951.pre_exact.default.forshor_policy.json",
+   "seconds": 218.7
+  },
+  "S707dd51bf951:replanned:default": {
+   "id": "S707dd51bf951",
+   "variant": "replanned",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "mem_cap_gb": 8.0,
+   "site_policy": "site_policy.json",
+   "site_policy_sha256": "e14aa9f9f346b06a0653c347f6bf0d6636867a06212f8e0202c3c66943ff7de5",
+   "template_sha256": "a215ea2d8521a1ee78b07801442777c73c0ba754b7ebccf06afa4eb895393688",
+   "forshor": {
+    "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_latest_build",
+    "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+    "commit_short": "10fe620",
+    "label": "ForShor latest (10fe620, Lean v4.36.0-rc1)",
+    "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+    "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+    "source": "cp -c -R of /Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/baseline (git worktree at ForShor 10fe620, git status empty, Lean sources equal to ~/Desktop/ForShor HEAD); the worktree's .git pointer file was removed from this copy so that no git command here touches the other worktree's index",
+    "default_tree": true
+   },
+   "command": "./run.sh forshor engine/data/forshor_submitted/S707dd51bf951/site_policy.json --from-policy",
+   "checked_at": "2026-10-28T19:53:45Z",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "F10527aad5a51",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "15529f23510e30c403b4b1cb7d06686fc5b8bc9d1b7fe47ffc5df61bbaf3959a",
+   "lean_version": "Lean (version 4.36.0-rc1, arm64-apple-darwin24.6.0, commit c9afcddf514a6772bd4d649f7cfc04eff0b9f15e, Release)",
+   "reference_document": {
+    "source": "emitted by the trusted tree's built forshor_policy_submission",
+    "binary_sha256": "106d7d35793cabaf9b0d5fc65ee3a802cc8cdbed5f3701c2c90b6b1dec9b0452",
+    "sha256": "45f767565b2891fb51bbfc46dd11602cc0f2399cf085d2557072e8de8e5b3102",
+    "fixed": {
+     "benchmark": {
+      "bits": 2048,
+      "trial_count": "386"
+     },
+     "precision": {
+      "eta": "2^-150",
+      "m": "1427247692705959881058285969449495136382746621"
+     }
+    },
+    "checked_in_agrees": true
+   },
+   "printed_trial_count": "386",
+   "run": {
+    "build_s": 64.8,
+    "print_s": 39.9,
+    "build_peak_rss_mb": 3625.6,
+    "print_peak_rss_mb": 3643.0,
+    "build_peak_tree_mb": 738.0,
+    "print_peak_tree_mb": 863.0,
+    "mem_cap_gb": 8.0,
+    "seconds": {
+     "stage": 44.1,
+     "waited_for_lean_slot": 0.0,
+     "lean": 104.7,
+     "python": 0.1
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "price": {
+    "T_document": 4532647120924.71,
+    "T_converted_policy": 4532647120924.71,
+    "site_full_run_T": 4532647120924.71,
+    "agrees_with_site": true,
+    "seconds": 0.4
+   },
+   "evidence": "seed_lean/S707dd51bf951.replanned.default.forshor_policy.json",
+   "seconds": 158.2
+  },
+  "S7da0ff5445b5:default": {
+   "id": "S7da0ff5445b5",
+   "variant": "pre_exact",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "mem_cap_gb": 8.0,
+   "site_policy": "site_policy.pre_exact.json",
+   "site_policy_sha256": "5a82f4af70c9a2dca8028492d7371c0bc6971e885a8e156017408be7cd86e55a",
+   "template_sha256": "be474ffa808d4e8e64b7d58fc0f78b03b3b9e9ddf8c3e5268b904d6e82d2ea43",
+   "forshor": {
+    "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_latest_build",
+    "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+    "commit_short": "10fe620",
+    "label": "ForShor latest (10fe620, Lean v4.36.0-rc1)",
+    "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+    "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+    "source": "cp -c -R of /Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/baseline (git worktree at ForShor 10fe620, git status empty, Lean sources equal to ~/Desktop/ForShor HEAD); the worktree's .git pointer file was removed from this copy so that no git command here touches the other worktree's index",
+    "default_tree": true
+   },
+   "command": "./run.sh forshor engine/data/forshor_submitted/S7da0ff5445b5/site_policy.pre_exact.json --from-policy",
+   "checked_at": "2026-10-28T19:23:10Z",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "F18894242cc62",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "15529f23510e30c403b4b1cb7d06686fc5b8bc9d1b7fe47ffc5df61bbaf3959a",
+   "lean_version": "Lean (version 4.36.0-rc1, arm64-apple-darwin24.6.0, commit c9afcddf514a6772bd4d649f7cfc04eff0b9f15e, Release)",
+   "reference_document": {
+    "source": "emitted by the trusted tree's built forshor_policy_submission",
+    "binary_sha256": "106d7d35793cabaf9b0d5fc65ee3a802cc8cdbed5f3701c2c90b6b1dec9b0452",
+    "sha256": "45f767565b2891fb51bbfc46dd11602cc0f2399cf085d2557072e8de8e5b3102",
+    "fixed": {
+     "benchmark": {
+      "bits": 2048,
+      "trial_count": "386"
+     },
+     "precision": {
+      "eta": "2^-150",
+      "m": "1427247692705959881058285969449495136382746621"
+     }
+    },
+    "checked_in_agrees": true
+   },
+   "printed_trial_count": "386",
+   "run": {
+    "build_s": 141.2,
+    "print_s": 65.8,
+    "build_peak_rss_mb": 3731.3,
+    "print_peak_rss_mb": 3637.2,
+    "build_peak_tree_mb": 798.0,
+    "print_peak_tree_mb": 855.0,
+    "mem_cap_gb": 8.0,
+    "seconds": {
+     "stage": 111.4,
+     "waited_for_lean_slot": 0.0,
+     "lean": 207.0,
+     "python": 0.1
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "price": {
+    "T_document": 3559982454503.8354,
+    "T_converted_policy": 3559982454503.8354,
+    "site_full_run_T": 3559982454503.8354,
+    "agrees_with_site": true,
+    "seconds": 0.5
+   },
+   "evidence": "seed_lean/S7da0ff5445b5.pre_exact.default.forshor_policy.json",
+   "seconds": 346.3
+  },
+  "S7da0ff5445b5:replanned:default": {
+   "id": "S7da0ff5445b5",
+   "variant": "replanned",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "mem_cap_gb": 8.0,
+   "site_policy": "site_policy.json",
+   "site_policy_sha256": "4096e83c2a71dd46777fb8bb5a78fab1e447bbd7fbc9ce8ba087c4325861f173",
+   "template_sha256": "91d85783e0634447bfd7687a9158daf239bb293897429a5a92fe6b96651fe123",
+   "forshor": {
+    "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_latest_build",
+    "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+    "commit_short": "10fe620",
+    "label": "ForShor latest (10fe620, Lean v4.36.0-rc1)",
+    "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+    "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+    "source": "cp -c -R of /Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/baseline (git worktree at ForShor 10fe620, git status empty, Lean sources equal to ~/Desktop/ForShor HEAD); the worktree's .git pointer file was removed from this copy so that no git command here touches the other worktree's index",
+    "default_tree": true
+   },
+   "command": "./run.sh forshor engine/data/forshor_submitted/S7da0ff5445b5/site_policy.json --from-policy",
+   "checked_at": "2026-10-28T19:56:25Z",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "F950f858f7499",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "15529f23510e30c403b4b1cb7d06686fc5b8bc9d1b7fe47ffc5df61bbaf3959a",
+   "lean_version": "Lean (version 4.36.0-rc1, arm64-apple-darwin24.6.0, commit c9afcddf514a6772bd4d649f7cfc04eff0b9f15e, Release)",
+   "reference_document": {
+    "source": "emitted by the trusted tree's built forshor_policy_submission",
+    "binary_sha256": "106d7d35793cabaf9b0d5fc65ee3a802cc8cdbed5f3701c2c90b6b1dec9b0452",
+    "sha256": "45f767565b2891fb51bbfc46dd11602cc0f2399cf085d2557072e8de8e5b3102",
+    "fixed": {
+     "benchmark": {
+      "bits": 2048,
+      "trial_count": "386"
+     },
+     "precision": {
+      "eta": "2^-150",
+      "m": "1427247692705959881058285969449495136382746621"
+     }
+    },
+    "checked_in_agrees": true
+   },
+   "printed_trial_count": "386",
+   "run": {
+    "build_s": 110.2,
+    "print_s": 167.8,
+    "build_peak_rss_mb": 3667.0,
+    "print_peak_rss_mb": 3579.9,
+    "build_peak_tree_mb": 792.0,
+    "print_peak_tree_mb": 746.0,
+    "mem_cap_gb": 8.0,
+    "seconds": {
+     "stage": 70.3,
+     "waited_for_lean_slot": 0.0,
+     "lean": 278.0,
+     "python": 0.1
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "price": {
+    "T_document": 4316035787439.387,
+    "T_converted_policy": 4316035787439.387,
+    "site_full_run_T": 4316035787439.387,
+    "agrees_with_site": true,
+    "seconds": 0.4
+   },
+   "evidence": "seed_lean/S7da0ff5445b5.replanned.default.forshor_policy.json",
+   "seconds": 357.9
+  },
+  "Sa009cfa3c147:override": {
+   "id": "Sa009cfa3c147",
+   "variant": "pre_exact",
+   "budget": "override",
+   "max_heartbeats": 400000000,
+   "limit_s": 1800,
+   "mem_cap_gb": 8.0,
+   "site_policy": "site_policy.pre_exact.json",
+   "site_policy_sha256": "ba8d6b435e58b68c6dc47e6e184d48510907166aea7d16032460a3cbef07d783",
+   "template_sha256": "42d27354dfcc84a4479beb39cc4bee56555f9d538ab4b7bffb3cae2101caaec2",
+   "forshor": {
+    "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_latest_build",
+    "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+    "commit_short": "10fe620",
+    "label": "ForShor latest (10fe620, Lean v4.36.0-rc1)",
+    "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+    "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+    "source": "cp -c -R of /Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/baseline (git worktree at ForShor 10fe620, git status empty, Lean sources equal to ~/Desktop/ForShor HEAD); the worktree's .git pointer file was removed from this copy so that no git command here touches the other worktree's index",
+    "default_tree": true
+   },
+   "command": "./run.sh forshor engine/data/forshor_submitted/Sa009cfa3c147/site_policy.pre_exact.json --from-policy --max-heartbeats 400000000",
+   "checked_at": "2026-10-28T19:38:03Z",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "F7adb9251abca",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "15529f23510e30c403b4b1cb7d06686fc5b8bc9d1b7fe47ffc5df61bbaf3959a",
+   "lean_version": "Lean (version 4.36.0-rc1, arm64-apple-darwin24.6.0, commit c9afcddf514a6772bd4d649f7cfc04eff0b9f15e, Release)",
+   "reference_document": {
+    "source": "emitted by the trusted tree's built forshor_policy_submission",
+    "binary_sha256": "106d7d35793cabaf9b0d5fc65ee3a802cc8cdbed5f3701c2c90b6b1dec9b0452",
+    "sha256": "45f767565b2891fb51bbfc46dd11602cc0f2399cf085d2557072e8de8e5b3102",
+    "fixed": {
+     "benchmark": {
+      "bits": 2048,
+      "trial_count": "386"
+     },
+     "precision": {
+      "eta": "2^-150",
+      "m": "1427247692705959881058285969449495136382746621"
+     }
+    },
+    "checked_in_agrees": true
+   },
+   "printed_trial_count": "386",
+   "run": {
+    "build_s": 121.9,
+    "print_s": 34.8,
+    "build_peak_rss_mb": 3782.9,
+    "print_peak_rss_mb": 3648.2,
+    "build_peak_tree_mb": 845.0,
+    "print_peak_tree_mb": 719.0,
+    "mem_cap_gb": 8.0,
+    "seconds": {
+     "stage": 30.2,
+     "waited_for_lean_slot": 0.0,
+     "lean": 156.8,
+     "python": 0.1
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "price": {
+    "T_document": 3621307171488.172,
+    "T_converted_policy": 3621307171488.172,
+    "site_full_run_T": 3621307171488.172,
+    "agrees_with_site": true,
+    "seconds": 0.4
+   },
+   "evidence": "seed_lean/Sa009cfa3c147.pre_exact.override.forshor_policy.json",
+   "seconds": 195.6
+  },
+  "Scc866e679f67:override": {
+   "id": "Scc866e679f67",
+   "variant": "pre_exact",
+   "budget": "override",
+   "max_heartbeats": 400000000,
+   "limit_s": 1800,
+   "mem_cap_gb": 8.0,
+   "site_policy": "site_policy.pre_exact.json",
+   "site_policy_sha256": "17b7271d7fb34a83ccbf551396bc3a9da366cf8c268b4a91fe62df9424819286",
+   "template_sha256": "9cc637112c5326c4507fec7be496af1a1c7bf38e2d812b6e1d63734a8519afc2",
+   "forshor": {
+    "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_latest_build",
+    "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+    "commit_short": "10fe620",
+    "label": "ForShor latest (10fe620, Lean v4.36.0-rc1)",
+    "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+    "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+    "source": "cp -c -R of /Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/baseline (git worktree at ForShor 10fe620, git status empty, Lean sources equal to ~/Desktop/ForShor HEAD); the worktree's .git pointer file was removed from this copy so that no git command here touches the other worktree's index",
+    "default_tree": true
+   },
+   "command": "./run.sh forshor engine/data/forshor_submitted/Scc866e679f67/site_policy.pre_exact.json --from-policy --max-heartbeats 400000000",
+   "checked_at": "2026-10-28T19:46:24Z",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "F5006ce957157",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "15529f23510e30c403b4b1cb7d06686fc5b8bc9d1b7fe47ffc5df61bbaf3959a",
+   "lean_version": "Lean (version 4.36.0-rc1, arm64-apple-darwin24.6.0, commit c9afcddf514a6772bd4d649f7cfc04eff0b9f15e, Release)",
+   "reference_document": {
+    "source": "emitted by the trusted tree's built forshor_policy_submission",
+    "binary_sha256": "106d7d35793cabaf9b0d5fc65ee3a802cc8cdbed5f3701c2c90b6b1dec9b0452",
+    "sha256": "45f767565b2891fb51bbfc46dd11602cc0f2399cf085d2557072e8de8e5b3102",
+    "fixed": {
+     "benchmark": {
+      "bits": 2048,
+      "trial_count": "386"
+     },
+     "precision": {
+      "eta": "2^-150",
+      "m": "1427247692705959881058285969449495136382746621"
+     }
+    },
+    "checked_in_agrees": true
+   },
+   "printed_trial_count": "386",
+   "run": {
+    "build_s": 246.8,
+    "print_s": 98.2,
+    "build_peak_rss_mb": 3699.0,
+    "print_peak_rss_mb": 3650.1,
+    "build_peak_tree_mb": 919.0,
+    "print_peak_tree_mb": 793.0,
+    "mem_cap_gb": 8.0,
+    "seconds": {
+     "stage": 25.9,
+     "waited_for_lean_slot": 0.0,
+     "lean": 345.1,
+     "python": 0.1
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "price": {
+    "T_document": 3970988235166.27,
+    "T_converted_policy": 3970988235166.27,
+    "site_full_run_T": 3970988235166.27,
+    "agrees_with_site": true,
+    "seconds": 0.5
+   },
+   "evidence": "seed_lean/Scc866e679f67.pre_exact.override.forshor_policy.json",
+   "seconds": 394.2
+  }
+ },
+ "note": "Outcomes of harness/forshor_verify.py on the seeded site policies (seed_policies verify). status lean-ok = ForShor's lake build PolicySubmission and lake exe forshor_policy_submission passed and the site's Python checks (stage 4) passed; conversion_agrees = stage 5's conversion check; killed = stopped by the site (memory cap or timeout), not a Lean verdict; not-attempted = not run on purpose. The record itself is written by seed_policies. Stage 15 (2026-10-28): `runs` are runs on the latest ForShor (10fe620, Lean v4.36.0-rc1; each names its `forshor` commit and toolchain and its `variant`: pre_exact = site_policy.pre_exact.json, replanned = site_policy.json); `superseded` keeps the ForShor-main (Lean v4.28.0) runs of Stage 11 as history: they support no trust level.",
+ "superseded": {
+  "S00c49eff1f98:default": {
+   "id": "S00c49eff1f98",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S00c49eff1f98/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 260.6,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S00c49eff1f98:override": {
+   "id": "S00c49eff1f98",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S02d2663a56ae:default": {
+   "id": "S02d2663a56ae",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S02d2663a56ae/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 274.0,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S02d2663a56ae:override": {
+   "id": "S02d2663a56ae",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S0d4cae7cc43f:default": {
+   "id": "S0d4cae7cc43f",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S0d4cae7cc43f/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `isDefEq`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 286.4,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S0d4cae7cc43f:override": {
+   "id": "S0d4cae7cc43f",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S22d0026b1c85:default": {
+   "id": "S22d0026b1c85",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S22d0026b1c85/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `isDefEq`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 274.6,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S22d0026b1c85:override": {
+   "id": "S22d0026b1c85",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S2331e66e1a2e:default": {
+   "id": "S2331e66e1a2e",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S2331e66e1a2e/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 268.3,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S2331e66e1a2e:override": {
+   "id": "S2331e66e1a2e",
+   "budget": "override",
+   "max_heartbeats": 400000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S2331e66e1a2e/site_policy.json --from-policy --max-heartbeats 400000000",
+   "status": "killed",
+   "stage": "lean",
+   "reason": "killed: timeout (1800 s)",
+   "detail_tail": "lake exe forshor_policy_submission failed (exit 124); it prints nothing when the IR check fails:\n\u2139 [3315/3318] Replayed FastMultiplication.ShorVerification.Submission.PolicyCheck\ninfo: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:92:15: 'PolicySubmission.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\n\u2714 [6616/6620] Built FastMultiplication.ShorVerification.Submission.PolicyTemplate:c.o (202ms)\n\u2714 [6617/6620] Built FastMultiplication.ShorVerification.Submission.PolicyCheck:c.o (902ms)\n\u2714 [6618/6620] Built FastMultiplication.ShorVerification.Submission.PolicyMain (9.9s)\n\u2714 [6620/6620] Built forshor_policy_submission:exe (2.2s)\n\nTIMEOUT after 1360 s\n",
+   "peak_tree_mem_bytes": 1124073472,
+   "seconds": 1805.2,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S23d2ab130b88:default": {
+   "id": "S23d2ab130b88",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S23d2ab130b88/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 221.2,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S23d2ab130b88:override": {
+   "id": "S23d2ab130b88",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S29d5189f0a0b:default": {
+   "id": "S29d5189f0a0b",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S29d5189f0a0b/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 209.9,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S29d5189f0a0b:override": {
+   "id": "S29d5189f0a0b",
+   "budget": "override",
+   "max_heartbeats": 400000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S29d5189f0a0b/site_policy.json --from-policy --max-heartbeats 400000000",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "Fa1b46509f4b7",
+   "template_sha256": "c07c71dec96ee609bd384585e14659aaf0a7c1cba76f32d772a6f041ced62084",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "4037a0724be43fc0566c0271b80ac8135fe22d8f5a27586dc832bd4759637938",
+   "lean_version": "Lean (version 4.28.0, arm64-apple-darwin24.6.0, commit 7e01a1bf5c70fc6167d49c345d3bf80596e9a79b, Release)",
+   "run": {
+    "build_s": 260.8,
+    "print_s": 79.9,
+    "build_peak_rss_mb": 2787.7,
+    "print_peak_rss_mb": 2247.9,
+    "seconds": {
+     "stage": 72.1,
+     "lean": 340.7,
+     "python": 0.0
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "seconds": 423.8,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level",
+   "evidence": "seed_lean/superseded_forshor_main/S29d5189f0a0b.override.forshor_policy.json"
+  },
+  "S3fcc1b15f876:default": {
+   "id": "S3fcc1b15f876",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S3fcc1b15f876/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 263.1,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S3fcc1b15f876:override": {
+   "id": "S3fcc1b15f876",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S4b083d660964:default": {
+   "id": "S4b083d660964",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S4b083d660964/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 270.5,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S4b083d660964:override": {
+   "id": "S4b083d660964",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S6794489f14f1:default": {
+   "id": "S6794489f14f1",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S6794489f14f1/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 282.7,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S6794489f14f1:override": {
+   "id": "S6794489f14f1",
+   "budget": "override",
+   "max_heartbeats": 400000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S6794489f14f1/site_policy.json --from-policy --max-heartbeats 400000000",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "F5b4039ec26b6",
+   "template_sha256": "cec85e81f45395519075d199badd238a0b7b3d314f2082f26cfbb003e9a6f239",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "4037a0724be43fc0566c0271b80ac8135fe22d8f5a27586dc832bd4759637938",
+   "lean_version": "Lean (version 4.28.0, arm64-apple-darwin24.6.0, commit 7e01a1bf5c70fc6167d49c345d3bf80596e9a79b, Release)",
+   "run": {
+    "build_s": 337.3,
+    "print_s": 46.2,
+    "build_peak_rss_mb": 2928.4,
+    "print_peak_rss_mb": 2921.4,
+    "seconds": {
+     "stage": 37.7,
+     "lean": 383.5,
+     "python": 0.0
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "peak_tree_mem_bytes": 989855744,
+   "seconds": 427.7,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level",
+   "evidence": "seed_lean/superseded_forshor_main/S6794489f14f1.override.forshor_policy.json"
+  },
+  "S707dd51bf951:default": {
+   "id": "S707dd51bf951",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S707dd51bf951/site_policy.json --from-policy",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "Fb7d528a51104",
+   "template_sha256": "389ef5bb8cc1a7d97b27f404947737b7aeb1cc6d3654518fa65b143a76157777",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "4037a0724be43fc0566c0271b80ac8135fe22d8f5a27586dc832bd4759637938",
+   "lean_version": "Lean (version 4.28.0, arm64-apple-darwin24.6.0, commit 7e01a1bf5c70fc6167d49c345d3bf80596e9a79b, Release)",
+   "run": {
+    "build_s": 113.4,
+    "print_s": 29.4,
+    "build_peak_rss_mb": 2762.5,
+    "print_peak_rss_mb": 2947.9,
+    "seconds": {
+     "stage": 50.8,
+     "lean": 142.8,
+     "python": 0.0
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "seconds": 206.2,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level",
+   "evidence": "seed_lean/superseded_forshor_main/S707dd51bf951.default.forshor_policy.json"
+  },
+  "S7bf14f66796e:default": {
+   "id": "S7bf14f66796e",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S7bf14f66796e/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 282.7,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S7bf14f66796e:override": {
+   "id": "S7bf14f66796e",
+   "budget": "override",
+   "max_heartbeats": 400000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S7bf14f66796e/site_policy.json --from-policy --max-heartbeats 400000000",
+   "status": "killed",
+   "stage": "lean",
+   "reason": "killed: timeout (1800 s)",
+   "detail_tail": "lake exe forshor_policy_submission failed (exit 124); it prints nothing when the IR check fails:\n\u2139 [3315/3318] Replayed FastMultiplication.ShorVerification.Submission.PolicyCheck\ninfo: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:92:15: 'PolicySubmission.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\n\u2714 [6616/6620] Built FastMultiplication.ShorVerification.Submission.PolicyTemplate:c.o (320ms)\n\u2714 [6617/6620] Built FastMultiplication.ShorVerification.Submission.PolicyCheck:c.o (869ms)\n\u2714 [6618/6620] Built FastMultiplication.ShorVerification.Submission.PolicyMain (4.8s)\n\u2714 [6620/6620] Built forshor_policy_submission:exe (1.8s)\n\nTIMEOUT after 1407 s\n",
+   "peak_tree_mem_bytes": 1121976320,
+   "seconds": 1805.1,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S7da0ff5445b5:default": {
+   "id": "S7da0ff5445b5",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S7da0ff5445b5/site_policy.json --from-policy",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "F18894242cc62",
+   "template_sha256": "be474ffa808d4e8e64b7d58fc0f78b03b3b9e9ddf8c3e5268b904d6e82d2ea43",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "4037a0724be43fc0566c0271b80ac8135fe22d8f5a27586dc832bd4759637938",
+   "lean_version": "Lean (version 4.28.0, arm64-apple-darwin24.6.0, commit 7e01a1bf5c70fc6167d49c345d3bf80596e9a79b, Release)",
+   "run": {
+    "build_s": 228.6,
+    "print_s": 61.8,
+    "build_peak_rss_mb": 2898.3,
+    "print_peak_rss_mb": 2999.3,
+    "seconds": {
+     "stage": 36.8,
+     "lean": 290.4,
+     "python": 0.0
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "seconds": 358.5,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level",
+   "evidence": "seed_lean/superseded_forshor_main/S7da0ff5445b5.default.forshor_policy.json"
+  },
+  "S84f8c61016e6:default": {
+   "id": "S84f8c61016e6",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S84f8c61016e6/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 273.5,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S84f8c61016e6:override": {
+   "id": "S84f8c61016e6",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S98b2f5fb4e06:default": {
+   "id": "S98b2f5fb4e06",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S98b2f5fb4e06/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 298.0,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S98b2f5fb4e06:override": {
+   "id": "S98b2f5fb4e06",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S9a1e71f80320:default": {
+   "id": "S9a1e71f80320",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/S9a1e71f80320/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 298.3,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "S9a1e71f80320:override": {
+   "id": "S9a1e71f80320",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sa009cfa3c147:default": {
+   "id": "Sa009cfa3c147",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/Sa009cfa3c147/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `isDefEq`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 270.5,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sa009cfa3c147:override": {
+   "id": "Sa009cfa3c147",
+   "budget": "override",
+   "max_heartbeats": 400000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/Sa009cfa3c147/site_policy.json --from-policy --max-heartbeats 400000000",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "F7adb9251abca",
+   "template_sha256": "42d27354dfcc84a4479beb39cc4bee56555f9d538ab4b7bffb3cae2101caaec2",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "4037a0724be43fc0566c0271b80ac8135fe22d8f5a27586dc832bd4759637938",
+   "lean_version": "Lean (version 4.28.0, arm64-apple-darwin24.6.0, commit 7e01a1bf5c70fc6167d49c345d3bf80596e9a79b, Release)",
+   "run": {
+    "build_s": 262.4,
+    "print_s": 74.4,
+    "build_peak_rss_mb": 2787.2,
+    "print_peak_rss_mb": 2005.5,
+    "seconds": {
+     "stage": 72.1,
+     "lean": 336.7,
+     "python": 0.0
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "seconds": 422.7,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level",
+   "evidence": "seed_lean/superseded_forshor_main/Sa009cfa3c147.override.forshor_policy.json"
+  },
+  "Sa1cea9a98a33:default": {
+   "id": "Sa1cea9a98a33",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/Sa1cea9a98a33/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 259.4,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sa1cea9a98a33:override": {
+   "id": "Sa1cea9a98a33",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sa2ac31c65f2c:default": {
+   "id": "Sa2ac31c65f2c",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/Sa2ac31c65f2c/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 221.5,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sa2ac31c65f2c:override": {
+   "id": "Sa2ac31c65f2c",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sa529d517e43d:default": {
+   "id": "Sa529d517e43d",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/Sa529d517e43d/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 263.8,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sa529d517e43d:override": {
+   "id": "Sa529d517e43d",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sb16118309fe5:default": {
+   "id": "Sb16118309fe5",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/Sb16118309fe5/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 264.3,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sb16118309fe5:override": {
+   "id": "Sb16118309fe5",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sb354b13c54ab:default": {
+   "id": "Sb354b13c54ab",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/Sb354b13c54ab/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 223.0,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Sb354b13c54ab:override": {
+   "id": "Sb354b13c54ab",
+   "budget": "override",
+   "status": "not-attempted",
+   "stage": null,
+   "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Scc866e679f67:default": {
+   "id": "Scc866e679f67",
+   "budget": "default",
+   "max_heartbeats": 4000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/Scc866e679f67/site_policy.json --from-policy",
+   "status": "refused",
+   "stage": "lean",
+   "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+   "detail_tail": "on.policy' is kernel-checked; axioms: [propext, Classical.choice, Quot.sound]\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:115:0: (deterministic) timeout at `whnf`, maximum number of heartbeats (4000000) has been reached\n\nNote: Use `set_option maxHeartbeats <num>` to set the limit.\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.\nerror: FastMultiplication/ShorVerification/Submission/PolicyCheck.lean:117:57: Expected type must not contain free variables\n  doc.wellFormed = true\n\nHint: Use the `+revert` option to automatically clean up and revert free variables\nerror: Lean exited with code 1\nSome required targets logged failures:\n- FastMultiplication.ShorVerification.Submission.PolicyCheck\nerror: build failed\n",
+   "seconds": 282.7,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level"
+  },
+  "Scc866e679f67:override": {
+   "id": "Scc866e679f67",
+   "budget": "override",
+   "max_heartbeats": 400000000,
+   "limit_s": 1800,
+   "command": "./run.sh forshor engine/data/forshor_submitted/Scc866e679f67/site_policy.json --from-policy --max-heartbeats 400000000",
+   "status": "lean-ok",
+   "stage": null,
+   "reason": null,
+   "harness_id": "F5006ce957157",
+   "template_sha256": "9cc637112c5326c4507fec7be496af1a1c7bf38e2d812b6e1d63734a8519afc2",
+   "harness_id_matches_template": true,
+   "forshor_tree_sha256": "4037a0724be43fc0566c0271b80ac8135fe22d8f5a27586dc832bd4759637938",
+   "lean_version": "Lean (version 4.28.0, arm64-apple-darwin24.6.0, commit 7e01a1bf5c70fc6167d49c345d3bf80596e9a79b, Release)",
+   "run": {
+    "build_s": 308.5,
+    "print_s": 78.8,
+    "build_peak_rss_mb": 3275.5,
+    "print_peak_rss_mb": 2996.6,
+    "seconds": {
+     "stage": 21.8,
+     "lean": 387.3,
+     "python": 0.0
+    }
+   },
+   "printed_policy_matches": true,
+   "conversion_agrees": true,
+   "peak_tree_mem_bytes": 1009778688,
+   "seconds": 414.4,
+   "variant": "pre_exact",
+   "forshor": {
+    "tree": ".cache/forshor_main_build",
+    "commit": null,
+    "commit_short": "ForShor-main",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "mathlib": "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42",
+    "label": "ForShor-main (no commit, Lean v4.28.0)"
+   },
+   "superseded": "2026-10-28 (PLAN_v2 Stage 15): the site's ForShor harness moved to ForShor 10fe620 (Lean v4.36.0-rc1); kept as history, supports no trust level",
+   "evidence": "seed_lean/superseded_forshor_main/Scc866e679f67.override.forshor_policy.json"
+  }
+ }
+}

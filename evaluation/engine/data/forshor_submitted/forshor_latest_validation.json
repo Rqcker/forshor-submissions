@@ -1,0 +1,87 @@
+{
+ "note": "PLAN_v2 Stage 15 (2026-10-28): the site's ForShor harness validated on the latest ForShor, one run at a time, waiting while 2+ (later 3+) lean ran, each stage in its own process group, memcap 8 GB per stage. Seeds: seed_lean_runs.json (runs). Peak memory: ru_maxrss of the stage (RSS, counts mmapped Mathlib .olean pages) and the stage tree's top 'mem' footprint (what the memcap measures).",
+ "forshor": {
+  "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+  "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+  "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+  "tree": ".cache/forshor_latest_build"
+ },
+ "runs": {
+  "forshor-shipped": {
+   "command": "./run.sh forshor <tree>/FastMultiplication/ShorVerification/Submission/PolicyTemplate.lean",
+   "verdict": "verified",
+   "id": "F7b9cb1488d23",
+   "bands": [
+    [
+     40,
+     3
+    ],
+    [
+     14,
+     2
+    ]
+   ],
+   "stats": {
+    "build_s": 25.9,
+    "print_s": 18.2,
+    "build_peak_rss_mb": 755.9,
+    "print_peak_rss_mb": 828.2,
+    "build_peak_tree_mb": 223.0,
+    "print_peak_tree_mb": 279.0,
+    "mem_cap_gb": 8.0
+   },
+   "seconds": {
+    "stage": 99.2,
+    "waited_for_lean_slot": 0.0,
+    "lean": 44.0,
+    "python": 0.1,
+    "price": 0.7
+   },
+   "single_run_T": 675015907318168.6,
+   "native": {
+    "tier": "ForShor native structure (L2Q PolicyShorCore: Step 4 cmpLtNW, rectangular operands, Lean work width), Qualtran digital-product leaf, Qualtran/Gidney adders, rotations 3.075 log2(1/eps) + 0.86 at eps = 0.5 delta / R_total",
+    "T_document": 675015907318168.6,
+    "T_converted_policy": 675015907318168.6,
+    "conversion_agrees": true
+   },
+   "printed_policy_equals_shipped": true,
+   "printed_trial_count": "386",
+   "rebuilt": "nothing (PolicyTemplate and PolicyCheck replayed from the tree's build: the shipped template)"
+  },
+  "sto-reference": {
+   "command": "./run.sh forshor sto_reference_pp.json --from-policy",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     385,
+     3
+    ],
+    [
+     140,
+     2
+    ],
+    [
+     73,
+     2
+    ],
+    [
+     40,
+     2
+    ]
+   ],
+   "verdict": "refused",
+   "stage": "lean",
+   "reason": "PolicyCheck.lean:115 extract_policy_ir_doc: maximum number of heartbeats (4000000) reached (stock budget)",
+   "stats": {
+    "build_s": 166.2,
+    "build_peak_tree_mb": 825.0
+   },
+   "wall_s": 315.2,
+   "rebuilt": "PolicyTemplate, PolicyCheck (failed)",
+   "override": "not run (user decision 2026-10-28: raised-budget runs dropped)"
+  }
+ }
+}

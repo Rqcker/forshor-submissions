@@ -1,0 +1,122 @@
+{
+ "tool": "check_banded_policy",
+ "started": "2026-10-28T00:35:47.742694+00:00",
+ "policy_sha256": "2ba9bd2f0fc81608fdd3689d55a7f964d076ff11ffee8bcd34fdcc869f88f574",
+ "target_width": 2048,
+ "seconds": {
+  "stage": 17.66,
+  "data": 18.05,
+  "report": 4.74,
+  "cert": 8.59,
+  "replay:Submitted": 9.85,
+  "replay:SubmittedCert": 9.89
+ },
+ "verdict": "accepted",
+ "mode": "PhaseProduct",
+ "bands": [
+  {
+   "threshold": 532,
+   "k": 4
+  },
+  {
+   "threshold": 80,
+   "k": 2
+  }
+ ],
+ "workdir": "/Users/joshua/Desktop/github_packages/sto_site/.cache/sto_policy_work",
+ "lean_sha256": {
+  "Submitted.lean": "e147f9ef4d4d65ac11d582ea06b2c4df080901ff6763718abec96e2021d388c4",
+  "SubmittedCert.lean": "93ced2ebb382b1e21de547f901c4fb58490f5b48bee2f5e1f41bb8d9ce105162"
+ },
+ "report": {
+  "mode": "PhaseProduct",
+  "target_width": 2048,
+  "ladder": [
+   {
+    "width": 2048,
+    "k": 4
+   },
+   {
+    "width": 532,
+    "k": 4
+   },
+   {
+    "width": 153,
+    "k": 2
+   },
+   {
+    "width": 80,
+    "k": 2
+   },
+   {
+    "width": 43,
+    "k": null
+   }
+  ],
+  "bands": [
+   {
+    "threshold": 532,
+    "k": 4,
+    "child_width_at_threshold": 153,
+    "check": true,
+    "ops": 35,
+    "points": 7
+   },
+   {
+    "threshold": 80,
+    "k": 2,
+    "child_width_at_threshold": 43,
+    "check": true,
+    "ops": 5,
+    "points": 3
+   }
+  ],
+  "check": true,
+  "chain_contracts": true
+ },
+ "replay": {
+  "modules": [
+   {
+    "module": "TableGeneration.RecursiveCost.BandedPolicy.Instances.Submitted",
+    "verdict": "replayed",
+    "decls": 9,
+    "peak_gb": 6.16,
+    "seconds": 9.8
+   },
+   {
+    "module": "TableGeneration.RecursiveCost.BandedPolicy.Instances.SubmittedCert",
+    "verdict": "replayed",
+    "decls": 8,
+    "peak_gb": 6.08,
+    "seconds": 9.8
+   }
+  ],
+  "prefix": "per-module"
+ },
+ "audit": {
+  "accepted": {
+   "axioms": [
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq TableGeneration.PolicyMirror.Instances.Submitted.policy.check Bool.true"
+  },
+  "correct": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhase n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+  },
+  "chain_contracts": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.chainContracts 2048) Bool.true"
+  }
+ },
+ "finished": "2026-10-28T00:37:00.869869+00:00"
+}

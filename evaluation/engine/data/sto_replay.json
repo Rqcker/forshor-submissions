@@ -1,0 +1,146 @@
+{
+ "what": "Accepted STO policies whose tables this site's harness re-extracted from a Lean build of STO main and matched to engine/data by content digest (`./run.sh replay`, PLAN_v2 3.6).",
+ "date": "2026-10-23",
+ "source": ".cache/replay/replay.json",
+ "not_replayed": {
+  "P651fc8ae389d": "Lean source absent from STO main; tables from sto_policy_cost/examples"
+ },
+ "policies": [
+  {
+   "id": "P0c074ebe3b35",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P293d51de2c05",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P2a0c1db7342f",
+   "ok": true,
+   "tables": 2,
+   "archived": 2,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P348de30a1f93",
+   "ok": true,
+   "tables": 20,
+   "archived": 20,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P52ec6fce9b57",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P546fea33a7a4",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P54f51b9656d0",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P58147b7627fb",
+   "ok": true,
+   "tables": 2,
+   "archived": 2,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P5e83e2c00c17",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P6c185db801f9",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P6f7d25984ff8",
+   "ok": true,
+   "tables": 30,
+   "archived": 30,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P7ec7497794d4",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "P9d8a1554c43b",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "Pe5ba65062178",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "Pf0f15fefe959",
+   "ok": true,
+   "tables": 2,
+   "archived": 2,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "Pf4aff955f16b",
+   "ok": true,
+   "tables": 27,
+   "archived": 27,
+   "missing": 0,
+   "extra": 0
+  },
+  {
+   "id": "Pfd41c2aa4b3e",
+   "ok": true,
+   "tables": 1,
+   "archived": 1,
+   "missing": 0,
+   "extra": 0
+  }
+ ]
+}

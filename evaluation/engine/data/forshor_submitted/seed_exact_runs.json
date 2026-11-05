@@ -1,0 +1,4524 @@
+{
+ "runs": {
+  "S00c49eff1f98": {
+   "id": "S00c49eff1f98",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T15:30:31+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     354,
+     6
+    ],
+    [
+     71,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "d5a06dd89e27c50d0ee961019355e8adb2b191c9a7f6296ba43d4232bbe4505c",
+   "mirror_input_sha256": "8302714ad0ba1467d6d7b844c569b1de229ab1cfc569bc6a60d1eeaecb93a1c2",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 250.7,
+   "peak_gb": 6.92,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 27.16,
+    "data": 20.37,
+    "report": 126.99,
+    "cert": 28.75,
+    "replay:Submitted": 12.79,
+    "replay:SubmittedCert": 26.63
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 5.21
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.9
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 6
+    },
+    {
+     "width": 85,
+     "k": 2
+    },
+    {
+     "width": 46,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 6
+    },
+    {
+     "width": 71,
+     "k": 2
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "0fb48c0745dbb834e6be2b2005af43932e6d5c5d3ebf84285a864f8a252b22b9",
+    "SubmittedCert.lean": "916fb5134c29a766c3959f1a24013b1a27f817d1e170160c0fcec466a8321f5d"
+   },
+   "evidence": "seed_exact/S00c49eff1f98.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S00c49eff1f98/site_policy.json --install"
+  },
+  "S02d2663a56ae": {
+   "id": "S02d2663a56ae",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T15:34:46+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     354,
+     6
+    ],
+    [
+     71,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "b9f4e7db71c5088fa4b8358d0abc5e1a4bfd170d10cf718723c672846f54440b",
+   "mirror_input_sha256": "e9c68bf226a29c0e9ee9f02767d0dc005192dd3a0a176d648164a68db3ce7806",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 245.0,
+   "peak_gb": 6.92,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 26.71,
+    "data": 21.31,
+    "report": 130.8,
+    "cert": 26.22,
+    "replay:Submitted": 10.41,
+    "replay:SubmittedCert": 20.21
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 6.17
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.89
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 6
+    },
+    {
+     "width": 85,
+     "k": 2
+    },
+    {
+     "width": 46,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 6
+    },
+    {
+     "width": 71,
+     "k": 2
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "aeff55166be34f3fc87dfdb6f65f4202930fe7961eb0e4dd348f7134b3ba953d",
+    "SubmittedCert.lean": "092dfb32066f895b277ffcb9d87af752fbbfd793ff8a36e7312b6ba1d695d9f1"
+   },
+   "evidence": "seed_exact/S02d2663a56ae.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S02d2663a56ae/site_policy.json --install"
+  },
+  "S0d4cae7cc43f": {
+   "id": "S0d4cae7cc43f",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T15:39:26+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     354,
+     6
+    ],
+    [
+     71,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "1cf4b3eb2d86561feed5a79092bc36a9f79bb9b31b04977eebbcd03e4b3dcc44",
+   "mirror_input_sha256": "56c4cb9b6f4672a7aa584fa22fb105507f5997e690d3409177c6f55cde57f3a8",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 279.9,
+   "peak_gb": 6.95,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 24.21,
+    "data": 23.89,
+    "report": 175.5,
+    "cert": 18.07,
+    "replay:Submitted": 10.32,
+    "replay:SubmittedCert": 20.91
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 6.17
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.93
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 363,
+     "k": 6
+    },
+    {
+     "width": 83,
+     "k": 2
+    },
+    {
+     "width": 45,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 6
+    },
+    {
+     "width": 71,
+     "k": 2
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "3879ab95a5db67a9f518eea018dbeec3240267030bbf69ad04195fbd6ea2566c",
+    "SubmittedCert.lean": "ce19299fdc08d11457f6ef2d81009a2af27895139f55028be178957b4cbcea25"
+   },
+   "evidence": "seed_exact/S0d4cae7cc43f.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S0d4cae7cc43f/site_policy.json --install"
+  },
+  "S1c115b37fd2c": {
+   "id": "S1c115b37fd2c",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-29T00:35:33+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "ee316095a863a308fc371ca5fdf9b005628112c810ea95fbc69e30d05703ac25",
+   "mirror_input_sha256": "937735679016c55aa105c6746ce97e70ffcc0ac01773b9d786e7205759e38ca4",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/sto_site/.cache/ptp_suite_frozen_stage13",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 408.5,
+   "clone_seconds": 52.0,
+   "peak_gb": 6.68,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 34.46,
+    "report": 210.66,
+    "cert": 35.02,
+    "replay:PTPSubmitted": 60.03,
+    "replay:PTPSubmittedCert": 62.85
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 6.06
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.66
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 398,
+     "k": 4
+    },
+    {
+     "width": 120,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 375,
+     "k": 4
+    },
+    {
+     "width": 107,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ],
+    [
+     107,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "a0441a948dd6498041580996670e97abf8528e7f609c3bc8d2153f3710bbbfa2",
+    "PTPSubmittedCert.lean": "708fc93dcdcd9ef01c4544728ac57df0b896cda81dd458dd1c76a637ed4e5e8d"
+   },
+   "evidence": "seed_exact/S1c115b37fd2c.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/S1c115b37fd2c/site_policy.json --install"
+  },
+  "S22d0026b1c85": {
+   "id": "S22d0026b1c85",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T15:45:04+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     354,
+     6
+    ],
+    [
+     71,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "8d21e9152015e84577108c0fa34c1aabf055a500a0885d6575ab4031a8932e2b",
+   "mirror_input_sha256": "01aa30352964792cb13ee32d2f3f53370ec63988b374db7c830648a04dac28fe",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 337.9,
+   "peak_gb": 6.95,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 24.64,
+    "data": 23.2,
+    "report": 180.64,
+    "cert": 24.47,
+    "replay:Submitted": 13.53,
+    "replay:SubmittedCert": 33.65
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 6.17
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.93
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 363,
+     "k": 6
+    },
+    {
+     "width": 83,
+     "k": 2
+    },
+    {
+     "width": 45,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 6
+    },
+    {
+     "width": 71,
+     "k": 2
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "2fd3ee452627ded5afd609a12b1a9ec037d28be9fd3deb741a6504282e0e3659",
+    "SubmittedCert.lean": "15b2b8301d8e0ec4b5570654e830b76e4cc512c1349e971fd999470d8c817544"
+   },
+   "evidence": "seed_exact/S22d0026b1c85.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S22d0026b1c85/site_policy.json --install"
+  },
+  "S2331e66e1a2e": {
+   "id": "S2331e66e1a2e",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T15:47:05+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     134,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "8eb021e20293208d989533804842f85c786f6a6ed0158a5d756cd2c225687f68",
+   "mirror_input_sha256": "7840d812e0b6409678a4b05c1db321269874a45353cd22fbdf88a18b365182d0",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 121.3,
+   "peak_gb": 6.36,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 34.34,
+    "data": 26.62,
+    "report": 5.74,
+    "cert": 13.51,
+    "replay:Submitted": 16.76,
+    "replay:SubmittedCert": 16.99
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 7,
+     "peak_gb": 5.77
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.34
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 532,
+     "k": 4
+    },
+    {
+     "width": 153,
+     "k": 4
+    },
+    {
+     "width": 59,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 517,
+     "k": 4
+    },
+    {
+     "width": 134,
+     "k": 4
+    },
+    {
+     "width": 39,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "fbfb993f4938b248a3b9e6048be4bce8376a20864ec8df145822c02f763df211",
+    "SubmittedCert.lean": "44235cef240e3aa1e43c44fa21db69cb433d27074890dbd6a717a07f497e29f6"
+   },
+   "evidence": "seed_exact/S2331e66e1a2e.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S2331e66e1a2e/site_policy.json --install"
+  },
+  "S23d2ab130b88": {
+   "id": "S23d2ab130b88",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T15:49:04+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     123,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "cefcabb2633b835a543e83369c28b23706be036bb1afeb3bed9c04a5d513da4e",
+   "mirror_input_sha256": "57eef1d8408b324d5430bd055a794ed58508af3c05872e50c774c8f7adb170b0",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 119.4,
+   "peak_gb": 6.51,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 33.36,
+    "data": 21.03,
+    "report": 10.96,
+    "cert": 13.94,
+    "replay:Submitted": 9.72,
+    "replay:SubmittedCert": 17.13
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 4.48
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.49
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 380,
+     "k": 3
+    },
+    {
+     "width": 138,
+     "k": 3
+    },
+    {
+     "width": 57,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 360,
+     "k": 3
+    },
+    {
+     "width": 123,
+     "k": 3
+    },
+    {
+     "width": 44,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "3b7987975f4a1ede435cdddf66960e06a21054de4b743e437e599d84f1de225b",
+    "SubmittedCert.lean": "405ecb935a89be5e8e0bf3cf030772768bd381ef52f2e144d96c4f0d65fc33f5"
+   },
+   "evidence": "seed_exact/S23d2ab130b88.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S23d2ab130b88/site_policy.json --install"
+  },
+  "S29d5189f0a0b": {
+   "id": "S29d5189f0a0b",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T15:50:54+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     134,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "f0c9b40d8c7dc168cb9e3e0cd2141cd5832cad4531e3f6fe81ae95e91a3abf5f",
+   "mirror_input_sha256": "b8d1917accfe5ae39f6422878f3ff03e1ef24e85e1eb722e61e38749e8ce78ba",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 109.6,
+   "peak_gb": 6.38,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 25.67,
+    "data": 23.66,
+    "report": 7.56,
+    "cert": 11.34,
+    "replay:Submitted": 14.62,
+    "replay:SubmittedCert": 19.43
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 7,
+     "peak_gb": 5.47
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.35
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 532,
+     "k": 4
+    },
+    {
+     "width": 153,
+     "k": 4
+    },
+    {
+     "width": 59,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 517,
+     "k": 4
+    },
+    {
+     "width": 134,
+     "k": 4
+    },
+    {
+     "width": 39,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "c198ff1c52d8efb96baec4401a30d0b98493d6ebb201cca84ca7b8aa09a46eda",
+    "SubmittedCert.lean": "0eb552a06f845f3095bef1fac79066683188de35c0a036dfeb889d46f16b76d9"
+   },
+   "evidence": "seed_exact/S29d5189f0a0b.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S29d5189f0a0b/site_policy.json --install"
+  },
+  "S3fcc1b15f876": {
+   "id": "S3fcc1b15f876",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T15:53:43+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     354,
+     6
+    ],
+    [
+     71,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "9b08b07a4c8bbf8a672962cde06e4e8a5629bd6dba115afc36d1a4351c8a621e",
+   "mirror_input_sha256": "2c1439030ddb00e68a92cf081bd42473ce680177be7aaeac6b76c1303051034c",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 169.3,
+   "peak_gb": 6.87,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 32.04,
+    "data": 18.7,
+    "report": 55.26,
+    "cert": 21.01,
+    "replay:Submitted": 10.42,
+    "replay:SubmittedCert": 24.58
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 6.17
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.85
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 369,
+     "k": 6
+    },
+    {
+     "width": 90,
+     "k": 2
+    },
+    {
+     "width": 48,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 6
+    },
+    {
+     "width": 71,
+     "k": 2
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "df8cbfa024a10278f58891efd03c8dace7245b053b4a6d1bf6e92ceee8adf6a7",
+    "SubmittedCert.lean": "225308a652b6ad7062410e97f911da71ee3d03581f38afe4d9f1293b0274b902"
+   },
+   "evidence": "seed_exact/S3fcc1b15f876.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S3fcc1b15f876/site_policy.json --install"
+  },
+  "S4b083d660964": {
+   "id": "S4b083d660964",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T15:58:30+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     354,
+     6
+    ],
+    [
+     71,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "7179d737d6d1342cb66d664c19e6309884b49a4dc6111d3e95c8b1fc7cb001d0",
+   "mirror_input_sha256": "7ae3e273a11b5b44ceddef60e32a454f32fa419fcc2d9072a43d9c82918053f9",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 286.2,
+   "peak_gb": 6.92,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 25.81,
+    "data": 23.17,
+    "report": 137.75,
+    "cert": 17.16,
+    "replay:Submitted": 12.09,
+    "replay:SubmittedCert": 31.18
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 6.17
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.9
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 6
+    },
+    {
+     "width": 85,
+     "k": 2
+    },
+    {
+     "width": 46,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 6
+    },
+    {
+     "width": 71,
+     "k": 2
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "cdea89bca6e6914ddccaa9fe9f8b76b6a330b7443e5db2028da45bd327337e89",
+    "SubmittedCert.lean": "a0fb26d40d51c8811a2f1b3a41eb88aa989a30d33d34cfb4e02eb7a8197ec429"
+   },
+   "evidence": "seed_exact/S4b083d660964.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S4b083d660964/site_policy.json --install"
+  },
+  "S6794489f14f1": {
+   "id": "S6794489f14f1",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:00:33+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     425,
+     5
+    ],
+    [
+     98,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "abfb32ed5dfc71b2fb46a9e5dc38c6c74bb8734c06009b180a713aa222d6ad84",
+   "mirror_input_sha256": "e265251f98c9589cd6386a770297723d358a17d0c0f08b076459c2e2f81ce6cb",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 123.9,
+   "peak_gb": 6.46,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 29.8,
+    "data": 24.63,
+    "report": 9.26,
+    "cert": 23.18,
+    "replay:Submitted": 15.0,
+    "replay:SubmittedCert": 15.52
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 6.05
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.44
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 5
+    },
+    {
+     "width": 438,
+     "k": 5
+    },
+    {
+     "width": 116,
+     "k": 3
+    },
+    {
+     "width": 50,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 5
+    },
+    {
+     "width": 425,
+     "k": 5
+    },
+    {
+     "width": 98,
+     "k": 3
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "ba633593ea0dda153da3417035a917968b2255dc18d84a434771d687923d1be1",
+    "SubmittedCert.lean": "558921a4e7b251741e6347fbc69d9d3783b9fa11c920fdddfc1252b4c924239e"
+   },
+   "evidence": "seed_exact/S6794489f14f1.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S6794489f14f1/site_policy.json --install"
+  },
+  "S6b1cc169fad2": {
+   "id": "S6b1cc169fad2",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-29T00:38:35+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     522,
+     4
+    ],
+    [
+     142,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "ad94313814e4aa9aa2848718a3653018b0c44d528afb1ae13c047051dea281f2",
+   "mirror_input_sha256": "44431ddb82e7980f0dce738abc0003dae242694c63d1eb0d8a71202690d9779a",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/sto_site/.cache/ptp_suite_frozen_stage13",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 129.0,
+   "clone_seconds": 40.9,
+   "peak_gb": 6.39,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 32.73,
+    "report": 10.97,
+    "cert": 24.22,
+    "replay:PTPSubmitted": 33.03,
+    "replay:PTPSubmittedCert": 26.78
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 10,
+     "peak_gb": 6.03
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.36
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 533,
+     "k": 4
+    },
+    {
+     "width": 155,
+     "k": 3
+    },
+    {
+     "width": 66,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 522,
+     "k": 4
+    },
+    {
+     "width": 142,
+     "k": 3
+    },
+    {
+     "width": 51,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     4
+    ],
+    [
+     522,
+     4
+    ],
+    [
+     142,
+     3
+    ],
+    [
+     51,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "85305e9ae6733ba6a90b94f8e5562628538ea781db5852571abf9a2780eea08c",
+    "PTPSubmittedCert.lean": "98a058b2ce04403ea26d8e88ed3a0c78adb17a7410750f622ba3aeee2f72e36f"
+   },
+   "evidence": "seed_exact/S6b1cc169fad2.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/S6b1cc169fad2/site_policy.json --install"
+  },
+  "S707dd51bf951": {
+   "id": "S707dd51bf951",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:03:16+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     81,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "e14aa9f9f346b06a0653c347f6bf0d6636867a06212f8e0202c3c66943ff7de5",
+   "mirror_input_sha256": "c2be41ab619281bbad4a7fc54ee1152b4c68c3c929355f88a5eda95957580db1",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 162.8,
+   "peak_gb": 6.28,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 25.87,
+    "data": 25.19,
+    "report": 14.75,
+    "cert": 18.73,
+    "replay:Submitted": 20.08,
+    "replay:SubmittedCert": 18.82
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 6,
+     "peak_gb": 5.39
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.26
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 3
+    },
+    {
+     "width": 698,
+     "k": 3
+    },
+    {
+     "width": 248,
+     "k": 3
+    },
+    {
+     "width": 98,
+     "k": 3
+    },
+    {
+     "width": 48,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 3
+    },
+    {
+     "width": 687,
+     "k": 3
+    },
+    {
+     "width": 232,
+     "k": 3
+    },
+    {
+     "width": 81,
+     "k": 3
+    },
+    {
+     "width": 30,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "1158439375369fd7f7fa09c0ccde0a88ef4fa79955ae292875bf0bd69cb90232",
+    "SubmittedCert.lean": "087b1f0e37cb2c9f8a08da452c4266f9ddbeb479f9a32c41f2232b36678e8864"
+   },
+   "evidence": "seed_exact/S707dd51bf951.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S707dd51bf951/site_policy.json --install"
+  },
+  "S7bf14f66796e": {
+   "id": "S7bf14f66796e",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:05:48+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     134,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "231391e06e73466dac054985d7323948429d0b096ba16560c9b138c3a0ee2938",
+   "mirror_input_sha256": "5c229a342493ac82f6858b8b777e297cedd233d764032f40028303e13b86d0c7",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 132.1,
+   "peak_gb": 6.37,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 37.56,
+    "data": 29.63,
+    "report": 6.68,
+    "cert": 13.13,
+    "replay:Submitted": 17.6,
+    "replay:SubmittedCert": 17.01
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 7,
+     "peak_gb": 5.86
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.35
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 532,
+     "k": 4
+    },
+    {
+     "width": 153,
+     "k": 4
+    },
+    {
+     "width": 59,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 517,
+     "k": 4
+    },
+    {
+     "width": 134,
+     "k": 4
+    },
+    {
+     "width": 39,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "adc12fbd01deee1586f0730fe9b4a374b699164a0fffa93a01c14739581703c8",
+    "SubmittedCert.lean": "1c2a2ef5dad91714dafec16f82c1a23235bab5b76f27832a52052bf14b2668c2"
+   },
+   "evidence": "seed_exact/S7bf14f66796e.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S7bf14f66796e/site_policy.json --install"
+  },
+  "S7cb2f58aff1a": {
+   "id": "S7cb2f58aff1a",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-29T00:44:19+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "50b90abbbd9fc21a109bbff0aa63069c8c6663142b0e9657c69d979d67782de8",
+   "mirror_input_sha256": "4578aa365330da5fccd4650d95f76d5699332a240347048bb6fd40659abc0128",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/sto_site/.cache/ptp_suite_frozen_stage13",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 298.1,
+   "clone_seconds": 27.2,
+   "peak_gb": 6.68,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 28.66,
+    "report": 164.82,
+    "cert": 37.24,
+    "replay:PTPSubmitted": 18.79,
+    "replay:PTPSubmittedCert": 41.62
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 5.97
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.66
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 398,
+     "k": 4
+    },
+    {
+     "width": 122,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 375,
+     "k": 4
+    },
+    {
+     "width": 106,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ],
+    [
+     106,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "8d6f6ce4bb5e9bafec15a7106b48095f78a4a939aee278db3f4991cf59f2dbb5",
+    "PTPSubmittedCert.lean": "b43b504219a58e7f9776e1537b7465a1606afb457296716b55b089ecf1c20f0f"
+   },
+   "evidence": "seed_exact/S7cb2f58aff1a.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/S7cb2f58aff1a/site_policy.json --install"
+  },
+  "S7da0ff5445b5": {
+   "id": "S7da0ff5445b5",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:08:28+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     134,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "4096e83c2a71dd46777fb8bb5a78fab1e447bbd7fbc9ce8ba087c4325861f173",
+   "mirror_input_sha256": "77c34c28e6ba51b18c5b26ced0f4eaee4b3ec141b5d485d0ac59334edcdb5b37",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 139.2,
+   "peak_gb": 6.36,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 33.38,
+    "data": 22.66,
+    "report": 6.66,
+    "cert": 12.98,
+    "replay:Submitted": 23.56,
+    "replay:SubmittedCert": 13.45
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 7,
+     "peak_gb": 4.45
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.34
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 532,
+     "k": 4
+    },
+    {
+     "width": 153,
+     "k": 4
+    },
+    {
+     "width": 59,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 517,
+     "k": 4
+    },
+    {
+     "width": 134,
+     "k": 4
+    },
+    {
+     "width": 39,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "a93e399c322ad9d4667244f3dd5f658e312367ea9f93d9a0d4732117bb429e94",
+    "SubmittedCert.lean": "c687ca4814e9912261532f46633c2560ade8586827e793ea394a02e6a6ea63a2"
+   },
+   "evidence": "seed_exact/S7da0ff5445b5.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S7da0ff5445b5/site_policy.json --install"
+  },
+  "S80e6a121410d": {
+   "id": "S80e6a121410d",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-29T00:46:43+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     522,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "48a2b7100c9abe880eea28b4c400383a74c7797f0d614bc651161dbf8b463105",
+   "mirror_input_sha256": "14d74973c8ad81bf8a7c4b6397a28a8cdb4137c7989098c544a99524a014e6bf",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/sto_site/.cache/ptp_suite_frozen_stage13",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 106.4,
+   "clone_seconds": 26.8,
+   "peak_gb": 6.36,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 26.8,
+    "report": 8.81,
+    "cert": 21.29,
+    "replay:PTPSubmitted": 33.48,
+    "replay:PTPSubmittedCert": 14.56
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 6,
+     "peak_gb": 6.16
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.34
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 533,
+     "k": 4
+    },
+    {
+     "width": 155,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 522,
+     "k": 4
+    },
+    {
+     "width": 142,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     4
+    ],
+    [
+     522,
+     4
+    ],
+    [
+     142,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "efb9f47a093aba4b7d89883212c7408b0c850cab7601c01fe6452ab4c8718b50",
+    "PTPSubmittedCert.lean": "3834cdf611c388e691caf4756bbe648df4d13f0ccdab9e1d737f91d4d542db51"
+   },
+   "evidence": "seed_exact/S80e6a121410d.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/S80e6a121410d/site_policy.json --install"
+  },
+  "S84f8c61016e6": {
+   "id": "S84f8c61016e6",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:11:10+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     354,
+     6
+    ],
+    [
+     71,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "5910410d4f0760c42625e94e1aeade31e4128364872e5aa61b6bfa48fc42282a",
+   "mirror_input_sha256": "c31d0c86d858ae254a1833330f14b3ea88372727cc2ada6f3017ea50cac06427",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 162.7,
+   "peak_gb": 6.88,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 27.37,
+    "data": 23.07,
+    "report": 53.18,
+    "cert": 19.17,
+    "replay:Submitted": 10.62,
+    "replay:SubmittedCert": 20.35
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 6.17
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.86
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 369,
+     "k": 6
+    },
+    {
+     "width": 90,
+     "k": 3
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 6
+    },
+    {
+     "width": 71,
+     "k": 3
+    },
+    {
+     "width": 27,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "ff70fedb498b7fd38b46321f4d2aaf7a023d4199916140e750484739fa1a0ebd",
+    "SubmittedCert.lean": "d36df171c391b4ffe706c9b8b57fe74376eccf6c2b0372225ddc1197502cbd2a"
+   },
+   "evidence": "seed_exact/S84f8c61016e6.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S84f8c61016e6/site_policy.json --install"
+  },
+  "S98b2f5fb4e06": {
+   "id": "S98b2f5fb4e06",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:15:05+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     354,
+     6
+    ],
+    [
+     71,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "7032b275d2552df25e4b6beb87277c7ba8d66fe950ac86c4563fb8506fa1c814",
+   "mirror_input_sha256": "96a5b0f81c9a81116d8b318adfa6078aa53e97050332419202557f00088e6eb7",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 234.1,
+   "peak_gb": 6.91,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 23.59,
+    "data": 19.58,
+    "report": 133.2,
+    "cert": 21.3,
+    "replay:Submitted": 8.47,
+    "replay:SubmittedCert": 20.05
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 5.61
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.89
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 6
+    },
+    {
+     "width": 85,
+     "k": 2
+    },
+    {
+     "width": 46,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 6
+    },
+    {
+     "width": 71,
+     "k": 2
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "92639ddf243b9e4a01a9d0344950c9364371be29a2b74af3fc03bd72a3420414",
+    "SubmittedCert.lean": "d94408c695b6cf65dfcd6264266d7513e31c344d29d56a026b49ca1f0da12759"
+   },
+   "evidence": "seed_exact/S98b2f5fb4e06.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S98b2f5fb4e06/site_policy.json --install"
+  },
+  "S9a1e71f80320": {
+   "id": "S9a1e71f80320",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:17:42+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     354,
+     6
+    ],
+    [
+     71,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "ec96e07d75abc9836181ffb699c9fcae9b90aa9b335b9c9a13676a448c399660",
+   "mirror_input_sha256": "c5f9c7f2236d8c5cc08137b25afe649317a91fa6b21439175a72b1cf9c6e9fb8",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 157.1,
+   "peak_gb": 6.87,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 24.28,
+    "data": 20.71,
+    "report": 53.52,
+    "cert": 19.34,
+    "replay:Submitted": 9.94,
+    "replay:SubmittedCert": 21.93
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 4.83
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.85
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 369,
+     "k": 6
+    },
+    {
+     "width": 90,
+     "k": 2
+    },
+    {
+     "width": 48,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 6
+    },
+    {
+     "width": 71,
+     "k": 2
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "9b0da6865b917adcb6986ca4e905a04c004c33029fbcf0bb97c10dec61954941",
+    "SubmittedCert.lean": "b2cc5dd0523af299573fcc2b88c1455d09c131658e5659ae929295d24270d5d2"
+   },
+   "evidence": "seed_exact/S9a1e71f80320.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/S9a1e71f80320/site_policy.json --install"
+  },
+  "Sa009cfa3c147": {
+   "id": "Sa009cfa3c147",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:19:18+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     134,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "825a16b0f147a1417fbd59da4aba818d181a316f9f881342b0a23b8f5ff4481e",
+   "mirror_input_sha256": "b156c734b02e8317d1ce0f8f119889d8a7454eec553a7000320e189bc87a1a8d",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 96.2,
+   "peak_gb": 6.38,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 25.82,
+    "data": 19.53,
+    "report": 5.78,
+    "cert": 10.92,
+    "replay:Submitted": 11.1,
+    "replay:SubmittedCert": 15.75
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 7,
+     "peak_gb": 4.42
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.36
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 532,
+     "k": 4
+    },
+    {
+     "width": 153,
+     "k": 4
+    },
+    {
+     "width": 59,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 517,
+     "k": 4
+    },
+    {
+     "width": 134,
+     "k": 4
+    },
+    {
+     "width": 39,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "c7e1060e5e490a551249c33ad9bce803c22b625ce8acb41adcd25d05b7c718c0",
+    "SubmittedCert.lean": "e236f2903fa44012368b308066697387fc16bf90257d818488cf86210bd38b8e"
+   },
+   "evidence": "seed_exact/Sa009cfa3c147.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/Sa009cfa3c147/site_policy.json --install"
+  },
+  "Sa1cea9a98a33": {
+   "id": "Sa1cea9a98a33",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:21:12+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     125,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "1a76d5fa402711add4a7e9d3fe4fd2380e516da11edc037cec81b3e2e3632912",
+   "mirror_input_sha256": "4c8741bf1da8ef97b27234a5188b7f541077e45355a2d2292808710f59f694d7",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 114.2,
+   "peak_gb": 6.51,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 25.55,
+    "data": 21.42,
+    "report": 11.99,
+    "cert": 15.94,
+    "replay:Submitted": 11.55,
+    "replay:SubmittedCert": 20.94
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 5.33
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.49
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 385,
+     "k": 3
+    },
+    {
+     "width": 140,
+     "k": 3
+    },
+    {
+     "width": 59,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 3
+    },
+    {
+     "width": 125,
+     "k": 3
+    },
+    {
+     "width": 46,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "831c86f830b99a657f3897abf24f63df184d91057fdaf450482026b0a8380ed9",
+    "SubmittedCert.lean": "480c4c73732ddf2db3c16dc5a00d9cee74be89a8f216db24c43541806ca79183"
+   },
+   "evidence": "seed_exact/Sa1cea9a98a33.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/Sa1cea9a98a33/site_policy.json --install"
+  },
+  "Sa2ac31c65f2c": {
+   "id": "Sa2ac31c65f2c",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:23:21+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     125,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "4ebc78ff72bca189530f06ba5092d1357be968abb8de529897d29eb5fc1dce84",
+   "mirror_input_sha256": "3e8dc810f000d6f2574dcb117fb34d4df6a48d2c9b5d74b5b1a7464920392a7f",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 128.9,
+   "peak_gb": 6.5,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 35.76,
+    "data": 24.86,
+    "report": 12.31,
+    "cert": 17.13,
+    "replay:Submitted": 13.4,
+    "replay:SubmittedCert": 16.17
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 5.54
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.48
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 382,
+     "k": 3
+    },
+    {
+     "width": 138,
+     "k": 3
+    },
+    {
+     "width": 57,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 3
+    },
+    {
+     "width": 125,
+     "k": 3
+    },
+    {
+     "width": 46,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "07c367dc75f4b160ef1529162f98349cdb647f27ba46ce02aa3a46108fc72a95",
+    "SubmittedCert.lean": "2e96a50e5feecf69afa5639c65bd020a01a76b5bd91a886b7feca635d65a5e95"
+   },
+   "evidence": "seed_exact/Sa2ac31c65f2c.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/Sa2ac31c65f2c/site_policy.json --install"
+  },
+  "Sa529d517e43d": {
+   "id": "Sa529d517e43d",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:25:34+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     123,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "1b5e0e771bfa520fc1885e2c0e4b23020c839158ad8812b3944cbbad77c06c1a",
+   "mirror_input_sha256": "1b4ff2622b4f6efb732b93c8d21351cb799bfbc5d9d5b4097596f9bd0e633ed1",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 133.0,
+   "peak_gb": 6.52,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 20.57,
+    "data": 22.75,
+    "report": 13.95,
+    "cert": 17.43,
+    "replay:Submitted": 23.9,
+    "replay:SubmittedCert": 29.17
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 6.17
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.5
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 380,
+     "k": 3
+    },
+    {
+     "width": 138,
+     "k": 3
+    },
+    {
+     "width": 57,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 360,
+     "k": 3
+    },
+    {
+     "width": 123,
+     "k": 3
+    },
+    {
+     "width": 44,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "c760ec747903434d230835d9d212ecec4581d1e6d076d95e1b610153bd69c8c6",
+    "SubmittedCert.lean": "5e69cebe14b6f572ea2de0eaca8d013679b7beca78cf3d513807176dfa13b851"
+   },
+   "evidence": "seed_exact/Sa529d517e43d.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/Sa529d517e43d/site_policy.json --install"
+  },
+  "Sb16118309fe5": {
+   "id": "Sb16118309fe5",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:28:00+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     125,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "f2f7505f011d5ce0d81425c6a62874c08911ef896a7e02bf75e87738c6b9fcb5",
+   "mirror_input_sha256": "fa2673cde6e505fa5379d6bb44fa3b8dbb3f0ec8c1b7ad62d5af5257ecfb1768",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 145.9,
+   "peak_gb": 6.51,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 39.03,
+    "data": 25.15,
+    "report": 13.69,
+    "cert": 18.98,
+    "replay:Submitted": 14.94,
+    "replay:SubmittedCert": 20.94
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 5.42
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.49
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 382,
+     "k": 3
+    },
+    {
+     "width": 138,
+     "k": 3
+    },
+    {
+     "width": 57,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 3
+    },
+    {
+     "width": 125,
+     "k": 3
+    },
+    {
+     "width": 46,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "b26d52989d0c74b3afd53ddd22ef48c432c6927890d4e6cb0329ec364feac300",
+    "SubmittedCert.lean": "65517eaafca9297ef19cd0f826001dece0129a5f0589b4c5ebd8e1345e47e860"
+   },
+   "evidence": "seed_exact/Sb16118309fe5.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/Sb16118309fe5/site_policy.json --install"
+  },
+  "Sb354b13c54ab": {
+   "id": "Sb354b13c54ab",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:31:17+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     354,
+     6
+    ],
+    [
+     71,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "158cc854da88d5d3cb5ebb51e60030f9d1303afacfb00b00d45bbf307f70f6c2",
+   "mirror_input_sha256": "f03bb59566df3b1daf6fa0efec8d5701c70478767b73153f550c0338b118371d",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 197.0,
+   "peak_gb": 6.87,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 28.45,
+    "data": 28.59,
+    "report": 59.39,
+    "cert": 25.13,
+    "replay:Submitted": 17.4,
+    "replay:SubmittedCert": 29.15
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 5.04
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.85
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 369,
+     "k": 6
+    },
+    {
+     "width": 90,
+     "k": 2
+    },
+    {
+     "width": 48,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 6
+    },
+    {
+     "width": 71,
+     "k": 2
+    },
+    {
+     "width": 37,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "1033b8f77559dfb1336c62ddbc31a4226eeb04382610eeef063510bf8dd3c52b",
+    "SubmittedCert.lean": "e812373ea9c465efffeaa6e4d8aa2a96251b3beeb26d4016ee5dc22f5990a0f5"
+   },
+   "evidence": "seed_exact/Sb354b13c54ab.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/Sb354b13c54ab/site_policy.json --install"
+  },
+  "Sb756111e4055": {
+   "id": "Sb756111e4055",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-29T00:51:33+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     374,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "7dad66ce238d92ce04f372c625d320edbb40a2a506750a1bb78768cdfa774797",
+   "mirror_input_sha256": "edfd0f949f374f76e3a87fbe2a5cca394f217fa8fbbc64ff02d612fb5649f6ff",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/sto_site/.cache/ptp_suite_frozen_stage13",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 260.1,
+   "clone_seconds": 21.9,
+   "peak_gb": 6.67,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 21.96,
+    "report": 190.07,
+    "cert": 17.14,
+    "replay:PTPSubmitted": 12.41,
+    "replay:PTPSubmittedCert": 17.3
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 6.14
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.65
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 398,
+     "k": 4
+    },
+    {
+     "width": 122,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 374,
+     "k": 4
+    },
+    {
+     "width": 105,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     6
+    ],
+    [
+     374,
+     4
+    ],
+    [
+     105,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "0acbee78174dccad6bc2e3442ab185dc0a5db43665ab2e7b54b85580e97d5045",
+    "PTPSubmittedCert.lean": "30f82294e3f5226f8098233039784c607ba9afd96be711152071f6382c01ebf1"
+   },
+   "evidence": "seed_exact/Sb756111e4055.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/Sb756111e4055/site_policy.json --install"
+  },
+  "Sba5f50010bd4": {
+   "id": "Sba5f50010bd4",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-29T00:57:00+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "b52ef16ef2dff5b31895d4043695e4786737dec6d024a22ef006670626f9e9fd",
+   "mirror_input_sha256": "f8e615b57cdcd6b38ff93b162afb6982b0d3f154bd9bed094af093b18aba42df",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/sto_site/.cache/ptp_suite_frozen_stage13",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 299.8,
+   "clone_seconds": 22.3,
+   "peak_gb": 6.68,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 22.37,
+    "report": 172.29,
+    "cert": 28.37,
+    "replay:PTPSubmitted": 24.18,
+    "replay:PTPSubmittedCert": 46.49
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 5.82
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.66
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 398,
+     "k": 4
+    },
+    {
+     "width": 122,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 375,
+     "k": 4
+    },
+    {
+     "width": 107,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ],
+    [
+     107,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "0ba1130bb2f42469472215d6eb7e740a04dbe928282d824afbeab6c4af026b31",
+    "PTPSubmittedCert.lean": "0aec56a80e37c64ace09d310856f006f21249b8e4fe0c973f93d0bbb83ea5e53"
+   },
+   "evidence": "seed_exact/Sba5f50010bd4.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/Sba5f50010bd4/site_policy.json --install"
+  },
+  "Scc866e679f67": {
+   "id": "Scc866e679f67",
+   "tool": "harness/sto_policy_verify.py",
+   "checked_at": "2026-10-28T16:33:13+00:00",
+   "mode": "PhaseProduct",
+   "bands": [
+    [
+     421,
+     5
+    ],
+    [
+     94,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "bfb351ea37e2a34153eb35336c056152dfc089b755abd0a266c5f92dcd16724b",
+   "mirror_input_sha256": "c10c7f08b47209c8e0b3fc0294da999a6a1cdfc3e2b5c87fa1400bd2ee78209e",
+   "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-policy-mirror",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 116.1,
+   "peak_gb": 6.51,
+   "outer_outcome": "finished",
+   "widths": "exact",
+   "checker": "sto-mirror",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "stage": 25.18,
+    "data": 23.78,
+    "report": 9.46,
+    "cert": 15.89,
+    "replay:Submitted": 14.33,
+    "replay:SubmittedCert": 20.48
+   },
+   "replay": [
+    {
+     "module": "Submitted",
+     "verdict": "replayed",
+     "decls": 12,
+     "peak_gb": 6.17
+    },
+    {
+     "module": "SubmittedCert",
+     "verdict": "replayed",
+     "decls": 19,
+     "peak_gb": 6.48
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 5
+    },
+    {
+     "width": 449,
+     "k": 5
+    },
+    {
+     "width": 130,
+     "k": 3
+    },
+    {
+     "width": 55,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 5
+    },
+    {
+     "width": 421,
+     "k": 5
+    },
+    {
+     "width": 94,
+     "k": 3
+    },
+    {
+     "width": 35,
+     "k": null
+    }
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "Submitted.lean": "159737dd5ee2630314723d29d253ee18f7c990eb2792e356fcc46e26215fc4b8",
+    "SubmittedCert.lean": "45a49c13f9b8d48642bdd4e0039b162e6d9a27c0176a60193a00e651246ba99a"
+   },
+   "evidence": "seed_exact/Scc866e679f67.json",
+   "command": "./run.sh sto-policy engine/data/forshor_submitted/Scc866e679f67/site_policy.json --install"
+  },
+  "Se1cc13af8310": {
+   "id": "Se1cc13af8310",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-29T01:01:56+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     522,
+     4
+    ],
+    [
+     142,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "00eaa3de2019b648b88d890a5836deb92091b6f2b7ab2af0798b2e0121623755",
+   "mirror_input_sha256": "9a84530da92b45a809bf770863dc4fdc2f095eae2161462ab41558d2996ef19b",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/sto_site/.cache/ptp_suite_frozen_stage13",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 226.8,
+   "clone_seconds": 54.6,
+   "peak_gb": 6.39,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 24.99,
+    "report": 12.09,
+    "cert": 25.77,
+    "replay:PTPSubmitted": 92.13,
+    "replay:PTPSubmittedCert": 69.85
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 10,
+     "peak_gb": 6.16
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.36
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 533,
+     "k": 4
+    },
+    {
+     "width": 155,
+     "k": 3
+    },
+    {
+     "width": 66,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 522,
+     "k": 4
+    },
+    {
+     "width": 142,
+     "k": 3
+    },
+    {
+     "width": 51,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     4
+    ],
+    [
+     522,
+     4
+    ],
+    [
+     142,
+     3
+    ],
+    [
+     51,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "ab5ea04722d78fe1c94148cc0250dc37642fa78d4598017f69066e275ab30957",
+    "PTPSubmittedCert.lean": "a71a3a7cb22e293f82889b1f99463bb7a2b18d469cf23aabd6d1516a1558e223"
+   },
+   "evidence": "seed_exact/Se1cc13af8310.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/Se1cc13af8310/site_policy.json --install"
+  },
+  "Sfb4e5db96f73": {
+   "id": "Sfb4e5db96f73",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-29T01:06:42+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     520,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "007eb7137e5364614a9d0c05ac40babd8d7dba082ee624adcd6d62fa0ae41804",
+   "mirror_input_sha256": "db666865f7636dc0b00ddb0e372f40ef49f66e56bee1a96d2265e11736a4a146",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/sto_site/.cache/ptp_suite_frozen_stage13",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 215.1,
+   "clone_seconds": 45.9,
+   "peak_gb": 6.44,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 33.57,
+    "report": 23.62,
+    "cert": 27.65,
+    "replay:PTPSubmitted": 37.08,
+    "replay:PTPSubmittedCert": 52.43
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 6,
+     "peak_gb": 6.15
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.42
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 543,
+     "k": 4
+    },
+    {
+     "width": 169,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 520,
+     "k": 4
+    },
+    {
+     "width": 138,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     4
+    ],
+    [
+     520,
+     4
+    ],
+    [
+     138,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "10fb345d0bb8cbf859d634279523adcd5a2d51d761f7cd7dd369310294c3e14d",
+    "PTPSubmittedCert.lean": "f26dc23d16b3829aad6e4be9b688d0c8110676593a1a35d6388070fd0e9cf828"
+   },
+   "evidence": "seed_exact/Sfb4e5db96f73.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/Sfb4e5db96f73/site_policy.json --install"
+  }
+ },
+ "note": "Stage 13 (2026-10-28): Lean runs of the re-planned seeds at EXACT widths. PP: harness/sto_policy_verify.py -> ShorTableOptimization-policy-mirror scripts/check_banded_policy.py --widths exact (live mirror); PTP: harness/ptp_policy_verify.py -> ShorTableOptimization-ptp-suite scripts/check_ptp_policy.py --widths exact. verdict accepted = every stage passed (kernel check, kernel replay per module, axioms within {propext, Classical.choice, Quot.sound}, statements pinned) and the exact ladder at 2048 was proved by the kernel. killed/error = stopped by the site, not a Lean verdict. Timings and memory vary between runs; the verdict, shas and ladders are deterministic. The records are written by seed_policies.",
+ "superseded_stage13_grid_leaf": {
+  "S1c115b37fd2c": {
+   "id": "S1c115b37fd2c",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-28T16:37:58+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ],
+    [
+     16,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "d45fac65114153ed7354637650eb5ed66b71f779286c5b259e0ccff249b20ff3",
+   "mirror_input_sha256": "c374483a3945fea2d7dbbda457d5793c7d37755f16800aa0761af4dd853a7650",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-ptp-suite",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 229.3,
+   "clone_seconds": 31.2,
+   "peak_gb": 6.68,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 24.11,
+    "report": 149.4,
+    "cert": 17.52,
+    "replay:PTPSubmitted": 15.19,
+    "replay:PTPSubmittedCert": 22.67
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 16,
+     "peak_gb": 5.96
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.66
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 398,
+     "k": 4
+    },
+    {
+     "width": 120,
+     "k": 2
+    },
+    {
+     "width": 64,
+     "k": 2
+    },
+    {
+     "width": 36,
+     "k": 2
+    },
+    {
+     "width": 22,
+     "k": 2
+    },
+    {
+     "width": 15,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 375,
+     "k": 4
+    },
+    {
+     "width": 107,
+     "k": 2
+    },
+    {
+     "width": 55,
+     "k": 2
+    },
+    {
+     "width": 29,
+     "k": 2
+    },
+    {
+     "width": 16,
+     "k": 2
+    },
+    {
+     "width": 10,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ],
+    [
+     107,
+     2
+    ],
+    [
+     55,
+     2
+    ],
+    [
+     29,
+     2
+    ],
+    [
+     16,
+     2
+    ],
+    [
+     10,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "c8233abef6327ae0b4927aff153751e31ec8b8abfb923ecb6f293e79116593e9",
+    "PTPSubmittedCert.lean": "484cdc4f44cb476c855b808d9dea539faad04cb46fc53e3a9a61b93107aa10d0"
+   },
+   "evidence": "seed_exact/stage13_grid_leaf/S1c115b37fd2c.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/S1c115b37fd2c/site_policy.json --install"
+  },
+  "S6b1cc169fad2": {
+   "id": "S6b1cc169fad2",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-28T16:39:47+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     522,
+     4
+    ],
+    [
+     142,
+     3
+    ],
+    [
+     15,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "a7d7b4b1bf5879bc8b5c2106079e2817088abd1b1db69bb7901218898ecb0ce1",
+   "mirror_input_sha256": "8efb3b5554a6b6f7b86e58beefc845d2fcd891a08a005a736fe974a22e5e3029",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-ptp-suite",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 72.5,
+   "clone_seconds": 28.8,
+   "peak_gb": 6.39,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 24.39,
+    "report": 10.62,
+    "cert": 13.72,
+    "replay:PTPSubmitted": 10.03,
+    "replay:PTPSubmittedCert": 13.04
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 6.16
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.37
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 533,
+     "k": 4
+    },
+    {
+     "width": 155,
+     "k": 3
+    },
+    {
+     "width": 66,
+     "k": 2
+    },
+    {
+     "width": 38,
+     "k": 2
+    },
+    {
+     "width": 24,
+     "k": 2
+    },
+    {
+     "width": 17,
+     "k": 2
+    },
+    {
+     "width": 14,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 522,
+     "k": 4
+    },
+    {
+     "width": 142,
+     "k": 3
+    },
+    {
+     "width": 51,
+     "k": 2
+    },
+    {
+     "width": 27,
+     "k": 2
+    },
+    {
+     "width": 15,
+     "k": 2
+    },
+    {
+     "width": 9,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     4
+    ],
+    [
+     522,
+     4
+    ],
+    [
+     142,
+     3
+    ],
+    [
+     51,
+     2
+    ],
+    [
+     27,
+     2
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     9,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "65d6563dc6f92c96bccda927f0c665a36bd72407888f081b5a52ebc4d36fd1e0",
+    "PTPSubmittedCert.lean": "191df1e51ed1d7b8c6021a72e9caa2d7a2434393e9bfa883e5bb47eec9e31be9"
+   },
+   "evidence": "seed_exact/stage13_grid_leaf/S6b1cc169fad2.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/S6b1cc169fad2/site_policy.json --install"
+  },
+  "S7cb2f58aff1a": {
+   "id": "S7cb2f58aff1a",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-28T16:43:55+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ],
+    [
+     16,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "5e018c03d2852a0d5e444081a0edc894566927a06908c8290f083a37ca8dfbb6",
+   "mirror_input_sha256": "c8d0194ccaa532fd00a4deb2306bee0694d22ff9f0f3dd3881db62c4bcf6d3d0",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-ptp-suite",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 211.7,
+   "clone_seconds": 27.1,
+   "peak_gb": 6.69,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 20.25,
+    "report": 149.37,
+    "cert": 15.02,
+    "replay:PTPSubmitted": 9.76,
+    "replay:PTPSubmittedCert": 16.79
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 16,
+     "peak_gb": 5.35
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.66
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 398,
+     "k": 4
+    },
+    {
+     "width": 122,
+     "k": 2
+    },
+    {
+     "width": 66,
+     "k": 2
+    },
+    {
+     "width": 38,
+     "k": 2
+    },
+    {
+     "width": 24,
+     "k": 2
+    },
+    {
+     "width": 17,
+     "k": 2
+    },
+    {
+     "width": 14,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 375,
+     "k": 4
+    },
+    {
+     "width": 106,
+     "k": 2
+    },
+    {
+     "width": 55,
+     "k": 2
+    },
+    {
+     "width": 29,
+     "k": 2
+    },
+    {
+     "width": 16,
+     "k": 2
+    },
+    {
+     "width": 10,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ],
+    [
+     106,
+     2
+    ],
+    [
+     55,
+     2
+    ],
+    [
+     29,
+     2
+    ],
+    [
+     16,
+     2
+    ],
+    [
+     10,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "f89af89da243a30c1149e891d0c99151d201778c65a58ece6d3f885809a0d129",
+    "PTPSubmittedCert.lean": "12696b6ad441b6da0797aea269af65914de52e885d3ce3ed1b356dc1bd67187e"
+   },
+   "evidence": "seed_exact/stage13_grid_leaf/S7cb2f58aff1a.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/S7cb2f58aff1a/site_policy.json --install"
+  },
+  "S80e6a121410d": {
+   "id": "S80e6a121410d",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-28T16:45:31+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     142,
+     4
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "396603284d918b25f78da374d8ac216304ec13c818d16665a3ab2ee2e1a590de",
+   "mirror_input_sha256": "1532deb61b879d46ebab9a8c087797accd83a3720e62570b7c0e27cec12b817a",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-ptp-suite",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 69.3,
+   "clone_seconds": 21.8,
+   "peak_gb": 6.42,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 23.83,
+    "report": 7.38,
+    "cert": 13.13,
+    "replay:PTPSubmitted": 10.07,
+    "replay:PTPSubmittedCert": 13.08
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 6,
+     "peak_gb": 6.15
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.4
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 533,
+     "k": 4
+    },
+    {
+     "width": 155,
+     "k": 4
+    },
+    {
+     "width": 62,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 522,
+     "k": 4
+    },
+    {
+     "width": 142,
+     "k": 4
+    },
+    {
+     "width": 47,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     4
+    ],
+    [
+     522,
+     4
+    ],
+    [
+     142,
+     4
+    ],
+    [
+     47,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "13eacf95c9e340c937aaa7482165817233264561df64505a4ffbafddf224de4e",
+    "PTPSubmittedCert.lean": "c1405b5063cb4fff22d9da14d36ff8666f16f6e85cc44d0b12b287eb8d8d574b"
+   },
+   "evidence": "seed_exact/stage13_grid_leaf/S80e6a121410d.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/S80e6a121410d/site_policy.json --install"
+  },
+  "Sb756111e4055": {
+   "id": "Sb756111e4055",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-28T16:50:06+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     374,
+     4
+    ],
+    [
+     16,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "900859ebe11e817164d622c308ab12f4701d42013115d62124c4dda18e09f78e",
+   "mirror_input_sha256": "50b663eb1c599f1750e0df4c8b137207978a54229067fbc760396477e14d72d9",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-ptp-suite",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 250.3,
+   "clone_seconds": 20.2,
+   "peak_gb": 6.7,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 22.62,
+    "report": 183.14,
+    "cert": 15.81,
+    "replay:PTPSubmitted": 9.85,
+    "replay:PTPSubmittedCert": 18.7
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 16,
+     "peak_gb": 6.15
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.67
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 398,
+     "k": 4
+    },
+    {
+     "width": 122,
+     "k": 2
+    },
+    {
+     "width": 66,
+     "k": 2
+    },
+    {
+     "width": 38,
+     "k": 2
+    },
+    {
+     "width": 24,
+     "k": 2
+    },
+    {
+     "width": 17,
+     "k": 2
+    },
+    {
+     "width": 14,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 374,
+     "k": 4
+    },
+    {
+     "width": 105,
+     "k": 2
+    },
+    {
+     "width": 54,
+     "k": 2
+    },
+    {
+     "width": 29,
+     "k": 2
+    },
+    {
+     "width": 16,
+     "k": 2
+    },
+    {
+     "width": 10,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     6
+    ],
+    [
+     374,
+     4
+    ],
+    [
+     105,
+     2
+    ],
+    [
+     54,
+     2
+    ],
+    [
+     29,
+     2
+    ],
+    [
+     16,
+     2
+    ],
+    [
+     10,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "ef11c7fbd6d8c79c5267e936ae64b0ac660bf58e241f6b8e8f288708211a1819",
+    "PTPSubmittedCert.lean": "e9c12f038dfb3ae6c5b79617b0623a9ef6d9359914a322b1c352f728f8abe6a1"
+   },
+   "evidence": "seed_exact/stage13_grid_leaf/Sb756111e4055.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/Sb756111e4055/site_policy.json --install"
+  },
+  "Sba5f50010bd4": {
+   "id": "Sba5f50010bd4",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-28T16:54:06+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ],
+    [
+     16,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "521804339edebcd0a45563a2b4f05b422429d7d878d0089b3a4b642644c37e43",
+   "mirror_input_sha256": "fe2d70ebbb2ee8921d01ad872201725e13d9bb25f12376501191a5f0d3a94e48",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-ptp-suite",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 212.9,
+   "clone_seconds": 21.7,
+   "peak_gb": 6.69,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 22.82,
+    "report": 145.52,
+    "cert": 15.59,
+    "replay:PTPSubmitted": 10.01,
+    "replay:PTPSubmittedCert": 17.85
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 16,
+     "peak_gb": 4.87
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.67
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 398,
+     "k": 4
+    },
+    {
+     "width": 122,
+     "k": 2
+    },
+    {
+     "width": 66,
+     "k": 2
+    },
+    {
+     "width": 38,
+     "k": 2
+    },
+    {
+     "width": 24,
+     "k": 2
+    },
+    {
+     "width": 17,
+     "k": 2
+    },
+    {
+     "width": 14,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 375,
+     "k": 4
+    },
+    {
+     "width": 107,
+     "k": 2
+    },
+    {
+     "width": 55,
+     "k": 2
+    },
+    {
+     "width": 29,
+     "k": 2
+    },
+    {
+     "width": 16,
+     "k": 2
+    },
+    {
+     "width": 10,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     6
+    ],
+    [
+     375,
+     4
+    ],
+    [
+     107,
+     2
+    ],
+    [
+     55,
+     2
+    ],
+    [
+     29,
+     2
+    ],
+    [
+     16,
+     2
+    ],
+    [
+     10,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "665af444bff9accb47162ef9ca61506ef12206c0fe46b0e37038bc0e7ebebe6f",
+    "PTPSubmittedCert.lean": "2662fd70ea77c32fd5f34fb4d8edb5b5f5af74d4af6527bb4b21f9fb427ae115"
+   },
+   "evidence": "seed_exact/stage13_grid_leaf/Sba5f50010bd4.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/Sba5f50010bd4/site_policy.json --install"
+  },
+  "Se1cc13af8310": {
+   "id": "Se1cc13af8310",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-28T16:55:37+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     522,
+     4
+    ],
+    [
+     142,
+     3
+    ],
+    [
+     15,
+     2
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "6d41583c8a256940b7edcade37528d2307140ba239fbb702f23bab51d2670abc",
+   "mirror_input_sha256": "4b82536368e989c46aef55b3597410d80ed7511c4f8ff625b33f039d95c4ce9f",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-ptp-suite",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 65.6,
+   "clone_seconds": 20.1,
+   "peak_gb": 6.39,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 21.85,
+    "report": 8.25,
+    "cert": 12.59,
+    "replay:PTPSubmitted": 9.97,
+    "replay:PTPSubmittedCert": 12.59
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "peak_gb": 6.15
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.37
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 533,
+     "k": 4
+    },
+    {
+     "width": 155,
+     "k": 3
+    },
+    {
+     "width": 66,
+     "k": 2
+    },
+    {
+     "width": 37,
+     "k": 2
+    },
+    {
+     "width": 23,
+     "k": 2
+    },
+    {
+     "width": 16,
+     "k": 2
+    },
+    {
+     "width": 12,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 522,
+     "k": 4
+    },
+    {
+     "width": 142,
+     "k": 3
+    },
+    {
+     "width": 51,
+     "k": 2
+    },
+    {
+     "width": 27,
+     "k": 2
+    },
+    {
+     "width": 15,
+     "k": 2
+    },
+    {
+     "width": 9,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     4
+    ],
+    [
+     522,
+     4
+    ],
+    [
+     142,
+     3
+    ],
+    [
+     51,
+     2
+    ],
+    [
+     27,
+     2
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     9,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "3f054ba0254ab98986d19e280af9f50e742d669c6780c5669fc68276bc0c1707",
+    "PTPSubmittedCert.lean": "a4855c317829f33ee50aa1d9000ac6cdb20e00dbd3793f38c7c98b3ca076b963"
+   },
+   "evidence": "seed_exact/stage13_grid_leaf/Se1cc13af8310.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/Se1cc13af8310/site_policy.json --install"
+  },
+  "Sfb4e5db96f73": {
+   "id": "Sfb4e5db96f73",
+   "tool": "harness/ptp_policy_verify.py",
+   "checker": "ptp-suite",
+   "widths": "exact",
+   "checked_at": "2026-10-28T16:57:07+00:00",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    [
+     520,
+     4
+    ],
+    [
+     51,
+     3
+    ]
+   ],
+   "target_width": 2048,
+   "site_policy_sha256": "4faf5e8ebc1e20d5541200c1ebb597dcaee3876edf48e9ad78ab3c0ef8cdc697",
+   "mirror_input_sha256": "21e4189afd5959ebaa9896b1479fbf0c504d1070fdde96f4abc558086c736ada",
+   "mirror_tree_sha256": "e33d9a0998d87fb3cc5d6d49507c2fd45b24ff2f1e4b7e1225e5c984a29aa4b4",
+   "mirror_build": "/Users/joshua/Desktop/github_packages/ShorTableOptimization-ptp-suite",
+   "lean_toolchain": "leanprover/lean4:v4.28.0",
+   "cap_gb": 8.0,
+   "seconds": 66.0,
+   "clone_seconds": 19.3,
+   "peak_gb": 6.5,
+   "outer_outcome": "finished",
+   "stage_timeout_s": 900,
+   "process_groups": "harness/pgroup_stage.py (each stage in its own process group, killed on timeout)",
+   "verdict": "accepted",
+   "stage": null,
+   "reason": null,
+   "stage_seconds": {
+    "data": 17.9,
+    "report": 9.83,
+    "cert": 13.74,
+    "replay:PTPSubmitted": 9.5,
+    "replay:PTPSubmittedCert": 13.59
+   },
+   "replay": [
+    {
+     "module": "PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 10,
+     "peak_gb": 5.8
+    },
+    {
+     "module": "PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 15,
+     "peak_gb": 6.47
+    }
+   ],
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 543,
+     "k": 4
+    },
+    {
+     "width": 169,
+     "k": 3
+    },
+    {
+     "width": 74,
+     "k": 3
+    },
+    {
+     "width": 43,
+     "k": null
+    }
+   ],
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 520,
+     "k": 4
+    },
+    {
+     "width": 138,
+     "k": 3
+    },
+    {
+     "width": 51,
+     "k": 3
+    },
+    {
+     "width": 22,
+     "k": null
+    }
+   ],
+   "python_exact_ladder": [
+    [
+     2048,
+     4
+    ],
+    [
+     520,
+     4
+    ],
+    [
+     138,
+     3
+    ],
+    [
+     51,
+     3
+    ],
+    [
+     22,
+     null
+    ]
+   ],
+   "exact_ladder_kernel_proved": true,
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "statement_pinned": true,
+   "lean_sha256": {
+    "PTPSubmitted.lean": "53d4232c4ff192484c354f7b402a819c30352df876bd3ab14909103ce797b878",
+    "PTPSubmittedCert.lean": "14eea46efe7c2a0734d6333706b99da3d2e80ba0abee499914e674c237a20c7b"
+   },
+   "evidence": "seed_exact/stage13_grid_leaf/Sfb4e5db96f73.json",
+   "command": "./run.sh ptp-policy engine/data/forshor_submitted/Sfb4e5db96f73/site_policy.json --install"
+  }
+ },
+ "note_superseded_stage13_grid_leaf": "Stage 17 (2026-10-28): the PTP suite runs of the Stage 13 PTP re-plans (exact widths, thresholds planned under the grid leaf), superseded when the PTP seeds were re-planned under the digital PTP leaf. History only: each still proves what it proved about the policy it checked (site_policy.pre_digital.json, sha256 pinned); it supports no trust level of the current policy."
+}

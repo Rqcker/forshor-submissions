@@ -1,0 +1,1309 @@
+{
+ "schema": "sto-site-seeded-policy/1",
+ "id": "S0d4cae7cc43f",
+ "seeded_from_planner": true,
+ "mode": "PhaseProduct",
+ "created_at": "2026-10-13T14:53:17.880059Z",
+ "bands": [
+  {
+   "threshold": 354,
+   "k": 6,
+   "digest": "3265bb656f78f75b3ca2daceafa937296677e2dcf764ed0f00ec3a33effda26e",
+   "table_id": "54f51b9656d0",
+   "table": {
+    "mode": "PhaseProduct",
+    "k": 6,
+    "point_order": [
+     "0",
+     "1/2",
+     "-1/2",
+     "4",
+     "-4",
+     "1/4",
+     "-1/4",
+     "2",
+     "-2",
+     "1",
+     "-1"
+    ],
+    "operations": [
+     [
+      "shiftL",
+      2,
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      1,
+      4
+     ],
+     [
+      "shiftL",
+      1,
+      4
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      1,
+      2
+     ],
+     [
+      "addScaled",
+      1,
+      5,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      2,
+      1
+     ],
+     [
+      "addScaled",
+      2,
+      1,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      2,
+      -1,
+      0
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "phaseProduct",
+      2
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      2,
+      1,
+      0
+     ],
+     [
+      "shiftR",
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      2,
+      1,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      2,
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      5,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      -1,
+      2
+     ],
+     [
+      "shiftR",
+      1,
+      4
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      -1,
+      4
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      2,
+      2
+     ],
+     [
+      "shiftL",
+      4,
+      8
+     ],
+     [
+      "addScaled",
+      4,
+      0,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      4,
+      2,
+      1,
+      4
+     ],
+     [
+      "shiftL",
+      5,
+      8
+     ],
+     [
+      "addScaled",
+      5,
+      1,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      5,
+      3,
+      1,
+      4
+     ],
+     [
+      "shiftL",
+      5,
+      2
+     ],
+     [
+      "addScaled",
+      5,
+      4,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      4,
+      1
+     ],
+     [
+      "addScaled",
+      4,
+      5,
+      -1,
+      0
+     ],
+     [
+      "phaseProduct",
+      5
+     ],
+     [
+      "phaseProduct",
+      4
+     ],
+     [
+      "addScaled",
+      4,
+      5,
+      1,
+      0
+     ],
+     [
+      "shiftR",
+      4,
+      1
+     ],
+     [
+      "addScaled",
+      5,
+      4,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      5,
+      2
+     ],
+     [
+      "addScaled",
+      5,
+      3,
+      -1,
+      4
+     ],
+     [
+      "addScaled",
+      5,
+      1,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      5,
+      8
+     ],
+     [
+      "addScaled",
+      4,
+      2,
+      -1,
+      4
+     ],
+     [
+      "addScaled",
+      4,
+      0,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      4,
+      8
+     ],
+     [
+      "shiftL",
+      0,
+      8
+     ],
+     [
+      "addScaled",
+      0,
+      4,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      2,
+      1,
+      4
+     ],
+     [
+      "shiftL",
+      1,
+      8
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      1,
+      4
+     ],
+     [
+      "addScaled",
+      1,
+      5,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      0,
+      2
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      -1,
+      0
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      1,
+      0
+     ],
+     [
+      "shiftR",
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      0,
+      2
+     ],
+     [
+      "addScaled",
+      1,
+      5,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      -1,
+      4
+     ],
+     [
+      "shiftR",
+      1,
+      8
+     ],
+     [
+      "addScaled",
+      0,
+      4,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      2,
+      -1,
+      4
+     ],
+     [
+      "shiftR",
+      0,
+      8
+     ],
+     [
+      "shiftL",
+      4,
+      4
+     ],
+     [
+      "addScaled",
+      4,
+      0,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      4,
+      2,
+      1,
+      2
+     ],
+     [
+      "shiftL",
+      5,
+      4
+     ],
+     [
+      "addScaled",
+      5,
+      1,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      5,
+      3,
+      1,
+      2
+     ],
+     [
+      "shiftL",
+      5,
+      1
+     ],
+     [
+      "addScaled",
+      5,
+      4,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      4,
+      1
+     ],
+     [
+      "addScaled",
+      4,
+      5,
+      -1,
+      0
+     ],
+     [
+      "phaseProduct",
+      5
+     ],
+     [
+      "phaseProduct",
+      4
+     ],
+     [
+      "addScaled",
+      4,
+      5,
+      1,
+      0
+     ],
+     [
+      "shiftR",
+      4,
+      1
+     ],
+     [
+      "addScaled",
+      5,
+      4,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      5,
+      1
+     ],
+     [
+      "addScaled",
+      5,
+      3,
+      -1,
+      2
+     ],
+     [
+      "addScaled",
+      5,
+      1,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      5,
+      4
+     ],
+     [
+      "addScaled",
+      4,
+      2,
+      -1,
+      2
+     ],
+     [
+      "addScaled",
+      4,
+      0,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      4,
+      4
+     ],
+     [
+      "addScaled",
+      0,
+      2,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      4,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      5,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      0,
+      1
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      -1,
+      0
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      1,
+      0
+     ],
+     [
+      "shiftR",
+      0,
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      5,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      4,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      2,
+      -1,
+      0
+     ]
+    ]
+   }
+  },
+  {
+   "threshold": 71,
+   "k": 2,
+   "digest": "af60631769e856a17b9d1e4372407cf5d24618b8e62069e2ff6ba2352462b7e9",
+   "table_id": "6f7d25984ff8",
+   "table": {
+    "mode": "PhaseProduct",
+    "k": 2,
+    "point_order": [
+     "0",
+     "inf",
+     "1"
+    ],
+    "operations": [
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      1,
+      0
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      -1,
+      0
+     ]
+    ]
+   }
+  }
+ ],
+ "widths": "exact",
+ "ladder_2048": [
+  [
+   2048,
+   6
+  ],
+  [
+   354,
+   6
+  ],
+  [
+   71,
+   2
+  ],
+  [
+   37,
+   null
+  ]
+ ],
+ "ladder_2048_scan": [
+  [
+   2048,
+   6
+  ],
+  [
+   363,
+   6
+  ],
+  [
+   83,
+   2
+  ],
+  [
+   45,
+   null
+  ]
+ ],
+ "replanned": {
+  "note": "re-planned under exact widths, 2026-10-28",
+  "changed": true,
+  "planner": "engine/tcost/planner.py::optimal_policy (one_table_per_k=True), widths=\"exact\"",
+  "n": 2048,
+  "delta": 0.01,
+  "tables": "the seed's own tables",
+  "unused_tables": [
+   "8e0c0e002d92"
+  ]
+ },
+ "history": [
+  {
+   "provenance": "planner output at ForShor scanned widths (seeded 2026-10-27); superseded: re-planned under exact widths, 2026-10-28",
+   "widths": "scan",
+   "bands": [
+    {
+     "threshold": 2048,
+     "k": 6,
+     "digest": "3265bb656f78f75b3ca2daceafa937296677e2dcf764ed0f00ec3a33effda26e"
+    },
+    {
+     "threshold": 363,
+     "k": 3,
+     "digest": "8e0c0e002d92992c9d96637e4100b5e5d434d048f60e98524475300a71738e61"
+    },
+    {
+     "threshold": 130,
+     "k": 2,
+     "digest": "af60631769e856a17b9d1e4372407cf5d24618b8e62069e2ff6ba2352462b7e9"
+    }
+   ],
+   "ladder_2048_scan": [
+    [
+     2048,
+     6
+    ],
+    [
+     363,
+     3
+    ],
+    [
+     130,
+     2
+    ],
+    [
+     68,
+     null
+    ]
+   ],
+   "ladder_2048_exact": [
+    [
+     2048,
+     6
+    ],
+    [
+     354,
+     2
+    ],
+    [
+     179,
+     2
+    ],
+    [
+     91,
+     null
+    ]
+   ],
+   "site_policy": "site_policy.pre_exact.json",
+   "site_policy_sha256": "5c771db740aa8214923ba77c0c7b20909ecd92e409182a7258d2983c0c8f7c3c",
+   "template_sha256": "a65302b87bbd16f2dcd73e55ac3b0bd2eb8c7e64fd701c3fbbcbc3a72b158dec",
+   "lean": {
+    "variant": "pre_exact",
+    "superseded": [
+     {
+      "budget": "default",
+      "status": "refused",
+      "reason": "ForShor's PolicyCheck exceeded its maxHeartbeats budget",
+      "forshor": "ForShor-main (no commit, Lean v4.28.0)"
+     },
+     {
+      "budget": "override",
+      "status": "not-attempted",
+      "reason": "refused at default budget; override not attempted (k = 6 does not finish at ForShor-main, PLAN_v2 3.2)",
+      "forshor": "ForShor-main (no commit, Lean v4.28.0)"
+     }
+    ],
+    "status": "not-run",
+    "policy_verified": false,
+    "budget": null,
+    "runs": [],
+    "reason": "not run on the latest ForShor (10fe620); ForShor-main (no commit, Lean v4.28.0), superseded: default: refused; override: not-attempted"
+   },
+   "sto_mirror": {
+    "status": "accepted",
+    "stage": null,
+    "reason": null,
+    "target_width": 2048,
+    "seconds": 86.5,
+    "peak_gb": 6.17,
+    "cap_gb": 10.0,
+    "stage_seconds": {
+     "stage": 17.93,
+     "data": 17.72,
+     "report": 17.71,
+     "cert": 9.69,
+     "replay:Submitted": 8.12,
+     "replay:SubmittedCert": 9.76
+    },
+    "replay": [
+     {
+      "module": "Submitted",
+      "verdict": "replayed",
+      "decls": 15,
+      "peak_gb": 5.47
+     },
+     {
+      "module": "SubmittedCert",
+      "verdict": "replayed",
+      "decls": 8,
+      "peak_gb": 6.15
+     }
+    ],
+    "axioms": [
+     "Classical.choice",
+     "Quot.sound",
+     "propext"
+    ],
+    "statement_pinned": true,
+    "ladder_str": "2048:6 -> 363:3 -> 130:2 -> 68:leaf",
+    "ladder_matches_site": true,
+    "mirror_tree_sha256": "08f6620cca4341878d93540d036954a894235507aeef0c129b4832bd38621124",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "checked_at": "2026-10-28T00:19:54+00:00",
+    "evidence": "seed_sto_mirror/S0d4cae7cc43f.json",
+    "command": "./run.sh sto-policy engine/data/forshor_submitted/S0d4cae7cc43f/site_policy.json --install",
+    "widths": "scan",
+    "checker": null,
+    "exact_ladder_kernel_proved": null,
+    "proves": "STO policy mirror, --widths exact: policy.check (STO's table contract per band, thresholds decrease) and chain_contracts at 2048 by decide +kernel; correct (evalPhase n \u03c6 xs = \u03c6\u00b7\u220fxs at every n); correct_reg and capacity (register semantics at the scan); correct_tight (the wrapping register semantics at the exact widths gives \u03c6\u00b7\u220fxs on operands fitting n) and exact_ladder (the exact ladder at 2048, by the kernel); kernel-replayed, axioms within {propext, Classical.choice, Quot.sound}, statements pinned. Not proved: gate-level equivalence with any circuit, the +1 root, reserve qubits."
+   }
+  }
+ ],
+ "files": {
+  "site_policy": "site_policy.json",
+  "template": "PolicyTemplate.lean",
+  "site_policy_pre_exact": "site_policy.pre_exact.json"
+ },
+ "site_policy_sha256": "1cf4b3eb2d86561feed5a79092bc36a9f79bb9b31b04977eebbcd03e4b3dcc44",
+ "template_sha256": "12ed5a444aa3b611a11dde62cf64719e2af844882000a1cbe11c0427ff31590d",
+ "provenance": {
+  "planner": "engine/tcost/planner.py::optimal_policy (one_table_per_k=True)",
+  "n": 2048,
+  "canonicalized": "consecutive planner bands with the same table merged, lowest threshold kept; Policy.choose(w) is unchanged at every width, so every price is unchanged",
+  "first_seen": {
+   "source": "leaderboard",
+   "row": "54f51b9656d0",
+   "row_created_at": "2026-10-13T14:53:17.880059Z",
+   "delta": 0.0003
+  },
+  "occurrences": [
+   {
+    "source": "leaderboard",
+    "boards": [
+     "PP leaderboard",
+     "full-run leaderboard"
+    ],
+    "mode": "PhaseProduct",
+    "n": 2048,
+    "delta": 0.0003,
+    "row": "54f51b9656d0",
+    "row_number": 17,
+    "row_created_at": "2026-10-13T14:53:17.880059Z",
+    "tables_from": [
+     "82eaf805f71c",
+     "6f7d25984ff8",
+     "52ec6fce9b57",
+     "f4aff955f16b",
+     "2a0c1db7342f",
+     "58147b7627fb",
+     "348de30a1f93",
+     "390223a8146a",
+     "f2e8a6a36289",
+     "f0f15fefe959",
+     "0c074ebe3b35",
+     "fd41c2aa4b3e",
+     "e5ba65062178",
+     "6c185db801f9",
+     "5e83e2c00c17",
+     "293d51de2c05",
+     "54f51b9656d0"
+    ],
+    "planner_bands": [
+     [
+      2048,
+      6,
+      "3265bb656f78"
+     ],
+     [
+      363,
+      3,
+      "8e0c0e002d92"
+     ],
+     [
+      130,
+      2,
+      "af60631769e8"
+     ]
+    ]
+   },
+   {
+    "source": "leaderboard",
+    "boards": [
+     "PP leaderboard",
+     "full-run leaderboard"
+    ],
+    "mode": "PhaseProduct",
+    "n": 2048,
+    "delta": 0.0003,
+    "row": "7ec7497794d4",
+    "row_number": 18,
+    "row_created_at": "2026-10-13T14:54:53.561415Z",
+    "tables_from": [
+     "82eaf805f71c",
+     "6f7d25984ff8",
+     "52ec6fce9b57",
+     "f4aff955f16b",
+     "2a0c1db7342f",
+     "58147b7627fb",
+     "348de30a1f93",
+     "390223a8146a",
+     "f2e8a6a36289",
+     "f0f15fefe959",
+     "0c074ebe3b35",
+     "fd41c2aa4b3e",
+     "e5ba65062178",
+     "6c185db801f9",
+     "5e83e2c00c17",
+     "293d51de2c05",
+     "54f51b9656d0",
+     "7ec7497794d4"
+    ],
+    "planner_bands": [
+     [
+      2048,
+      6,
+      "3265bb656f78"
+     ],
+     [
+      363,
+      3,
+      "8e0c0e002d92"
+     ],
+     [
+      130,
+      2,
+      "af60631769e8"
+     ]
+    ]
+   },
+   {
+    "source": "leaderboard",
+    "boards": [
+     "PP leaderboard",
+     "full-run leaderboard"
+    ],
+    "mode": "PhaseProduct",
+    "n": 2048,
+    "delta": 0.0001,
+    "row": "54f51b9656d0",
+    "row_number": 17,
+    "row_created_at": "2026-10-13T14:53:17.880059Z",
+    "tables_from": [
+     "82eaf805f71c",
+     "6f7d25984ff8",
+     "52ec6fce9b57",
+     "f4aff955f16b",
+     "2a0c1db7342f",
+     "58147b7627fb",
+     "348de30a1f93",
+     "390223a8146a",
+     "f2e8a6a36289",
+     "f0f15fefe959",
+     "0c074ebe3b35",
+     "fd41c2aa4b3e",
+     "e5ba65062178",
+     "6c185db801f9",
+     "5e83e2c00c17",
+     "293d51de2c05",
+     "54f51b9656d0"
+    ],
+    "planner_bands": [
+     [
+      2048,
+      6,
+      "3265bb656f78"
+     ],
+     [
+      363,
+      3,
+      "8e0c0e002d92"
+     ],
+     [
+      130,
+      2,
+      "af60631769e8"
+     ]
+    ]
+   },
+   {
+    "source": "leaderboard",
+    "boards": [
+     "PP leaderboard",
+     "full-run leaderboard"
+    ],
+    "mode": "PhaseProduct",
+    "n": 2048,
+    "delta": 0.0001,
+    "row": "7ec7497794d4",
+    "row_number": 18,
+    "row_created_at": "2026-10-13T14:54:53.561415Z",
+    "tables_from": [
+     "82eaf805f71c",
+     "6f7d25984ff8",
+     "52ec6fce9b57",
+     "f4aff955f16b",
+     "2a0c1db7342f",
+     "58147b7627fb",
+     "348de30a1f93",
+     "390223a8146a",
+     "f2e8a6a36289",
+     "f0f15fefe959",
+     "0c074ebe3b35",
+     "fd41c2aa4b3e",
+     "e5ba65062178",
+     "6c185db801f9",
+     "5e83e2c00c17",
+     "293d51de2c05",
+     "54f51b9656d0",
+     "7ec7497794d4"
+    ],
+    "planner_bands": [
+     [
+      2048,
+      6,
+      "3265bb656f78"
+     ],
+     [
+      363,
+      3,
+      "8e0c0e002d92"
+     ],
+     [
+      130,
+      2,
+      "af60631769e8"
+     ]
+    ]
+   },
+   {
+    "source": "leaderboard",
+    "boards": [
+     "PP leaderboard",
+     "full-run leaderboard"
+    ],
+    "mode": "PhaseProduct",
+    "n": 2048,
+    "delta": 1e-06,
+    "row": "54f51b9656d0",
+    "row_number": 17,
+    "row_created_at": "2026-10-13T14:53:17.880059Z",
+    "tables_from": [
+     "82eaf805f71c",
+     "6f7d25984ff8",
+     "52ec6fce9b57",
+     "f4aff955f16b",
+     "2a0c1db7342f",
+     "58147b7627fb",
+     "348de30a1f93",
+     "390223a8146a",
+     "f2e8a6a36289",
+     "f0f15fefe959",
+     "0c074ebe3b35",
+     "fd41c2aa4b3e",
+     "e5ba65062178",
+     "6c185db801f9",
+     "5e83e2c00c17",
+     "293d51de2c05",
+     "54f51b9656d0"
+    ],
+    "planner_bands": [
+     [
+      2048,
+      6,
+      "3265bb656f78"
+     ],
+     [
+      363,
+      3,
+      "8e0c0e002d92"
+     ],
+     [
+      130,
+      2,
+      "af60631769e8"
+     ]
+    ]
+   },
+   {
+    "source": "leaderboard",
+    "boards": [
+     "PP leaderboard",
+     "full-run leaderboard"
+    ],
+    "mode": "PhaseProduct",
+    "n": 2048,
+    "delta": 1e-06,
+    "row": "7ec7497794d4",
+    "row_number": 18,
+    "row_created_at": "2026-10-13T14:54:53.561415Z",
+    "tables_from": [
+     "82eaf805f71c",
+     "6f7d25984ff8",
+     "52ec6fce9b57",
+     "f4aff955f16b",
+     "2a0c1db7342f",
+     "58147b7627fb",
+     "348de30a1f93",
+     "390223a8146a",
+     "f2e8a6a36289",
+     "f0f15fefe959",
+     "0c074ebe3b35",
+     "fd41c2aa4b3e",
+     "e5ba65062178",
+     "6c185db801f9",
+     "5e83e2c00c17",
+     "293d51de2c05",
+     "54f51b9656d0",
+     "7ec7497794d4"
+    ],
+    "planner_bands": [
+     [
+      2048,
+      6,
+      "3265bb656f78"
+     ],
+     [
+      363,
+      3,
+      "8e0c0e002d92"
+     ],
+     [
+      130,
+      2,
+      "af60631769e8"
+     ]
+    ]
+   }
+  ],
+  "tables": [
+   {
+    "digest": "3265bb656f78f75b3ca2daceafa937296677e2dcf764ed0f00ec3a33effda26e",
+    "k": 6,
+    "id": "54f51b9656d0",
+    "kind": "STO submission",
+    "created_at": "2026-10-13T14:53:17.880059Z",
+    "pr": "43"
+   },
+   {
+    "digest": "af60631769e856a17b9d1e4372407cf5d24618b8e62069e2ff6ba2352462b7e9",
+    "k": 2,
+    "id": "6f7d25984ff8",
+    "kind": "STO submission",
+    "created_at": "2026-08-20T00:43:10.754905Z",
+    "pr": "5"
+   }
+  ]
+ },
+ "lean": {
+  "variant": "replanned",
+  "superseded": [],
+  "status": "stale",
+  "policy_verified": false,
+  "budget": null,
+  "runs": [],
+  "reason": "ForShor's pinned runs checked this seed's policy before it was re-planned under exact widths, 2026-10-28 (the template differs); the re-planned policy was not run through ForShor's harness"
+ },
+ "lean_verified": false,
+ "sto_mirror": {
+  "status": "accepted",
+  "stage": null,
+  "reason": null,
+  "target_width": 2048,
+  "seconds": 279.9,
+  "peak_gb": 6.95,
+  "cap_gb": 8.0,
+  "stage_seconds": {
+   "stage": 24.21,
+   "data": 23.89,
+   "report": 175.5,
+   "cert": 18.07,
+   "replay:Submitted": 10.32,
+   "replay:SubmittedCert": 20.91
+  },
+  "replay": [
+   {
+    "module": "Submitted",
+    "verdict": "replayed",
+    "decls": 12,
+    "peak_gb": 6.17
+   },
+   {
+    "module": "SubmittedCert",
+    "verdict": "replayed",
+    "decls": 19,
+    "peak_gb": 6.93
+   }
+  ],
+  "axioms": [
+   "Classical.choice",
+   "Quot.sound",
+   "propext"
+  ],
+  "statement_pinned": true,
+  "ladder_str": "2048:6 -> 354:6 -> 71:2 -> 37:leaf",
+  "ladder_matches_site": true,
+  "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+  "lean_toolchain": "leanprover/lean4:v4.28.0",
+  "checked_at": "2026-10-28T15:39:26+00:00",
+  "evidence": "seed_exact/S0d4cae7cc43f.json",
+  "command": "./run.sh sto-policy engine/data/forshor_submitted/S0d4cae7cc43f/site_policy.json --install",
+  "widths": "exact",
+  "checker": "sto-mirror",
+  "exact_ladder_kernel_proved": true,
+  "proves": "STO policy mirror, --widths exact: policy.check (STO's table contract per band, thresholds decrease) and chain_contracts at 2048 by decide +kernel; correct (evalPhase n \u03c6 xs = \u03c6\u00b7\u220fxs at every n); correct_reg and capacity (register semantics at the scan); correct_tight (the wrapping register semantics at the exact widths gives \u03c6\u00b7\u220fxs on operands fitting n) and exact_ladder (the exact ladder at 2048, by the kernel); kernel-replayed, axioms within {propext, Classical.choice, Quot.sound}, statements pinned. Not proved: gate-level equivalence with any circuit, the +1 root, reserve qubits."
+ },
+ "site_override": null,
+ "trust": {
+  "policy": "Policy Lean-verified at exact widths (STO mirror / PTP suite)",
+  "policy_level": "sto-mirror",
+  "policy_kind": "mid",
+  "policy_text": "Policy Lean-verified at exact widths (STO mirror / PTP suite): Lean's kernel checked, at the EXACT widths this board prices, that the register semantics is correct (the wrapping fixed-width registers give \u03c6\u00b7\u220fxs on operands that fit: PP correct_tight, PTP correct_exact), that the exact widths are the least overflow-free widths (no reachable register value or child operand overflows below them; the policy's exact ladder at n = 2048 is proved by the kernel), that every band's table satisfies STO's table contract, and that the thresholds decrease; the recursive evaluation equals \u03c6\u00b7\u220fxs at every width (PhaseProduct \u03c6ab, PhaseTripleProduct \u03c6abc). PhaseProduct is checked by ShorTableOptimization's policy mirror, PhaseTripleProduct by the PTP suite. It is not a circuit-level check (no gate-level equivalence with the priced Qualtran circuit or with ForShor's lowering; the +1 root and reserve qubits are not modelled), and PhaseTripleProduct's register model is by analogy with PhaseProduct. Weaker than ForShor policy-verified (circuit-level, at ForShor's scanned widths).",
+  "tables": {
+   "level": "lean",
+   "counts": {
+    "lean": 2,
+    "ci": 0,
+    "replay": 0,
+    "none": 0
+   },
+   "total": 2,
+   "tag": "Tables Lean-verified"
+  },
+  "cost": "no T stored: the board prices this record live (counted in Python, not proved in Lean)"
+ },
+ "flags": [
+  "seeded-from-planner",
+  "sto-mirror-algebra-verified",
+  "exact-widths-lean-verified",
+  "replanned-exact-widths"
+ ]
+}

@@ -1,0 +1,71 @@
+{
+ "schema": "pe.logical_profile/v1",
+ "name": "ChainPhaseProduct(pair_k2k2_w4,action_phi0)",
+ "counts": {
+  "toffoli": {
+   "lo": 0,
+   "hi": 0,
+   "source": "bloq"
+  },
+  "and": {
+   "lo": 152,
+   "hi": 152,
+   "source": "bloq"
+  },
+  "cswap": {
+   "lo": 0,
+   "hi": 0,
+   "source": "bloq"
+  },
+  "t": {
+   "lo": 0,
+   "hi": 0,
+   "source": "bloq"
+  },
+  "rotation": {
+   "lo": 0,
+   "hi": 0,
+   "source": "bloq"
+  },
+  "measurement": {
+   "lo": 152,
+   "hi": 152,
+   "source": "bloq"
+  },
+  "clifford": {
+   "lo": 1140,
+   "hi": 1140,
+   "source": "bloq"
+  }
+ },
+ "logical_qubits": {
+  "lo": 45,
+  "hi": 45,
+  "source": "bloq"
+ },
+ "depths": {
+  "toffoli_layers": {
+   "lo": 0,
+   "hi": 52,
+   "source": "bound"
+  },
+  "meas_rounds": {
+   "lo": 0,
+   "hi": 52,
+   "source": "bound"
+  },
+  "reaction_layers": {
+   "lo": 0,
+   "hi": 104,
+   "source": "bound"
+  }
+ },
+ "rotation_eps": null,
+ "extras": {},
+ "meta": {
+  "bloq": "ChainPhaseProduct(mode='PhaseProduct', chain=(Table(mode='PhaseProduct', k=2, point_order=(('int', 0), ('frac', 0), ('int', 1)), ops=(('phaseProduct', 0), ('phaseProduct', 1), ('addScaled', 0, 1, False, 0), ('phaseProduct', 0), ('addScaled', 0, 1, True, 0))), Table(mode='PhaseProduct', k=2, point_order=(('int', 0), ('frac', 0), ('int', 1)), ops=(('phaseProduct', 0), ('phaseProduct', 1), ('addScaled', 0, 1, False, 0), ('phaseProduct', 0), ('addScaled', 0, 1, True, 0)))), w=4, phi=Fraction(0, 1), level=0)",
+  "qualtran": "0.7.0",
+  "depth_provider": "dag_bound(toffoli+and+cswap)",
+  "factory": "tcost.bloqs:make_chain_bloq"
+ }
+}

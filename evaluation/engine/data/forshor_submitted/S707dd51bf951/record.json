@@ -1,0 +1,676 @@
+{
+ "schema": "sto-site-seeded-policy/1",
+ "id": "S707dd51bf951",
+ "seeded_from_planner": true,
+ "mode": "PhaseProduct",
+ "created_at": null,
+ "bands": [
+  {
+   "threshold": 81,
+   "k": 3,
+   "digest": "182928ca92ccf8bfc2819c4297dcad51d09d44d4411c6b5a803907e833f484c8",
+   "table_id": "KMY-PP3",
+   "table": {
+    "mode": "PhaseProduct",
+    "k": 3,
+    "point_order": [
+     "0",
+     "1",
+     "inf",
+     "-1",
+     "-2"
+    ],
+    "operations": [
+     [
+      "addScaled",
+      1,
+      2,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      1,
+      0
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "phaseProduct",
+      2
+     ],
+     [
+      "negate",
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      2,
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      2,
+      1,
+      1
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "negate",
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      2,
+      1,
+      1
+     ],
+     [
+      "shiftL",
+      0,
+      1
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      2,
+      1,
+      1
+     ],
+     [
+      "shiftR",
+      1,
+      1
+     ]
+    ]
+   }
+  }
+ ],
+ "widths": "exact",
+ "ladder_2048": [
+  [
+   2048,
+   3
+  ],
+  [
+   687,
+   3
+  ],
+  [
+   232,
+   3
+  ],
+  [
+   81,
+   3
+  ],
+  [
+   30,
+   null
+  ]
+ ],
+ "ladder_2048_scan": [
+  [
+   2048,
+   3
+  ],
+  [
+   698,
+   3
+  ],
+  [
+   248,
+   3
+  ],
+  [
+   98,
+   3
+  ],
+  [
+   48,
+   null
+  ]
+ ],
+ "replanned": {
+  "note": "re-planned under exact widths, 2026-10-28",
+  "changed": true,
+  "planner": "engine/tcost/planner.py::optimal_policy (one_table_per_k=True), widths=\"exact\"",
+  "n": 2048,
+  "delta": 0.01,
+  "tables": "the seed's own tables",
+  "unused_tables": []
+ },
+ "history": [
+  {
+   "provenance": "planner output at ForShor scanned widths (seeded 2026-10-27); superseded: re-planned under exact widths, 2026-10-28",
+   "widths": "scan",
+   "bands": [
+    {
+     "threshold": 248,
+     "k": 3,
+     "digest": "182928ca92ccf8bfc2819c4297dcad51d09d44d4411c6b5a803907e833f484c8"
+    }
+   ],
+   "ladder_2048_scan": [
+    [
+     2048,
+     3
+    ],
+    [
+     698,
+     3
+    ],
+    [
+     248,
+     3
+    ],
+    [
+     98,
+     null
+    ]
+   ],
+   "ladder_2048_exact": [
+    [
+     2048,
+     3
+    ],
+    [
+     687,
+     3
+    ],
+    [
+     232,
+     null
+    ]
+   ],
+   "site_policy": "site_policy.pre_exact.json",
+   "site_policy_sha256": "3adca8aca696186314100528f4cb0b3d3a8fba5feb424f48ce94be401e357d6a",
+   "template_sha256": "389ef5bb8cc1a7d97b27f404947737b7aeb1cc6d3654518fa65b143a76157777",
+   "lean": {
+    "variant": "pre_exact",
+    "superseded": [
+     {
+      "budget": "default",
+      "status": "lean-ok",
+      "reason": null,
+      "forshor": "ForShor-main (no commit, Lean v4.28.0)"
+     }
+    ],
+    "status": "policy-verified",
+    "policy_verified": true,
+    "budget": "default",
+    "runs": [
+     {
+      "id": "S707dd51bf951",
+      "variant": "pre_exact",
+      "budget": "default",
+      "max_heartbeats": 4000000,
+      "limit_s": 1800,
+      "mem_cap_gb": 8.0,
+      "site_policy": "site_policy.pre_exact.json",
+      "site_policy_sha256": "3adca8aca696186314100528f4cb0b3d3a8fba5feb424f48ce94be401e357d6a",
+      "template_sha256": "389ef5bb8cc1a7d97b27f404947737b7aeb1cc6d3654518fa65b143a76157777",
+      "forshor": {
+       "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_latest_build",
+       "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+       "commit_short": "10fe620",
+       "label": "ForShor latest (10fe620, Lean v4.36.0-rc1)",
+       "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+       "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+       "source": "cp -c -R of /Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/baseline (git worktree at ForShor 10fe620, git status empty, Lean sources equal to ~/Desktop/ForShor HEAD); the worktree's .git pointer file was removed from this copy so that no git command here touches the other worktree's index",
+       "default_tree": true
+      },
+      "command": "./run.sh forshor engine/data/forshor_submitted/S707dd51bf951/site_policy.pre_exact.json --from-policy",
+      "checked_at": "2026-10-28T19:29:00Z",
+      "status": "lean-ok",
+      "stage": null,
+      "reason": null,
+      "harness_id": "Fb7d528a51104",
+      "harness_id_matches_template": true,
+      "forshor_tree_sha256": "15529f23510e30c403b4b1cb7d06686fc5b8bc9d1b7fe47ffc5df61bbaf3959a",
+      "lean_version": "Lean (version 4.36.0-rc1, arm64-apple-darwin24.6.0, commit c9afcddf514a6772bd4d649f7cfc04eff0b9f15e, Release)",
+      "reference_document": {
+       "source": "emitted by the trusted tree's built forshor_policy_submission",
+       "binary_sha256": "106d7d35793cabaf9b0d5fc65ee3a802cc8cdbed5f3701c2c90b6b1dec9b0452",
+       "sha256": "45f767565b2891fb51bbfc46dd11602cc0f2399cf085d2557072e8de8e5b3102",
+       "fixed": {
+        "benchmark": {
+         "bits": 2048,
+         "trial_count": "386"
+        },
+        "precision": {
+         "eta": "2^-150",
+         "m": "1427247692705959881058285969449495136382746621"
+        }
+       },
+       "checked_in_agrees": true
+      },
+      "printed_trial_count": "386",
+      "run": {
+       "build_s": 86.5,
+       "print_s": 34.1,
+       "build_peak_rss_mb": 3687.9,
+       "print_peak_rss_mb": 3646.6,
+       "build_peak_tree_mb": 749.0,
+       "print_peak_tree_mb": 621.0,
+       "mem_cap_gb": 8.0,
+       "seconds": {
+        "stage": 83.4,
+        "waited_for_lean_slot": 0.0,
+        "lean": 120.6,
+        "python": 0.1
+       }
+      },
+      "printed_policy_matches": true,
+      "conversion_agrees": true,
+      "evidence": "seed_lean/S707dd51bf951.pre_exact.default.forshor_policy.json",
+      "seconds": 218.7
+     }
+    ],
+    "forshor": "ForShor 10fe620, v4.36.0-rc1",
+    "reason": null
+   },
+   "sto_mirror": {
+    "status": "accepted",
+    "stage": null,
+    "reason": null,
+    "target_width": 2048,
+    "seconds": 75.2,
+    "peak_gb": 6.19,
+    "cap_gb": 10.0,
+    "stage_seconds": {
+     "stage": 18.11,
+     "data": 18.47,
+     "report": 5.02,
+     "cert": 8.74,
+     "replay:Submitted": 10.11,
+     "replay:SubmittedCert": 9.46
+    },
+    "replay": [
+     {
+      "module": "Submitted",
+      "verdict": "replayed",
+      "decls": 5,
+      "peak_gb": 6.16
+     },
+     {
+      "module": "SubmittedCert",
+      "verdict": "replayed",
+      "decls": 8,
+      "peak_gb": 6.21
+     }
+    ],
+    "axioms": [
+     "Classical.choice",
+     "Quot.sound",
+     "propext"
+    ],
+    "statement_pinned": true,
+    "ladder_str": "2048:3 -> 698:3 -> 248:3 -> 98:leaf",
+    "ladder_matches_site": true,
+    "mirror_tree_sha256": "08f6620cca4341878d93540d036954a894235507aeef0c129b4832bd38621124",
+    "lean_toolchain": "leanprover/lean4:v4.28.0",
+    "checked_at": "2026-10-28T00:33:07+00:00",
+    "evidence": "seed_sto_mirror/S707dd51bf951.json",
+    "command": "./run.sh sto-policy engine/data/forshor_submitted/S707dd51bf951/site_policy.json --install",
+    "widths": "scan",
+    "checker": null,
+    "exact_ladder_kernel_proved": null,
+    "proves": "STO policy mirror, --widths exact: policy.check (STO's table contract per band, thresholds decrease) and chain_contracts at 2048 by decide +kernel; correct (evalPhase n \u03c6 xs = \u03c6\u00b7\u220fxs at every n); correct_reg and capacity (register semantics at the scan); correct_tight (the wrapping register semantics at the exact widths gives \u03c6\u00b7\u220fxs on operands fitting n) and exact_ladder (the exact ladder at 2048, by the kernel); kernel-replayed, axioms within {propext, Classical.choice, Quot.sound}, statements pinned. Not proved: gate-level equivalence with any circuit, the +1 root, reserve qubits."
+   }
+  }
+ ],
+ "files": {
+  "site_policy": "site_policy.json",
+  "template": "PolicyTemplate.lean",
+  "site_policy_pre_exact": "site_policy.pre_exact.json"
+ },
+ "site_policy_sha256": "e14aa9f9f346b06a0653c347f6bf0d6636867a06212f8e0202c3c66943ff7de5",
+ "template_sha256": "a215ea2d8521a1ee78b07801442777c73c0ba754b7ebccf06afa4eb895393688",
+ "provenance": {
+  "planner": "engine/tcost/planner.py::optimal_policy (one_table_per_k=True)",
+  "n": 2048,
+  "canonicalized": "consecutive planner bands with the same table merged, lowest threshold kept; Policy.choose(w) is unchanged at every width, so every price is unchanged",
+  "first_seen": {
+   "source": "milestone",
+   "milestone": "kmy",
+   "delta": 0.01
+  },
+  "occurrences": [
+   {
+    "source": "milestone",
+    "boards": [
+     "PP frontier n = 2048",
+     "library policies",
+     "full-run frontier n = 2048"
+    ],
+    "mode": "PhaseProduct",
+    "n": 2048,
+    "delta": 0.01,
+    "milestone": "kmy",
+    "milestone_label": "KMY benchmark",
+    "planner_bands": [
+     [
+      2048,
+      3,
+      "182928ca92cc"
+     ],
+     [
+      698,
+      3,
+      "182928ca92cc"
+     ],
+     [
+      248,
+      3,
+      "182928ca92cc"
+     ]
+    ]
+   },
+   {
+    "source": "milestone",
+    "boards": [
+     "PP frontier n = 2048",
+     "library policies",
+     "full-run frontier n = 2048"
+    ],
+    "mode": "PhaseProduct",
+    "n": 2048,
+    "delta": 0.0003,
+    "milestone": "kmy",
+    "milestone_label": "KMY benchmark",
+    "planner_bands": [
+     [
+      2048,
+      3,
+      "182928ca92cc"
+     ],
+     [
+      698,
+      3,
+      "182928ca92cc"
+     ],
+     [
+      248,
+      3,
+      "182928ca92cc"
+     ]
+    ]
+   },
+   {
+    "source": "milestone",
+    "boards": [
+     "PP frontier n = 2048",
+     "library policies",
+     "full-run frontier n = 2048"
+    ],
+    "mode": "PhaseProduct",
+    "n": 2048,
+    "delta": 0.0001,
+    "milestone": "kmy",
+    "milestone_label": "KMY benchmark",
+    "planner_bands": [
+     [
+      2048,
+      3,
+      "182928ca92cc"
+     ],
+     [
+      698,
+      3,
+      "182928ca92cc"
+     ],
+     [
+      248,
+      3,
+      "182928ca92cc"
+     ]
+    ]
+   },
+   {
+    "source": "milestone",
+    "boards": [
+     "PP frontier n = 2048",
+     "library policies",
+     "full-run frontier n = 2048"
+    ],
+    "mode": "PhaseProduct",
+    "n": 2048,
+    "delta": 1e-06,
+    "milestone": "kmy",
+    "milestone_label": "KMY benchmark",
+    "planner_bands": [
+     [
+      2048,
+      3,
+      "182928ca92cc"
+     ],
+     [
+      698,
+      3,
+      "182928ca92cc"
+     ],
+     [
+      248,
+      3,
+      "182928ca92cc"
+     ]
+    ]
+   }
+  ],
+  "tables": [
+   {
+    "digest": "182928ca92ccf8bfc2819c4297dcad51d09d44d4411c6b5a803907e833f484c8",
+    "k": 3,
+    "id": "KMY-PP3",
+    "kind": "KMY benchmark",
+    "created_at": null
+   }
+  ]
+ },
+ "lean": {
+  "variant": "replanned",
+  "superseded": [],
+  "status": "policy-verified",
+  "policy_verified": true,
+  "budget": "default",
+  "runs": [
+   {
+    "id": "S707dd51bf951",
+    "variant": "replanned",
+    "budget": "default",
+    "max_heartbeats": 4000000,
+    "limit_s": 1800,
+    "mem_cap_gb": 8.0,
+    "site_policy": "site_policy.json",
+    "site_policy_sha256": "e14aa9f9f346b06a0653c347f6bf0d6636867a06212f8e0202c3c66943ff7de5",
+    "template_sha256": "a215ea2d8521a1ee78b07801442777c73c0ba754b7ebccf06afa4eb895393688",
+    "forshor": {
+     "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_latest_build",
+     "commit": "10fe620568dfc1b4b3d98debaaf78219e3fa40f2",
+     "commit_short": "10fe620",
+     "label": "ForShor latest (10fe620, Lean v4.36.0-rc1)",
+     "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+     "mathlib": "4dc43842a11f257ffba2a611c943a133a65cb4b2",
+     "source": "cp -c -R of /Users/joshua/Desktop/github_packages/ForShor-dropin/dropin/baseline (git worktree at ForShor 10fe620, git status empty, Lean sources equal to ~/Desktop/ForShor HEAD); the worktree's .git pointer file was removed from this copy so that no git command here touches the other worktree's index",
+     "default_tree": true
+    },
+    "command": "./run.sh forshor engine/data/forshor_submitted/S707dd51bf951/site_policy.json --from-policy",
+    "checked_at": "2026-10-28T19:53:45Z",
+    "status": "lean-ok",
+    "stage": null,
+    "reason": null,
+    "harness_id": "F10527aad5a51",
+    "harness_id_matches_template": true,
+    "forshor_tree_sha256": "15529f23510e30c403b4b1cb7d06686fc5b8bc9d1b7fe47ffc5df61bbaf3959a",
+    "lean_version": "Lean (version 4.36.0-rc1, arm64-apple-darwin24.6.0, commit c9afcddf514a6772bd4d649f7cfc04eff0b9f15e, Release)",
+    "reference_document": {
+     "source": "emitted by the trusted tree's built forshor_policy_submission",
+     "binary_sha256": "106d7d35793cabaf9b0d5fc65ee3a802cc8cdbed5f3701c2c90b6b1dec9b0452",
+     "sha256": "45f767565b2891fb51bbfc46dd11602cc0f2399cf085d2557072e8de8e5b3102",
+     "fixed": {
+      "benchmark": {
+       "bits": 2048,
+       "trial_count": "386"
+      },
+      "precision": {
+       "eta": "2^-150",
+       "m": "1427247692705959881058285969449495136382746621"
+      }
+     },
+     "checked_in_agrees": true
+    },
+    "printed_trial_count": "386",
+    "run": {
+     "build_s": 64.8,
+     "print_s": 39.9,
+     "build_peak_rss_mb": 3625.6,
+     "print_peak_rss_mb": 3643.0,
+     "build_peak_tree_mb": 738.0,
+     "print_peak_tree_mb": 863.0,
+     "mem_cap_gb": 8.0,
+     "seconds": {
+      "stage": 44.1,
+      "waited_for_lean_slot": 0.0,
+      "lean": 104.7,
+      "python": 0.1
+     }
+    },
+    "printed_policy_matches": true,
+    "conversion_agrees": true,
+    "evidence": "seed_lean/S707dd51bf951.replanned.default.forshor_policy.json",
+    "seconds": 158.2
+   }
+  ],
+  "forshor": "ForShor 10fe620, v4.36.0-rc1",
+  "reason": null
+ },
+ "lean_verified": true,
+ "sto_mirror": {
+  "status": "accepted",
+  "stage": null,
+  "reason": null,
+  "target_width": 2048,
+  "seconds": 162.8,
+  "peak_gb": 6.28,
+  "cap_gb": 8.0,
+  "stage_seconds": {
+   "stage": 25.87,
+   "data": 25.19,
+   "report": 14.75,
+   "cert": 18.73,
+   "replay:Submitted": 20.08,
+   "replay:SubmittedCert": 18.82
+  },
+  "replay": [
+   {
+    "module": "Submitted",
+    "verdict": "replayed",
+    "decls": 6,
+    "peak_gb": 5.39
+   },
+   {
+    "module": "SubmittedCert",
+    "verdict": "replayed",
+    "decls": 19,
+    "peak_gb": 6.26
+   }
+  ],
+  "axioms": [
+   "Classical.choice",
+   "Quot.sound",
+   "propext"
+  ],
+  "statement_pinned": true,
+  "ladder_str": "2048:3 -> 687:3 -> 232:3 -> 81:3 -> 30:leaf",
+  "ladder_matches_site": true,
+  "mirror_tree_sha256": "9fbd46486ee72b584359d5b72e40960db819029e43a2eae7fa1f3713010dabd4",
+  "lean_toolchain": "leanprover/lean4:v4.28.0",
+  "checked_at": "2026-10-28T16:03:16+00:00",
+  "evidence": "seed_exact/S707dd51bf951.json",
+  "command": "./run.sh sto-policy engine/data/forshor_submitted/S707dd51bf951/site_policy.json --install",
+  "widths": "exact",
+  "checker": "sto-mirror",
+  "exact_ladder_kernel_proved": true,
+  "proves": "STO policy mirror, --widths exact: policy.check (STO's table contract per band, thresholds decrease) and chain_contracts at 2048 by decide +kernel; correct (evalPhase n \u03c6 xs = \u03c6\u00b7\u220fxs at every n); correct_reg and capacity (register semantics at the scan); correct_tight (the wrapping register semantics at the exact widths gives \u03c6\u00b7\u220fxs on operands fitting n) and exact_ladder (the exact ladder at 2048, by the kernel); kernel-replayed, axioms within {propext, Classical.choice, Quot.sound}, statements pinned. Not proved: gate-level equivalence with any circuit, the +1 root, reserve qubits."
+ },
+ "site_override": null,
+ "trust": {
+  "policy": "ForShor policy-verified (at ForShor's scanned widths)",
+  "policy_level": "forshor",
+  "policy_kind": "ok",
+  "policy_text": "ForShor policy-verified: ForShor's ShorPolicySubmission built on this site's ForShor harness (ForShor 10fe620, Lean v4.36.0-rc1, since 2026-10-28; the earlier ForShor-main runs are superseded): Lean's kernel checked every band's table (C1 to C4) and the thresholds, and ForShor's policy_submission_correct covers the compiled circuit, at ForShor's scanned widths. The IR the price reads is matched to the circuit at sampled widths only. PhaseProduct only. This is the policy as re-planned under exact widths (Stage 13): ForShor checked its tables and thresholds and its circuit at ForShor's SCANNED widths; the PhaseProduct board prices it at EXACT widths, which ForShor does not check (the STO mirror run covers the exact widths: register semantics, least overflow-free widths, not circuit-level). Run: ForShor 10fe620, v4.36.0-rc1.",
+  "tables": {
+   "level": "lean",
+   "counts": {
+    "lean": 1,
+    "ci": 0,
+    "replay": 0,
+    "none": 0
+   },
+   "total": 1,
+   "tag": "Tables Lean-verified"
+  },
+  "cost": "no T stored: the board prices this record live (counted in Python, not proved in Lean)"
+ },
+ "flags": [
+  "seeded-from-planner",
+  "sto-mirror-algebra-verified",
+  "exact-widths-lean-verified",
+  "replanned-exact-widths"
+ ]
+}
