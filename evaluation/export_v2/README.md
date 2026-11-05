@@ -49,8 +49,8 @@ valid evidence is **not exported** (decision D8: only verified rows are shown); 
   slow stage (`scripts/BandedPolicyReport.lean`, run by the interpreter as `lake env lean --run`); that is untested.
 * **Consequence:** the policies that verified are the oldest, simplest rows (the earliest PhaseTripleProduct row at all four deltas, and
   the earliest PhaseProduct row at two non-default deltas). The strong current frontier policies are the k = 8 ones, which are the ones
-  the harness could not verify. With evidence for 2 of 6 policies, 8 of 104 row-policies are listed (one PhaseTripleProduct row at
-  every delta, one PhaseProduct row at two deltas), so the listed baseline is far weaker than the true frontier. Unverified rows are not shown.
+  the harness could not verify. With evidence for 2 of 6 policies, 6 of 104 planner rows are listed (one PhaseTripleProduct row at
+  every delta, one PhaseProduct row at 1e-4 and 1e-6; the PhaseProduct rows also appear on the full board, so 8 board rows and 8 panels), so the listed baseline is far weaker than the true frontier. Unverified rows are not shown.
   Boards may therefore be empty at launch (the PhaseProduct and full boards have no rows at the default delta).
 * **Two bugs the real runs found:** (1) the harnesses name the width-rule field differently (`widths_rule` in check_banded_policy,
   `widths` in check_ptp_policy); the first converter read only the first and refused a genuinely accepted PhaseTripleProduct record.
