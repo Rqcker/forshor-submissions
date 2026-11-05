@@ -108,6 +108,8 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
     rows: Dict[str, List[Dict[str, Any]]] = {}
     for (board, delta), board_rows in rows_in.items():
         for r in board_rows:
+            if evidence[r["digest"]][0] is None:
+                continue   # D8: only policies with accepted STO mirror evidence are listed; the report names the rest
             for b in (("pp", "full") if board == "pp" else ("ptp",)):
                 view = copy.deepcopy(views[(b, delta, r["digest"])])
                 title = f"STO frontier after {r['id']}, {MODES[board]}, n = 2048, delta = {mapping.DELTA_VALUES[delta]:g}" + (
@@ -142,7 +144,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
 
 
 def evidence_report(policies: Dict[str, Dict[str, Any]], evidence: Dict[str, Tuple[Optional[Dict[str, Any]], Optional[str]]]) -> Dict[str, Any]:
-    """Which planner policies have valid policy-level evidence for this epoch, and why not for the rest (open item O1)."""
+    """Which planner policies have valid policy-level evidence for this epoch, and why not for the rest (open item O1b). Rows of policies without it are not exported (D8)."""
     items = []
     for digest, entry in sorted(policies.items(), key=lambda kv: (kv[1]["mode"], kv[0])):
         mirror, why = evidence[digest]
@@ -152,4 +154,5 @@ def evidence_report(policies: Dict[str, Dict[str, Any]], evidence: Dict[str, Tup
     rows = sum(i["rows"] for i in items)
     return {"policies": items, "distinctPolicies": len(items), "rowsTotal": rows,
             "rowsWithEvidence": sum(i["rows"] for i in items if i["evidence"] == "valid"),
+            "rowsExcluded": sum(i["rows"] for i in items if i["evidence"] != "valid"),
             "policiesWithoutEvidence": [i["digest"] for i in items if i["evidence"] != "valid"]}
