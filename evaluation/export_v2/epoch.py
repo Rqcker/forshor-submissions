@@ -78,12 +78,13 @@ def planner_rows(log: Callable[[str], None] = lambda s: None) -> Dict[Tuple[str,
 
 
 def listed_rows(rows_in: Dict[Tuple[str, str], List[Dict[str, Any]]], verified: Dict[str, str]):
-    """What is listed, per (board, delta): the planner's frontier rows whose policy is verified (D8), plus every verified policy at
-    every delta it is missing from.
+    """What is listed, per (board, delta): every planner frontier row (D9: checked or not, ranked together), plus every policy that
+    HAS been checked at every delta it is missing from.
 
-    Evidence is about the policy, not about a delta: only the rotation-synthesis price depends on delta. A verified policy that is not
-    the planner's pick at some delta is still a valid policy there, so it is listed there too, priced at that delta, with the identity
-    (id, time, pull request) of the earliest frontier row it appeared as. `verified` maps a policy digest to its board family.
+    The planner re-optimises per delta, so a policy that is its pick at one delta can be dominated at another. Evidence is about
+    the policy, not about a delta (only the rotation-synthesis price depends on delta), so a checked policy is listed at every delta,
+    priced there, with the identity (id, time, pull request) of the earliest frontier row it appeared as. Unchecked policies are only
+    listed where the planner itself picked them. `verified` maps a checked policy's digest to its board family.
     Returns (listed, number of rows added that the frontier did not itself contain)."""
     first: Dict[str, Dict[str, Any]] = {}
     for rows in rows_in.values():
@@ -93,7 +94,7 @@ def listed_rows(rows_in: Dict[Tuple[str, str], List[Dict[str, Any]]], verified: 
     listed: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
     added = 0
     for (board, delta), board_rows in rows_in.items():
-        keep = [dict(r, added=False) for r in board_rows if r["digest"] in verified]
+        keep = [dict(r, added=False) for r in board_rows]
         have = {r["digest"] for r in keep}
         for d in sorted(verified):
             if verified[d] == board and d not in have:
@@ -134,10 +135,6 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         evidence[digest] = store.stomirror(view_of(b0, first["delta"], digest)["policy_json"], model, "ptp" if entry["mode"] == MODES["ptp"] else "pp")
     verified = {d for d, (m, _) in evidence.items() if m is not None}
 
-    # What is listed: the planner's frontier rows whose policy is verified (D8), and, because a policy and its evidence do not
-    # depend on delta (only the rotation-synthesis price does), every verified policy at every delta, priced at that delta. A
-    # policy that is not the planner's pick at some delta is still a valid policy there. Its row carries the identity (id, time,
-    # pull request) of the earliest frontier row it appeared as.
     listed, added = listed_rows(rows_in, {d: policies[d]["board"] for d in verified})
 
     panels: Dict[str, Any] = {}
@@ -149,7 +146,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
                 title = (f"STO policy first found at {r['id']}" if r["added"] else f"STO frontier after {r['id']}") + (
                     f", {MODES[board]}, n = 2048, delta = {mapping.DELTA_VALUES[delta]:g}") + (", full order finding" if b == "full" else "")
                 view["title"] = view["policy_json"]["name"] = title
-                verification = {"stoMirror": evidence[r["digest"]][0], "forshorPolicy": None}
+                verification = {"stoMirror": evidence[r["digest"]][0], "forshorPolicy": None}   # None for a planner policy the STO mirror has not checked (D9)
                 detail = mapping.panel_path(epoch, r["id"], b, delta)
                 panel = mapping.panel_of(view, epoch=epoch, row_id=r["id"], board=b, delta=delta, verification=verification)
                 if detail in panels:
@@ -175,12 +172,12 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
                 "archiveCommit": archive_commit or _git("rev-parse", "HEAD"), "publisherCommit": publisher_commit}
     document["sourceDigest"] = sha256_hex(document)
     report = evidence_report(policies, evidence)
-    report["rowsAdded"] = added   # verified policy x delta rows the frontier did not itself contain
+    report["rowsAdded"] = added   # checked policy x delta rows the frontier did not itself contain
     return document, report
 
 
 def evidence_report(policies: Dict[str, Dict[str, Any]], evidence: Dict[str, Tuple[Optional[Dict[str, Any]], Optional[str]]]) -> Dict[str, Any]:
-    """Which planner policies have valid policy-level evidence for this epoch, and why not for the rest (open item O1b). Rows of policies without it are not exported (D8)."""
+    """Which planner policies have valid policy-level evidence for this epoch, and why not for the rest (open item O1b). Policies without it are still listed (D9) and marked unchecked on the page."""
     items = []
     for digest, entry in sorted(policies.items(), key=lambda kv: (kv[1]["mode"], kv[0])):
         mirror, why = evidence[digest]
@@ -190,5 +187,5 @@ def evidence_report(policies: Dict[str, Dict[str, Any]], evidence: Dict[str, Tup
     rows = sum(i["rows"] for i in items)
     return {"policies": items, "distinctPolicies": len(items), "rowsTotal": rows,
             "rowsWithEvidence": sum(i["rows"] for i in items if i["evidence"] == "valid"),
-            "rowsExcluded": sum(i["rows"] for i in items if i["evidence"] != "valid"),
+            "rowsUnchecked": sum(i["rows"] for i in items if i["evidence"] != "valid"),   # listed, marked unchecked (D9)
             "policiesWithoutEvidence": [i["digest"] for i in items if i["evidence"] != "valid"]}

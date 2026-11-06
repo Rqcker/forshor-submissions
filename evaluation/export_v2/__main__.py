@@ -73,7 +73,7 @@ def main(argv=None) -> int:
         Path(a.out).write_text(json.dumps(document, separators=(",", ":")))
         if a.report:
             Path(a.report).write_text(json.dumps(report, indent=1))
-        print(json.dumps({k: report[k] for k in ("distinctPolicies", "rowsTotal", "rowsWithEvidence", "rowsExcluded", "rowsAdded")}))
+        print(json.dumps({k: report[k] for k in ("distinctPolicies", "rowsTotal", "rowsWithEvidence", "rowsUnchecked", "rowsAdded")}))
         return 0
     policy_json = json.loads(Path(a.policy).read_text())
     req = request.build_request(policy_json, model=model, store=store, head_sha=a.head_sha, pull_number=a.pull, github_login=a.login,

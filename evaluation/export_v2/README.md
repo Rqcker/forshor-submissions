@@ -3,7 +3,7 @@
 Design and contract: `contracts/v2/DESIGN.md` in `zapatacomputing/forshor-site` (branch `contracts/v2-design`; unmerged).
 This package is the Python half of "engine -> contract". It is **not wired into any workflow**.
 
-It produces ledger-level inputs only: the model, rows **without ranks** (only policies with valid evidence), benchmarks, reference curves, panels and evidence.
+It produces ledger-level inputs only: the model, rows **without ranks**, benchmarks, reference curves, panels and evidence.
 Ranks, boards, the dashboard and the snapshot id are derived by forshor-site's one shared implementation (`assembleSnapshot`),
 so there is no second ranking in Python. `mapping.py` is the twin of forshor-site's `scripts/fixture-v2.ts`; a golden test
 checks it reproduces that builder's panels exactly from the same real engine views.
@@ -25,8 +25,10 @@ Evidence is for one policy (its digest: mode and bands, not the display title). 
 accepted it, at exact widths, at the model's width, for the same bands, on the exact policy file the envelope names (the record
 carries that file's sha256). **Evidence is valid only for the toolchain it ran on, and an epoch fixes the toolchain**: the Lean
 version, the STO base and the ForShor pin must equal the model's. Anything else is reported, never silently used. A planner policy without
-valid evidence is **not exported** (decision D8: only verified rows are shown); the evidence report counts and names what was left out
-(`rowsExcluded`, `policiesWithoutEvidence`).
+valid evidence is **still exported** (decision D9, which superseded D8) with `stoMirror: null`, and the page marks it unchecked; a
+*submission* without evidence is still refused. The evidence report counts them (`rowsUnchecked`, `policiesWithoutEvidence`). A policy
+that does have evidence is exported at every delta, priced there, even where the planner picked another policy (`rowsAdded`): evidence is
+about the policy, and only the rotation-synthesis price depends on delta.
 
 ## What the real data says (2026-11-05)
 
@@ -49,9 +51,8 @@ valid evidence is **not exported** (decision D8: only verified rows are shown); 
   slow stage (`scripts/BandedPolicyReport.lean`, run by the interpreter as `lake env lean --run`); that is untested.
 * **Consequence:** the policies that verified are the oldest, simplest rows (the earliest PhaseTripleProduct row at all four deltas, and
   the earliest PhaseProduct row at two non-default deltas). The strong current frontier policies are the k = 8 ones, which are the ones
-  the harness could not verify. With evidence for 2 of 6 policies, 6 of 104 planner rows are listed (one PhaseTripleProduct row at
-  every delta, one PhaseProduct row at 1e-4 and 1e-6; the PhaseProduct rows also appear on the full board, so 8 board rows and 8 panels), so the listed baseline is far weaker than the true frontier. Unverified rows are not shown.
-  Boards may therefore be empty at launch (the PhaseProduct and full boards have no rows at the default delta).
+  the harness could not verify. With evidence for 2 of 6 policies, 6 of 104 planner rows have evidence (one PhaseTripleProduct row at
+  every delta, one PhaseProduct row at 1e-4 and 1e-6), so the checked policies alone are far weaker than the true frontier. D9 lists the unchecked ones too, marked as such.
 * **Two bugs the real runs found:** (1) the harnesses name the width-rule field differently (`widths_rule` in check_banded_policy,
   `widths` in check_ptp_policy); the first converter read only the first and refused a genuinely accepted PhaseTripleProduct record.
   The real records are now test fixtures (`pytests/data/real`). (2) After the harness reported its timeout, the `lean --run` process it
