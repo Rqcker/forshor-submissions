@@ -189,3 +189,24 @@ def test_a_harness_that_times_out_is_killed_with_everything_it_started(tmp_path)
     import time
     time.sleep(0.3)
     assert not _alive("sleep 987124"), "the timed-out run left its child running"
+
+
+ARGV = textwrap.dedent('''
+    import json, sys, hashlib
+    from pathlib import Path
+    args = sys.argv[1:]
+    policy = Path(args[0]); out = Path(args[args.index("--out") + 1])
+    doc = json.loads(policy.read_text())
+    out.write_text(json.dumps({"tool": "stub", "policy_sha256": hashlib.sha256(policy.read_bytes()).hexdigest(), "target_width": 2048,
+        "widths_rule": "exact", "mode": doc["mode"], "verdict": "accepted", "argv": args,
+        "bands": [{"threshold": b["threshold"], "k": b["k"]} for b in doc["bands"]]}))
+''')
+
+
+def test_the_harness_stage_timeout_is_passed_only_when_asked_for(tmp_path):
+    tree = make_tree(tmp_path, stub=ARGV)
+    plain = evidence.run_mirror(PP_POLICY, "pp", tree, tmp_path / "a")
+    assert "--timeout" not in plain["record"]["argv"], "the harness keeps its own default"
+    long_ = evidence.run_mirror(PP_POLICY, "pp", tree, tmp_path / "b", stage_timeout=14400)
+    argv = long_["record"]["argv"]
+    assert argv[argv.index("--timeout") + 1] == "14400"
