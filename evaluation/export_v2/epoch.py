@@ -83,7 +83,8 @@ def listed_rows(rows_in: Dict[Tuple[str, str], List[Dict[str, Any]]], verified: 
 
     The planner re-optimises per delta, so a policy that is its pick at one delta can be dominated at another. Evidence is about
     the policy, not about a delta (only the rotation-synthesis price depends on delta), so a checked policy is listed at every delta,
-    priced there, with the identity (id, time, pull request) of the earliest frontier row it appeared as. Unchecked policies are only
+    priced there, with the time and pull request of the earliest frontier row it appeared as, and that row's id unless it is taken at that delta (then the
+    policy's own digest prefix). Unchecked policies are only
     listed where the planner itself picked them. `verified` maps a checked policy's digest to its board family.
     Returns (listed, number of rows added that the frontier did not itself contain)."""
     first: Dict[str, Dict[str, Any]] = {}
@@ -96,9 +97,16 @@ def listed_rows(rows_in: Dict[Tuple[str, str], List[Dict[str, Any]]], verified: 
     for (board, delta), board_rows in rows_in.items():
         keep = [dict(r, added=False) for r in board_rows]
         have = {r["digest"] for r in keep}
+        taken = {r["id"] for r in keep}
         for d in sorted(verified):
             if verified[d] == board and d not in have:
-                keep.append(dict(first[d], added=True))
+                row = dict(first[d], added=True, foundAt=first[d]["id"])
+                if row["id"] in taken:
+                    # A frontier row id names a submission event, not a policy, so the planner's own pick at this delta can carry the
+                    # same id. Row ids are unique per board and delta (they are the panel's address): this policy takes its own digest.
+                    row["id"] = d[:12]
+                taken.add(row["id"])
+                keep.append(row)
                 added += 1
         listed[(board, delta)] = keep
     return listed, added
@@ -143,7 +151,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         for r in board_rows:
             for b in boards_of(board):
                 view = copy.deepcopy(view_of(b, delta, r["digest"]))
-                title = (f"STO policy first found at {r['id']}" if r["added"] else f"STO frontier after {r['id']}") + (
+                title = (f"STO policy first found at {r['foundAt']}" if r["added"] else f"STO frontier after {r['id']}") + (
                     f", {MODES[board]}, n = 2048, delta = {mapping.DELTA_VALUES[delta]:g}") + (", full order finding" if b == "full" else "")
                 view["title"] = view["policy_json"]["name"] = title
                 verification = {"stoMirror": evidence[r["digest"]][0], "forshorPolicy": None}   # None for a planner policy the STO mirror has not checked (D9)

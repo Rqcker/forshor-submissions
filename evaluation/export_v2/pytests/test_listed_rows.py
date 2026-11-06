@@ -72,3 +72,23 @@ def test_several_frontier_rows_of_one_policy_are_all_kept():
     rows[("pp", "1e-2")] = [row("v1", "V", "2026-08-20T00:00:00Z"), row("v2", "V", "2026-09-01T00:00:00Z")]
     listed, _ = listed_rows(rows, {"V": "pp"})
     assert [r["id"] for r in listed[("pp", "1e-2")]] == ["v1", "v2"]
+
+
+def test_an_added_row_whose_id_is_taken_at_that_delta_gets_its_own_digest_prefix_so_ids_stay_unique():
+    """The real collision: a frontier row id names a submission event, so the planner's own pick at 1e-2 and the checked policy's first
+    appearance can be the same id."""
+    rows = frontier()
+    digest_v = "ab" * 32
+    rows[("pp", "1e-2")] = [row("v1", "U", "2026-08-20T00:00:00Z")]          # the planner's pick at 1e-2 has the id the checked policy first had
+    rows[("pp", "1e-4")] = [row("v1", digest_v, "2026-08-20T00:00:00Z")]
+    rows[("pp", "3e-4")] = [row("u1", "U", "2026-10-01T00:00:00Z")]          # no clash here
+    rows[("pp", "1e-6")] = [row("u2", "U", "2026-10-01T00:00:00Z")]
+    listed, _ = listed_rows(rows, {digest_v: "pp"})
+    at_default = listed[("pp", "1e-2")]
+    assert [r["id"] for r in at_default] == ["v1", digest_v[:12]]
+    assert at_default[1]["foundAt"] == "v1", "the original id is kept for the panel's title"
+    for key, rs in listed.items():
+        ids = [r["id"] for r in rs]
+        assert len(ids) == len(set(ids)), f"duplicate row id on {key}"
+    # where there is no clash the natural id is used
+    assert [r["id"] for r in listed[("pp", "3e-4")]] == ["u1", "v1"]
