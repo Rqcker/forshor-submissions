@@ -149,3 +149,43 @@ def test_a_demo_mirror_record_cannot_satisfy_the_pinned_contract():
     rec["sto_mirror"]["lean_toolchain"] = MODEL["lean"]
     got, why = evidence.stomirror_from_seed(rec, MODEL)
     assert got is None and "revisions" in why
+
+
+ORPHAN = textwrap.dedent('''
+    import json, subprocess, sys, hashlib
+    from pathlib import Path
+    args = sys.argv[1:]
+    policy = Path(args[0]); out = Path(args[args.index("--out") + 1])
+    subprocess.Popen(["sleep", "987123"])        # what a harness leaves behind: a child that outlives it
+    doc = json.loads(policy.read_text())
+    out.write_text(json.dumps({"tool": "stub", "policy_sha256": hashlib.sha256(policy.read_bytes()).hexdigest(), "target_width": 2048,
+        "widths_rule": "exact", "mode": doc["mode"], "verdict": "accepted", "bands": [{"threshold": b["threshold"], "k": b["k"]} for b in doc["bands"]]}))
+''')
+HANG = textwrap.dedent('''
+    import subprocess, sys, time
+    subprocess.Popen(["sleep", "987124"])
+    time.sleep(60)
+''')
+
+
+def _alive(marker: str) -> bool:
+    import subprocess
+    return subprocess.run(["pgrep", "-f", marker], capture_output=True).returncode == 0
+
+
+def test_a_child_the_harness_leaves_behind_is_swept_when_it_ends(tmp_path):
+    tree = make_tree(tmp_path, stub=ORPHAN)
+    env = evidence.run_mirror(PP_POLICY, "pp", tree, tmp_path / "o")
+    assert env["record"]["verdict"] == "accepted"
+    import time
+    time.sleep(0.3)
+    assert not _alive("sleep 987123"), "the orphan outlived the run"
+
+
+def test_a_harness_that_times_out_is_killed_with_everything_it_started(tmp_path):
+    tree = make_tree(tmp_path, stub=HANG)
+    with pytest.raises(Exception):
+        evidence.run_mirror(PP_POLICY, "pp", tree, tmp_path / "o2", timeout=2)
+    import time
+    time.sleep(0.3)
+    assert not _alive("sleep 987124"), "the timed-out run left its child running"

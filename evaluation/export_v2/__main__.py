@@ -21,13 +21,18 @@ def _log(message: str) -> None:
     print(message, file=sys.stderr, flush=True)
 
 
-def _planner_policies(store: EvidenceStore, model):
-    """Distinct planner policies (digest -> board family and policy JSON), without pricing them."""
+def _planner_policies(store: EvidenceStore, model, only: str = "all"):
+    """Distinct listed policies (digest -> board family and policy JSON), without pricing them: the planner's frontier policies and the
+    single-arity baselines, or one of the two."""
     from . import epoch
     out = {}
-    for (board, _delta), rows in epoch.planner_rows(_log).items():
-        for r in rows:
-            out.setdefault(r["digest"], (board, r["policy"].to_json()))
+    if only in ("all", "planner"):
+        for (board, _delta), rows in epoch.planner_rows(_log).items():
+            for r in rows:
+                out.setdefault(r["digest"], (board, r["policy"].to_json()))
+    if only in ("all", "baselines"):
+        for b in epoch.baseline_policies(_log):
+            out.setdefault(b["digest"], (b["board"], b["policy"].to_json()))
     return out
 
 
@@ -36,6 +41,9 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="command", required=True)
     n = sub.add_parser("evidence-needed"); n.add_argument("out_dir"); n.add_argument("--evidence-dir")
     r = sub.add_parser("run-mirror"); r.add_argument("out_dir"); r.add_argument("--tree", required=True); r.add_argument("--evidence-dir")
+    for p in (n, r):
+        p.add_argument("--only", choices=("all", "planner", "baselines"), default="all", help="which listed policies to consider")
+    r.add_argument("--timeout", type=int, default=7200, help="seconds before one harness run is killed (default 7200)")
     e = sub.add_parser("epoch-input"); e.add_argument("out"); e.add_argument("--publisher-commit", required=True)
     e.add_argument("--evidence-dir"); e.add_argument("--archive-commit"); e.add_argument("--updated-at"); e.add_argument("--report")
     q = sub.add_parser("request"); q.add_argument("out"); q.add_argument("--policy", required=True); q.add_argument("--evidence-dir", required=True)
@@ -50,7 +58,7 @@ def main(argv=None) -> int:
     model = epoch.model_of()
     if a.command in ("evidence-needed", "run-mirror"):
         out = Path(a.out_dir); out.mkdir(parents=True, exist_ok=True)
-        policies = _planner_policies(store, model)
+        policies = _planner_policies(store, model, a.only)
         missing = {}
         for digest, (board, pj) in policies.items():
             ok, why = store.stomirror(pj, model, "ptp" if board == "ptp" else "pp")
@@ -65,7 +73,7 @@ def main(argv=None) -> int:
         else:
             for d, (b, pj, w) in missing.items():
                 _log(f"harness on {d[:16]} ({b}) ...")
-                env = run_mirror(pj, b, Path(a.tree), out)
+                env = run_mirror(pj, b, Path(a.tree), out, timeout=a.timeout)
                 _log(f"  verdict: {env['record'].get('verdict')}")
         return 0
     if a.command == "epoch-input":

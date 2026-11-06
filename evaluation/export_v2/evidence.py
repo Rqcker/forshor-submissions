@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -143,10 +145,26 @@ def run_mirror(policy_json: Dict[str, Any], board: str, tree: Path, out_dir: Pat
     policy_file.write_text(json.dumps(policy_json, indent=1, ensure_ascii=False))
     record_file = out_dir / f"{digest[:16]}.record.json"
     script = "check_ptp_policy.py" if board == "ptp" else "check_banded_policy.py"
-    proc = subprocess.run([python, str(tree / "scripts" / script), str(policy_file), "--target-width", "2048", "--widths", "exact",
-                           "--cap-gb", str(cap_gb), "--out", str(record_file)], cwd=tree, capture_output=True, text=True, timeout=timeout)
+    # The harness runs lake and `lean --run` underneath it, and when its own stage times out it leaves the interpreter running (full CPU,
+    # and it blocks the next check). So it gets its own process group, and the whole group is swept when it ends, however it ends.
+    # Only this group is touched: never another session's Lean.
+    # Its output goes to a log file, never a pipe: an orphan inherits a pipe and would hold it open, so waiting on it would block until
+    # the orphan exits.
+    log_file = out_dir / f"{digest[:16]}.harness.log"
+    with open(log_file, "w") as log:
+        proc = subprocess.Popen([python, str(tree / "scripts" / script), str(policy_file), "--target-width", "2048", "--widths", "exact",
+                                 "--cap-gb", str(cap_gb), "--out", str(record_file)], cwd=tree, stdout=log, stderr=subprocess.STDOUT,
+                                start_new_session=True)
+        try:
+            proc.wait(timeout=timeout)
+        finally:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)   # timed out, or a leaked `lean --run` outlived the harness; an empty group is not found
+            except ProcessLookupError:
+                pass
+            proc.wait()
     if not record_file.exists():
-        raise RuntimeError(f"the harness wrote no record (exit {proc.returncode}): {proc.stderr[-400:]}")
+        raise RuntimeError(f"the harness wrote no record (exit {proc.returncode}): {log_file.read_text()[-400:]}")
     record = json.loads(record_file.read_text())
     envelope = {"schema": SCHEMA, "policyDigest": digest,
                 "policyFile": {"name": policy_file.name, "sha256": hashlib.sha256(policy_file.read_bytes()).hexdigest()},
