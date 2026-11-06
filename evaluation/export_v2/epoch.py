@@ -70,46 +70,57 @@ def planner_rows(log: Callable[[str], None] = lambda s: None) -> Dict[Tuple[str,
                 tabs = [T for T in eng.library.sto_tables(upto=i) if T.mode == mode]
                 P, _ = eng.planner.optimal_policy(tabs, mode, pricing.N, delta)
                 Q = eng.seed_policies.canonical(P)
-                rows.append({"id": r["id"], "createdAt": r["created_at"], "pr": r.get("pr"), "policy": Q,
+                rows.append({"id": r["id"], "createdAt": r["created_at"], "pr": r.get("pr"), "policy": Q, "number": i,
                              "digest": policy_digest(Q.to_json())})
             out[(board, delta_key)] = rows
             log(f"planner rows {board} {delta_key}: {len(rows)}")
     return out
 
 
-def listed_rows(rows_in: Dict[Tuple[str, str], List[Dict[str, Any]]], verified: Dict[str, str]):
-    """What is listed, per (board, delta): every planner frontier row (D9: checked or not, ranked together), plus every policy that
-    HAS been checked at every delta it is missing from.
+# Deliberately weaker policies, so the boards and the T-against-qubits plot have structure beyond the planner's frontier: for each
+# board family, the best policy that uses a single arity k at every level. They are valid policies priced by the same engine; they are
+# not claimed to be good, and they have no STO mirror evidence. Generated once at the default delta and repriced at every delta, so a
+# baseline is the same policy on every delta. Their creation time is a fixed constant (the day they were generated), never "now", so the
+# export stays reproducible.
+BASELINE_ARITIES = (2, 3, 4, 5, 6)
+BASELINE_CREATED_AT = "2026-11-06T00:00:00Z"
 
-    The planner re-optimises per delta, so a policy that is its pick at one delta can be dominated at another. Evidence is about
-    the policy, not about a delta (only the rotation-synthesis price depends on delta), so a checked policy is listed at every delta,
-    priced there, with the time and pull request of the earliest frontier row it appeared as, and that row's id unless it is taken at that delta (then the
-    policy's own digest prefix). Unchecked policies are only
-    listed where the planner itself picked them. `verified` maps a checked policy's digest to its board family.
-    Returns (listed, number of rows added that the frontier did not itself contain)."""
-    first: Dict[str, Dict[str, Any]] = {}
-    for rows in rows_in.values():
-        for r in rows:
-            if r["digest"] in verified and (r["digest"] not in first or r["createdAt"] < first[r["digest"]]["createdAt"]):
-                first[r["digest"]] = r
+
+def baseline_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[str, Any]]:
+    """The single-arity baseline policies: PhaseProduct first (they appear on the PhaseProduct and full boards), then
+    PhaseTripleProduct, numbered after the library's last submission."""
+    eng = engine.load()
+    subs = eng.library.submissions()
+    tabs = eng.library.sto_tables(upto=len(subs))
+    out: List[Dict[str, Any]] = []
+    for board, mode in MODES.items():
+        for k in BASELINE_ARITIES:
+            chosen = [t for t in tabs if t.mode == mode and t.k == k]
+            if not chosen:
+                continue
+            P, _ = eng.planner.optimal_policy(chosen, mode, pricing.N, mapping.DELTA_VALUES["1e-2"], name=f"baseline-k{k}")
+            Q = eng.seed_policies.canonical(P)
+            digest = policy_digest(Q.to_json())
+            if any(b["digest"] == digest for b in out):
+                continue
+            out.append({"id": digest[:12], "createdAt": BASELINE_CREATED_AT, "pr": None, "policy": Q, "digest": digest,
+                        "number": len(subs) + len(out) + 1, "board": board, "baseline": True})
+            log(f"baseline {board} k={k}: {digest[:12]} forshor_sub{len(subs) + len(out)}")
+    return out
+
+
+def list_rows(rows_in: Dict[Tuple[str, str], List[Dict[str, Any]]], baselines: List[Dict[str, Any]]):
+    """What is listed, per (board, delta): every planner frontier row (D9: checked or not, ranked together) and the baseline policies
+    of that board family, at every delta."""
+    deltas = sorted({d for (_b, d) in rows_in})
     listed: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
-    added = 0
     for (board, delta), board_rows in rows_in.items():
-        keep = [dict(r, added=False) for r in board_rows]
-        have = {r["digest"] for r in keep}
-        taken = {r["id"] for r in keep}
-        for d in sorted(verified):
-            if verified[d] == board and d not in have:
-                row = dict(first[d], added=True, foundAt=first[d]["id"])
-                if row["id"] in taken:
-                    # A frontier row id names a submission event, not a policy, so the planner's own pick at this delta can carry the
-                    # same id. Row ids are unique per board and delta (they are the panel's address): this policy takes its own digest.
-                    row["id"] = d[:12]
-                taken.add(row["id"])
-                keep.append(row)
-                added += 1
-        listed[(board, delta)] = keep
-    return listed, added
+        listed[(board, delta)] = list(board_rows) + [b for b in baselines if b["board"] == board]
+    for b in baselines:   # a baseline on a board that has no frontier rows at some delta is still listed there
+        for d in deltas:
+            if (b["board"], d) not in listed:
+                listed[(b["board"], d)] = [x for x in baselines if x["board"] == b["board"]]
+    return listed
 
 
 def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_commit: Optional[str] = None,
@@ -134,6 +145,10 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         for r in rows:
             entry = policies.setdefault(r["digest"], {"mode": MODES[board], "board": board, "policy": r["policy"], "uses": []})
             entry["uses"].append({"board": board, "delta": delta, "rowId": r["id"]})
+    baselines = baseline_policies(log)
+    for b in baselines:
+        entry = policies.setdefault(b["digest"], {"mode": MODES[b["board"]], "board": b["board"], "policy": b["policy"], "uses": []})
+        entry["uses"].append({"board": b["board"], "delta": "1e-2", "rowId": b["id"]})
 
     # Evidence is about the policy, not about a delta, so it is looked up once per distinct policy (one pricing to get its file).
     evidence: Dict[str, Tuple[Optional[Dict[str, Any]], Optional[str]]] = {}
@@ -141,9 +156,8 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         first = entry["uses"][0]
         b0 = boards_of(first["board"])[0]
         evidence[digest] = store.stomirror(view_of(b0, first["delta"], digest)["policy_json"], model, "ptp" if entry["mode"] == MODES["ptp"] else "pp")
-    verified = {d for d, (m, _) in evidence.items() if m is not None}
 
-    listed, added = listed_rows(rows_in, {d: policies[d]["board"] for d in verified})
+    listed = list_rows(rows_in, baselines)
 
     panels: Dict[str, Any] = {}
     rows: Dict[str, List[Dict[str, Any]]] = {}
@@ -151,7 +165,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         for r in board_rows:
             for b in boards_of(board):
                 view = copy.deepcopy(view_of(b, delta, r["digest"]))
-                title = (f"STO policy first found at {r['foundAt']}" if r["added"] else f"STO frontier after {r['id']}") + (
+                title = (f"Baseline policy {r['digest'][:12]}" if r.get("baseline") else f"STO frontier after {r['id']}") + (
                     f", {MODES[board]}, n = 2048, delta = {mapping.DELTA_VALUES[delta]:g}") + (", full order finding" if b == "full" else "")
                 view["title"] = view["policy_json"]["name"] = title
                 verification = {"stoMirror": evidence[r["digest"]][0], "forshorPolicy": None}   # None for a planner policy the STO mirror has not checked (D9)
@@ -161,7 +175,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
                     raise ValueError(f"two listed rows share the id {r['id']} on {b} at {delta}")
                 panels[detail] = panel
                 rows.setdefault(f"{b}/{delta}", []).append(mapping.row_of(
-                    panel, origin="planner", created_at=r["createdAt"], pull_request_url=ARCHIVE_PR.format(r["pr"]) if r["pr"] else None,
+                    panel, origin="planner", name=f"forshor_sub{r['number']}", created_at=r["createdAt"], pull_request_url=ARCHIVE_PR.format(r["pr"]) if r["pr"] else None,
                     submission_id=None, detail=detail))
 
     charts: Dict[str, Any] = {}
@@ -180,7 +194,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
                 "archiveCommit": archive_commit or _git("rev-parse", "HEAD"), "publisherCommit": publisher_commit}
     document["sourceDigest"] = sha256_hex(document)
     report = evidence_report(policies, evidence)
-    report["rowsAdded"] = added   # checked policy x delta rows the frontier did not itself contain
+    report["rowsBaseline"] = sum(len(v) for v in listed.values() for r in v if r.get("baseline"))   # baseline policy x delta rows
     return document, report
 
 

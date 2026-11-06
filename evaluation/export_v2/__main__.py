@@ -42,6 +42,7 @@ def main(argv=None) -> int:
     for flag in ("head-sha", "login", "run-id", "submitted-at", "evaluated-at", "archive-commit", "evaluation-key", "base-generation"):
         q.add_argument(f"--{flag}", required=True)
     q.add_argument("--pull", type=int, required=True); q.add_argument("--accepted-id", action="append", default=[])
+    q.add_argument("--number", type=int, required=True, help="the submission number: /v2/state nextNumber; the row is named forshor_sub<number>")
     a = ap.parse_args(argv)
 
     from . import epoch, request
@@ -73,13 +74,13 @@ def main(argv=None) -> int:
         Path(a.out).write_text(json.dumps(document, separators=(",", ":")))
         if a.report:
             Path(a.report).write_text(json.dumps(report, indent=1))
-        print(json.dumps({k: report[k] for k in ("distinctPolicies", "rowsTotal", "rowsWithEvidence", "rowsUnchecked", "rowsAdded")}))
+        print(json.dumps({k: report[k] for k in ("distinctPolicies", "rowsTotal", "rowsWithEvidence", "rowsUnchecked", "rowsBaseline")}))
         return 0
     policy_json = json.loads(Path(a.policy).read_text())
     req = request.build_request(policy_json, model=model, store=store, head_sha=a.head_sha, pull_number=a.pull, github_login=a.login,
                                 run_id=a.run_id, submitted_at=a.submitted_at, evaluated_at=a.evaluated_at, archive_commit=a.archive_commit,
                                 accepted_ids=a.accepted_id or [a.head_sha], evaluation_key=a.evaluation_key,
-                                base_generation=a.base_generation, log=_log)
+                                base_generation=a.base_generation, number=a.number, log=_log)
     Path(a.out).write_text(json.dumps(req, separators=(",", ":")))
     print(f"wrote {a.out}")
     return 0

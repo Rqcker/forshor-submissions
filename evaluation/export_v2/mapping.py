@@ -126,13 +126,13 @@ def trust_of(verification: Raw) -> Raw:
             "cost": "python-not-proved-in-lean"}
 
 
-def row_of(panel: Raw, *, origin: str, created_at: str, pull_request_url: Optional[str], submission_id: Optional[str],
+def row_of(panel: Raw, *, origin: str, name: str, created_at: str, pull_request_url: Optional[str], submission_id: Optional[str],
            detail: str) -> Raw:
     """A ledger row (no rank): the numbers a board shows, taken from the panel they came from."""
     full = panel["fullRun"]
     label = full["ladderLabel"] if full else panel["ladderLabel"]
     return {
-        "rowId": panel["rowId"], "origin": origin, "T": full["T"] if full else panel["T"],
+        "rowId": panel["rowId"], "origin": origin, "name": name, "T": full["T"] if full else panel["T"],
         "qubits": full["qubits"] if full else panel["qubits"], "ladder": ladder_of(label), "ladderLabel": label,
         "createdAt": created_at, "pullRequestUrl": pull_request_url, "submissionId": submission_id,
         "trust": trust_of(panel["verification"]), "detail": detail,

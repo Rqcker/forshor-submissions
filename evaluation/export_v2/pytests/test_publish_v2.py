@@ -15,9 +15,9 @@ META = {"evaluationKey": KEY, "headSha": "a" * 40, "runId": "7"}
 T0 = dt.datetime(2026, 11, 5, 12, 0, 0, tzinfo=dt.timezone.utc)
 
 
-def state(generation="g1", updated="2026-11-05T12:00:00.000Z", done=None, model=MODEL):
+def state(generation="g1", updated="2026-11-05T12:00:00.000Z", done=None, model=MODEL, number=22):
     return {"baseGeneration": generation, "epoch": "e", "model": model, "publication": {"snapshotId": "s", "updatedAt": updated},
-            "submissionIds": [], "completedEvaluations": done or {}}
+            "submissionIds": [], "nextNumber": number, "completedEvaluations": done or {}}
 
 
 class Harness:
@@ -29,7 +29,8 @@ class Harness:
 
     def price(self):
         self.priced += 1
-        return {"schema": "forshor.publish/v2", "evaluation": {"headSha": "a" * 40}, "archive": {}, "priced": []}
+        return {"schema": "forshor.publish/v2", "evaluation": {"headSha": "a" * 40}, "archive": {},
+                "priced": [{"row": {"name": "forshor_sub0"}}, {"row": {"name": "forshor_sub0"}}]}
 
     def send(self, req):
         self.sent.append(req)
@@ -98,3 +99,10 @@ def test_it_gives_up_after_the_attempts_and_says_why():
     with pytest.raises(RetryPublication):
         h.run(attempts=3)
     assert h.slept == [1, 2] and len(h.sent) == 3
+
+
+def test_every_row_is_named_from_the_live_next_number_and_a_retry_renames_it():
+    h = Harness([state("g1", number=22), state("g2", updated="2026-11-05T12:30:00.000Z", number=23)], [RetryPublication("409"), {"snapshotId": "s3"}])
+    h.run()
+    assert [[p["row"]["name"] for p in s["priced"]] for s in h.sent] == [["forshor_sub22"] * 2, ["forshor_sub23"] * 2]
+    assert h.priced == 1, "still priced once"

@@ -5,7 +5,8 @@ error re-read state and send again. Never runs submitted Lean. Not wired into an
 
 What is different from v1:
 * The request is priced ONCE. A retry only refreshes the three things that depend on the live state: `baseGeneration`,
-  `evaluation.evaluatedAt` (must be later than the live snapshot's time), and the archive view (`archive.acceptedIds` and
+  `evaluation.evaluatedAt` (must be later than the live snapshot's time), the policy name (`forshor_sub<nextNumber>`, assigned by
+  the publisher from its ledger), and the archive view (`archive.acceptedIds` and
   `evaluation.archiveCommit`, re-fetched like v1 does).
 * The epoch's model is checked before any compute. A changed model is not publishable into the live epoch (design D5), and
   retrying cannot fix it, so it is an error, never a retry.
@@ -69,6 +70,8 @@ def publish_v2_with_recovery(metadata: Dict[str, Any], model: Dict[str, Any], fe
             request["baseGeneration"] = state["baseGeneration"]
             request["evaluation"]["evaluatedAt"] = _iso(at)
             request["archive"]["acceptedIds"], request["evaluation"]["archiveCommit"] = refresh()
+            for priced in request["priced"]:   # the publisher assigns the name: the next number after everything already stored
+                priced["row"]["name"] = f"forshor_sub{state['nextNumber']}"
             return send(request)
         except RetryPublication:
             if attempt == attempts - 1:
@@ -109,12 +112,12 @@ def main(argv=None) -> int:
     revision = _archive_view(Path(a.archive))[1]
 
     def price():
-        # the evaluated-at, base generation and accepted ids here are placeholders; the recovery loop sets the live values
+        # the evaluated-at, base generation, accepted ids and policy number here are placeholders; the recovery loop sets the live values
         return request.build_request(
             json.loads(Path(a.policy).read_text()), model=model, store=EvidenceStore(Path(a.evidence_dir)),
             head_sha=metadata["headSha"], pull_number=int(metadata["pullRequestUrl"].rsplit("/", 1)[1]),
             github_login=metadata["githubLogin"], run_id=str(metadata["runId"]), submitted_at=metadata["submittedAt"],
-            evaluated_at=metadata["submittedAt"], archive_commit=revision, accepted_ids=[],
+            evaluated_at=metadata["submittedAt"], archive_commit=revision, accepted_ids=[], number=0,
             evaluation_key=metadata["evaluationKey"], base_generation="", log=lambda s: print(s, flush=True))
 
     result = publish_v2_with_recovery(metadata, model, state_of, price, lambda: _archive_view(Path(a.archive)),

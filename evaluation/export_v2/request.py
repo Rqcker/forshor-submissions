@@ -21,7 +21,7 @@ def boards_for(mode: str) -> List[str]:
 
 def build_request(policy_json: Dict[str, Any], *, model: Dict[str, Any], store: EvidenceStore, head_sha: str, pull_number: int,
                   github_login: str, run_id: str, submitted_at: str, evaluated_at: str, archive_commit: str,
-                  accepted_ids: List[str], evaluation_key: str, base_generation: str,
+                  accepted_ids: List[str], evaluation_key: str, base_generation: str, number: int,
                   forshor: Optional[Dict[str, Any]] = None, log: Callable[[str], None] = lambda s: None) -> Dict[str, Any]:
     eng = engine.load()
     policy = eng.tables.Policy.from_json(policy_json)
@@ -40,7 +40,7 @@ def build_request(policy_json: Dict[str, Any], *, model: Dict[str, Any], store: 
             log(f"priced {board} {delta}")
             detail = mapping.panel_path(epoch, head_sha, board, delta)
             panel = mapping.panel_of(views[board], epoch=epoch, row_id=head_sha, board=board, delta=delta, verification=verification)
-            row = mapping.row_of(panel, origin="submission", created_at=submitted_at, pull_request_url=pr_url,
+            row = mapping.row_of(panel, origin="submission", name=f"forshor_sub{number}", created_at=submitted_at, pull_request_url=pr_url,
                                  submission_id=head_sha, detail=detail)
             priced.append({"board": board, "delta": delta, "row": row, "panel": panel})
     return {

@@ -57,13 +57,14 @@ def test_ladder_parsing():
 def test_a_row_takes_its_numbers_from_the_panel_it_came_from():
     for name, case in GOLDEN["cases"].items():
         panel = case["panel"]
-        row = mapping.row_of(panel, origin="planner", created_at="2026-01-01T00:00:00Z", pull_request_url=None,
+        row = mapping.row_of(panel, origin="planner", name="forshor_sub1", created_at="2026-01-01T00:00:00Z", pull_request_url=None,
                              submission_id=None, detail=mapping.panel_path(GOLDEN["epoch"], case["rowId"], case["board"], case["delta"]))
         full = panel["fullRun"]
         assert row["T"] == (full["T"] if full else panel["T"]), name
         assert row["qubits"] == (full["qubits"] if full else panel["qubits"]), name
         assert row["ladderLabel"] == (full["ladderLabel"] if full else panel["ladderLabel"]), name
         assert "rank" not in row and "ranked" not in row
+        assert row["name"] == "forshor_sub1"
         assert row["trust"] == mapping.trust_of(panel["verification"])
 
 
