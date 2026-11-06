@@ -5,8 +5,8 @@ error re-read state and send again. Never runs submitted Lean. Not wired into an
 
 What is different from v1:
 * The request is priced ONCE. A retry only refreshes the three things that depend on the live state: `baseGeneration`,
-  `evaluation.evaluatedAt` (must be later than the live snapshot's time), the policy name (`forshor_sub<nextNumber>`, assigned by
-  the publisher from its ledger), and the archive view (`archive.acceptedIds` and
+  `evaluation.evaluatedAt` (must be later than the live snapshot's time), the policy name (`<PR author's handle>_sub<N>`, N being that
+  handle's next number from the publisher's ledger), and the archive view (`archive.acceptedIds` and
   `evaluation.archiveCommit`, re-fetched like v1 does).
 * The epoch's model is checked before any compute. A changed model is not publishable into the live epoch (design D5), and
   retrying cannot fix it, so it is an error, never a retry.
@@ -23,6 +23,13 @@ import time
 from typing import Any, Callable, Dict, List, Tuple
 
 from publish import RetryPublication, request_json, refresh_archive  # same directory; v1 helpers are unchanged
+
+
+HOUSE_HANDLE = "forshor"   # the planner's handle; a submission can never carry it
+
+
+class ReservedHandle(Exception):
+    """The PR author's GitHub handle is the house handle, which is reserved for planner policies (it would impersonate one)."""
 
 
 class ModelMismatch(Exception):
@@ -44,6 +51,13 @@ def already_published(state: Dict[str, Any], metadata: Dict[str, Any]) -> bool:
     return bool(done)
 
 
+def policy_name(state: Dict[str, Any], login: str) -> str:
+    """`<github handle>_sub<N>`: the PR author's handle and that handle's next number, as the publisher's ledger counts them."""
+    if login.lower() == HOUSE_HANDLE:
+        raise ReservedHandle(f"the handle {HOUSE_HANDLE} is reserved for planner policies")
+    return f"{login}_sub{state.get('nextNumbers', {}).get(login.lower(), 1)}"
+
+
 def check_model(state: Dict[str, Any], model: Dict[str, Any]) -> None:
     if state["model"] != model:
         raise ModelMismatch(f"live epoch {state['epoch']} was built for a different model than this checkout's; not publishing")
@@ -61,6 +75,7 @@ def publish_v2_with_recovery(metadata: Dict[str, Any], model: Dict[str, Any], fe
             state = fetch_state()
             if already_published(state, metadata):
                 return {"alreadyPublished": True, "evaluationKey": key}
+            policy_name(state, metadata["githubLogin"])   # refuses the reserved handle before any compute
             check_model(state, model)
             if template is None:
                 template = price()
@@ -71,7 +86,7 @@ def publish_v2_with_recovery(metadata: Dict[str, Any], model: Dict[str, Any], fe
             request["evaluation"]["evaluatedAt"] = _iso(at)
             request["archive"]["acceptedIds"], request["evaluation"]["archiveCommit"] = refresh()
             for priced in request["priced"]:   # the publisher assigns the name: the next number after everything already stored
-                priced["row"]["name"] = f"forshor_sub{state['nextNumber']}"
+                priced["row"]["name"] = policy_name(state, metadata["githubLogin"])
             return send(request)
         except RetryPublication:
             if attempt == attempts - 1:

@@ -42,7 +42,7 @@ def main(argv=None) -> int:
     for flag in ("head-sha", "login", "run-id", "submitted-at", "evaluated-at", "archive-commit", "evaluation-key", "base-generation"):
         q.add_argument(f"--{flag}", required=True)
     q.add_argument("--pull", type=int, required=True); q.add_argument("--accepted-id", action="append", default=[])
-    q.add_argument("--number", type=int, required=True, help="the submission number: /v2/state nextNumber; the row is named forshor_sub<number>")
+    q.add_argument("--number", type=int, required=True, help="this handle's submission number: /v2/state nextNumbers[<login>] (1 if absent); the row is named <login>_sub<number>")
     a = ap.parse_args(argv)
 
     from . import epoch, request

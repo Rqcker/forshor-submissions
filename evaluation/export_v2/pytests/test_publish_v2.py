@@ -11,13 +11,13 @@ import publish_v2 as P  # noqa: E402
 
 MODEL = {"id": "m", "n": 2048}
 KEY = "k" * 64
-META = {"evaluationKey": KEY, "headSha": "a" * 40, "runId": "7"}
+META = {"evaluationKey": KEY, "headSha": "a" * 40, "runId": "7", "githubLogin": "alice"}
 T0 = dt.datetime(2026, 11, 5, 12, 0, 0, tzinfo=dt.timezone.utc)
 
 
-def state(generation="g1", updated="2026-11-05T12:00:00.000Z", done=None, model=MODEL, number=22):
+def state(generation="g1", updated="2026-11-05T12:00:00.000Z", done=None, model=MODEL, number=3):
     return {"baseGeneration": generation, "epoch": "e", "model": model, "publication": {"snapshotId": "s", "updatedAt": updated},
-            "submissionIds": [], "nextNumber": number, "completedEvaluations": done or {}}
+            "submissionIds": [], "nextNumbers": {"forshor": 32, "alice": number, "bob": 8}, "completedEvaluations": done or {}}
 
 
 class Harness:
@@ -101,8 +101,23 @@ def test_it_gives_up_after_the_attempts_and_says_why():
     assert h.slept == [1, 2] and len(h.sent) == 3
 
 
-def test_every_row_is_named_from_the_live_next_number_and_a_retry_renames_it():
-    h = Harness([state("g1", number=22), state("g2", updated="2026-11-05T12:30:00.000Z", number=23)], [RetryPublication("409"), {"snapshotId": "s3"}])
+def test_every_row_is_named_from_the_pr_authors_handle_and_that_handles_live_next_number_and_a_retry_renames_it():
+    h = Harness([state("g1", number=3), state("g2", updated="2026-11-05T12:30:00.000Z", number=4)], [RetryPublication("409"), {"snapshotId": "s3"}])
     h.run()
-    assert [[p["row"]["name"] for p in s["priced"]] for s in h.sent] == [["forshor_sub22"] * 2, ["forshor_sub23"] * 2]
+    assert [[p["row"]["name"] for p in s["priced"]] for s in h.sent] == [["alice_sub3"] * 2, ["alice_sub4"] * 2]
     assert h.priced == 1, "still priced once"
+
+
+def test_a_handle_the_ledger_has_not_seen_starts_at_one_and_handles_are_case_insensitive():
+    assert P.policy_name(state(), "carol") == "carol_sub1"
+    assert P.policy_name(state(), "Bob") == "Bob_sub8", "the counter is keyed by lower-case handle, the name keeps GitHub's capitalisation"
+    assert P.policy_name(state(), "alice") == "alice_sub3"
+
+
+def test_the_house_handle_is_refused_before_any_compute_in_any_capitalisation():
+    for login in ("forshor", "Forshor", "FORSHOR"):
+        h = Harness([state()], [])
+        meta = dict(META, githubLogin=login)
+        with pytest.raises(P.ReservedHandle):
+            P.publish_v2_with_recovery(meta, MODEL, h.fetch, h.price, lambda: (["x"], "arch1"), h.send, sleep=h.slept.append, now=lambda: T0)
+        assert h.priced == 0 and h.sent == [] and h.slept == []
