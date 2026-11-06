@@ -3,13 +3,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # evaluation/
-from export_v2.epoch import BASELINE_CREATED_AT, list_rows  # noqa: E402
+from export_v2.epoch import BASELINE_CREATED_AT, first_per_policy, list_rows  # noqa: E402
 
 DELTAS = ("1e-2", "3e-4", "1e-4", "1e-6")
 
 
-def row(rid, digest, number):
-    return {"id": rid, "digest": digest, "createdAt": "2026-10-01T00:00:00Z", "pr": None, "policy": object(), "number": number}
+def row(rid, digest, number, created="2026-10-01T00:00:00Z"):
+    return {"id": rid, "digest": digest, "createdAt": created, "pr": None, "policy": object(), "number": number}
 
 
 def baseline(digest, board, number):
@@ -61,3 +61,19 @@ def test_ids_and_numbers_stay_unique_on_every_board_and_delta():
 
 def test_baselines_have_a_fixed_creation_time_so_the_export_is_reproducible():
     assert BASELINE_CREATED_AT == "2026-11-06T00:00:00Z"
+
+
+def test_a_policy_repeated_across_submissions_is_listed_once_as_its_earliest_row():
+    """The real shape at 1e-2: the planner's pick did not change for sixteen submissions in a row."""
+    same = [row(f"s{i}", "A" * 64, i, created=f"2026-10-{i:02d}T00:00:00Z") for i in (5, 3, 4, 9)]   # deliberately not in time order
+    other = row("s7", "B" * 64, 7, created="2026-10-07T00:00:00Z")
+    got = first_per_policy(same + [other])
+    assert sorted(r["number"] for r in got) == [3, 7], "A once (its earliest, 3), and B"
+    listed = list_rows({("pp", "1e-2"): same + [other]}, [])
+    assert sorted(r["number"] for r in listed[("pp", "1e-2")]) == [3, 7]
+
+
+def test_distinct_policies_with_equal_numbers_elsewhere_are_all_kept_and_baselines_are_never_merged_with_frontier_rows():
+    rows = {("pp", "1e-2"): [row("s1", "A" * 64, 1), row("s2", "B" * 64, 2), row("s3", "A" * 64, 3)]}
+    listed = list_rows(rows, [baseline("C" * 64, "pp", 22)])
+    assert [r["number"] for r in listed[("pp", "1e-2")]] == [1, 2, 22]

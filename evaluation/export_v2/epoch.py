@@ -109,13 +109,23 @@ def baseline_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[
     return out
 
 
+def first_per_policy(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Each distinct policy once, as the earliest row that has it. The planner's pick often does not change when a later submission
+    arrives, so the frontier repeats one policy under many submissions (at 1e-2, sixteen PhaseProduct rows were the same policy with
+    the same T and qubits); listing them all would be duplicates, not more policies, and would make one submission number mean many rows."""
+    first: Dict[str, Dict[str, Any]] = {}
+    for r in sorted(rows, key=lambda r: (r["createdAt"], r["id"])):
+        first.setdefault(r["digest"], r)
+    return list(first.values())
+
+
 def list_rows(rows_in: Dict[Tuple[str, str], List[Dict[str, Any]]], baselines: List[Dict[str, Any]]):
-    """What is listed, per (board, delta): every planner frontier row (D9: checked or not, ranked together) and the baseline policies
-    of that board family, at every delta."""
+    """What is listed, per (board, delta): every DISTINCT planner policy on the frontier (D9: checked or not, ranked together), each as
+    the earliest submission that has it, and the baseline policies of that board family, at every delta."""
     deltas = sorted({d for (_b, d) in rows_in})
     listed: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
     for (board, delta), board_rows in rows_in.items():
-        listed[(board, delta)] = list(board_rows) + [b for b in baselines if b["board"] == board]
+        listed[(board, delta)] = first_per_policy(board_rows) + [b for b in baselines if b["board"] == board]
     for b in baselines:   # a baseline on a board that has no frontier rows at some delta is still listed there
         for d in deltas:
             if (b["board"], d) not in listed:
@@ -194,7 +204,8 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
                 "archiveCommit": archive_commit or _git("rev-parse", "HEAD"), "publisherCommit": publisher_commit}
     document["sourceDigest"] = sha256_hex(document)
     report = evidence_report(policies, evidence)
-    report["rowsBaseline"] = sum(len(v) for v in listed.values() for r in v if r.get("baseline"))   # baseline policy x delta rows
+    report["rowsBaseline"] = sum(1 for v in listed.values() for r in v if r.get("baseline"))
+    report["rowsListed"] = sum(len(v) for v in listed.values())   # baseline policy x delta rows
     return document, report
 
 
