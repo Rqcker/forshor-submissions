@@ -88,7 +88,7 @@ BASELINE_CREATED_AT = "2026-11-06T00:00:00Z"
 
 def baseline_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[str, Any]]:
     """The single-arity baseline policies: PhaseProduct first (they appear on the PhaseProduct and full boards), then
-    PhaseTripleProduct, numbered after the library's last submission."""
+    PhaseTripleProduct, numbered after the library's last submission. A policy with no band is skipped: it is not a policy."""
     eng = engine.load()
     subs = eng.library.submissions()
     tabs = eng.library.sto_tables(upto=len(subs))
@@ -100,6 +100,11 @@ def baseline_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[
                 continue
             P, _ = eng.planner.optimal_policy(chosen, mode, pricing.N, mapping.DELTA_VALUES["1e-2"], name=f"baseline-k{k}")
             Q = eng.seed_policies.canonical(P)
+            if not Q.bands:
+                # The planner finds no band at this arity (PhaseTripleProduct at k = 2 cannot shrink the width): the policy is the bare
+                # base case. The harness refuses it ("bands must be a nonempty list") and it is not a submittable policy, so it is not listed.
+                log(f"baseline {board} k={k}: no band, skipped")
+                continue
             digest = policy_digest(Q.to_json())
             if any(b["digest"] == digest for b in out):
                 continue

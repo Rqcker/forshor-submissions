@@ -74,3 +74,13 @@ def test_a_request_for_a_real_policy_is_complete_consistent_and_accepted_by_the_
         assert summary["kind"] == "publish-request" and summary["priced"] == 8 and summary["bytes"] < 400_000
     else:
         pytest.skip("FORSHOR_SITE_DIR not set: built the request but did not run the TypeScript validator")
+
+
+def test_every_baseline_policy_has_at_least_one_band_and_is_distinct():
+    """The harness refuses a policy with no bands ("bands must be a nonempty list"), so a bare-base-case baseline must never be listed."""
+    from export_v2 import epoch
+    baselines = epoch.baseline_policies()
+    assert baselines, "the engine yields baselines"
+    assert all(b["policy"].bands for b in baselines)
+    assert len({b["digest"] for b in baselines}) == len(baselines)
+    assert len({b["number"] for b in baselines}) == len(baselines)
