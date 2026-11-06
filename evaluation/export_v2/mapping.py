@@ -151,7 +151,7 @@ def chart_of(series: Raw, *, epoch: str, board: str, delta: str) -> Raw:
     """The reference library for one board and delta, cut to what a chart draws."""
     return {"schema": "forshor.chart/v2", "epoch": epoch, "board": board, "delta": delta, "series": {
         name: [{"n": p["n"], "T": p["T"], "ladderLabel": p.get("ladder_str")} for p in series.get(name, [])]
-        for name in ("reference", "kmy", "champions", "all_sto", "dp")}}
+        for name in ("reference", "kmy", "champions", "all_sto")}}
 
 
 def benchmarks_of(series: Raw, n: int = 2048) -> List[Raw]:

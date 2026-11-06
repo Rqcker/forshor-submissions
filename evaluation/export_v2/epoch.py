@@ -77,6 +77,32 @@ def planner_rows(log: Callable[[str], None] = lambda s: None) -> Dict[Tuple[str,
     return out
 
 
+def listed_rows(rows_in: Dict[Tuple[str, str], List[Dict[str, Any]]], verified: Dict[str, str]):
+    """What is listed, per (board, delta): the planner's frontier rows whose policy is verified (D8), plus every verified policy at
+    every delta it is missing from.
+
+    Evidence is about the policy, not about a delta: only the rotation-synthesis price depends on delta. A verified policy that is not
+    the planner's pick at some delta is still a valid policy there, so it is listed there too, priced at that delta, with the identity
+    (id, time, pull request) of the earliest frontier row it appeared as. `verified` maps a policy digest to its board family.
+    Returns (listed, number of rows added that the frontier did not itself contain)."""
+    first: Dict[str, Dict[str, Any]] = {}
+    for rows in rows_in.values():
+        for r in rows:
+            if r["digest"] in verified and (r["digest"] not in first or r["createdAt"] < first[r["digest"]]["createdAt"]):
+                first[r["digest"]] = r
+    listed: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
+    added = 0
+    for (board, delta), board_rows in rows_in.items():
+        keep = [dict(r, added=False) for r in board_rows if r["digest"] in verified]
+        have = {r["digest"] for r in keep}
+        for d in sorted(verified):
+            if verified[d] == board and d not in have:
+                keep.append(dict(first[d], added=True))
+                added += 1
+        listed[(board, delta)] = keep
+    return listed, added
+
+
 def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_commit: Optional[str] = None,
                       updated_at: Optional[str] = None, model: Optional[Dict[str, Any]] = None,
                       log: Callable[[str], None] = lambda s: None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -85,40 +111,49 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
     model = model or model_of()
     epoch = epoch_of(model)
     rows_in = planner_rows(log)
-    views: Dict[Tuple[str, str, str], Dict[str, Any]] = {}   # (board, delta, policy digest) -> view
+    views: Dict[Tuple[str, str, str], Dict[str, Any]] = {}   # (board, delta, policy digest) -> priced view
     policies: Dict[str, Dict[str, Any]] = {}                 # digest -> {mode, policy, uses}
+    boards_of = lambda board: ("pp", "full") if board == "pp" else ("ptp",)
+
+    def view_of(b: str, delta: str, digest: str) -> Dict[str, Any]:
+        if (b, delta, digest) not in views:
+            log(f"pricing {b} {delta} {digest[:12]}")
+            views[(b, delta, digest)] = pricing.price_views(policies[digest]["policy"], f"Planner policy {digest[:12]}", delta, [b])[b]
+        return views[(b, delta, digest)]
 
     for (board, delta), rows in rows_in.items():
         for r in rows:
-            entry = policies.setdefault(r["digest"], {"mode": MODES[board], "policy": r["policy"], "uses": []})
+            entry = policies.setdefault(r["digest"], {"mode": MODES[board], "board": board, "policy": r["policy"], "uses": []})
             entry["uses"].append({"board": board, "delta": delta, "rowId": r["id"]})
-            boards = ("pp", "full") if board == "pp" else ("ptp",)
-            for b in boards:
-                if (b, delta, r["digest"]) not in views:
-                    title = f"Planner policy {r['digest'][:12]}"
-                    log(f"pricing {b} {delta} {r['digest'][:12]}")
-                    views[(b, delta, r["digest"])] = pricing.price_views(r["policy"], title, delta, [b])[b]
 
+    # Evidence is about the policy, not about a delta, so it is looked up once per distinct policy (one pricing to get its file).
     evidence: Dict[str, Tuple[Optional[Dict[str, Any]], Optional[str]]] = {}
     for digest, entry in policies.items():
-        view = next(v for (b, d, g), v in views.items() if g == digest)
-        evidence[digest] = store.stomirror(view["policy_json"], model, "ptp" if entry["mode"] == MODES["ptp"] else "pp")
+        first = entry["uses"][0]
+        b0 = boards_of(first["board"])[0]
+        evidence[digest] = store.stomirror(view_of(b0, first["delta"], digest)["policy_json"], model, "ptp" if entry["mode"] == MODES["ptp"] else "pp")
+    verified = {d for d, (m, _) in evidence.items() if m is not None}
+
+    # What is listed: the planner's frontier rows whose policy is verified (D8), and, because a policy and its evidence do not
+    # depend on delta (only the rotation-synthesis price does), every verified policy at every delta, priced at that delta. A
+    # policy that is not the planner's pick at some delta is still a valid policy there. Its row carries the identity (id, time,
+    # pull request) of the earliest frontier row it appeared as.
+    listed, added = listed_rows(rows_in, {d: policies[d]["board"] for d in verified})
 
     panels: Dict[str, Any] = {}
     rows: Dict[str, List[Dict[str, Any]]] = {}
-    for (board, delta), board_rows in rows_in.items():
+    for (board, delta), board_rows in listed.items():
         for r in board_rows:
-            if evidence[r["digest"]][0] is None:
-                continue   # D8: only policies with accepted STO mirror evidence are listed; the report names the rest
-            for b in (("pp", "full") if board == "pp" else ("ptp",)):
-                view = copy.deepcopy(views[(b, delta, r["digest"])])
-                title = f"STO frontier after {r['id']}, {MODES[board]}, n = 2048, delta = {mapping.DELTA_VALUES[delta]:g}" + (
-                    ", full order finding" if b == "full" else "")
+            for b in boards_of(board):
+                view = copy.deepcopy(view_of(b, delta, r["digest"]))
+                title = (f"STO policy first found at {r['id']}" if r["added"] else f"STO frontier after {r['id']}") + (
+                    f", {MODES[board]}, n = 2048, delta = {mapping.DELTA_VALUES[delta]:g}") + (", full order finding" if b == "full" else "")
                 view["title"] = view["policy_json"]["name"] = title
-                mirror = evidence[r["digest"]][0]
-                verification = {"stoMirror": mirror, "forshorPolicy": None}
+                verification = {"stoMirror": evidence[r["digest"]][0], "forshorPolicy": None}
                 detail = mapping.panel_path(epoch, r["id"], b, delta)
                 panel = mapping.panel_of(view, epoch=epoch, row_id=r["id"], board=b, delta=delta, verification=verification)
+                if detail in panels:
+                    raise ValueError(f"two listed rows share the id {r['id']} on {b} at {delta}")
                 panels[detail] = panel
                 rows.setdefault(f"{b}/{delta}", []).append(mapping.row_of(
                     panel, origin="planner", created_at=r["createdAt"], pull_request_url=ARCHIVE_PR.format(r["pr"]) if r["pr"] else None,
@@ -140,6 +175,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
                 "archiveCommit": archive_commit or _git("rev-parse", "HEAD"), "publisherCommit": publisher_commit}
     document["sourceDigest"] = sha256_hex(document)
     report = evidence_report(policies, evidence)
+    report["rowsAdded"] = added   # verified policy x delta rows the frontier did not itself contain
     return document, report
 
 

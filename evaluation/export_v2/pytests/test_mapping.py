@@ -74,3 +74,9 @@ def test_trust_is_derived_from_the_evidence():
     both = {"stoMirror": {"x": 1}, "forshorPolicy": {"verified": True}}
     assert mapping.trust_of(both)["forshorPolicy"] == "verified"
     assert mapping.trust_of({"stoMirror": {"x": 1}, "forshorPolicy": {"verified": False}})["forshorPolicy"] == "not-verified"
+
+
+def test_a_chart_carries_the_four_reference_series_and_no_dp():
+    series = {name: [{"n": 2048, "T": 1.0, "ladder_str": "x"}] for name in ("reference", "kmy", "champions", "all_sto", "dp")}
+    chart = mapping.chart_of(series, epoch="e" * 16, board="pp", delta="1e-2")
+    assert set(chart["series"]) == {"reference", "kmy", "champions", "all_sto"}
