@@ -155,13 +155,25 @@ def chain_peak_extra(levels, operands: int, impl: str = "gidney_circuit") -> int
     PhaseTripleProduct needs its sandwich's two ancillas (`ptpWsTD`'s base case); a PhaseProduct's leaf needs none.
 
     The scratch is `table_scratch`'s: 1 for a table that adds or negates under the incrementer, `child_width + 1` for a negating
-    table under the legacy negation. ForShor proves `ptpWsTD` without the scratch (`LowGate.usedQubits` excludes `cleanAnc`); it is
-    included here, as in the order-finding peak, and under the incrementer it never exceeds the leaf's two."""
+    table under the legacy negation.
+
+    For a PhaseProduct the scratch is borrowed while the live qubits are held, so a level holds the larger of its child's peak and its
+    scratch. For a PhaseTripleProduct the scratch is ADDED, because that is what ForShor proves (swap 002,
+    `Peak/Peak.lean`, `ptp_peak_qubits`): the framework's own count of the circuit is its named qubits, `3 n + ptpWsTD` (the leaf's two
+    sandwich ancillas are named qubits, so they are inside `ptpWsTD`), plus the clean scratch the resource model holds, the largest of
+    any node's, `ptpCleanAncD`. This is one qubit more than the shared-slot count, and the board's Q equals ForShor's proved bound."""
     if impl not in IMPLS:
         raise ValueError(f"impl {impl!r} not in {IMPLS}")
     if operands not in (2, 3):
         raise ValueError("a product has two operands (PhaseProduct) or three (PhaseTripleProduct)")
-    tail = 2 if operands == 3 else 0
+    if operands == 3:
+        named, clean = 2, 0                 # `ptpWsTD`'s base case, and `ptpCleanAncD`'s
+        for width, k, child, negates, adds in reversed(list(levels)):
+            scratch = (child + 1 if impl == "legacy" else 1) if negates else (1 if adds else 0)
+            named += operands * _sub(k * child, width)
+            clean = max(clean, scratch)
+        return named + clean
+    tail = 0
     for width, k, child, negates, adds in reversed(list(levels)):
         scratch = (child + 1 if impl == "legacy" else 1) if negates else (1 if adds else 0)
         tail = operands * _sub(k * child, width) + max(tail, scratch)

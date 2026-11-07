@@ -69,7 +69,7 @@ def test_the_peak_text_says_the_truth_about_the_negation_and_names_the_placehold
                  "17w - 22", "17w - 5", "5w - 3", "5w + 1", "exact for w >= 7", mapping.PIN):
         assert fact in rule, fact
     # the placeholder until PR #79's merge commit exists; a one-line sed then fills in the 40-hex SHA and this still holds
-    assert mapping.PIN == "<FORSHOR_PIN>" or re.fullmatch(r"[0-9a-f]{40}", mapping.PIN)
+    assert mapping.PIN == "eb00c5adc72832469a5f223fbec6c8b75745d2dd" or re.fullmatch(r"[0-9a-f]{40}", mapping.PIN)
 
 
 def test_the_label_depends_on_the_per_row_lean_peak_flag_and_defaults_to_not_evaluated():

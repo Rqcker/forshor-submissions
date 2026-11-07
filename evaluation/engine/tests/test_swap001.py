@@ -1,4 +1,4 @@
-"""Modular swap 001 (negation = complement + one-clean-ancilla incrementer, ForShor `<FORSHOR_PIN>`) as the site's engine prices it.
+"""Modular swap 001 (negation = complement + one-clean-ancilla incrementer, ForShor `eb00c5adc72832469a5f223fbec6c8b75745d2dd`) as the site's engine prices it.
 
 The default negation is `gidney_circuit` = ForShor's `oneQubit` NegationMethod: the counts of Gidney's one-ancilla increment circuit
 (Toffoli 12w-28 even w / 10w-18 odd w, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1), which is what Lean's `negateResources` charges. The engine's

@@ -32,7 +32,7 @@ The epoch model carries `negation: "incrementer"` (no contract change). That lab
 
 At w = 8 / 9 / 2048 the first row gives X / CNOT / Toffoli of 37 / 114 / 68, 46 / 148 / 72 and 10237 / 34794 / 24548, and `scratch` at 2048 gives
 6140 / 10233 / 4093 with 2049 clean qubits: ForShor's `negateChargeAt` examples (`Emit/Json/Common.lean`), asserted in
-`engine/tests/test_swap001.py`. The mapping lives in `epoch.NEGATION_OF`. The ForShor pin is the merge commit of PR #79, written `<FORSHOR_PIN>` in
+`engine/tests/test_swap001.py`. The mapping lives in `epoch.NEGATION_OF`. The ForShor pin is the merge commit of PR #79, written `eb00c5adc72832469a5f223fbec6c8b75745d2dd` in
 text until it exists.
 
 The qubit text of the full board's peak (`mapping.peak_label`, `mapping.peak_rule`) is a function of the per-row flag `leanPeak` (default False:

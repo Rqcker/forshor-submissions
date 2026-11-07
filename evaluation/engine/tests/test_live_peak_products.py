@@ -28,9 +28,20 @@ def test_one_level_pp():
     assert ppk.chain_peak_extra([lv(100, 3, 40)], 2) == 2 * 20 + 1
 
 
-def test_one_level_ptp_grows_all_three_operands_and_the_leaf_ancillas_cover_the_scratch():
-    # 3 * (3*40 - 100) = 60, then max(leaf 2, scratch 1) = 2
-    assert ppk.chain_peak_extra([lv(100, 3, 40)], 3) == 60 + 2
+def test_one_level_ptp_grows_all_three_operands_and_adds_the_scratch_to_the_named_qubits():
+    # 3 * (3*40 - 100) = 60 named qubits of growth, the leaf's 2 sandwich ancillas (named), and the node's 1 clean scratch qubit ON TOP:
+    # ForShor's `ptp_peak_qubits` is 3n + ptpWsTD + ptpCleanAncD (swap 002), not the shared-slot count max(2, 1)
+    assert ppk.chain_peak_extra([lv(100, 3, 40)], 3) == 60 + 2 + 1
+    assert ppk.chain_peak_extra([lv(100, 3, 40, negates=False, adds=False)], 3) == 60 + 2     # no arithmetic, no scratch
+
+
+def test_ptp_scratch_is_the_largest_over_the_levels_not_their_sum():
+    # ptpCleanAncD is a max over the nodes: two adding levels still add ONE clean qubit
+    two = ppk.chain_peak_extra([lv(1000, 4, 300), lv(300, 3, 120)], 3)
+    assert two == 3 * (4 * 300 - 1000) + 3 * (3 * 120 - 300) + 2 + 1
+    # the legacy negation holds a register as wide as the node's child: the widest negating node's child_width + 1
+    legacy = ppk.chain_peak_extra([lv(1000, 4, 300, negates=True), lv(300, 3, 120, negates=True)], 3, "legacy")
+    assert legacy == 3 * 200 + 3 * 60 + 2 + 301
 
 
 def test_children_share_one_pool_so_levels_add_their_growth_and_take_the_larger_tail():
@@ -84,9 +95,11 @@ def test_ptp_live_peak_is_three_operands_plus_the_chain(key):
     levels = fr._levels(P, N)
     assert levels, "a recursive policy"
     assert fr.live_peak_qubits(P, N) == 3 * N + ppk.chain_peak_extra(levels, 3)
-    # the incrementer's one scratch qubit never exceeds the leaf's two, so the peak is the operands, every level's growth, and 2
+    # the peak is the operands, every level's growth, the leaf's 2 sandwich ancillas, and the incrementer's one clean scratch
+    # qubit if any level adds or negates (ForShor's `ptp_peak_qubits`: named qubits plus the resource model's clean scratch)
     grown = sum(3 * max(k * c - w, 0) for (w, k, c, _n, _a) in levels)
-    assert fr.live_peak_qubits(P, N) == 3 * N + grown + 2
+    scratch = 1 if any(n or a for (_w, _k, _c, n, a) in levels) else 0
+    assert fr.live_peak_qubits(P, N) == 3 * N + grown + 2 + scratch
 
 
 def test_the_legacy_negation_cannot_lower_the_peak():

@@ -1,7 +1,7 @@
 """The live-qubit peak (`l2q_full.policy_peak`) against the numbers Lean computed for modular swap 001.
 
 Ground truth: ForShor_modular_swaps/swap-001_negation_incrementer/TRADEOFF.md, produced by `#eval` of
-`Policy.orderFindingPeakBalanced` (evidence/peak_policies.lean) on ForShor 8e37ce7 for the standard-table policies (the peak charges ONE clean qubit per negation, which `<FORSHOR_PIN>`'s
+`Policy.orderFindingPeakBalanced` (evidence/peak_policies.lean) on ForShor 8e37ce7 for the standard-table policies (the peak charges ONE clean qubit per negation, which `eb00c5adc72832469a5f223fbec6c8b75745d2dd`'s
 real-count charge leaves unchanged: only T moved), with the register
 widths x 4096, data 2048 (2049 with its carry bit), work 2347, scratch 4398; and the kernel-checked anchor
 (`reference2048PeakBalanced`: constant std-k2, scan widths, 17,291 qubits before the swap and 13,449 after).

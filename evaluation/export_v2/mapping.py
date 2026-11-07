@@ -38,7 +38,7 @@ def _table_step(x: Raw) -> Raw:
 # The text depends on ONE per-row fact, `leanPeak`: has Lean's kernel evaluated the peak for THIS policy (same method, same width rule as the
 # epoch's)? It defaults to False, so every row keeps "Lean has not evaluated it on this policy" until a later step switches it for the rows
 # the A13 manifest covers; that step passes `lean_peak=True` and edits no text.
-PIN = "<FORSHOR_PIN>"   # the ForShor merge commit of PR #79 (a later step fills it in)
+PIN = "eb00c5adc72832469a5f223fbec6c8b75745d2dd"   # the ForShor merge commit of PR #79 (a later step fills it in)
 _PEAK_LABEL_HEAD = "live-qubit peak of the balanced order-finding circuit (a port of ForShor's orderFindingQubitsU, "
 _PEAK_RULE_HEAD = (
     "The registers (exponent, data with its carry bit, work, scratch) and the flag, 12,890 qubits at n = 2048, plus the largest number of "
