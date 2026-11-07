@@ -33,12 +33,15 @@ the name from the manifest, not from the remote lakefile. Renaming is cosmetic a
 costs the build cache (D3).
 
 Pinned to an exact commit rather than `main`: a ForShor rename or module move then
-cannot break this build until the pin is bumped on purpose. 6d55ad9 is the
-`qubitCount` branch tip of 2026-11-04 (qubit count, unconditional balanced split, module
-reorganisation; Gauss-Jordan `@[csimp]` restored ahead of its compiled callers).
+cannot break this build until the pin is bumped on purpose. 2b7aaf7 is the head of
+ForShor PR #79 (`swap/negation-incrementer`: negation as complement plus a one-clean-ancilla
+incrementer, `NegationMethod` with `.oneQubit` default and `.scratch` = the pre-swap Cuccaro
+charge, which equals 6d55ad9 behaviour; 6d55ad9 was the `qubitCount` branch tip of 2026-11-04).
+PIN-PLACES (change to the PR merge commit M with one sed): this line, lake-manifest.json `rev` and `inputRev`
+of package Fast_multiplication, and the `<FORSHOR_PIN>` strings listed in shards/B2.md.
 -/
 require «Fast_multiplication» from git
-  "https://github.com/VerifiedQC/ForShor.git" @ "6d55ad9968dc067c68a7023bbbaed6c955d9190c"
+  "https://github.com/VerifiedQC/ForShor.git" @ "2b7aaf79c2e666afdec36d8f7f0ef124f96c0610"
 
 @[default_target]
 lean_lib TableGeneration where

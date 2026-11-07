@@ -43,15 +43,20 @@ python3 scripts/check_ptp_layers.py          # layer order, no sorry/native_deci
   (`n` of them `†Toffoli`), `n+1` qubits and no extra rotations. ForShor's leaf-control
   (every leaf phase controlled) is a different construction and is **not** proved here.
 * The asymptotic theorem is for a **constant policy** (one table) and the exact-board gate count
-  (`rz + toffoli + x + h + cnot` incl. extension), under ForShor's `shorGateResourceModel`
-  (Cuccaro adders, Rz = arbitrary-angle rotations, not T).
+  (`rz + toffoli + x + h + cnot` incl. extension), under the policy's own resource model
+  `P.resourceModel = shorGateResourceModelFor P.negation` (Cuccaro adders; a negation is complement plus Gidney's
+  one-clean-ancilla increment under the default `oneQubit`, or the pre-swap Cuccaro charge under `scratch`; Rz =
+  arbitrary-angle rotations, not T). `PTPPolicy.negation` mirrors ForShor's field; `Census.lean` carries the closed
+  forms (`negateXGatesFor`, `nodeCensusFor`, `nodeCleanAncFor`), checked in `RecursionWitness.lean` against ForShor's
+  `negFixed` anchors (scratch `<0,426,945,23895,10976>`, 15 clean; oneQubit `<0,600,1863,24585,10976>`, 1 clean).
 * Unequal operand widths are handled by **padding** (sign-extend each operand in place into a clean reserve to
   the common width `n`, run the balanced circuit, undo): CNOT cost `+2(d₀+d₁+d₂)`, not a native unbalanced node
   (a node at the minimum limb width is not built).
 * Qubits: the circuit names at most `3n + ptpWsTD` distinct qubits (`LowGate.usedQubits`; `ptpWsTD` = `3(kC'−n)`
   per node, children share one pool, 2 leaf ancillas), and `ptpQubits` (scan board) is a proved *upper bound* of
   that count. This is **not** the framework's `qubitCount`, which adds `resources.cleanAnc` (Cuccaro/negation
-  scratch): that scratch is not bounded here for the recursive circuit. `ptpQubits` is also loose by up to a
+  scratch): that scratch is bounded separately (`PolicyImplD.cleanAnc_le`: at most `ptpCleanAncD`, `1` under
+  `oneQubit`), but the sum is not stated here as a claim. `ptpQubits` is also loose by up to a
   factor `k` per level (private per-child workspace vs the shared pool). ForShor (pin `<FORSHOR_PIN>`) states and
   proves the sum: `ptp_peak_qubits` / `_exact` / `_scan` (`PhaseTripleProduct/Statement.lean`, `PTPPeakQubits*`),
   some circuit following the policy has `qubitCount <= 3n + ptpWsTD + ptpCleanAncD` (an existential upper

@@ -15,10 +15,10 @@ Input (the sto_site `reference_policies.json` band shape, one policy):
 points (STO `generatePointsInOrder`), which is what the table check needs.
 
 Optional top-level `"negation": "oneQubit" | "scratch"` (ForShor `Shor.NegationMethod`; swap-002). Absent or
-`"oneQubit"` (the default) generates exactly the Lean it did before the key existed. `"scratch"` makes
-`forshorSubmission` carry `negation := .scratch` (a triple-product policy, which has no ForShor submission
-object, gets `def negation : Shor.NegationMethod := .scratch` as a record). Needs a ForShor pin that has
-`NegationMethod` (`<FORSHOR_PIN>`); UNTESTED against Lean. Any other value is an error.
+`"oneQubit"` (the default) generates exactly the Lean it did before the key existed. `"scratch"` adds
+`negation := .scratch` to `def policy : BandedPolicy` (data part); `toShorPolicySubmission` copies it, so
+`forshorSubmission` carries it too. Needs a ForShor pin that has `NegationMethod` (`<FORSHOR_PIN>`).
+Any other value is an error.
 
 Usage:
     policy_json_to_lean.py POLICY.json --module NAME [--target-width N] [--index I] > NAME.lean
@@ -196,7 +196,10 @@ def render(policy: dict, module: str, target: int | None, part: str = "all", dat
         out.append("/-- The policy: bands widest first. -/")
         out.append("def policy : BandedPolicy where")
         out.append(f"  mode := {MODES[mode]}")
-        out.append("  bands := [" + ", ".join(f"⟨{t}, {n}⟩" for t, n in band_names) + "]\n")
+        out.append("  bands := [" + ", ".join(f"⟨{t}, {n}⟩" for t, n in band_names) + "]")
+        if negation is not None:
+            out.append("  negation := .scratch")
+        out.append("")
     if part == "data":
         out.append(f"end TableGeneration.PolicyMirror.Instances.{module}\n")
         return "\n".join(out)
@@ -243,18 +246,13 @@ def render(policy: dict, module: str, target: int | None, part: str = "all", dat
         out.append(f"  TableGeneration.PolicyMirror.declaredTight_correct policy accepted {lad} declared_tight_widths\n")
     out.append("/-- The submission record. -/")
     out.append("def submission : PolicySubmission := ⟨policy, accepted⟩\n")
-    if mode == "PhaseProduct" and negation is None:
-        out.append("/-- The same policy as ForShor's object (`Shor.ShorPolicySubmission`, every band C1–C4). -/")
+    if mode == "PhaseProduct":
+        if negation is None:
+            out.append("/-- The same policy as ForShor's object (`Shor.ShorPolicySubmission`, every band C1–C4). -/")
+        else:
+            out.append("/-- The same policy as ForShor's object (`Shor.ShorPolicySubmission`, every band C1–C4); it carries the")
+            out.append("policy's `negation` (`toShorPolicySubmission` copies it). -/")
         out.append("def forshorSubmission : Shor.ShorPolicySubmission := toShorPolicySubmission policy accepted rfl\n")
-    elif mode == "PhaseProduct":
-        out.append("/-- The same policy as ForShor's object (`Shor.ShorPolicySubmission`, every band C1–C4), with the")
-        out.append("negation method the policy's JSON states (the default, `oneQubit`, is left out of the object). -/")
-        out.append("def forshorSubmission : Shor.ShorPolicySubmission :=")
-        out.append("  { toShorPolicySubmission policy accepted rfl with negation := .scratch }\n")
-    elif negation is not None:
-        # A triple-product policy has no `ShorPolicySubmission`: record the stated method as data only.
-        out.append("/-- The negation method the policy's JSON states (a record: nothing in this module is priced by it). -/")
-        out.append("def negation : Shor.NegationMethod := .scratch\n")
     if target is not None and widths == "scan":
         out.append(f"/-- Every band the recursion from width {target} selects strictly contracts (no leaf fallback on the chain). -/")
         out.append(f"theorem chain_contracts : policy.chainContracts {nat(target)} = true := by decide +kernel\n")

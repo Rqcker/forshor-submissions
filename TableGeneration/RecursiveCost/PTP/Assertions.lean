@@ -116,7 +116,7 @@ end Lift
 
 /-- The gate-level census of a circuit equals the exact-board formulas for `P` at width `n`. -/
 def PTPExactCensus (P : PTPPolicy) (n : ℕ) (G : LowGate) : Prop :=
-  let R := LowGate.resources shorGateResourceModel G
+  let R := LowGate.resources P.resourceModel G
   R.rz = (ptpResourcesX P n).rz ∧ R.toffoli = (ptpResourcesX P n).toffoli ∧
     R.x = (ptpResourcesX P n).x ∧ R.h = (ptpResourcesX P n).h ∧
     R.cnot = ptpCnotFullX P n ∧ adjToffCount G = ptpAndDagX P n ∧

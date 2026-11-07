@@ -337,6 +337,9 @@ def main(argv=None):
                 raise Reject("audit", f"{h}: axioms {t['axioms']}")
             audit[h] = {"axioms": sorted(t["axioms"]), "type": t["type"]}
         pins = dict(PINS, **(target_pins(a.target_width) if a.widths == "exact" else {}))
+        if negation_of(doc) is not None:  # non-default method: the resources are those of `policy.resourceModel`
+            pins = {k: v.replace("Shor.LowGate.resources Shor.shorGateResourceModel (G φ)",
+                                 f"Shor.LowGate.resources {D}.resourceModel (G φ)") for k, v in pins.items()}
         for h, pin in pins.items():
             if h not in audit:
                 continue

@@ -140,30 +140,28 @@ three: 3,240,663,026,770 / 1,933,981,965,831 / 1,650,011,804,372. The documents 
 and `Scc866e679f67` are identical in every top-level field to the `bb2aae0` ones, for both executables.
 Not rerun: full per-module kernel replay, 31 planner seeds.
 
-## Pin bump to ForShor `<FORSHOR_PIN>` (PR #79, negation method), NOT YET VALIDATED
+## Pin bump to ForShor `<FORSHOR_PIN>` (PR #79, negation method)
 
-Written from a read of ForShor's sources only: nothing was built or run against Lean at the new pin. Until the
-checks below have been run, no result in this file speaks for it.
+Built and run on 2026-11-07 against ForShor `2b7aaf79c2e666afdec36d8f7f0ef124f96c0610` (the PR #79 head; the merge
+commit has the same tree), toolchain and Mathlib unchanged. Details and numbers: `ForShor_modular_swaps/swap-002_policy_negation_option/shards/B2.md`.
 
-What changes at the new pin (ForShor `Framework/Gatecount/ResourceModel.lean`, `Framework/NegationMethod.lean`):
+What changed at the pin (ForShor `Framework/Gatecount/ResourceModel.lean`, `Framework/NegationMethod.lean`):
+`Shor.negateResources` (so `shorGateResourceModel`, `shorGateCostModel`) is the `oneQubit` negation (complement plus
+Gidney's single-ancilla increment: Toffoli `12 w - 28` / `10 w - 18`, CNOT `17 w - 22` / `17 w - 5`, X `5 w - 3` / `5 w + 1`
+for `w` even / odd, one clean qubit). The construction this repository used to mirror (complement + constant-one register
++ Cuccaro adder, `10 w - 14` gates, `w + 1` clean qubits) is the `scratch` method (`negateResourcesPreSwap`).
 
-- `Shor.negateResources` (so `shorGateResourceModel`, `shorGateCostModel`) is now the `oneQubit` negation: complement
-  plus Gidney's single-ancilla increment, Toffoli `12 w - 28` / `10 w - 18`, CNOT `17 w - 22` / `17 w - 5`,
-  X `5 w - 3` / `5 w + 1` (`w` even / odd; exact for `w >= 7`), one clean qubit. The construction this repository mirrors
-  (complement + constant-one register + Cuccaro adder, `10 w - 14` gates, `w + 1` clean qubits) is the `scratch`
-  method, `Shor.negateResourcesPreSwap` / `negateResourcesFor .scratch`.
-- `ShorLoweringPolicy`, `ShorPolicySubmission` and ForShor's `PTPPolicy` gain `negation : NegationMethod := .oneQubit`.
-  `BandedPolicy/Bridge.lean` builds the submission with named fields, so it needs no edit; its object is `oneQubit`.
-- `ptpCleanAnc` is the tight `1` (not `C + 1`) for `oneQubit`. ForShor proves `ptp_peak_qubits` (framework `qubitCount`).
+Port (this repository): the mirror is method-indexed with default `oneQubit`. `Companion.negateResourcesAtWidth w m`,
+`negateGateCount w m`, `phaseArithmeticOpCost`/`phaseProgramOverhead`/`analyze*Program` (trailing `m := .oneQubit`),
+`Candidate.negation`, the champion lowering, `PTPPolicy.negation` / `BandedPolicy.negation` (copied by
+`toShorPolicySubmission`), the PTP closed forms `negateXGatesFor ...`, `nodeCensusFor`, `nodeCleanAncFor`, and every PTP
+census/recursion theorem (taken from ForShor's S3 versions) are stated for an arbitrary method. `modelVersion` is
+`forshor-phase-product-gates-v4` (`oneQubit`); `modelVersionFor .scratch` is the old `v3`.
 
-Expected to fail to elaborate at the new pin (proofs stated for the `scratch` numbers; a separate port, not done):
-`Companion.negateResources_eq_atWidth`, `shorGateCostModel_negate_atWidth`, `negateResources_totalGates`,
-`Model.cuccaroNegateGateCount_eq_model` (all `rfl`/`show` against `Shor.negateResources`), the `negate` case of
-`Model.phaseArithmeticOpCost_le` (ForShor's `phaseArithmeticOpCost` now charges `2 (34 W + 1)` there), `PTP/Census.lean`
-`opGate_resources` and everything that rests on it (`body_field`, `ptpNode_resources`, ...), and the numerals of
-`scripts/tests/RecursiveCostOracle.lean` / `ChampionGateCountDifferential.lean` for any table that negates.
-Declarations this repository does not use were renamed (`phaseProgramOverhead_cons`, ...) and need no edit.
-
-To run before trusting the pin: `lake build` (all of `TableGeneration`), `lake env lean scripts/PTPAxiomCheck.lean`,
-`test_cost_model_lean.py`, `check_ptp_policy.py` / `check_banded_policy.py` on `policies/ref_*_2048.json`, and
-`crosscheck_tight_width.py`.
+Checks that were run: `lake build` of all of `TableGeneration` and of every module outside it (0 errors); the oracle under
+`--negation=scratch` reproduces `scripts/tests/companion-cost-model.scratch.tsv` (byte-identical to the 6d55ad9 transcript),
+the five published plans of `RECURSIVE_COST_MODEL.md` and the champion differential rows; under `oneQubit` the planner's
+published plans and the champion differential are unchanged (no accepted table the planner selects, and no champion, negates);
+`scripts/PTPAxiomCheck.lean` (41 theorems, only `propext`, `Classical.choice`, `Quot.sound`); `check_ptp_policy.py` on
+`policies/ref_ptp_2048.json` (accepted; `ptp_peak_qubits` scan 7497 / exact 6783, ForShor's kernel numerals);
+`test_cost_model_lean.py`, `test_policy_json_negation.py`, `test_ptp_peak_qubits.py`.

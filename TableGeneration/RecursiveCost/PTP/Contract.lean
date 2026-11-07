@@ -1,4 +1,5 @@
 import TableGeneration.RecursiveCost.BandedPolicy.Defs
+import ForShor.ShorVerification.Framework.Gatecount.PolicyModel
 
 /-!
 # PhaseTripleProduct (PTP): table contract, width scan, banded policy
@@ -157,8 +158,29 @@ structure PTPBand where
 /-- A banded PhaseTripleProduct policy (the mode is fixed). -/
 structure PTPPolicy where
   bands : List PTPBand
+  /-- How a negation is built and charged; one qubit unless asked (ForShor modular swap 002:
+  `Shor.NegationMethod`). -/
+  negation : Shor.NegationMethod := .oneQubit
 
 namespace PTPPolicy
+
+/-- The resource model a PTP policy is priced under (its negation method). Mirrors
+`Shor.PTP.PTPPolicy.resourceModel`. -/
+def resourceModel (P : PTPPolicy) : Shor.LowGateResourceModel :=
+  Shor.shorGateResourceModelFor P.negation
+
+theorem resourceModel_of_oneQubit {P : PTPPolicy} (h : P.negation = .oneQubit) :
+    P.resourceModel = Shor.shorGateResourceModel := by
+  simp [resourceModel, h]
+
+/-- The same bands under another negation method. -/
+def withNegation (P : PTPPolicy) (m : Shor.NegationMethod) : PTPPolicy := { P with negation := m }
+
+@[simp] theorem withNegation_bands (P : PTPPolicy) (m : Shor.NegationMethod) :
+    (P.withNegation m).bands = P.bands := rfl
+
+@[simp] theorem withNegation_negation (P : PTPPolicy) (m : Shor.NegationMethod) :
+    (P.withNegation m).negation = m := rfl
 
 /-- First band with `threshold ≤ n` (ForShor's `choose`). -/
 def choose (P : PTPPolicy) (n : Nat) : Option PTPTable :=

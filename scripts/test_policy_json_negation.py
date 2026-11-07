@@ -6,9 +6,9 @@ Stdlib only, no Lean. Run: python3 -I scripts/test_policy_json_negation.py
 * GOLDEN: SHA-256 of the Lean text the two generators produced for every `policies/*.json` BEFORE the key
   existed (recorded with the generators of 364400d; scripts/tests/policy_json_lean_golden.json). A policy
   with no `negation`, or `"oneQubit"`, must still generate exactly those bytes.
-* `"scratch"` adds `negation := .scratch` (PP: on `forshorSubmission`; PTP: a `def negation` record) and
-  nothing else; any other value is a PolicyError. The Lean it emits is UNTESTED (needs lake, a ForShor pin
-  with `NegationMethod`).
+* `"scratch"` adds `negation := .scratch` as a field of `def policy` (BandedPolicy / PTPPolicy, data part) and
+  nothing else; any other value is a PolicyError. The Lean it emits is checked by building a generated module
+  (see shards/B2.md).
 """
 import copy
 import glob
@@ -84,32 +84,38 @@ class ScratchKey(unittest.TestCase):
     def ptp_doc(self):
         return load(ROOT / "policies/ref_ptp_2048.json")
 
-    def test_pp_scratch_changes_only_forshor_submission(self):
+    def test_pp_scratch_changes_only_the_policy_and_the_comment(self):
         doc = self.pp_doc()
         base = pp.render(doc, "M", 2048, "all")
         sc = pp.render(dict(doc, negation="scratch"), "M", 2048, "all")
-        self.assertIn("negation := .scratch", sc)
+        self.assertEqual(sc.count("negation := .scratch"), 1)  # in `def policy : BandedPolicy`
         self.assertNotIn("negation", base)
-        cut = lambda t: re.sub(r"/-- The same policy as ForShor's object.*?\n\n", "", t, flags=re.S)
-        self.assertEqual(cut(base), cut(sc))  # outside the forshorSubmission block, byte-identical
-        self.assertEqual(sc.count("negation := .scratch"), 1)
+        cut = lambda t: re.sub(r"  negation := \.scratch\n", "",
+                               re.sub(r"/-- The same policy as ForShor's object.*?-/\n", "", t, flags=re.S))
+        self.assertEqual(cut(base), cut(sc))
 
-    def test_pp_cert_part_carries_it_and_data_part_does_not(self):
+    def test_pp_cert_part_does_not_carry_it_and_data_part_does(self):
         doc = dict(self.pp_doc(), negation="scratch")
-        self.assertIn("negation := .scratch", pp.render(doc, "C", 2048, "cert", "D"))
-        self.assertNotIn("negation", pp.render(doc, "D", None, "data"))
+        self.assertNotIn("negation := .scratch", pp.render(doc, "C", 2048, "cert", "D"))
+        self.assertIn("negation := .scratch", pp.render(doc, "D", None, "data"))
 
-    def test_ptp_scratch_adds_a_record_to_the_cert_module_only(self):
+    def test_ptp_scratch_is_a_field_of_the_policy_in_the_data_part(self):
         doc = self.ptp_doc()
-        base = ptp.render(doc, "C", 2048, "cert", "D", "scan", [])
-        sc = ptp.render(dict(doc, negation="scratch"), "C", 2048, "cert", "D", "scan", [])
-        self.assertIn("def negation : NegationMethod := .scratch", sc)
+        base = ptp.render(doc, "D", None, "data")
+        sc = ptp.render(dict(doc, negation="scratch"), "D", None, "data")
+        self.assertIn("  negation := .scratch", sc)
         self.assertNotIn("negation", base)
-        self.assertEqual(ptp.render(doc, "D", None, "data"), ptp.render(dict(doc, negation="scratch"), "D", None, "data"))
+        self.assertEqual(sc.replace("  negation := .scratch\n", ""), base)
+        cert = ptp.render(doc, "C", 2048, "cert", "D", "scan", [])
+        cert_sc = ptp.render(dict(doc, negation="scratch"), "C", 2048, "cert", "D", "scan", [])
+        # the cert module differs only in the resource model its census statement names
+        self.assertEqual(cert.replace("LowGate.resources shorGateResourceModel (G φ)", "LowGate.resources policy.resourceModel (G φ)"),
+                         cert_sc)
+        self.assertIn("policy.resourceModel", cert_sc)
 
-    def test_ptp_mode_through_the_pp_generator_records_it(self):
+    def test_ptp_mode_through_the_pp_generator_sets_the_field(self):
         doc = dict(self.ptp_doc(), negation="scratch")
-        self.assertIn("def negation : Shor.NegationMethod := .scratch", pp.render(doc, "M", 2048, "all"))
+        self.assertIn("  negation := .scratch", pp.render(doc, "M", 2048, "all"))
 
     def test_bad_values_are_rejected_by_both_generators(self):
         for bad in ("", "Scratch", "one_qubit", "incrementer", None, 1, True, ["scratch"]):

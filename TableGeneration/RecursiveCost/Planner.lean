@@ -7,8 +7,17 @@ namespace TableGeneration.RecursiveCost
 There is one model: the companion's operative `Shor.shorGateCostModel`, taken
 from the `Fast_multiplication` dependency at the revision `lake-manifest.json`
 pins. The string is retained because archived plan output carries it, so a
-future companion cost-model change cannot silently reinterpret old estimates. -/
-def modelVersion : String := "forshor-phase-product-gates-v3"
+future companion cost-model change cannot silently reinterpret old estimates.
+
+`v4` is ForShor's real negation charge (modular swap 001/002: complement plus a one-clean-ancilla increment,
+`NegationMethod.oneQubit`, the default); `v3` is the pre-swap Cuccaro-based charge (`NegationMethod.scratch`,
+ForShor 6d55ad9), which the planner still reproduces number for number when asked for it. -/
+def modelVersionFor : Shor.NegationMethod → String
+  | .oneQubit => "forshor-phase-product-gates-v4"
+  | .scratch => "forshor-phase-product-gates-v3"
+
+/-- The version of the default (`oneQubit`) model. -/
+def modelVersion : String := modelVersionFor .oneQubit
 
 /-- Stable machine-readable optimization objective. -/
 def objective : String := "logical_gate_count"
