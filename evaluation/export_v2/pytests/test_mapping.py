@@ -146,3 +146,29 @@ def test_a_chart_carries_the_four_reference_series_and_no_dp():
     series = {name: [{"n": 2048, "T": 1.0, "ladder_str": "x"}] for name in ("reference", "kmy", "champions", "all_sto", "dp")}
     chart = mapping.chart_of(series, epoch="e" * 16, board="pp", delta="1e-2")
     assert set(chart["series"]) == {"reference", "kmy", "champions", "all_sto"}
+
+
+def test_a_ptp_panel_whose_q_equals_a_kernel_checked_peak_says_so_and_nothing_else_changes():
+    from export_v2 import epoch
+    case = GOLDEN["cases"]["ptp_planner"]
+    kw = dict(epoch=GOLDEN["epoch"], row_id="82eaf805f71c", board="ptp", delta=case["delta"], verification=case["panel"]["verification"])
+    default = mapping.panel_of(case["view"], **kw)
+    flagged = mapping.panel_of(case["view"], lean_peak=True, **kw)
+    assert (default["qubitsLabel"], default["qubitsRule"]) == (case["view"]["qubits_label"], case["view"]["qubits_rule"])   # the engine's wording
+    assert "formula, not Lean-proved" in default["qubitsLabel"]
+    assert flagged["qubitsLabel"] == mapping.PTP_LEAN_LABEL and "Lean-proved" not in flagged["qubitsLabel"]
+    for fact in ("Peak.Board.Row82eaf805f71c.peak_oneQubit_exact", mapping.PIN, "upper bound", "existential", "3n + ptpWsTD + ptpCleanAncD"):
+        assert fact in flagged["qubitsRule"], fact
+    assert "not a Lean-proved count" not in flagged["qubitsRule"]
+    d, f = dict(default), dict(flagged)
+    for k in ("qubitsLabel", "qubitsRule"):
+        d.pop(k), f.pop(k)
+    assert d == f, "the flag changes the qubit text and nothing else"
+    # the flag never touches a PhaseProduct panel's own (non-full) qubit text
+    pp = GOLDEN["cases"]["pp_planner"]
+    kw = dict(epoch=GOLDEN["epoch"], row_id=pp["rowId"], board="pp", delta=pp["delta"], verification=pp["panel"]["verification"])
+    assert mapping.panel_of(pp["view"], lean_peak=True, **kw) == mapping.panel_of(pp["view"], **kw)
+    # the epoch table: six PTP rows with the kernel's numbers; no PhaseProduct row until shard S7 lands
+    assert epoch.LEAN_PEAK["ptp"] == {"82eaf805f71c": 6405, "6f7d25984ff8": 7095, "85fbe1296fbd": 6261,
+                                      "265a0f53acbc": 6342, "2ed7dc90d130": 6573, "c733baf3cd08": 6828}
+    assert epoch.LEAN_PEAK["pp"] == {}

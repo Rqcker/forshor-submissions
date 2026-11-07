@@ -63,6 +63,22 @@ def peak_rule(lean_peak: bool = False) -> str:
 PEAK_LABEL = peak_label()   # the default (leanPeak = False) texts
 PEAK_RULE = peak_rule()
 
+# A PhaseTripleProduct panel's Q (view["qubits_label"] / view["qubits_rule"], the engine's wording) says "formula, not Lean-proved". For a
+# board row whose Q EQUALS the kernel-checked ForShor peak (`leanPeak` = True; epoch.LEAN_PEAK["ptp"]) the wording changes, and only the wording.
+PTP_LEAN_LABEL = "live-qubit peak (equals ForShor's kernel-checked upper bound ptp_peak_qubits_exact)"
+_PTP_FORMULA_SENTENCE = "It is a formula, not a Lean-proved count."
+
+
+def ptp_lean_rule(engine_rule: str, row_id: str) -> str:
+    """The engine's PhaseTripleProduct rule with its 'formula, not Lean-proved' sentence replaced by the Lean statement for this board row."""
+    if engine_rule.count(_PTP_FORMULA_SENTENCE) != 1:
+        raise ValueError("the engine's PhaseTripleProduct qubit rule no longer has the sentence this wording replaces")
+    return engine_rule.replace(_PTP_FORMULA_SENTENCE, (
+        "For this policy the number equals ForShor's ptpPeakQubits = 3n + ptpWsTD + ptpCleanAncD at the exact widths (n = 2048), which the "
+        f"kernel-checked theorem Peak.Board.Row{row_id}.peak_oneQubit_exact (ForShor {PIN}) states as an upper bound on the qubit count of a "
+        "circuit following this policy: a bound the framework proves on an existential circuit, not a count of a circuit built here. No "
+        "table of this policy negates, so ForShor's scratch method gives the same number."))
+
 
 def full_run_of(view: Raw, lean_peak: bool = False) -> Raw:
     f = view["full"]
@@ -105,8 +121,11 @@ def full_run_of(view: Raw, lean_peak: bool = False) -> Raw:
 
 def panel_of(view: Raw, *, epoch: str, row_id: str, board: str, delta: str, verification: Raw, lean_peak: bool = False) -> Raw:
     """One `forshor.policy/v2` document from an engine `policy_view` (plus `full`, `usage`, `tables_used` for the full board).
-    `lean_peak`: Lean's kernel has evaluated this policy's qubit peak (per row; False until a manifest says so); only the full run's
-    qubit label and rule depend on it."""
+    `lean_peak`: Lean's kernel has evaluated this policy's qubit peak (per row; False until a manifest says so); only the qubit label and
+    rule depend on it: the full run's (PhaseProduct) and, on the PhaseTripleProduct board, the panel's own."""
+    qubits_label, qubits_rule = view["qubits_label"], view["qubits_rule"]
+    if lean_peak and board == "ptp":
+        qubits_label, qubits_rule = PTP_LEAN_LABEL, ptp_lean_rule(qubits_rule, row_id)
     sc, gl = view.get("scan_cross_check"), view.get("grid_leaf_cross_check")
     tb = view["t_breakdown"]
     return {
@@ -114,8 +133,8 @@ def panel_of(view: Raw, *, epoch: str, row_id: str, board: str, delta: str, veri
         "title": view["title"], "T": view["T"], "ladder": ladder_of(view["ladder_str"]), "ladderLabel": view["ladder_str"],
         "depth": view["depth"], "leafWidth": view["leaf_width"], "leafCalls": view["leaf_calls"], "leafShare": view["leaf_share"],
         "widthRule": view["width_rule"], "widths": view["widths"], "window": view["window"], "agree": view["agree"],
-        "engine2T": view["engine2_T"], "qubits": view["qubits"], "qubitsLabel": view["qubits_label"],
-        "qubitsRule": view["qubits_rule"], "qubitsStatic": _static_layout(view.get("qubits_static")),
+        "engine2T": view["engine2_T"], "qubits": view["qubits"], "qubitsLabel": qubits_label,
+        "qubitsRule": qubits_rule, "qubitsStatic": _static_layout(view.get("qubits_static")),
         "qubitsLeanStatic": _static_layout(view.get("qubits_lean_static")),
         "qubitsQualtranPeak": view.get("qubits_qualtran_peak"),
         "levels": [{

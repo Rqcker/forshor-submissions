@@ -36,7 +36,11 @@ At w = 8 / 9 / 2048 the first row gives X / CNOT / Toffoli of 37 / 114 / 68, 46 
 text until it exists.
 
 The qubit text of the full board's peak (`mapping.peak_label`, `mapping.peak_rule`) is a function of the per-row flag `leanPeak` (default False:
-"Lean has not evaluated it on this policy"). A later step sets it per row, from the manifest of Lean-evaluated policies, without editing text.
+"Lean has not evaluated it on this policy"). It is set per row from `epoch.LEAN_PEAK` (board, row id -> the kernel-checked qubit number): `build_epoch_input` refuses to export a row whose Q
+differs from that number. The table holds the six PhaseTripleProduct board rows (ForShor `Peak.Board.Row<id>.peak_oneQubit_exact`: 6405, 7095, 6261, 6342,
+6573, 6828); on a PhaseTripleProduct panel the flag replaces the engine's "formula, not Lean-proved" qubit label and rule (`mapping.PTP_LEAN_LABEL`,
+`mapping.ptp_lean_rule`: the Q equals ForShor's upper bound `ptpPeakQubits`, a bound on an existential circuit). The PhaseProduct rows have no kernel numeral yet
+(`LEAN_PEAK["pp"]` is empty); to flip one, add (its row id -> the kernel's total qubits for that policy) and re-export.
 
 ## Evidence rules
 

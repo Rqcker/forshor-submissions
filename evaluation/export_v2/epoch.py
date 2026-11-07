@@ -35,6 +35,19 @@ ARCHIVE_PR = "https://github.com/VerifiedQC/ShorTableOptimization/pull/{}"
 NEGATION_OF = {"gidney_circuit": "incrementer", "legacy": "scratch"}
 
 
+#: Board rows whose Q is, or equals, a quantity Lean's kernel has checked: (board, row id) -> the kernel-checked qubit number at n = 2048,
+#: exact widths, ForShor `oneQubit` (the epoch's negation). A row listed here gets `leanPeak = True`, and `build_epoch_input` refuses to
+#: export it unless the engine's Q equals the number. The numbers are those of ForShor's theorems `Peak.Board.Row<id>.peak_oneQubit_exact`
+#: (PhaseTripleProduct/Proofs/Peak/BoardNumerals/, ForShor eb00c5adc72832469a5f223fbec6c8b75745d2dd, listed in the swap-002 manifest).
+#: `pp` is empty: the board's PhaseProduct policies have no kernel numeral yet (shard S7); to flip a row, add (`"pp"`, row id) -> the
+#: kernel's TOTAL qubits for that policy (the same quantity as the row's full-run `qubits`) and re-export. Nothing else changes but the text.
+LEAN_PEAK: Dict[str, Dict[str, int]] = {
+    "ptp": {"82eaf805f71c": 6405, "6f7d25984ff8": 7095, "85fbe1296fbd": 6261,
+            "265a0f53acbc": 6342, "2ed7dc90d130": 6573, "c733baf3cd08": 6828},
+    "pp": {},
+}
+
+
 def negation_label(engine_impl: str) -> str:
     """The epoch model's `negation` value for the engine's negation convention (see `NEGATION_OF`)."""
     if engine_impl not in NEGATION_OF:
@@ -216,8 +229,13 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
                 view["title"] = view["policy_json"]["name"] = title
                 verification = {"stoMirror": evidence[r["digest"]][0], "forshorPolicy": None}   # None for a planner policy the STO mirror has not checked (D9)
                 detail = mapping.panel_path(epoch, r["id"], b, delta)
+                # the number the kernel checked is compared with the Q the panel will show: the full run's live peak, or the PTP panel's Q
+                lean_q = LEAN_PEAK["ptp" if b == "ptp" else "pp"].get(r["id"]) if b in ("ptp", "full") else None
+                shown = view["full"]["qubits_peak"] if b == "full" else view["qubits"]
+                if lean_q is not None and shown != lean_q:
+                    raise ValueError(f"row {r['id']} on {b}: Q {shown} is not the kernel-checked {lean_q}; the label would be false")
                 panel = mapping.panel_of(view, epoch=epoch, row_id=r["id"], board=b, delta=delta, verification=verification,
-                                         lean_peak=bool(r.get("leanPeak", False)))   # per row; False until a manifest says Lean evaluated it
+                                         lean_peak=lean_q is not None)   # per row; False unless a kernel numeral exists (LEAN_PEAK)
                 if detail in panels:
                     raise ValueError(f"two listed rows share the id {r['id']} on {b} at {delta}")
                 panels[detail] = panel

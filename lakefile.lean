@@ -33,14 +33,14 @@ the name from the manifest, not from the remote lakefile. Renaming is cosmetic a
 costs the build cache (D3).
 
 Pinned to an exact commit rather than `main`: a ForShor rename or module move then
-cannot break this build until the pin is bumped on purpose. 8e37ce7 is the
-modular-swap-001 tip (negation as complement plus a one-clean-ancilla incrementer; PR #79 on
-ForShor, branch `swap/negation-incrementer`), which descends from 6d55ad9, the
+cannot break this build until the pin is bumped on purpose. eb00c5a is the merge
+commit of PR #79 on ForShor (negation as complement plus a one-clean-ancilla incrementer, with Lean's real counts;
+branch `swap/negation-incrementer`; its tree equals the PR head 2b7aaf7 on which CI passed), which descends from 6d55ad9, the
 `qubitCount` branch tip of 2026-11-04 (qubit count, unconditional balanced split, module
 reorganisation; Gauss-Jordan `@[csimp]` restored ahead of its compiled callers).
 -/
 require «Fast_multiplication» from git
-  "https://github.com/VerifiedQC/ForShor.git" @ "8e37ce7e151803c68539a2bcb82c0ea2a76db849"
+  "https://github.com/VerifiedQC/ForShor.git" @ "eb00c5adc72832469a5f223fbec6c8b75745d2dd"
 
 @[default_target]
 lean_lib TableGeneration where
