@@ -31,6 +31,7 @@ sys.path.insert(0, str(HERE))
 import forshor_verify as fv  # noqa: E402  (binds the vendored Qualtran first)
 import ptp_policy_verify as ppv  # noqa: E402
 import sto_policy_verify as spv  # noqa: E402
+from policy_to_template import TemplateError, requested_negation_from_file  # noqa: E402
 from site_engine import intake  # noqa: E402
 from tcost import tables as tt  # noqa: E402
 
@@ -42,12 +43,24 @@ def submit(path: Path, forshor: Path = DROPIN, delta: float = 0.01) -> Dict[str,
     text = path.read_text()
     doc = json.loads(text)
     t0 = time.time()
+    try:
+        negation = requested_negation_from_file(path)        # the policy JSON's `negation` key (absent = "oneQubit"; swap 002)
+    except TemplateError as e:                               # a bad value is refused before any Lean runs
+        return {"policy": str(path), "delta": delta, "verdict": "rejected-negation", "reason": str(e), "wall_s": 0.0}
     board = intake.cost(text, delta=delta)
     pol = board["policies"][0]
     mode = pol.get("mode") or tt.load_policies(path)[0].mode
     out: Dict[str, Any] = {"policy": str(path), "mode": mode, "delta": delta,
                            "board": {"T": pol["point"]["T"], "ladder": pol["point"].get("ladder"),
                                      "widths_notice": board.get("widths_notice")}}
+    # The STO tiers do not model the method: the mirror's BandedPolicy / the PTP suite have no `negation` field (they check the
+    # table algebra, which holds under either method), and the board's T prices a negate op as Qualtran's Negate. Said here, not
+    # silent. Only the ForShor stage below builds and prices the method (the printed document's `negation`).
+    out["negation"] = {"requested": negation,
+                       "sto": "table algebra only (the mirror has no negation field; the check holds for either method)",
+                       "board": "tcost prices a negate op as Qualtran Negate whatever the method: not the method's cost",
+                       "forshor": "built by Lean with the method and priced with it (forshor.negation)" if mode != PTP
+                                  else "PTP has no ForShor circuit: the method is not built or priced"}
     t = time.time()
     spv.wait_lean_slot(limit=3)                       # the machine-wide limit (3 lean processes), not "no other lean"
     sto = (ppv.check(path) if mode == PTP else spv.check(path, widths="exact", guard_busy=False))
@@ -72,7 +85,7 @@ def submit(path: Path, forshor: Path = DROPIN, delta: float = 0.01) -> Dict[str,
     out["forshor"] = {"verdict": fs["status"], "tree": str(forshor), "commit": (fs.get("forshor") or {}).get("commit"),
                       "seconds": fs.get("seconds"), "wall_s": round(time.time() - t, 1),
                       "full_run_T": fs.get("single_run_T"), "T_document": native.get("T_document"),
-                      "T_converted_policy": native.get("T_converted_policy")}
+                      "T_converted_policy": native.get("T_converted_policy"), "negation": fs.get("negation")}
     out["agreement"] = {"bands": printed == submitted, "price": bool(native.get("conversion_agrees")),
                         "submitted_bands": submitted, "forshor_bands": printed}
     ok = fs["status"] == "verified" and all(out["agreement"][k] for k in ("bands", "price"))

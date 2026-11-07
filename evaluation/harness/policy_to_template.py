@@ -67,6 +67,16 @@ def negation_of(policy: dict) -> "str | None":
     return None if v == "oneQubit" else v
 
 
+def requested_negation(policy: dict) -> str:
+    """The negation method the policy JSON asks for, as ForShor spells it: `"oneQubit"` when the key is absent (the default)."""
+    return negation_of(policy) or "oneQubit"
+
+
+def requested_negation_from_file(path: Path, index: int = 0) -> str:
+    """`requested_negation` of policy `index` of the policy file `path` (the same object `template_from_file` reads)."""
+    return requested_negation(tt.policy_docs(json.loads(Path(path).read_text()))[index])
+
+
 #: ForShor's Lean library name: `FastMultiplication` on `main`, `ForShor` on `qubitCount` (bb2aae0 and later).
 LIBS = ("FastMultiplication", "ForShor")
 DEFAULT_LIB = "FastMultiplication"

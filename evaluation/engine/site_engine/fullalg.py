@@ -364,24 +364,26 @@ def _t_of(c, spec, delta: float) -> Dict[str, Any]:
             "eps": sc.rotation_eps(delta, s.rot) if s.rot else None}
 
 
-def _scan_tier(LP, n: int, delta: float) -> Dict[str, Any]:
+def _scan_tier(LP, n: int, delta: float, negate: str = cc.DEFAULT_NEGATE) -> Dict[str, Any]:
     """Upstream ForShor 10fe620's IR (REFERENCE_SCAN: scanned widths, no balanced split), same leaf and adders."""
     LS = lpol.with_width_rule(LP, "scan")
-    cs = attrs.evolve(core_scan(int(n)), policy=LS, convention=HEADLINE)
-    scan = _t_of(cs, HEADLINE, delta)
+    hl = HEADLINE.with_(negate=negate)
+    cs = attrs.evolve(core_scan(int(n)), policy=LS, convention=hl)
+    scan = _t_of(cs, hl, delta)
     lad = _ladder(LS, *main_shape(cs))
     scan.update(qubits=cs.layout_qubits(), ladder_str=" -> ".join(f"{x['W']}:{x['k'] or 'leaf'}" for x in lad))
     return scan
 
 
 @lru_cache(maxsize=4096)
-def _price(LP, n: int, delta: float, detail: bool, ir: str = "board") -> Dict[str, Any]:
+def _price(LP, n: int, delta: float, detail: bool, ir: str = "board", negate: str = cc.DEFAULT_NEGATE) -> Dict[str, Any]:
     """``ir``: "board" (the drop-in document REFERENCE, the board's width rule) or "scan" (upstream ForShor's
     REFERENCE_SCAN at scanned widths: what a scan document, e.g. from the stock harness tree, is priced and checked on)."""
-    c = attrs.evolve((core if ir == "board" else core_scan)(int(n)), policy=LP, convention=HEADLINE)
-    head = _t_of(c, HEADLINE, delta)
-    grid = _t_of(c, GRID_LEAF, delta)
-    lit = _t_of(c, LITERAL_LEAN, delta)
+    hl, gl, ll = (s.with_(negate=negate) for s in (HEADLINE, GRID_LEAF, LITERAL_LEAN))
+    c = attrs.evolve((core if ir == "board" else core_scan)(int(n)), policy=LP, convention=hl)
+    head = _t_of(c, hl, delta)
+    grid = _t_of(c, gl, delta)
+    lit = _t_of(c, ll, delta)
     g = _gate_counts(c)
     widths = dict(c.widths)
     lay = layout(LP, widths)
@@ -391,7 +393,7 @@ def _price(LP, n: int, delta: float, detail: bool, ir: str = "board") -> Dict[st
               "literal_lean": {**lit, "label": "literal Lean tier: merged-CPhase leaf, ForShor's Cuccaro adders "
                                                "(2w - 3 Toffolis): a cross-check, not the score"}}
     if ir == "board":
-        checks["forshor_scan_ir"] = {**_scan_tier(LP, n, delta),
+        checks["forshor_scan_ir"] = {**_scan_tier(LP, n, delta, negate),
                                      "label": "upstream ForShor 10fe620's IR: scanned widths, no balanced split "
                                               "(same leaf and adders): a cross-check, not the score"}
     out = {"n": int(n), "delta": float(delta), "model": MODEL if ir == "board" else MODEL_SCAN,
@@ -417,24 +419,31 @@ def _price(LP, n: int, delta: float, detail: bool, ir: str = "board") -> Dict[st
 
 
 def price_l2q(LP: "lpol.PhasePolicy", n: int, delta: float = DEFAULT_DELTA, detail: bool = True,
-              rule: Optional[str] = None) -> Dict[str, Any]:
+              rule: Optional[str] = None, negation: Optional[str] = None) -> Dict[str, Any]:
     """Single-run cost of the whole order-finding run with an l2q_full policy (e.g. a ForShor native document's). The
     policy's tables take the board's width rule (Stage 18: a table built elsewhere defaults to "scan", and the board's
     IR is exact; mixing the two would price narrower registers than the IR's layout holds).
     ``rule="scan"`` prices on upstream ForShor's IR at scanned widths instead (the scan cross-check as the headline:
-    the tier a scan document, e.g. one from the stock ForShor harness tree, is checked on)."""
+    the tier a scan document, e.g. one from the stock ForShor harness tree, is checked on).
+    ``negation``: the policy's ForShor negation method, "oneQubit" or "scratch" (swap 002); it picks the negation cost
+    convention of every tier (`cost_conventions.negate_impl`) and is reported as `negation`. None (default): the repo's
+    default convention, output unchanged and without that key."""
+    negate = cc.negate_impl(negation)
     ir = "board" if rule in (None, width_rule()) else "scan"
     if ir == "scan" and rule != "scan":
         raise ValueError(f"unknown width rule {rule!r}")
     LP = lpol.with_width_rule(LP, width_rule() if ir == "board" else "scan")
-    return json.loads(json.dumps(_price(LP, int(n), float(delta), bool(detail), ir)))
+    r = json.loads(json.dumps(_price(LP, int(n), float(delta), bool(detail), ir, negate)))
+    if negation is not None:
+        r["negation"], r["negate_impl"] = negation, negate
+    return r
 
 
 def price_full(P: tt.Policy, n: int, delta: float = DEFAULT_DELTA, detail: bool = True,
-               rule: Optional[str] = None) -> Dict[str, Any]:
+               rule: Optional[str] = None, negation: Optional[str] = None) -> Dict[str, Any]:
     """Single-run cost of the whole order-finding run with phase-product policy P, at modulus bits n (the board's IR
     and width rule; ``rule="scan"``: upstream ForShor's IR at scanned widths, see `price_l2q`)."""
-    return price_l2q(to_l2q_full(P), n, delta, detail, rule)
+    return price_l2q(to_l2q_full(P), n, delta, detail, rule, negation)
 
 
 def doc_width_rule(doc: Dict[str, Any]) -> str:
@@ -446,8 +455,10 @@ def price_document(doc: Dict[str, Any], n: int = HERO_N, delta: float = DEFAULT_
     """T of a ForShor policy document (``forshor_policy_submission`` output) with ITS OWN IR census, under the score's
     convention: the harness's conversion check compares it with the converted site policy in the reference census."""
     conv = sy.Convention.for_modulus(1 << (int(n) - 1), precision_m(n))
-    c = pr.PolicyShorCore.from_native(pi.load_native(doc), int(n), conv, HEADLINE)
-    return _t_of(c, HEADLINE, float(delta))
+    nat = pi.load_native(doc)                           # reads the document's own `negation` (swap 002)
+    hl = HEADLINE.with_(negate=nat.negate_impl)
+    c = pr.PolicyShorCore.from_native(nat, int(n), conv, hl)
+    return _t_of(c, hl, float(delta))
 
 
 def census(n: int, top: int = 12, rule: Optional[str] = None) -> Dict[str, Any]:

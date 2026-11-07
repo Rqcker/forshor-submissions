@@ -326,7 +326,8 @@ class CuccaroAddScaled(Bloq):
 
 @attrs.frozen
 class CuccaroNegate(Bloq):
-    """`r ← −r` priced as ForShor's `negateResources`. Classical action declared."""
+    """`r ← −r` priced as the LEGACY `negateResources` (Cuccaro adder + constant register; before
+    modular swap 001). Classical action declared. The current negation is `cc.IncrementerNegate`."""
     w: int
 
     @property
@@ -362,16 +363,16 @@ def _used_extra(policy: PhasePolicy, wx: int, wz: int) -> int:
 
 
 @lru_cache(maxsize=1 << 14)
-def _lean_clean_anc(policy: PhasePolicy, wx: int, wz: int) -> int:
-    """ForShor's `cleanAnc` (a peak, `max` over `seq`): 1 for any Cuccaro add, `w + 1` for a
-    negate on a `w`-bit register (`negateResources`)."""
+def _lean_clean_anc(policy: PhasePolicy, wx: int, wz: int, negate: str = cc.DEFAULT_NEGATE) -> int:
+    """ForShor's `cleanAnc` (a peak, `max` over `seq`): 1 for any Cuccaro add and, since modular
+    swap 001, 1 for a negate (`negateResources`: one clean ancilla; it was `w + 1`)."""
     s = policy.step(wx, wz)
     if s is None:
         return 0
     T, w2 = s
     c = T.census()
-    here = max(1 if c["addScaled"] else 0, (w2 + 1) if c["negate"] else 0)
-    return max(here, _lean_clean_anc(policy, w2, w2))
+    here = max(1 if c["addScaled"] else 0, cc.negate_clean_ancilla(w2, negate) if c["negate"] else 0)
+    return max(here, _lean_clean_anc(policy, w2, w2, negate))
 
 
 @lru_cache(maxsize=None)
@@ -409,10 +410,11 @@ def _qualtran_level_ancilla(T: ToomCookTable, w2: int, spec: cc.ConventionSpec) 
     ancillas plus the zero padding of a shifted source view."""
     if spec.adder == "cuccaro":
         c = T.census()
-        return max(1 if c["addScaled"] else 0, (w2 + 1) if c["negate"] else 0)
+        return max(1 if c["addScaled"] else 0,
+                   cc.negate_clean_ancilla(w2, spec.negate) if c["negate"] else 0)
     add_x = qubit_count_closed_form("Add", w2) - 2 * w2
     sub_x = qubit_count_closed_form("Subtract", w2) - 2 * w2
-    neg_x = qubit_count_closed_form("Negate", w2) - w2
+    neg_x = 1 if spec.negate in ("incrementer", "gidney_circuit") else qubit_count_closed_form("Negate", w2) - w2
     peak = 0
     for o in T.ops:
         if o["op"] == "addScaled":
@@ -457,7 +459,8 @@ def _qualtran_ancilla_peak(policy: PhasePolicy, wx: int, wz: int, spec: cc.Conve
         w_x = w_z = w2
 
 
-def _lean_resources(policy: PhasePolicy, wx: int, wz: int, controlled: bool) -> Dict[str, int]:
+def _lean_resources(policy: PhasePolicy, wx: int, wz: int, controlled: bool,
+                    negate: str = cc.DEFAULT_NEGATE) -> Dict[str, int]:
     res = {"rz": 0, "cnot": 0, "toffoli": 0, "x": 0, "h": 0}
     nodes = 1
     while True:
@@ -474,12 +477,12 @@ def _lean_resources(policy: PhasePolicy, wx: int, wz: int, controlled: bool) -> 
             return res
         T, w2 = s
         cen = T.census()
-        # `addScaledResources` = `cuccaroModAddResources (width dst)`; `negateResources` = the
-        # same adder plus `w + 2` X (complement, then add a prepared |1>). Every chunk has
-        # already been grown to `w2` when the program runs.
+        # `addScaledResources` = `cuccaroModAddResources (width dst)`; `negateResources` = the complement plus
+        # Gidney's one-clean-ancilla increment (ForShor `oneQubit`; `negate="legacy"` = `scratch` charges the Cuccaro one) (`cc.negate_resources`: Toffoli 12w-28 / 10w-18, CNOT 17w-22 / 17w-5,
+        # X 5w-3 / 5w+1). Every chunk has already been grown to `w2` when the program runs.
         adds = nodes * 2 * cen["addScaled"]
         negs = nodes * 2 * cen["negate"]
-        add_r, neg_r = cc.cuccaro_resources(w2), cc.negate_resources(w2)   # ℕ-truncated, as Lean
+        add_r, neg_r = cc.cuccaro_resources(w2), cc.negate_resources(w2, negate)   # ℕ-truncated, as Lean
         for ch in ("toffoli", "cnot", "x"):
             res[ch] += adds * add_r[ch] + negs * neg_r[ch]
         for side_w in (wx, wz):                 # sign-extend + dealloc of each top limb
@@ -523,11 +526,11 @@ class _PolicyPPBase(Bloq):
         """`LowGate.resources` of the whole lowered recursion (`h, x, cnot, toffoli, rz`), predicted
         from the ladder with `k`, `q` and the census of whichever table the policy chose at each
         level. `cleanAnc` is :meth:`lean_clean_anc` (a peak, not a sum)."""
-        return _lean_resources(self.policy, self.wx, self.wz, self._is_controlled)
+        return _lean_resources(self.policy, self.wx, self.wz, self._is_controlled, self.convention.negate)
 
     def lean_clean_anc(self) -> int:
         """ForShor's `cleanAnc` channel of the lowered circuit."""
-        return _lean_clean_anc(self.policy, self.wx, self.wz)
+        return _lean_clean_anc(self.policy, self.wx, self.wz, self.convention.negate)
 
     def lean_used_qubits(self) -> int:
         """`|LowGate.usedQubits|`: operands, control, and every reserve qubit the lowering
@@ -627,7 +630,7 @@ class _PolicyPPBase(Bloq):
         if spec.adder == "cuccaro":
             return bb.add(CuccaroAddScaled(w2, shift, neg, spec.negsrc == "negate_add_negate"),
                           src=src, dst=dst)
-        from qualtran.bloqs.arithmetic import Add, BitwiseNot, Negate
+        from qualtran.bloqs.arithmetic import Add, BitwiseNot
         if shift:
             sb = list(bb.split(src))[::-1]
             zb = list(bb.split(bb.allocate(shift)))
@@ -640,9 +643,9 @@ class _PolicyPPBase(Bloq):
             view, dst = bb.add(Add(QInt(w2)), a=view, b=dst)
             dst = bb.add(BitwiseNot(QInt(w2)), x=dst)
         elif neg:                                     # legacy Negate · Add · Negate on the source
-            view = bb.add(Negate(QInt(w2)), x=view)
+            view = bb.add(cc.negate_bloq(w2, spec), x=view)
             view, dst = bb.add(Add(QInt(w2)), a=view, b=dst)
-            view = bb.add(Negate(QInt(w2)), x=view)
+            view = bb.add(cc.negate_bloq(w2, spec), x=view)
         else:
             view, dst = bb.add(Add(QInt(w2)), a=view, b=dst)
         if shift:
@@ -654,6 +657,8 @@ class _PolicyPPBase(Bloq):
         return src, dst
 
     def _negate(self, bb: BloqBuilder, r, w2: int, spec):
+        if spec.negate in ("incrementer", "gidney_circuit"):
+            return bb.add(cc.IncrementerNegate(w2, spec.negate), x=r)
         if spec.adder == "cuccaro":
             return bb.add(CuccaroNegate(w2), x=r)
         from qualtran.bloqs.arithmetic import Negate

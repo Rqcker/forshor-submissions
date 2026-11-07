@@ -690,9 +690,11 @@ def _cuccaro(w: int) -> Dict[str, int]:
     return {"x": max(0, 2 * w - 6), "cnot": max(0, 5 * w - 7), "toffoli": max(0, 2 * w - 3)}
 
 
-def lowgate_resources(leaves: Sequence[Dict[str, Any]]) -> Dict[str, int]:
+def lowgate_resources(leaves: Sequence[Dict[str, Any]], negation: Optional[str] = None) -> Dict[str, int]:
     """`LowGate.resources shorGateResourceModel` over flat leaves: the `h, x, cnot, toffoli, rz`
     channels (not `cleanAnc`, whose `seq` rule is not additive). Adjoints cost their body."""
+    if negation not in (None, "oneQubit", "scratch"):
+        raise IRv1Error(f"negation {negation!r} not in (None, 'oneQubit', 'scratch')")
     out = {"h": 0, "x": 0, "cnot": 0, "toffoli": 0, "rz": 0}
 
     def add(d):
@@ -702,7 +704,7 @@ def lowgate_resources(leaves: Sequence[Dict[str, Any]]) -> Dict[str, int]:
     for g in leaves:
         op = g["op"]
         if op == "adj":
-            add(lowgate_resources(g["body"]))
+            add(lowgate_resources(g["body"], negation))
         elif op == "H":
             out["h"] += 1
         elif op == "X":
@@ -716,9 +718,17 @@ def lowgate_resources(leaves: Sequence[Dict[str, Any]]) -> Dict[str, int]:
         elif op == "AddScaled":
             add(_cuccaro(len(g["dst"]["active"])))
         elif op == "Negate":
+            # `negateResources` under the policy's `negation` (None = key absent = pre-NegationMethod tree = `scratch`'s Cuccaro
+            # charge; "oneQubit" = modular swap 001 + the counted circuit): complement plus Gidney's one-clean-ancilla increment gate. Toffoli 12w-28 / 10w-18, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1 (even / odd w), Lean's truncating subtraction
+            # (`bloqs/gidney_increment.bound_counts`; equal to `cost_conventions.negate_resources(w, "gidney_circuit")`).
             w = len(g["r"]["active"])
-            c = _cuccaro(w)
-            add({"x": w + c["x"] + 2, "cnot": c["cnot"], "toffoli": c["toffoli"]})
+            if negation in (None, "scratch"):          # `negateResourcesPreSwap`: Cuccaro + w constant-one bits
+                c = _cuccaro(w)
+                add({"x": w + c["x"] + 2, "cnot": c["cnot"], "toffoli": c["toffoli"]})
+            else:
+                ev, tr = w % 2 == 0, (lambda a, b: max(0, a - b))
+                add({"x": tr(5 * w, 3) if ev else 5 * w + 1, "cnot": tr(17 * w, 22) if ev else tr(17 * w, 5),
+                     "toffoli": tr(12 * w, 28) if ev else tr(10 * w, 18)})
         elif op in ("signExtend", "signDealloc"):
             out["cnot"] += g["n"]
         elif op == "RadixReverse":

@@ -31,6 +31,15 @@ for **table** submissions. It also defines top-level packages named `tcost` and 
 code*, so the two must never be imported in one process. Nothing here is wired into a workflow yet; the old path is
 untouched and its golden tests still apply to it. Cutover to this engine comes with policy intake.
 
+## Negation method (ForShor swap 002)
+
+A ForShor policy carries `negation` = `oneQubit` (default) or `scratch`. Stage 5 of `harness/forshor_verify.py` prices with the
+method of the document Lean printed (`fullalg/l2q_full` through `site_engine/fullalg.py`: `oneQubit` -> `gidney_circuit`, `scratch`
+-> `legacy`, `cost_conventions.NEGATION_IMPL`), and `check_negation` rejects a printed method that differs from the `negation`
+key of the submitted policy JSON (no key = `oneQubit`). `paper_model/` and `forshor_qualtran/` do not price stage 5 and are
+unchanged. `DEFAULT_NEGATE` is still `legacy`, because the build trees pinned today (ForShor 6d55ad9 / 10fe620) print no `negation` and
+charge the Cuccaro negation: flip it, and `forshor_verify.REQUIRE_PRINTED_NEGATION`, with the ForShor pin bump to eb00c5a or later.
+
 ## Run
 
 ```sh
