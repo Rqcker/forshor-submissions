@@ -33,12 +33,14 @@ the name from the manifest, not from the remote lakefile. Renaming is cosmetic a
 costs the build cache (D3).
 
 Pinned to an exact commit rather than `main`: a ForShor rename or module move then
-cannot break this build until the pin is bumped on purpose. 6d55ad9 is the
+cannot break this build until the pin is bumped on purpose. 8e37ce7 is the
+modular-swap-001 tip (negation as complement plus a one-clean-ancilla incrementer; PR #79 on
+ForShor, branch `swap/negation-incrementer`), which descends from 6d55ad9, the
 `qubitCount` branch tip of 2026-11-04 (qubit count, unconditional balanced split, module
 reorganisation; Gauss-Jordan `@[csimp]` restored ahead of its compiled callers).
 -/
 require «Fast_multiplication» from git
-  "https://github.com/VerifiedQC/ForShor.git" @ "6d55ad9968dc067c68a7023bbbaed6c955d9190c"
+  "https://github.com/VerifiedQC/ForShor.git" @ "8e37ce7e151803c68539a2bcb82c0ea2a76db849"
 
 @[default_target]
 lean_lib TableGeneration where

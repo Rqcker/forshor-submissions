@@ -7,8 +7,9 @@ while that is discussed. If upstream adopts these changes, use upstream instead.
 
 - **Base:** upstream `main` at `361e81e` (2026-11-03, "Update ForShor to c0eb474").
   Toolchain and Mathlib are upstream's, unchanged: `leanprover/lean4:v4.36.0-rc1`, Mathlib `4dc43842`.
-- **ForShor pin:** this fork pins ForShor (`Fast_multiplication`) to the exact commit `6d55ad9`, the tip
-  of ForShor's `qubitCount` branch on 2026-11-04, not to `main`. That branch renames the library
+- **ForShor pin:** this fork pins ForShor (`Fast_multiplication`) to the exact commit `8e37ce7` (modular swap 001, negation
+  as complement plus a one-clean-ancilla incrementer; ForShor PR #79), which descends from `6d55ad9`, the tip
+  of ForShor's `qubitCount` branch on 2026-11-04. Not `main`. That branch renames the library
   `FastMultiplication` to `ForShor`, so a few STO files were ported: import paths, two removed
   helper names re-stated locally, and the confinement check. ForShor itself is not modified. See
   `JMC_VALIDATION.md` (sections "Port to ForShor `bb2aae0`" and "Pin bump to ForShor `6d55ad9`").

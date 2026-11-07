@@ -64,7 +64,7 @@ The gate costs are not reproduced here and not copied either. `Reg`, `ExtReg`,
 `LowGate`, `LowGateCostModel`, `GateResources`, the Cuccaro resource records and
 `shorGateCostModel` itself are the companion's own definitions, imported from the
 `Fast_multiplication` dependency. The planner's constants are computed from those
-records, so the familiar `9w - 16` and `10w - 14` are theorems
+records, so the familiar `9w - 16` and `33w` are theorems
 (`cuccaroModAddGateCount_eq`, `cuccaroNegateGateCount_eq`) rather than numbers
 transcribed from the companion, and `cuccaroNegateGateCount_eq_model` ties the
 planner's constant to what `shorGateCostModel.negate` charges, by `rfl` and with
@@ -246,8 +246,10 @@ companion's operative `shorGateCostModel = shorGateResourceModel.toCostModel` in
 
 - `addScaled`: exact Cuccaro modulo adder,
   `(2w - 6) + (5w - 7) + (2w - 3)` = `9w - 16` for `w >= 3`;
-- `negate`: complement plus a constant-one register plus that adder,
-  `(w + (2w - 6) + 2) + (5w - 7) + (2w - 3)` = `10w - 14` for `w >= 3`;
+- `negate`: complement plus a one-clean-ancilla incrementer (ForShor modular swap 001,
+  `8e37ce7`), `w` NOTs and `32w` Toffolis = `33w` for every `w`, with 1 clean ancilla.
+  Before the swap this was a constant-one register plus the adder above,
+  `10w - 14` for `w >= 3`, with `w + 1` clean qubits;
 - `shiftL` / `shiftR` / `zeroExtend` / `zeroDealloc`: free;
 - `signExtend` / `signDealloc`: `n` CNOTs each.
 

@@ -139,3 +139,30 @@ Single-run T priced on the printed documents (site pricer) is identical to `main
 three: 3,240,663,026,770 / 1,933,981,965,831 / 1,650,011,804,372. The documents for the shipped template
 and `Scc866e679f67` are identical in every top-level field to the `bb2aae0` ones, for both executables.
 Not rerun: full per-module kernel replay, 31 planner seeds.
+
+## Pin bump to ForShor `8e37ce7` (modular swap 001, negation by incrementer), 2026-11-06
+
+ForShor `8e37ce7` ("Negation: complement plus a one-clean-ancilla incrementer", PR #79, branch `swap/negation-incrementer`)
+descends from `6d55ad9` and carries main's later history with it. Toolchain (`v4.36.0-rc1`) and Mathlib (`4dc43842`) are
+unchanged. It changes what ForShor's resource model charges a negation: `Shor.negateResources r` is now `x := w`,
+`toffoli := 32 w`, `cleanAnc := 1` (it was a constant-one register plus a Cuccaro adder, `10 w - 14` gates and `w + 1`
+clean qubits). No module STO imports was removed. **STO changes: the pin, and the mirror's own copy of that cost.**
+
+* `TableGeneration/RecursiveCost/CompanionCost.lean`: `negateResourcesAtWidth` is the new record. Its `rfl` against
+  `Shor.negateResources` is what failed to build before the port. `negateResourcesAtWidth_totalGates` and
+  `negateResources_totalGates` are now `33 * w` for every width (no `3 <= w` hypothesis); the bound lemma against
+  `rippleAdderGateBound` was false for the new cost and is restated against `w + 32 w`, ForShor's `negateGateBound`.
+* `TableGeneration/RecursiveCost/Model.lean`: `cuccaroNegateGateCount_eq` is `33 * width`. The name keeps "cuccaro".
+* `scripts/tests/companion-cost-model.tsv`: regenerated. Only the five `cost` lines' negate column moved (11 -> 99 at width 3,
+  66 -> 264 at 8, 626 -> 2112 at 64, 10226 -> 33792 at 1024, 20466 -> 67584 at 2048). Every `alloc` and `reference` line is
+  unchanged, so no plan, allocation or planner total moved.
+
+| check | result |
+|---|---|
+| `lake build TableGeneration` | OK, 6669 jobs after the port (one module, `RecursiveCost.CompanionCost`, failed before it) |
+| `test_cost_model_lean.py` | 6 passed |
+| regenerated `companion-cost-model.tsv` against the committed one | 5 lines differ, all the negate column |
+
+Not rerun on this pin yet: `check_mathlib_confinement.py`, the verifier hardening / preflight / archive / deadline / promote
+tests, `check_ptp_layers.py`, `PTPAxiomCheck.lean`, `ref_pp_2048.json` / `ref_ptp_2048.json`, the fault policies. Every
+policy's Lean evidence is bound to the pin it ran at, so all earlier evidence (pin `6d55ad9`) no longer counts for the epoch.

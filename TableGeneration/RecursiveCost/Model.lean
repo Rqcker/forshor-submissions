@@ -116,8 +116,9 @@ written out, so the familiar closed forms are theorems.
 def cuccaroModAddGateCount (width : Nat) : Nat :=
   (Shor.cuccaroModAddResources width).totalGates
 
-/-- Cuccaro-based negation total, from the companion's `negateResources`.
-Equals `10w - 14` for `w >= 3`. -/
+/-- Negation total, from the companion's `negateResources` (complement plus the
+one-clean-ancilla incrementer, modular swap 001). Equals `33w`. The name keeps
+"cuccaro" from before the swap, when this was a Cuccaro adder against a constant. -/
 def cuccaroNegateGateCount (width : Nat) : Nat :=
   (Companion.negateResourcesAtWidth width).totalGates
 
@@ -125,9 +126,9 @@ theorem cuccaroModAddGateCount_eq (width : Nat) (hw : 3 <= width) :
     cuccaroModAddGateCount width = 9 * width - 16 :=
   Companion.cuccaroModAddResources_totalGates width hw
 
-theorem cuccaroNegateGateCount_eq (width : Nat) (hw : 3 <= width) :
-    cuccaroNegateGateCount width = 10 * width - 14 :=
-  Companion.negateResourcesAtWidth_totalGates width hw
+theorem cuccaroNegateGateCount_eq (width : Nat) :
+    cuccaroNegateGateCount width = 33 * width :=
+  Companion.negateResourcesAtWidth_totalGates width
 
 /-- The planner's negation cost is what the operative model charges any register
 of that width. -/

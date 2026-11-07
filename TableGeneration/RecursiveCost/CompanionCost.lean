@@ -114,13 +114,9 @@ This is the companion's body with `ExtReg.width r` substituted by `w`;
 indexed by a bare `Nat` and must not pay an `O(w)` register construction per
 cost query. -/
 def negateResourcesAtWidth (w : Nat) : Shor.GateResources :=
-  let a := Shor.cuccaroModAddResources w
-  { h := a.h
-    x := w + a.x + 2
-    cnot := a.cnot
-    toffoli := a.toffoli
-    rz := a.rz
-    cleanAnc := w + a.cleanAnc }
+  { x := w
+    toffoli := 32 * w
+    cleanAnc := 1 }
 
 theorem negateResources_eq_atWidth (r : Shor.ExtReg) :
     Shor.negateResources r = negateResourcesAtWidth (Shor.ExtReg.width r) := rfl
@@ -146,16 +142,16 @@ theorem cuccaroModAddResources_totalGates (w : Nat) (hw : 3 <= w) :
   show 0 + (2 * w - 6) + (5 * w - 7) + (2 * w - 3) + 0 = 9 * w - 16
   omega
 
-theorem negateResourcesAtWidth_totalGates (w : Nat) (hw : 3 <= w) :
-    (negateResourcesAtWidth w).totalGates = 10 * w - 14 := by
-  show 0 + (w + (2 * w - 6) + 2) + (5 * w - 7) + (2 * w - 3) + 0 = 10 * w - 14
+/-- Complement plus the one-clean-ancilla incrementer (modular swap 001):
+`w` NOTs and `32 w` Toffolis, whatever the width. -/
+theorem negateResourcesAtWidth_totalGates (w : Nat) :
+    (negateResourcesAtWidth w).totalGates = 33 * w := by
+  show 0 + w + 0 + 32 * w + 0 = 33 * w
   omega
 
-theorem negateResources_totalGates (r : Shor.ExtReg) (hw : 3 <= Shor.ExtReg.width r) :
-    (Shor.negateResources r).totalGates = 10 * Shor.ExtReg.width r - 14 := by
-  show 0 + (Shor.ExtReg.width r + (2 * Shor.ExtReg.width r - 6) + 2)
-        + (5 * Shor.ExtReg.width r - 7)
-        + (2 * Shor.ExtReg.width r - 3) + 0 = 10 * Shor.ExtReg.width r - 14
+theorem negateResources_totalGates (r : Shor.ExtReg) :
+    (Shor.negateResources r).totalGates = 33 * Shor.ExtReg.width r := by
+  show 0 + Shor.ExtReg.width r + 0 + 32 * Shor.ExtReg.width r + 0 = 33 * Shor.ExtReg.width r
   omega
 
 /-! ## The companion's exact-below-bound facts
@@ -172,8 +168,8 @@ theorem cuccaroModAddResources_totalGates_le_rippleAdderGateBound (w : Nat) :
   omega
 
 theorem negateResourcesAtWidth_totalGates_le_negateGateBound (w : Nat) :
-    (negateResourcesAtWidth w).totalGates <= w + Shor.rippleAdderGateBound w := by
-  show 0 + (w + (2 * w - 6) + 2) + (5 * w - 7) + (2 * w - 3) + 0 <= w + (9 * w + 2)
+    (negateResourcesAtWidth w).totalGates <= w + 32 * w := by
+  show 0 + w + 0 + 32 * w + 0 <= w + 32 * w
   omega
 
 /-- Sign extension by `n` bits costs `n` CNOTs, and zero extension is free.
