@@ -8,6 +8,9 @@ Input: the sto_site band shape (one policy), mode must be PhaseTripleProduct:
      "bands": [{"threshold": 2048, "k": 6, "point_order": [...],
                 "operations": [...], "child_width": 398 (optional)}, ...]}
 
+Optional top-level `"negation": "oneQubit" | "scratch"` (see policy_json_to_lean.py): `"scratch"` adds
+`def negation : NegationMethod := .scratch` to the certificate module; absent or `"oneQubit"` changes nothing.
+
 `child_width` (optional, per band) is a width the caller (e.g. the site's
 pricing) assumes for that band at its own threshold; when present the
 certificate proves it equals the PTP-derived child width, by `decide +kernel`.
@@ -33,7 +36,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from policy_json_to_lean import IDENT, PolicyError, nat, op_lean, point_lean  # noqa: E402
+from policy_json_to_lean import IDENT, PolicyError, nat, negation_of, op_lean, point_lean  # noqa: E402
 
 NS = "TableGeneration.PTP.Instances"
 
@@ -44,6 +47,7 @@ def render(policy: dict, module: str, target: int | None, part: str, data_module
         raise PolicyError("module name must be a Lean identifier starting upper-case")
     if policy.get("mode") != "PhaseTripleProduct":
         raise PolicyError(f"mode must be PhaseTripleProduct, got {policy.get('mode')!r}")
+    negation = negation_of(policy)
     bands = policy.get("bands")
     if not isinstance(bands, list) or not bands:
         raise PolicyError("bands must be a nonempty list")
@@ -86,6 +90,10 @@ def render(policy: dict, module: str, target: int | None, part: str, data_module
         out.append(f"end {NS}.{module}\n")
         return "\n".join(out)
     out.append(f"open {NS}.{data_module} Shor\n")
+    if negation is not None:
+        out.append("/-- The negation method the policy's JSON states (`oneQubit`, the default, is left out). A record:")
+        out.append("the theorems below are about `TableGeneration.PTP` under `shorGateResourceModel`, not priced by it. -/")
+        out.append("def negation : NegationMethod := .scratch\n")
     out.append("/-- Acceptance: PTP check (sorted thresholds, every band passes the PTP contract), kernel-reduced. -/")
     out.append("theorem accepted : policy.check = true := by decide +kernel\n")
     if target is not None and widths == "scan":

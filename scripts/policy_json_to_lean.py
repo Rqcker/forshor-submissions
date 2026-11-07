@@ -14,6 +14,12 @@ Input (the sto_site `reference_policies.json` band shape, one policy):
 `point_order` is the order the program's phaseProduct checkpoints consume the
 points (STO `generatePointsInOrder`), which is what the table check needs.
 
+Optional top-level `"negation": "oneQubit" | "scratch"` (ForShor `Shor.NegationMethod`; swap-002). Absent or
+`"oneQubit"` (the default) generates exactly the Lean it did before the key existed. `"scratch"` makes
+`forshorSubmission` carry `negation := .scratch` (a triple-product policy, which has no ForShor submission
+object, gets `def negation : Shor.NegationMethod := .scratch` as a record). Needs a ForShor pin that has
+`NegationMethod` (`<FORSHOR_PIN>`); UNTESTED against Lean. Any other value is an error.
+
 Usage:
     policy_json_to_lean.py POLICY.json --module NAME [--target-width N] [--index I] > NAME.lean
     # or split, so a harness can evaluate the data before proving anything:
@@ -33,10 +39,26 @@ import sys
 
 MODES = {"PhaseProduct": ".PhaseProduct", "PhaseTripleProduct": ".PhaseTripleProduct"}
 IDENT = re.compile(r"^[A-Z][A-Za-z0-9_]*$")
+# ForShor `Shor.NegationMethod` (Framework/NegationMethod.lean): `oneQubit` is the default.
+NEGATIONS = ("oneQubit", "scratch")
 
 
 class PolicyError(ValueError):
     pass
+
+
+def negation_of(policy: dict) -> str | None:
+    """The optional top-level `"negation"` key: `"oneQubit"` (the default) or `"scratch"`.
+
+    Returns None when the key is absent or names the default, so that a policy which does not ask for
+    anything else generates the same Lean as before the key existed; "scratch" otherwise. Any other
+    value (including null or a non-string) is an error."""
+    if "negation" not in policy:
+        return None
+    v = policy["negation"]
+    if not isinstance(v, str) or v not in NEGATIONS:
+        raise PolicyError(f'bad negation {v!r}: expected "oneQubit" (the default) or "scratch"')
+    return None if v == "oneQubit" else v
 
 
 def point_lean(s: str) -> str:
@@ -129,6 +151,7 @@ def render(policy: dict, module: str, target: int | None, part: str = "all", dat
         raise PolicyError(f"bad width rule {widths!r}")
     if widths == "exact" and part != "data" and (exact_ladder is None or target is None):
         raise PolicyError("--widths exact needs the exact ladder and a target width")
+    negation = negation_of(policy)
     out = []
     if part == "cert":
         if not data_module or not IDENT.match(data_module):
@@ -220,9 +243,18 @@ def render(policy: dict, module: str, target: int | None, part: str = "all", dat
         out.append(f"  TableGeneration.PolicyMirror.declaredTight_correct policy accepted {lad} declared_tight_widths\n")
     out.append("/-- The submission record. -/")
     out.append("def submission : PolicySubmission := ⟨policy, accepted⟩\n")
-    if mode == "PhaseProduct":
+    if mode == "PhaseProduct" and negation is None:
         out.append("/-- The same policy as ForShor's object (`Shor.ShorPolicySubmission`, every band C1–C4). -/")
         out.append("def forshorSubmission : Shor.ShorPolicySubmission := toShorPolicySubmission policy accepted rfl\n")
+    elif mode == "PhaseProduct":
+        out.append("/-- The same policy as ForShor's object (`Shor.ShorPolicySubmission`, every band C1–C4), with the")
+        out.append("negation method the policy's JSON states (the default, `oneQubit`, is left out of the object). -/")
+        out.append("def forshorSubmission : Shor.ShorPolicySubmission :=")
+        out.append("  { toShorPolicySubmission policy accepted rfl with negation := .scratch }\n")
+    elif negation is not None:
+        # A triple-product policy has no `ShorPolicySubmission`: record the stated method as data only.
+        out.append("/-- The negation method the policy's JSON states (a record: nothing in this module is priced by it). -/")
+        out.append("def negation : Shor.NegationMethod := .scratch\n")
     if target is not None and widths == "scan":
         out.append(f"/-- Every band the recursion from width {target} selects strictly contracts (no leaf fallback on the chain). -/")
         out.append(f"theorem chain_contracts : policy.chainContracts {nat(target)} = true := by decide +kernel\n")

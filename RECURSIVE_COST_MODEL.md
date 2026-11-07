@@ -64,11 +64,12 @@ The gate costs are not reproduced here and not copied either. `Reg`, `ExtReg`,
 `LowGate`, `LowGateCostModel`, `GateResources`, the Cuccaro resource records and
 `shorGateCostModel` itself are the companion's own definitions, imported from the
 `Fast_multiplication` dependency. The planner's constants are computed from those
-records, so the familiar `9w - 16` and `10w - 14` are theorems
+records, so the familiar `9w - 16` (and, for the `scratch` negation, `10w - 14`) are theorems
 (`cuccaroModAddGateCount_eq`, `cuccaroNegateGateCount_eq`) rather than numbers
-transcribed from the companion, and `cuccaroNegateGateCount_eq_model` ties the
-planner's constant to what `shorGateCostModel.negate` charges, by `rfl` and with
-no axioms.
+transcribed from the companion. Status at ForShor `<FORSHOR_PIN>`: `shorGateCostModel.negate` is the `oneQubit`
+negation (see "Logical gate costs"), so `cuccaroNegateGateCount_eq_model` (`rfl`, tying the planner's `10w - 14`
+to `shorGateCostModel.negate`) no longer holds, and the planner still charges the `scratch` figure until the
+Lean mirror is ported.
 
 ### What this repository adds on top
 
@@ -246,8 +247,14 @@ companion's operative `shorGateCostModel = shorGateResourceModel.toCostModel` in
 
 - `addScaled`: exact Cuccaro modulo adder,
   `(2w - 6) + (5w - 7) + (2w - 3)` = `9w - 16` for `w >= 3`;
-- `negate`: complement plus a constant-one register plus that adder,
-  `(w + (2w - 6) + 2) + (5w - 7) + (2w - 3)` = `10w - 14` for `w >= 3`;
+- `negate`, as ForShor `<FORSHOR_PIN>` charges it (the `oneQubit` method: complement plus Gidney's
+  single-ancilla increment, charged as one clean qubit; exact for `w >= 7`, valid upper bounds below):
+  Toffoli `12w - 28` (`w` even) / `10w - 18` (`w` odd), CNOT `17w - 22` / `17w - 5`, X `5w - 3` / `5w + 1`.
+  See `Framework/Gatecount/ResourceModel.lean` in ForShor (`negateResources`). This replaces the earlier
+  charge, complement plus a constant-one register plus the Cuccaro adder,
+  `(w + (2w - 6) + 2) + (5w - 7) + (2w - 3)` = `10w - 14` for `w >= 3` with `w + 1` clean qubits, which ForShor
+  keeps as `NegationMethod.scratch` and which is what this repository's Lean mirror
+  (`negateResourcesAtWidth`, `cuccaroNegateGateCount`, the PTP `opRes` closed forms) still computes;
 - `shiftL` / `shiftR` / `zeroExtend` / `zeroDealloc`: free;
 - `signExtend` / `signDealloc`: `n` CNOTs each.
 

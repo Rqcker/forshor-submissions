@@ -52,7 +52,10 @@ python3 scripts/check_ptp_layers.py          # layer order, no sorry/native_deci
   per node, children share one pool, 2 leaf ancillas), and `ptpQubits` (scan board) is a proved *upper bound* of
   that count. This is **not** the framework's `qubitCount`, which adds `resources.cleanAnc` (Cuccaro/negation
   scratch): that scratch is not bounded here for the recursive circuit. `ptpQubits` is also loose by up to a
-  factor `k` per level (private per-child workspace vs the shared pool).
+  factor `k` per level (private per-child workspace vs the shared pool). ForShor (pin `<FORSHOR_PIN>`) states and
+  proves the sum: `ptp_peak_qubits` / `_exact` / `_scan` (`PhaseTripleProduct/Statement.lean`, `PTPPeakQubits*`),
+  some circuit following the policy has `qubitCount <= 3n + ptpWsTD + ptpCleanAncD` (an existential upper
+  bound, both negation methods); `scripts/check_ptp_policy.py` reports that number as `ptp_peak_qubits`.
 * Zero widths: `FitsSignedWidth` needs `0 < w`, so for `n = 0` or any operand of width 0 the clean-state
   statements are vacuous.
 * Open: native unbalanced node; least width at which the wrapping semantics is correct (O4); leaf-control variant.

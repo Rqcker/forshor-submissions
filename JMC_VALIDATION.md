@@ -139,3 +139,31 @@ Single-run T priced on the printed documents (site pricer) is identical to `main
 three: 3,240,663,026,770 / 1,933,981,965,831 / 1,650,011,804,372. The documents for the shipped template
 and `Scc866e679f67` are identical in every top-level field to the `bb2aae0` ones, for both executables.
 Not rerun: full per-module kernel replay, 31 planner seeds.
+
+## Pin bump to ForShor `<FORSHOR_PIN>` (PR #79, negation method), NOT YET VALIDATED
+
+Written from a read of ForShor's sources only: nothing was built or run against Lean at the new pin. Until the
+checks below have been run, no result in this file speaks for it.
+
+What changes at the new pin (ForShor `Framework/Gatecount/ResourceModel.lean`, `Framework/NegationMethod.lean`):
+
+- `Shor.negateResources` (so `shorGateResourceModel`, `shorGateCostModel`) is now the `oneQubit` negation: complement
+  plus Gidney's single-ancilla increment, Toffoli `12 w - 28` / `10 w - 18`, CNOT `17 w - 22` / `17 w - 5`,
+  X `5 w - 3` / `5 w + 1` (`w` even / odd; exact for `w >= 7`), one clean qubit. The construction this repository mirrors
+  (complement + constant-one register + Cuccaro adder, `10 w - 14` gates, `w + 1` clean qubits) is the `scratch`
+  method, `Shor.negateResourcesPreSwap` / `negateResourcesFor .scratch`.
+- `ShorLoweringPolicy`, `ShorPolicySubmission` and ForShor's `PTPPolicy` gain `negation : NegationMethod := .oneQubit`.
+  `BandedPolicy/Bridge.lean` builds the submission with named fields, so it needs no edit; its object is `oneQubit`.
+- `ptpCleanAnc` is the tight `1` (not `C + 1`) for `oneQubit`. ForShor proves `ptp_peak_qubits` (framework `qubitCount`).
+
+Expected to fail to elaborate at the new pin (proofs stated for the `scratch` numbers; a separate port, not done):
+`Companion.negateResources_eq_atWidth`, `shorGateCostModel_negate_atWidth`, `negateResources_totalGates`,
+`Model.cuccaroNegateGateCount_eq_model` (all `rfl`/`show` against `Shor.negateResources`), the `negate` case of
+`Model.phaseArithmeticOpCost_le` (ForShor's `phaseArithmeticOpCost` now charges `2 (34 W + 1)` there), `PTP/Census.lean`
+`opGate_resources` and everything that rests on it (`body_field`, `ptpNode_resources`, ...), and the numerals of
+`scripts/tests/RecursiveCostOracle.lean` / `ChampionGateCountDifferential.lean` for any table that negates.
+Declarations this repository does not use were renamed (`phaseProgramOverhead_cons`, ...) and need no edit.
+
+To run before trusting the pin: `lake build` (all of `TableGeneration`), `lake env lean scripts/PTPAxiomCheck.lean`,
+`test_cost_model_lean.py`, `check_ptp_policy.py` / `check_banded_policy.py` on `policies/ref_*_2048.json`, and
+`crosscheck_tight_width.py`.
