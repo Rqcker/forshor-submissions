@@ -53,6 +53,23 @@ Branch `submissions/swap002-integration` (local, not pushed). ForShor pin: M = `
 * NOT touched (still the old Negate model): `engine/paper_model/forshor_qualtran`, `engine/forshor_qualtran`, `engine/tcost` (board Qualtran
   `Negate`), `evaluation/estimator/**`, `bloqs/recursive.py` (Lean-literal single-k tier), live-peak/site-reserve parts of E1 (not vendored).
 
+## Results of the checks (2026-11-07)
+* `lake build TableGeneration` + all 185 non-`Policies/Accepted` modules: 0 errors, 206 warning lines (same as B2). It was a cache replay
+  (6 s, 0.8 GB): Lean sources are identical to B2's tree (no `.lean`/lakefile/manifest diff vs 56c4710) and the `.lake` is B2's clone with
+  the package at M. `lake env lean scripts/PTPAxiomCheck.lean`: 41 theorems, all `[propext, Classical.choice, Quot.sound]` or axiom-free,
+  17.5 s, 3.3 GB. `check_mathlib_confinement.py`, `check_ptp_layers.py`: OK.
+* engine `pytest tests -q -m "not lean"`: 685 passed, 30 skipped, 3 deselected (15 min); B4's branch: 666 / 30 / 3.
+* scripts: test_policy_json_negation 8, test_ptp_peak_qubits 5, test_archive_completeness 11, test_cost_model_lean 10 (via lakeslot, ~8 min
+  with the syntax gate), test_submission_syntax_gate 14, test_contributor_cli 20, test_promote_audit 6, test_publish_promotion,
+  test_submission_preflight 10, test_verifier_deadline 5, test_verifier_hardening 23, scripts/ci unittest 6, `py_compile forshor`: all OK.
+* `evaluation/test_publication_recovery.py` 5 OK. `evaluation/test_estimate.py` cannot import (no vendored Qualtran tree in
+  `evaluation/estimator/vendor`); not run, as on B4.
+
+## Not tested
+No `forshor_policy_submission` binary exists for this tree, so no end-to-end `forshor_verify` run: the printed-vs-submitted check, the
+required key and `price()` on a real eb00c5a document are tested only with stubbed Lean (and with the existing printed documents plus a
+`negation` key). `negation: "scratch"` through the real Lean template (B3's line) and the B2 scratch PTP end-to-end were not run.
+
 ## Reproduce
 ```sh
 cd ~/Desktop/github_packages/_wt_submissions_int
