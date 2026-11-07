@@ -64,7 +64,7 @@ class NativePolicy:
         self.policy = policy
         self.doc = doc
         self.info = info
-        #: the document's `negation` method ("oneQubit" | "scratch"); None = key absent (a tree that predates NegationMethod)
+        #: the document's `negation` method ("oneQubit" | "scratch"); None = key absent (priced as the default method; `forshor_verify` refuses a printed document without it)
         self.negation = negation
 
     @property

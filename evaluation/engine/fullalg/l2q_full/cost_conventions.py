@@ -57,7 +57,7 @@ LEAVES = ("grid", "merged_cphase", "product")
 ADDERS = ("qualtran", "cuccaro")
 NEGSRC = ("subtract", "negate_add_negate")
 #: The negation subroutine's cost convention.
-#:   `gidney_circuit` (ForShor `oneQubit`; NOT this repo's default, see DEFAULT_NEGATE): complement plus Gidney's one-clean-ancilla increment gate, priced by the counts of the explicit
+#:   `gidney_circuit` (ForShor `oneQubit`; the default, see DEFAULT_NEGATE): complement plus Gidney's one-clean-ancilla increment gate, priced by the counts of the explicit
 #:     circuit built and simulated in `bloqs/gidney_increment.py` (Toffoli 12w-28 even / 10w-18 odd, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1,
 #:     one clean qubit): exactly what ForShor's `negateResources` charges (the `oneQubit` NegationMethod, `negateChargeAt`).
 #:   `legacy`: a `w`-bit constant-one register plus a Cuccaro adder (`2w-3` Toffoli, `w+1` clean qubits): ForShor's `scratch` method.
@@ -67,11 +67,12 @@ NEGSRC = ("subtract", "negate_add_negate")
 #: Do not confuse this name with the EPOCH model's `negation: "incrementer"` (export_v2): that label means ForShor's `oneQubit`, i.e.
 #: `gidney_circuit` here (see `export_v2/epoch.py::NEGATION_OF`).
 NEGATE_IMPLS = ("legacy", "incrementer", "gidney_circuit")
-#: THIS REPO'S default is `legacy` (E1 made it `gidney_circuit` on the export branch): the Lean tree this repo pins and the
-#: harness builds (ForShor 6d55ad9 / 10fe620) has no `NegationMethod`, its `negateResources` IS the Cuccaro charge, so every
-#: document it prints (no `negation` key) is priced `legacy`. Flip to `gidney_circuit` together with the ForShor pin bump
-#: (>= eb00c5a), where every printed document carries its own `negation` and this default is never consulted for it.
-DEFAULT_NEGATE = "legacy"
+#: The default is `gidney_circuit` (= ForShor `oneQubit`, the default `NegationMethod` of ForShor eb00c5a and later, and the default of
+#: the export branch's engine and of the L2Q package). It is consulted only where a policy names no method: a submitted policy JSON
+#: without a `negation` key (= "oneQubit"), or a bare `negate_impl()` call. It is NEVER the price of a printed document without the
+#: key: such a document comes from a ForShor tree older than eb00c5a (6d55ad9 / 10fe620, whose `negateResources` was the Cuccaro
+#: charge = `scratch`), and `forshor_verify.REQUIRE_PRINTED_NEGATION` makes that a verification failure rather than a guess.
+DEFAULT_NEGATE = "gidney_circuit"
 #: ForShor's policy-level negation method (swap 002: `ShorLoweringPolicy.negation`, key `negation` of `forshor.policy-submission/v1`)
 #: -> the `ConventionSpec.negate` implementation that prices it. `oneQubit` = complement + one-clean-ancilla Gidney increment;
 #: `scratch` = the pre-swap Cuccaro negation against a register of ones.
@@ -79,8 +80,8 @@ NEGATION_IMPL = {"oneQubit": "gidney_circuit", "scratch": "legacy"}
 
 
 def negate_impl(negation=None) -> str:
-    """`ConventionSpec.negate` for a policy's `negation` ("oneQubit" | "scratch"). `None` = the key is absent, i.e. a
-    document from a ForShor tree that predates `NegationMethod`: `DEFAULT_NEGATE` (see there). Anything else is refused."""
+    """`ConventionSpec.negate` for a policy's `negation` ("oneQubit" | "scratch"). `None` = the key is absent (a submitted policy
+    JSON: oneQubit, the default): `DEFAULT_NEGATE` (see there). Anything else is refused."""
     if negation is None:
         return DEFAULT_NEGATE
     if not isinstance(negation, str) or negation not in NEGATION_IMPL:

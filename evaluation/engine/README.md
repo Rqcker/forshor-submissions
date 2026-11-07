@@ -37,8 +37,11 @@ A ForShor policy carries `negation` = `oneQubit` (default) or `scratch`. Stage 5
 method of the document Lean printed (`fullalg/l2q_full` through `site_engine/fullalg.py`: `oneQubit` -> `gidney_circuit`, `scratch`
 -> `legacy`, `cost_conventions.NEGATION_IMPL`), and `check_negation` rejects a printed method that differs from the `negation`
 key of the submitted policy JSON (no key = `oneQubit`). `paper_model/` and `forshor_qualtran/` do not price stage 5 and are
-unchanged. `DEFAULT_NEGATE` is still `legacy`, because the build trees pinned today (ForShor 6d55ad9 / 10fe620) print no `negation` and
-charge the Cuccaro negation: flip it, and `forshor_verify.REQUIRE_PRINTED_NEGATION`, with the ForShor pin bump to eb00c5a or later.
+unchanged. `DEFAULT_NEGATE` is `gidney_circuit` (= `oneQubit`, as in ForShor eb00c5a, the export branch and the L2Q package) and
+`forshor_verify.REQUIRE_PRINTED_NEGATION` is true: since the pin is eb00c5a every printed document carries `negation`, so a document
+without it comes from an older tree (6d55ad9 / 10fe620, Cuccaro charge = `scratch`) and is an error. The default is consulted only for
+a submitted policy JSON without the key (= `oneQubit`). The harness's `.cache/forshor_latest_build` (10fe620) is therefore too old
+for `forshor_verify` until it is rebuilt at eb00c5a.
 
 ## Run
 

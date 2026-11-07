@@ -2,17 +2,26 @@
  "evaluation/engine/data/forshor_submitted/S00c49eff1f98/site_policy.json": {
   "T": 1710321847291.563,
   "price_full_detail_sha": "9a09ae7395a927d2dd8a7d2f3b79ebc6a1ce7419418c8273bc0057fc98b13210",
-  "qubits": 46946
+  "qubits": 46946,
+  "default": {
+   "T": 1715073783571.563
+  }
  },
  "evaluation/engine/data/forshor_submitted/S02d2663a56ae/site_policy.json": {
   "T": 1710321847291.563,
   "price_full_detail_sha": "9a09ae7395a927d2dd8a7d2f3b79ebc6a1ce7419418c8273bc0057fc98b13210",
-  "qubits": 46946
+  "qubits": 46946,
+  "default": {
+   "T": 1715073783571.563
+  }
  },
  "evaluation/engine/data/forshor_submitted/S0d4cae7cc43f/site_policy.json": {
   "T": 1710321847291.563,
   "price_full_detail_sha": "b86ccaa83812bf1f6bf7df78fe7e94191e3bd689bebf502cd3d1cb55c50a722e",
-  "qubits": 46946
+  "qubits": 46946,
+  "default": {
+   "T": 1715073783571.563
+  }
  },
  "evaluation/engine/data/forshor_submitted/S1c115b37fd2c/site_policy.json": {
   "error": "ValueError: the order-finding circuit uses phase products only (no PhaseTripleProduct)"
@@ -20,12 +29,18 @@
  "evaluation/engine/data/forshor_submitted/S22d0026b1c85/site_policy.json": {
   "T": 1710321847291.563,
   "price_full_detail_sha": "b86ccaa83812bf1f6bf7df78fe7e94191e3bd689bebf502cd3d1cb55c50a722e",
-  "qubits": 46946
+  "qubits": 46946,
+  "default": {
+   "T": 1715073783571.563
+  }
  },
  "evaluation/engine/data/forshor_submitted/S2331e66e1a2e/site_policy.json": {
   "T": 1639383991674.833,
   "price_full_detail_sha": "062d21c604a27b77be54631a0019569d21b2612bdd72bfa436e2c325ca3fce14",
-  "qubits": 33218
+  "qubits": 33218,
+  "default": {
+   "T": 1644135927954.833
+  }
  },
  "evaluation/engine/data/forshor_submitted/seed_lean/S29d5189f0a0b.pre_exact.override.forshor_policy.json": {
   "T_document": 3619807796643.9946,
@@ -33,7 +48,11 @@
   "price_document_sha": "64163ec8285ab89c673da6aa88935b0126b3e18fd56fa1ac9c843039d1a4f0ba",
   "price_full_sha": "d7008a9c9577fa77d8cc4cc624b20881cae628b4288d254c30e7f9e18e171d32",
   "qubits": 33650,
-  "rule": "scan"
+  "rule": "scan",
+  "default": {
+   "T_document": 3624559732923.9946,
+   "T_full": 3624559732923.9946
+  }
  },
  "evaluation/engine/data/forshor_submitted/seed_lean/S6794489f14f1.pre_exact.override.forshor_policy.json": {
   "T_document": 3883253638141.58,
@@ -41,7 +60,11 @@
   "price_document_sha": "3d271a69840ae37b2f434a00b78b234246fca96fe86990fc9656fafd1cf5933a",
   "price_full_sha": "5b03572ab05a6d6fcbf2e6467171e3783504f5e854e9347aca271ca26fb4aaab",
   "qubits": 41222,
-  "rule": "scan"
+  "rule": "scan",
+  "default": {
+   "T_document": 3888005574421.58,
+   "T_full": 3888005574421.58
+  }
  },
  "evaluation/engine/data/forshor_submitted/seed_lean/S707dd51bf951.pre_exact.default.forshor_policy.json": {
   "T_document": 3806886378792.656,
@@ -49,7 +72,11 @@
   "price_document_sha": "c3d85f69268beb5d4b3719d61e984f44db0b5d99bac987b75fcbb5760382b39d",
   "price_full_sha": "333adeea5a75da72a1133809626e909bfa628748c9f8fb9def6c16c2b6718d6d",
   "qubits": 28532,
-  "rule": "scan"
+  "rule": "scan",
+  "default": {
+   "T_document": 3889180909104.656,
+   "T_full": 3889180909104.656
+  }
  },
  "evaluation/engine/data/forshor_submitted/seed_lean/S707dd51bf951.replanned.default.forshor_policy.json": {
   "T_document": 4532647120924.71,
@@ -57,7 +84,11 @@
   "price_document_sha": "6ec559998fe5ded082499f0e853db5796fc5d9b07b657a64e44561fe7edbca19",
   "price_full_sha": "8a4f4b6970afb5be63db3c0f7e1dabe8240adab313da27f0ae118d1de24135de",
   "qubits": 40016,
-  "rule": "scan"
+  "rule": "scan",
+  "default": {
+   "T_document": 4727609337460.71,
+   "T_full": 4727609337460.71
+  }
  },
  "evaluation/engine/data/forshor_submitted/seed_lean/S7da0ff5445b5.pre_exact.default.forshor_policy.json": {
   "T_document": 3559982454503.8354,
@@ -65,7 +96,11 @@
   "price_document_sha": "a0d6945e78eb23478fb92639f07b364d808412f729af0fc649d14cb8a08b3770",
   "price_full_sha": "d46d421fb02ae754fd9bd84135cb8d84adb102a32beb7c1fa3f0d4078c51e91e",
   "qubits": 36610,
-  "rule": "scan"
+  "rule": "scan",
+  "default": {
+   "T_document": 3564734390783.8354,
+   "T_full": 3564734390783.8354
+  }
  },
  "evaluation/engine/data/forshor_submitted/seed_lean/S7da0ff5445b5.replanned.default.forshor_policy.json": {
   "T_document": 4316035787439.387,
@@ -73,7 +108,11 @@
   "price_document_sha": "1ab461171ec9ffd2c5c3c555011568a69c25c16f93eac38b177ea6128fba461b",
   "price_full_sha": "69efe6181888b73cc26713c1307fac51113b2e95cf67665bf8749c1010c71294",
   "qubits": 47938,
-  "rule": "scan"
+  "rule": "scan",
+  "default": {
+   "T_document": 4320787723719.387,
+   "T_full": 4320787723719.387
+  }
  },
  "evaluation/engine/data/forshor_submitted/seed_lean/Sa009cfa3c147.pre_exact.override.forshor_policy.json": {
   "T_document": 3621307171488.172,
@@ -81,7 +120,11 @@
   "price_document_sha": "c4a879a399eb1c113bda4ccdabe8d59e382251e743aac4d0a0c736f0537060f0",
   "price_full_sha": "1835bbdb550178aa1378fa727e7e534be1cb941bc3185baafb23fb1a2732971d",
   "qubits": 33746,
-  "rule": "scan"
+  "rule": "scan",
+  "default": {
+   "T_document": 3626059107768.172,
+   "T_full": 3626059107768.172
+  }
  },
  "evaluation/engine/data/forshor_submitted/seed_lean/Scc866e679f67.pre_exact.override.forshor_policy.json": {
   "T_document": 3970988235166.27,
@@ -89,7 +132,11 @@
   "price_document_sha": "bbb6a75f7518ca6b048a9bac887cf87d2e53485e90eba4c0686caec3c13176d0",
   "price_full_sha": "f01625bd8cba6f471abe82bf08003ff24ba865426af193d2326d4bb3d74971fc",
   "qubits": 42002,
-  "rule": "scan"
+  "rule": "scan",
+  "default": {
+   "T_document": 3975740171446.27,
+   "T_full": 3975740171446.27
+  }
  },
  "evaluation/engine/fullalg/data/policy.forshor.exact_balanced.json": {
   "T_document": 3240663026770.465,
@@ -97,7 +144,11 @@
   "price_document_sha": "8748b867f8757d1ab6c70844c8d14f94d26ef67b9139649f1cd3a5e71c36a5d0",
   "price_full_sha": "02d9879cb63acf02d15277c45ccbe3ac445f0818b7b83adc5dd557037b5f89ec",
   "qubits": 43904,
-  "rule": "exact"
+  "rule": "exact",
+  "default": {
+   "T_document": 3633237524122.465,
+   "T_full": 3633237524122.465
+  }
  },
  "evaluation/engine/fullalg/data/policy.forshor.json": {
   "T_document": 675015907318168.6,
@@ -105,6 +156,10 @@
   "price_document_sha": "821d0429438dfe07cf629f49bc3118ba2b3a1bd58176cb370adccb1547eec8b5",
   "price_full_sha": "ab81f0be77f299d34777a3f182ed1a13f5c282bb0ccb4e01d5dfc137f2be1c44",
   "qubits": 909794,
-  "rule": "scan"
+  "rule": "scan",
+  "default": {
+   "T_document": 757321005766576.6,
+   "T_full": 757321005766576.6
+  }
  }
 }

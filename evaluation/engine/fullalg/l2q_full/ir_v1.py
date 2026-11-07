@@ -695,6 +695,9 @@ def lowgate_resources(leaves: Sequence[Dict[str, Any]], negation: Optional[str] 
     channels (not `cleanAnc`, whose `seq` rule is not additive). Adjoints cost their body."""
     if negation not in (None, "oneQubit", "scratch"):
         raise IRv1Error(f"negation {negation!r} not in (None, 'oneQubit', 'scratch')")
+    if negation is None:                               # key absent: the default method (`cost_conventions.DEFAULT_NEGATE`)
+        from . import cost_conventions as _cc
+        negation = {v: k for k, v in _cc.NEGATION_IMPL.items()}[_cc.DEFAULT_NEGATE]
     out = {"h": 0, "x": 0, "cnot": 0, "toffoli": 0, "rz": 0}
 
     def add(d):
@@ -718,11 +721,11 @@ def lowgate_resources(leaves: Sequence[Dict[str, Any]], negation: Optional[str] 
         elif op == "AddScaled":
             add(_cuccaro(len(g["dst"]["active"])))
         elif op == "Negate":
-            # `negateResources` under the policy's `negation` (None = key absent = pre-NegationMethod tree = `scratch`'s Cuccaro
-            # charge; "oneQubit" = modular swap 001 + the counted circuit): complement plus Gidney's one-clean-ancilla increment gate. Toffoli 12w-28 / 10w-18, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1 (even / odd w), Lean's truncating subtraction
+            # `negateResources` under the policy's `negation` (None = key absent = the default method, oneQubit; "scratch" = the
+            # pre-swap Cuccaro charge; "oneQubit" = modular swap 001 + the counted circuit): complement plus Gidney's one-clean-ancilla increment gate. Toffoli 12w-28 / 10w-18, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1 (even / odd w), Lean's truncating subtraction
             # (`bloqs/gidney_increment.bound_counts`; equal to `cost_conventions.negate_resources(w, "gidney_circuit")`).
             w = len(g["r"]["active"])
-            if negation in (None, "scratch"):          # `negateResourcesPreSwap`: Cuccaro + w constant-one bits
+            if negation == "scratch":                  # `negateResourcesPreSwap`: Cuccaro + w constant-one bits
                 c = _cuccaro(w)
                 add({"x": w + c["x"] + 2, "cnot": c["cnot"], "toffoli": c["toffoli"]})
             else:

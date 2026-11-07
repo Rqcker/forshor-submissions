@@ -28,8 +28,8 @@ Stages (each fails closed and names itself):
                Toom-Cook identity checked (the same checks as an STO table).
   4b negation  (swap 002) With `--from-policy`: the `negation` key of the policy JSON ("oneQubit", the default, or "scratch") must equal
                the `negation` of the document Lean printed, else REJECTED. The price (stage 5) uses the printed method; the record
-               carries `negation` {requested, printed, priced_as}. A tree that predates ForShor's NegationMethod prints no key: its
-               Cuccaro negation is what `scratch` names, it is priced as such and the record says so (`REQUIRE_PRINTED_NEGATION`).
+               carries `negation` {requested, printed, priced_as}. A printed document without the key means a build tree older than
+               ForShor eb00c5a (no NegationMethod): REJECTED (`REQUIRE_PRINTED_NEGATION`).
   5 price      The policy as a fixed banded policy in the paper model (the headline: single-run T of the full order-finding
                run at n = 2048), and, as a conversion check, the submitted document priced by ForShor's native pricer: the
                document and the converted policy must give the same number.
@@ -42,7 +42,8 @@ width (ForShor says so). The price is Qualtran's count in Python, not Lean. Runn
 machine after the lexical gate: use a disposable VM or container for code you do not trust.
 
 Build tree (Stage 15, 2026-10-28): `.cache/forshor_latest_build`, ForShor 10fe620 (Lean v4.36.0-rc1, Mathlib 4dc43842), a
-copy-on-write copy of a clean worktree; `$FORSHOR_BUILD` or `--forshor` overrides it. `.cache/forshor_main_build`
+copy-on-write copy of a clean worktree. STALE since swap 002: the pin is ForShor eb00c5a, whose `forshor_policy_submission` prints
+`negation`; a tree older than that is refused at stage 4b (`REQUIRE_PRINTED_NEGATION`), so the copy must be re-made at eb00c5a; `$FORSHOR_BUILD` or `--forshor` overrides it. `.cache/forshor_main_build`
 (ForShor-main, Lean v4.28.0) is kept as a fallback. Every record names the ForShor commit and toolchain (`forshor`).
 Resources: before Lean starts the harness waits while three or more `lean` processes run (the limit was 2 until the coordinator raised it on 2026-10-28); each stage runs in its own process
 group (killed with its descendants on a timeout or at the memory cap, orphans swept after it returns,
@@ -470,13 +471,13 @@ def lean_build(work: Path, out: Path, args: Optional[List[str]] = None) -> Tuple
 
 
 # ---------------------------------------------------------------------------------------------- stage 4
-#: ForShor's `Shor.NegationMethod` (swap 002). A ForShor tree at eb00c5a or later prints `"negation"` in every
-#: `forshor_policy_submission` document; an older tree (6d55ad9, 10fe620: the trees this harness builds today) has no such
-#: key and its `negateResources` is the Cuccaro charge, i.e. what `scratch` names. The price follows the printed document.
+#: ForShor's `Shor.NegationMethod` (swap 002). A ForShor tree at eb00c5a or later (the pin) prints `"negation"` in every
+#: `forshor_policy_submission` document. An older tree (6d55ad9, 10fe620) has no such key and its `negateResources` is the Cuccaro
+#: charge (`scratch`): that is a tree this harness no longer accepts. The price follows the printed document.
 NEGATIONS = ("oneQubit", "scratch")
-#: False while the build tree predates `NegationMethod` (a document without the key is accepted and priced `legacy`, see
-#: `check_negation`); flip to True with the ForShor pin bump so that a missing key is a verification failure.
-REQUIRE_PRINTED_NEGATION = False
+#: True since the pin is eb00c5a: a printed document without the key comes from a tree that is too old, which is a verification
+#: failure (not a guess at the method).
+REQUIRE_PRINTED_NEGATION = True
 
 
 def check_negation(doc: Dict[str, Any], requested: Optional[str] = None) -> Dict[str, Any]:
@@ -494,14 +495,14 @@ def check_negation(doc: Dict[str, Any], requested: Optional[str] = None) -> Dict
             raise HarnessError("python", "the submitted policy asks for negation 'scratch' but the policy.json Lean printed has no "
                                          "`negation` key: the build tree predates ForShor's NegationMethod (eb00c5a)")
         if REQUIRE_PRINTED_NEGATION:
-            raise HarnessError("python", "policy.json has no `negation` key (ForShor eb00c5a and later print it)")
+            raise HarnessError("python", "policy.json has no `negation` key: the build tree is older than ForShor eb00c5a "
+                                         "(NegationMethod), whose `forshor_policy_submission` always prints it; refusing to guess the method")
     elif requested is not None and printed != requested:
         raise HarnessError("python", f"negation mismatch: the submitted policy JSON says {requested!r} (no key = 'oneQubit') but "
                                      f"the policy ForShor built and printed says {printed!r}")
     from site_engine import fullalg as fa
     return {"requested": requested, "printed": printed, "priced_as": fa.cc.negate_impl(printed),
-            **({"note": "the build tree prints no `negation`: it predates NegationMethod and its negation is the Cuccaro charge "
-                        "(ForShor's `scratch`), which is what is priced"} if printed is None else {})}
+            **({"note": "no `negation` key (REQUIRE_PRINTED_NEGATION is off): priced as the default"} if printed is None else {})}
 
 
 def _pt(p: Dict[str, Any]) -> str:
