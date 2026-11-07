@@ -166,3 +166,12 @@ clean qubits). No module STO imports was removed. **STO changes: the pin, and th
 Not rerun on this pin yet: `check_mathlib_confinement.py`, the verifier hardening / preflight / archive / deadline / promote
 tests, `check_ptp_layers.py`, `PTPAxiomCheck.lean`, `ref_pp_2048.json` / `ref_ptp_2048.json`, the fault policies. Every
 policy's Lean evidence is bound to the pin it ran at, so all earlier evidence (pin `6d55ad9`) no longer counts for the epoch.
+
+**Live-qubit peak of one PhaseTripleProduct, checked against Lean (2026-11-06).** The site's Q for a PhaseTripleProduct is
+`3n + ` the extra qubits of `evaluation/engine` `chain_peak_extra`, the shape of ForShor's `ptpWsTD`
+(`PhaseTripleProduct/Statement.lean`). ForShor states `ptpWsTD` over `Shor.PTP.PTPPolicy`, not over this mirror's policy type, so it
+was evaluated as a transcription over the mirror's own policy and exact width rule (`lake env lean --run`, this pin): on the
+`baseline-k6` PhaseTripleProduct policy at n = 2048 it is 683, and the site's formula gives 683 extra qubits (6,827 in all, against the
+mirror's static `ptpQubits`, 18,794). One policy; the PhaseProduct side is anchored by `peakReserveD` in
+`evaluation/engine/tests/test_live_peak.py`. The test and its fixtures (`tests/data/ptp_baseline_k6.policy.json`, `PtpWs.lean.txt`) sit
+uncommitted in `evaluation/engine/` until the next seed re-export, because a commit there changes the epoch's `engineRevision`.
