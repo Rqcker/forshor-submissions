@@ -33,15 +33,15 @@ the name from the manifest, not from the remote lakefile. Renaming is cosmetic a
 costs the build cache (D3).
 
 Pinned to an exact commit rather than `main`: a ForShor rename or module move then
-cannot break this build until the pin is bumped on purpose. 2b7aaf7 is the head of
-ForShor PR #79 (`swap/negation-incrementer`: negation as complement plus a one-clean-ancilla
+cannot break this build until the pin is bumped on purpose. eb00c5a is the merge commit of
+ForShor PR #79 (head 2b7aaf7, identical tree; this mirror was built against the head) (`swap/negation-incrementer`: negation as complement plus a one-clean-ancilla
 incrementer, `NegationMethod` with `.oneQubit` default and `.scratch` = the pre-swap Cuccaro
 charge, which equals 6d55ad9 behaviour; 6d55ad9 was the `qubitCount` branch tip of 2026-11-04).
 PIN-PLACES (change to the PR merge commit M with one sed): this line, lake-manifest.json `rev` and `inputRev`
-of package Fast_multiplication, and the `<FORSHOR_PIN>` strings listed in shards/B2.md.
+of package Fast_multiplication, and the `eb00c5adc72832469a5f223fbec6c8b75745d2dd` strings listed in shards/B2.md.
 -/
 require «Fast_multiplication» from git
-  "https://github.com/VerifiedQC/ForShor.git" @ "2b7aaf79c2e666afdec36d8f7f0ef124f96c0610"
+  "https://github.com/VerifiedQC/ForShor.git" @ "eb00c5adc72832469a5f223fbec6c8b75745d2dd"
 
 @[default_target]
 lean_lib TableGeneration where

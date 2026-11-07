@@ -7,13 +7,13 @@ while that is discussed. If upstream adopts these changes, use upstream instead.
 
 - **Base:** upstream `main` at `361e81e` (2026-11-03, "Update ForShor to c0eb474").
   Toolchain and Mathlib are upstream's, unchanged: `leanprover/lean4:v4.36.0-rc1`, Mathlib `4dc43842`.
-- **ForShor pin:** this fork pins ForShor (`Fast_multiplication`) to the exact commit `<FORSHOR_PIN>` (the
+- **ForShor pin:** this fork pins ForShor (`Fast_multiplication`) to the exact commit `eb00c5adc72832469a5f223fbec6c8b75745d2dd` (the
   merge commit of ForShor PR #79, "negation method as a policy option", modular swaps 001/002), not to `main`.
   Before that it pinned the `qubitCount` branch tip of 2026-11-04. That branch renames the library
   `FastMultiplication` to `ForShor`, so a few STO files were ported: import paths, two removed
   helper names re-stated locally, and the confinement check. ForShor itself is not modified. See
   `JMC_VALIDATION.md` (sections "Port to ForShor `bb2aae0`", "Pin bump to ForShor `6d55ad9`" (the earlier pin, a dated
-  log) and "Pin bump to ForShor `<FORSHOR_PIN>`").
+  log) and "Pin bump to ForShor `eb00c5adc72832469a5f223fbec6c8b75745d2dd`").
 - **Apart from that port, the change adds files only.** It adds 180 files under `TableGeneration/RecursiveCost/{BandedPolicy,PTP}/`,
   `TableGeneration/RecursiveCost/PlanCore.lean`, `scripts/` and `policies/`, plus this file and
   `JMC_VALIDATION.md`. The only upstream files it touches are `README.md` (a pointer at the top)

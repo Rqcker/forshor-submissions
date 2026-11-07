@@ -66,7 +66,7 @@ The gate costs are not reproduced here and not copied either. `Reg`, `ExtReg`,
 `Fast_multiplication` dependency. The planner's constants are computed from those
 records, so the familiar `9w - 16`, the `oneQubit` negation `34w - 53` (even `w`) / `32w - 22` (odd `w`) and, for
 the `scratch` negation, `10w - 14` are theorems (`cuccaroModAddGateCount_eq`, `negateGateCount_oneQubit_eq`,
-`cuccaroNegateGateCount_eq`) rather than numbers transcribed from the companion. At ForShor `<FORSHOR_PIN>`
+`cuccaroNegateGateCount_eq`) rather than numbers transcribed from the companion. At ForShor `eb00c5adc72832469a5f223fbec6c8b75745d2dd`
 `shorGateCostModel.negate` is the `oneQubit` negation and so is the planner's default charge
 (`negateGateCount w` = `negateGateCount w .oneQubit`; `negateGateCount_eq_modelFor` ties it to
 `negateResourcesFor m` for both methods). The planner takes the method as an argument with default `.oneQubit`
@@ -261,7 +261,7 @@ companion's operative `shorGateCostModel = shorGateResourceModel.toCostModel` in
 
 - `addScaled`: exact Cuccaro modulo adder,
   `(2w - 6) + (5w - 7) + (2w - 3)` = `9w - 16` for `w >= 3`;
-- `negate`, as ForShor `<FORSHOR_PIN>` charges it (the `oneQubit` method: complement plus Gidney's
+- `negate`, as ForShor `eb00c5adc72832469a5f223fbec6c8b75745d2dd` charges it (the `oneQubit` method: complement plus Gidney's
   single-ancilla increment, charged as one clean qubit; exact for `w >= 7`, valid upper bounds below):
   Toffoli `12w - 28` (`w` even) / `10w - 18` (`w` odd), CNOT `17w - 22` / `17w - 5`, X `5w - 3` / `5w + 1`.
   See `Framework/Gatecount/ResourceModel.lean` in ForShor (`negateResources`). This replaces the earlier

@@ -57,7 +57,7 @@ python3 scripts/check_ptp_layers.py          # layer order, no sorry/native_deci
   that count. This is **not** the framework's `qubitCount`, which adds `resources.cleanAnc` (Cuccaro/negation
   scratch): that scratch is bounded separately (`PolicyImplD.cleanAnc_le`: at most `ptpCleanAncD`, `1` under
   `oneQubit`), but the sum is not stated here as a claim. `ptpQubits` is also loose by up to a
-  factor `k` per level (private per-child workspace vs the shared pool). ForShor (pin `<FORSHOR_PIN>`) states and
+  factor `k` per level (private per-child workspace vs the shared pool). ForShor (pin `eb00c5adc72832469a5f223fbec6c8b75745d2dd`) states and
   proves the sum: `ptp_peak_qubits` / `_exact` / `_scan` (`PhaseTripleProduct/Statement.lean`, `PTPPeakQubits*`),
   some circuit following the policy has `qubitCount <= 3n + ptpWsTD + ptpCleanAncD` (an existential upper
   bound, both negation methods); `scripts/check_ptp_policy.py` reports that number as `ptp_peak_qubits`.

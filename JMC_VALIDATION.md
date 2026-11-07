@@ -140,9 +140,9 @@ three: 3,240,663,026,770 / 1,933,981,965,831 / 1,650,011,804,372. The documents 
 and `Scc866e679f67` are identical in every top-level field to the `bb2aae0` ones, for both executables.
 Not rerun: full per-module kernel replay, 31 planner seeds.
 
-## Pin bump to ForShor `<FORSHOR_PIN>` (PR #79, negation method)
+## Pin bump to ForShor `eb00c5adc72832469a5f223fbec6c8b75745d2dd` (PR #79, negation method)
 
-Built and run on 2026-11-07 against ForShor `2b7aaf79c2e666afdec36d8f7f0ef124f96c0610` (the PR #79 head; the merge
+Built and run on 2026-11-07 against ForShor `eb00c5adc72832469a5f223fbec6c8b75745d2dd` (the PR #79 head; the merge
 commit has the same tree), toolchain and Mathlib unchanged. Details and numbers: `ForShor_modular_swaps/swap-002_policy_negation_option/shards/B2.md`.
 
 What changed at the pin (ForShor `Framework/Gatecount/ResourceModel.lean`, `Framework/NegationMethod.lean`):
