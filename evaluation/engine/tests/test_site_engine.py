@@ -291,17 +291,45 @@ def test_full_seam_phase_product_equals_tcost(key, w, widths):
     floor)), and the PP board at STO's exact widths (`tcost/exact`, tightWidth); the seam is checked at exact widths
     (the board's) and, as before, at scanned widths (the cross-check). The two exact rules differ only where ForShor's
     floor (1 + widest initial chunk) binds, at w <= 2 (see test_forshor_exact_width_is_sto_tight_width_or_the_floor);
-    every band of these policies starts far above that, so the seam is exact."""
+    every band of these policies starts far above that, so the seam is exact.
+    Swap 002: `tcost` (the PP/PTP board engine) still prices a negation the old way (Qualtran `Negate`), so the seam is stated under
+    `negate="legacy"` (ForShor `scratch`); under the real default negation a table that negates (KMY's) no longer matches it, see
+    test_full_seam_diverges_from_tcost_for_a_negating_table_under_the_new_negation."""
     from site_engine import fullalg as fa
     from l2q_full import cost_conventions as cc
     from l2q_full.bloqs.policy_phase_product import PolicyPhaseProduct
     P = (lib.sto_reference_policies()[PP] if key == "reference" else _opt(key, PP, widths=widths)).with_widths(widths)
-    spec = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract")
+    spec = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract", negate="legacy")
     LP = fa.to_l2q_full(P)
     assert {b.table.width_rule for b in LP.bands} == {widths}
     c = cc.split(PolicyPhaseProduct(LP, w, w, convention=spec))
     s = ts.score_policy(P, w, 0.01)
     assert (c.base, c.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
+
+
+def test_full_seam_diverges_from_tcost_for_a_negating_table_under_the_new_negation():
+    """The other half of the seam test: KMY's table negates, `tcost` prices that negation the old way, and the full run (default
+    `gidney_circuit`) prices it as complement + the one-clean-ancilla increment with Lean's counts (Toffoli 12w-28 even / 10w-18 odd, 4 T
+    each): the two disagree on T by exactly the negations' price difference, recomputed from the call graph's negation sites, and
+    agree on the rotation count. (Same test as the export branch's, E1 7e48afc.)"""
+    from site_engine import fullalg as fa
+    from l2q_full import cost_conventions as cc
+    from l2q_full.bloqs.policy_phase_product import PolicyPhaseProduct
+    from negation_arith import delta_t, sites_of, t_legacy, t_new
+    P = _opt("kmy", PP, widths="exact").with_widths("exact")
+    LP = fa.to_l2q_full(P)
+    s = ts.score_policy(P, 300, 0.01)
+    base = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract")
+    old = cc.split(PolicyPhaseProduct(LP, 300, 300, convention=base.with_(negate="legacy")))
+    assert base.negate == "gidney_circuit"                                    # the default is the real circuit
+    node = PolicyPhaseProduct(LP, 300, 300, convention=base)
+    new = cc.split(node)
+    assert (old.base, old.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
+    assert new.rot == old.rot
+    sites = sites_of(node)
+    assert sites
+    assert new.base - old.base == delta_t(sites, t_legacy, t_new)
+    assert new.base > old.base
 
 
 def test_forshor_exact_width_is_sto_tight_width_or_the_floor():
@@ -406,15 +434,26 @@ def test_full_step4_is_in_the_run():
             # Steps 1, 2, 5 (2L <= 3s) pad to (work+1) x (work+1): Step 2 + 2 x Step 4 phase products, Steps 1 + 5 cphase
             assert sites[("phase_product", w["workW"] + 1, w["workW"] + 1)] == mults + 4 * mults
             assert sites[("cphase_product", w["workW"] + 1, w["workW"] + 1)] == 2 * mults
-    for rule, share in (("scan", None), (None, 0.6891812047842106)):
+    # Swap 002: the 68.9 % below was pinned under the pre-swap negation (T = 1,933,981,965,830.921). The default `oneQubit` negation adds
+    # exactly the run's negation sites' difference (24,570 at w = 4398, all in "the template's own arithmetic", none in Step 4), so Step 4's T
+    # is unchanged and its share is that same T over the larger total: recomputed here, not pasted.
+    from negation_arith import RUN_NEGATIONS, RUN_WIDTH, delta_t, policy_sites, t_legacy, t_new
+    T_LEGACY, SHARE_LEGACY = 1_933_981_965_830.921, 0.6891812047842106
+    sites = policy_sites(fa.to_l2q_full(_ref()), N)
+    assert sites == {RUN_WIDTH: RUN_NEGATIONS}
+    share_now = SHARE_LEGACY * T_LEGACY / (T_LEGACY + delta_t(sites, t_legacy, t_new))
+    r0 = fa.price_full(_ref(), N, 0.01, negation="scratch")                  # the pre-swap pricing, still reproduced exactly
+    assert sum(p["T"] for k, p in {p["part"]: p for p in r0["parts"]}.items() if k.startswith("Step 4")) / r0["T"] \
+        == pytest.approx(SHARE_LEGACY, rel=1e-9)
+    for rule, share in (("scan", None), (None, share_now)):
         r = fa.price_full(_ref(), N, 0.01, rule=rule)
         parts = {p["part"]: p for p in r["parts"]}
         step4 = sum(p["T"] for k, p in parts.items() if k.startswith("Step 4"))
         if share is None:
             assert step4 / r["T"] > 0.7
         else:
-            # Stage 18 re-pin: Step 4 is 68.9 % of the reference run on the drop-in IR (was > 70 % at scanned widths);
-            # still the largest part by far (its QFT on scratch alone is 54.5 %)
+            # Stage 18 re-pin: Step 4 is 68.9 % (68.75 % under the default negation) of the reference run on the drop-in IR (was > 70 %
+            # at scanned widths); still the largest part by far (its QFT on scratch alone is 54.5 %)
             assert step4 / r["T"] == pytest.approx(share, rel=1e-9)
             assert max(r["parts"], key=lambda p: p["T"])["part"] == "Step 4 cmpLtNW: QFT on scratch"
         assert sum(p["T"] for p in r["parts"]) == pytest.approx(r["T"], rel=1e-12)
@@ -449,27 +488,44 @@ def test_full_headline_and_grid_leaf_cross_check():
     from site_engine import fullalg as fa
     # Stage 18 re-pin: the board prices the ForShor drop-in IR (exact widths, balanced split). STO reference 1.934e12
     # (grid leaf 1.044e13); the shipped policy (the drop-in document's own) 3.241e12 (grid leaf 1.011e13).
+    # Swap 002: these pins were recorded under the pre-swap negation (`negate="legacy"`, ForShor `scratch`: Qualtran Negate, 4 (w - 1) T each).
+    # The default is now `oneQubit`: every expected T below is the recorded legacy pin plus, over the negation sites of THAT run (counted
+    # off its call graph), k * (4 * Toffoli(12w-28 | 10w-18) - 4 (w - 1)); `negation="scratch"` must still reproduce the pins themselves.
+    from negation_arith import delta_t, policy_sites, t_legacy, t_new
+    up = lambda T_legacy, sites: T_legacy + delta_t(sites, t_legacy, t_new)
+    ref_b, ref_s = fa.to_l2q_full(_ref()), fa.to_l2q_full(_ref(), "scan")
+    nat_b, nat_s = fa.native().policy, fa.native_scan().policy
     b = fa.price_full(_ref(), N, 0.01)
-    bs = fa.price_l2q(fa.native().policy, N, 0.01)
-    assert b["T"] == pytest.approx(1_933_981_965_830.921, rel=1e-9)
-    assert b["lean_grid_leaf_T"] == pytest.approx(10_444_344_163_003.582, rel=1e-9)
-    assert bs["T"] == pytest.approx(3_240_663_026_770.465, rel=1e-9)
-    assert bs["lean_grid_leaf_T"] == pytest.approx(10_114_974_620_580.008, rel=1e-9)
+    bs = fa.price_l2q(nat_b, N, 0.01)
+    assert fa.price_full(_ref(), N, 0.01, negation="scratch")["T"] == pytest.approx(1_933_981_965_830.921, rel=1e-9)
+    assert fa.price_l2q(nat_b, N, 0.01, negation="scratch")["T"] == pytest.approx(3_240_663_026_770.465, rel=1e-9)
+    s_ref, s_nat = policy_sites(ref_b, N), policy_sites(nat_b, N)
+    assert b["T"] == pytest.approx(up(1_933_981_965_830.921, s_ref), rel=1e-9)
+    assert b["lean_grid_leaf_T"] == pytest.approx(up(10_444_344_163_003.582, s_ref), rel=1e-9)
+    assert bs["T"] == pytest.approx(up(3_240_663_026_770.465, s_nat), rel=1e-9)
+    assert bs["lean_grid_leaf_T"] == pytest.approx(up(10_114_974_620_580.008, s_nat), rel=1e-9)
     for got in (b, bs):
-        assert got["lean_grid_leaf_T"] > 3 * got["T"] and got["literal_lean_T"] > got["lean_grid_leaf_T"]
-    assert b["cross_checks"]["forshor_scan_ir"]["T"] == pytest.approx(4_915_468_013_499.388, rel=1e-9)
-    assert bs["cross_checks"]["forshor_scan_ir"]["T"] == pytest.approx(675_015_907_318_168.6, rel=1e-9)
+        # "> 3 x" was the legacy ratio (3.12 for the shipped policy); the cheaper-to-price oneQubit negation lowers the grid tier's T less than
+        # the headline's share of negations raises it: 2.89 here, still far above the headline
+        assert got["lean_grid_leaf_T"] > 2.5 * got["T"] and got["literal_lean_T"] > got["lean_grid_leaf_T"]
+    assert b["cross_checks"]["forshor_scan_ir"]["T"] == pytest.approx(up(4_915_468_013_499.388, policy_sites(ref_b, N, "scan")), rel=1e-9)
+    assert bs["cross_checks"]["forshor_scan_ir"]["T"] == pytest.approx(up(675_015_907_318_168.6, policy_sites(nat_b, N, "scan")), rel=1e-9)
     # The Stage 11 pins and the audit's figures: upstream ForShor's IR at scanned widths (the scan cross-check, priced
     # as a headline with rule="scan"), the shipped policy on upstream's own document
     r = fa.price_full(_ref(), N, 0.01, rule="scan")
-    s = fa.price_l2q(fa.native_scan().policy, N, 0.01, rule="scan")
+    s = fa.price_l2q(nat_s, N, 0.01, rule="scan")
     assert r["model"] == s["model"] == fa.MODEL_SCAN and r["width_rule"] == "scan"
-    assert r["T"] == pytest.approx(4_915_468_013_499.388, rel=1e-9)
-    assert r["lean_grid_leaf_T"] == pytest.approx(25_914_479_951_314.496, rel=1e-9)
-    assert s["T"] == pytest.approx(675_015_907_318_168.6, rel=1e-9)
-    assert s["lean_grid_leaf_T"] == pytest.approx(2_600_907_726_231_252.0, rel=1e-9)
-    for got, (head, grid) in ((r, AUDIT["reference"]), (s, AUDIT["shipped"])):
-        assert got["T"] == pytest.approx(head, rel=5e-3) and got["lean_grid_leaf_T"] == pytest.approx(grid, rel=5e-3)
+    s_rs, s_ns = policy_sites(ref_s, N, "scan"), policy_sites(nat_s, N, "scan")
+    assert r["T"] == pytest.approx(up(4_915_468_013_499.388, s_rs), rel=1e-9)
+    assert r["lean_grid_leaf_T"] == pytest.approx(up(25_914_479_951_314.496, s_rs), rel=1e-9)
+    assert s["T"] == pytest.approx(up(675_015_907_318_168.6, s_ns), rel=1e-9)
+    assert s["lean_grid_leaf_T"] == pytest.approx(up(2_600_907_726_231_252.0, s_ns), rel=1e-9)
+    # The audit's figures (AUDIT) were computed under ForShor's pre-swap negation charge, i.e. `scratch`: they are checked against that
+    # pricing (`negation="scratch"`), not against the default `oneQubit` (+12 % for the shipped policy, whose table negates ~1e8 times).
+    r_l = fa.price_full(_ref(), N, 0.01, rule="scan", negation="scratch")
+    s_l = fa.price_l2q(nat_s, N, 0.01, rule="scan", negation="scratch")
+    for got, leg, (head, grid) in ((r, r_l, AUDIT["reference"]), (s, s_l, AUDIT["shipped"])):
+        assert leg["T"] == pytest.approx(head, rel=5e-3) and leg["lean_grid_leaf_T"] == pytest.approx(grid, rel=5e-3)
         assert got["lean_grid_leaf_T"] > 3 * got["T"] and got["cross_checks"]["lean_grid_leaf"]["T"] == got["lean_grid_leaf_T"]
         assert got["literal_lean_T"] > got["lean_grid_leaf_T"]
     # rotations: sto_currency (Ross-Selinger mean), never 11 T
@@ -491,13 +547,27 @@ def test_full_work_width_is_leans_and_the_residual_is_small():
     # Stage 18: on the drop-in IR the five bits move T by 1.10 % (exact widths are not smooth in w: the scratch QFT at
     # 4393 vs 4398 bits descends differently, -2.2 %); at scanned widths (the cross-check) still under 0.2 %. The static
     # qubit count is unchanged under both.
+    # Swap 002: the 1.10 % bound was measured under the pre-swap negation (`negate="legacy"`); under the default `oneQubit` every negation is
+    # costlier by 4 (Toffoli(w) - (w - 1)) T and the same absolute difference is a slightly smaller share, so: the bounds are asserted for
+    # the legacy convention (where they were measured), and the default's value is asserted equal to what the legacy values imply once each
+    # run's own negation sites (counted in its call graph) are repriced.
+    from negation_arith import delta_t, sites_of, t_legacy, t_new
     for rule, native, lo, hi in ((None, fa.native(), 0.0109, 0.0111), ("scan", fa.native_scan(), 0, 2e-3)):
         LP = fa.to_l2q_full(_ref(), rule)
-        c = pr.PolicyShorCore.from_native(native, N, sy.Convention.for_modulus(1 << (N - 1), m_frac), fa.HEADLINE)
-        t_frac = fa._t_of(attrs.evolve(c, policy=LP), fa.HEADLINE, 0.01)["T"]
-        r = fa.price_full(_ref(), N, 0.01, rule=rule)
-        assert lo < (r["T"] - t_frac) / r["T"] < hi
-        assert pr.layout_qubits(LP, dict(c.widths)) == r["qubits"]
+        conv_frac = sy.Convention.for_modulus(1 << (N - 1), m_frac)
+        got = {}
+        for neg, impl in (("scratch", "legacy"), (None, "gidney_circuit")):
+            hl = fa.HEADLINE.with_(negate=impl)
+            c = attrs.evolve(pr.PolicyShorCore.from_native(native, N, conv_frac, hl), policy=LP)
+            r = fa.price_full(_ref(), N, 0.01, rule=rule, negation=neg)
+            assert pr.layout_qubits(LP, dict(c.widths)) == r["qubits"]
+            main = attrs.evolve((fa.core if rule is None else fa.core_scan)(N), policy=LP, convention=fa.HEADLINE)
+            got[impl] = (fa._t_of(c, hl, 0.01)["T"], r["T"], sites_of(attrs.evolve(c, convention=fa.HEADLINE)), sites_of(main))
+        (frac_l, main_l, s_frac, s_main), (frac_n, main_n, _, _) = got["legacy"], got["gidney_circuit"]
+        assert lo < (main_l - frac_l) / main_l < hi                                     # the Stage 18 claim, as measured under the legacy negation
+        assert frac_n == pytest.approx(frac_l + delta_t(s_frac, t_legacy, t_new), rel=1e-12)
+        assert main_n == pytest.approx(main_l + delta_t(s_main, t_legacy, t_new), rel=1e-12)
+        assert 0 <= (main_n - frac_n) / main_n < 1.3 * hi
 
 
 def _lean_reserve(P, w, widths="scan"):

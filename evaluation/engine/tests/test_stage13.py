@@ -331,35 +331,77 @@ def test_full_board_unchanged_except_the_trial_count():
 
 def test_full_board_stage19_pins():
     """Stage 18 (2026-10-28): the full board on the ForShor drop-in IR (exact widths, balanced split). Stage 19
-    (2026-10-29): its policies are the PhaseProduct board's recalculated exact-width policies. Pinned from the cache it
-    was built with (tests/data/full_board_stage19_1e-02.json; the Stage 18 pins are kept as history), plus its scan
-    cross-check."""
+    (2026-10-29): its policies are the PhaseProduct board's recalculated exact-width policies.
+
+    The pins in tests/data/full_board_stage19_1e-02.json were recorded under the pre-swap negation (`legacy`, ForShor `scratch`: Qualtran
+    Negate, 4 (w - 1) T each); ladders, qubits and the PP column are unchanged by the default `oneQubit` negation, and each T is that pinned
+    T plus what the real negation adds. That addition is recomputed here, per point, from the negation sites of the point's own run
+    (counted in its call graph) and the two price formulas (`negation_arith`: 4 (w - 1) versus 4 x (12 w - 28 or 10 w - 18)); the cache
+    (engine/cache/fullalg_1e-02.json, rebuilt for the swap) must equal it. The scan cross-check and ForShor's shipped policy likewise.
+    The cache equals the export branch's (E1 7e48afc) in every shared field except its fingerprint."""
+    from negation_arith import REAL_DELTA, delta_t, policy_sites, t_legacy, t_new
     from site_engine import full_frontier as ff
     new = json.loads((DATA / "full_board_stage19_1e-02.json").read_text())
     c = ff.load(0.01)
     assert c is not None and c["full_model"] == new["model"] == fa.MODEL and c["width_rule"] == new["width_rule"] == "exact"
+    assert fa.HEADLINE.negate == "gidney_circuit"
+
+    ppc = pc.load(tt.PAIR, 0.01)
+    reference = lib.reference_policies()[tt.PAIR]
+
+    def policy_of(key, n):
+        return reference if key == "reference" else tt.Policy.from_json(ppc["policies"][key][str(n)])
+
+    def real_T(T_legacy, P, n, rule="board"):
+        """The pinned legacy T plus the real negation's addition at this run's negation sites (P: a tcost policy, priced as `price_full` does)."""
+        return T_legacy + delta_t(policy_sites(fa.to_l2q_full(P), n, rule), t_legacy, t_new)
+
     for key, pts in new["milestones"].items():
         got = {p["n"]: p for p in c["milestones"][key]["points"]}
         for n, T, q, lad, ppT in pts:
             p = got[n]
-            assert (p["T"], p["qubits"], p["ladder_str"]) == (pytest.approx(T, rel=1e-12), q, lad), (key, n)
+            want = real_T(T, policy_of(key, n), n)
+            assert (p["T"], p["qubits"], p["ladder_str"]) == (pytest.approx(want, rel=1e-12), q, lad), (key, n)
         for n, T, q, lad in new["scan_milestones"][key]:
             s = got[n]["cross_checks"]["forshor_scan_ir"]
-            assert (s["T"], s["qubits"], s["ladder_str"]) == (pytest.approx(T, rel=1e-12), q, lad), (key, n)
-    assert [[r["id"], r["qubits"], r["ladder_str"]] for r in c["leaderboard"]["ranked"]] == \
-        [[i, q, l] for i, _, q, l, _ in new["ranked"]]
-    for r, (_, T, _, _, ppT) in zip(c["leaderboard"]["ranked"], new["ranked"]):
-        assert r["T"] == pytest.approx(T, rel=1e-12) and r["pp_T"] == pytest.approx(ppT, rel=1e-12)
-    assert [c["forshor_shipped"]["T"], c["forshor_shipped"]["qubits"]] == [pytest.approx(new["forshor_shipped"][0], rel=1e-12),
-                                                                       new["forshor_shipped"][1]]
+            want = real_T(T, policy_of(key, n), n, "scan")
+            assert (s["T"], s["qubits"], s["ladder_str"]) == (pytest.approx(want, rel=1e-12), q, lad), (key, n)
+    # the leaderboard: each row is the best policy over every table submitted up to it, priced at n = 2048
+    subs = {s_.id: i for i, s_ in enumerate(lib.submissions(), start=1)}
+    expected = {}
+    for i, T, q, lad, ppT in new["ranked"]:
+        P, _ = tp.optimal_policy([t for t in lib.sto_tables(upto=subs[i]) if t.mode == tt.PAIR], tt.PAIR, fa.HERO_N, 0.01, name=f"upto:{i}")
+        expected[i] = (real_T(T, P, fa.HERO_N), q, lad, ppT)
+    got = {r["id"]: r for r in c["leaderboard"]["ranked"]}
+    assert sorted(got) == sorted(expected)
+    for i, (T, q, lad, ppT) in expected.items():
+        assert (got[i]["T"], got[i]["qubits"], got[i]["ladder_str"], got[i]["pp_T"]) == (pytest.approx(T, rel=1e-12), q, lad, pytest.approx(ppT, rel=1e-12)), i
+    ranked = [r["id"] for r in c["leaderboard"]["ranked"]]
+    assert ranked == [i for i, *_ in new["ranked"]], "the rank order is unchanged by the swap"
+    assert all(a["T"] <= b["T"] for a, b in zip(c["leaderboard"]["ranked"], c["leaderboard"]["ranked"][1:]))
+    shipped = fa.native().policy
+    sites = policy_sites(shipped, fa.HERO_N)
+    assert [c["forshor_shipped"]["T"], c["forshor_shipped"]["qubits"]] == [
+        pytest.approx(new["forshor_shipped"][0] + delta_t(sites, t_legacy, t_new), rel=1e-12), new["forshor_shipped"][1]]
+    ssc = c["forshor_shipped"]["scan_cross_check"]
+    assert [ssc["T"], ssc["qubits"]] == [pytest.approx(new["scan_forshor_shipped"][0] + delta_t(policy_sites(shipped, fa.HERO_N, "scan"), t_legacy, t_new),
+                                                       rel=1e-12), new["scan_forshor_shipped"][1]]
     # the verified headline numbers (n = 2048, delta = 0.01)
     h = {r["key"]: r for r in c["hero"]["milestones"]}
     # Stage 19 (third round): the site's STO reference has its thresholds moved to exact widths (STO's shipped
-    # thresholds price 1.933981965831e12 T, 47,474 qubits)
-    assert (h["reference"]["T"], h["reference"]["qubits"]) == (pytest.approx(2.110297340025e12, rel=1e-12), 47_954)
-    assert (c["forshor_shipped"]["T"], c["forshor_shipped"]["qubits"]) == (pytest.approx(3.240663026770465e12, rel=1e-12), 43_904)
-    # Stage 19: the recalculated KMY benchmark and the leaderboard's PP column follow the PhaseProduct board
-    assert (h["kmy"]["T"], h["kmy"]["qubits"]) == (pytest.approx(1.832437398043e12, rel=1e-12), 27_866)
+    # thresholds price 1.933981965831e12 T under the legacy negation, 47,474 qubits)
+    # The STO reference has no negate op, so its T rose over the legacy 2.110297340025e12 (the pre-swap pin) by exactly the 24,570 negations of
+    # the run, all at width 4398: each from 4 (w - 1) T (Qualtran Negate) to 4 (12 w - 28) T (the real circuit).
+    assert (h["reference"]["T"], h["reference"]["qubits"]) == (pytest.approx(2.110297340025e12 + REAL_DELTA, rel=1e-11), 47_954)
+    # the shipped ForShor policy's own table negates, so it pays far more than the 24,570: 3.240663026770465e12 under the legacy negation, plus
+    # its own negation sites (counted above) at the real price
+    assert (c["forshor_shipped"]["T"], c["forshor_shipped"]["qubits"]) == (
+        pytest.approx(3.240663026770465e12 + delta_t(sites, t_legacy, t_new), rel=1e-11), 43_904)
+    # Stage 19: the recalculated KMY benchmark and the leaderboard's PP column follow the PhaseProduct board. KMY's table negates too
+    # (1.832437398043e12 under the legacy negation); its static layout is unchanged.
+    kmy_2048 = next(row for row in new["milestones"]["kmy"] if row[0] == 2048)
+    assert (h["kmy"]["T"], h["kmy"]["qubits"]) == (pytest.approx(real_T(kmy_2048[1], policy_of("kmy", 2048), 2048), rel=1e-12), 27_866)
+    assert h["kmy"]["T"] > 1.832437398043e12
     pp = {r["id"]: r["T"] for r in pc.load(tt.PAIR, 0.01)["leaderboard"]["rows"]}
     assert all(r["pp_T"] == pytest.approx(pp[r["id"]], rel=1e-12) for r in c["leaderboard"]["ranked"])
 

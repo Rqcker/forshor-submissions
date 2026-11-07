@@ -12,6 +12,8 @@ from fullalg.l2q_full import policy_shor_price as pr
 from fullalg.l2q_full import policy_shor_sym as sy
 from site_engine import fullalg as F
 
+import negation_arith as na
+
 DOCS = Path(__file__).parent / "data" / "balanced"
 
 
@@ -24,9 +26,17 @@ def _core(doc):
     return pr.PolicyShorCore.from_native(pi.load_native(doc), 2048, conv, F.HEADLINE)
 
 
-@pytest.mark.parametrize("name, T", [("sto_reference", 2.567853e12), ("shipped", 5.380873e14)])
+#: pinned under the pre-swap negation (Qualtran Negate = 4(w-1) T per site, ForShor `scratch`)
+LEGACY_T = {"sto_reference": 2.567853e12, "shipped": 5.380873e14}
+
+
+@pytest.mark.parametrize("name, T", sorted(LEGACY_T.items()))
 def test_balanced_ir_prices_through_the_dictionary(name, T):
-    assert F.price_document(_doc(name), 2048)["T"] == pytest.approx(T, rel=1e-6)
+    """The default negation is `oneQubit`: the legacy pin plus, over the document's own negation sites (call graph of its core),
+    k * (4 * Toffoli(12w-28 | 10w-18) - 4(w-1)); recomputed, not pasted."""
+    expected = T + na.delta_t(na.sites_of(_core(_doc(name))), na.t_legacy, na.t_new)
+    assert F.price_document(_doc(name), 2048)["T"] == pytest.approx(expected, rel=1e-6)
+    assert F.price_document({**_doc(name), "negation": "scratch"}, 2048)["T"] == pytest.approx(T, rel=1e-6)
 
 
 @pytest.mark.parametrize("name", ["sto_reference", "shipped"])

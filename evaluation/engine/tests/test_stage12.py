@@ -129,7 +129,13 @@ def test_kmy_qualtran_peak_exceeds_the_lean_static_layout():
     # KMY-PP3 has a negate: Qualtran Negate(QInt(698)) needs 2*698 - 1 ancillas; Lean's 2w + R has no room for them
     # (Lean's own literal lowering needs cleanAnc = w + 1 = 699 for the negate, also outside 2w + R).
     r = qc.pp_compare(fr.planned("kmy", tt.PAIR, 2048, 0.01, "scan")[0], 2048)     # Stage 12's comparison: scanned widths
-    assert (r["lean_static"], r["qualtran_tcost"], r["lean_qubit_count"]) == (5292, 5583, 5991)
+    # Swap 002: that comment is the pre-swap (`scratch`) negation, cleanAnc = w + 1 = 699: 5292 + 699 = 5991. The default `oneQubit` negation
+    # charges ONE clean ancilla (ForShor `negateResources`, cleanAnc 1), which fits: 5292 + 1 = 5293. `qualtran_tcost` is the tcost board
+    # bloq (Qualtran Negate), not the swap's.
+    assert (r["lean_static"], r["qualtran_tcost"], r["lean_qubit_count"]) == (5292, 5583, 5292 + 1)
+    from l2q_full.bloqs.policy_phase_product import PolicyPhaseProduct as LPP
+    legacy = LPP(fa.to_l2q_full(fr.planned("kmy", tt.PAIR, 2048, 0.01, "scan")[0], "scan"), 2048, 2048, convention=fa.HEADLINE.with_(negate="legacy"))
+    assert legacy.lean_qubit_count() == 5292 + (698 + 1)
 
 
 def test_full_run_qubits_compared():
@@ -170,13 +176,22 @@ def test_pricing_rule_wording():
 
 
 # ------------------------------------------------------------------------------------------------ D: the paper's policy
+def _up(name, T_legacy, rule="exact"):
+    """Swap 002: a T pinned under the pre-swap negation (Qualtran Negate, 4 (w - 1) T per site) as the default `oneQubit` negation prices it:
+    the pin plus k * (4 * Toffoli(12w-28 | 10w-18) - 4 (w - 1)) over the negation sites of that policy's run (call graph). Recomputed, not pasted."""
+    from l2q_full import policy as lpol
+    import negation_arith as na
+    LP = lpol.with_width_rule(pp.policy(name), rule)
+    return T_legacy + na.delta_t(na.policy_sites(LP, fa.HERO_N, "scan" if rule == "scan" else "board"), na.t_legacy, na.t_new)
+
+
 def test_paper_policies_on_the_board_ir():
     # Stage 18: the paper follows the board, i.e. the ForShor drop-in IR (exact widths + balanced split)
-    assert pp.price("k5532")["T"] == pytest.approx(1_934_872e6, rel=1e-6) and pp.price("k5532")["qubits"] == 35_282
-    assert pp.price("k5322")["T"] == pytest.approx(2_228_329e6, rel=1e-6)
+    assert pp.price("k5532")["T"] == pytest.approx(_up("k5532", 1_934_872e6), rel=1e-6) and pp.price("k5532")["qubits"] == 35_282
+    assert pp.price("k5322")["T"] == pytest.approx(_up("k5322", 2_228_329e6), rel=1e-6)
     best, k4 = pp.price("replanned_best_exact"), pp.price("constant_k4_exact")
-    assert best["T"] == pytest.approx(1.685193e12, rel=1e-6) and best["qubits"] == 45_296
-    assert k4["T"] == pytest.approx(1.819733e12, rel=1e-6) and k4["bands"] == [(129, 4)]
+    assert best["T"] == pytest.approx(_up("replanned_best_exact", 1.685193e12), rel=1e-6) and best["qubits"] == 45_296
+    assert k4["T"] == pytest.approx(_up("constant_k4_exact", 1.819733e12), rel=1e-6) and k4["bands"] == [(129, 4)]
     assert best["T"] < k4["T"] < pp.price("constant_k2")["T"]
     assert best["ladders"]["Step 2 (work+1 x data+2)"] == "2348:6 -> 655:5 -> 140:3 -> 51:leaf"
     assert best["widths_rule"].startswith("exact")
@@ -185,11 +200,15 @@ def test_paper_policies_on_the_board_ir():
 def test_paper_policies_repriced():
     # Stage 12 figures, kept on upstream ForShor's IR at scanned widths (Stage 18: rule="scan")
     a, b = pp.price("k5532", rule="scan"), pp.price("k5322", rule="scan")
-    assert a["T"] == pytest.approx(5_555_017_353_851.2, rel=1e-12) and a["qubits"] == 52_090
-    assert b["T"] == pytest.approx(5_379_199_707_079.5, rel=1e-12) and b["qubits"] == 46_370
+    assert a["T"] == pytest.approx(_up("k5532", 5_555_017_353_851.2, "scan"), rel=1e-12) and a["qubits"] == 52_090
+    assert b["T"] == pytest.approx(_up("k5322", 5_379_199_707_079.5, "scan"), rel=1e-12) and b["qubits"] == 46_370
+    from l2q_full import policy as lpol
+    for name, T in (("k5532", 5_555_017_353_851.2), ("k5322", 5_379_199_707_079.5)):       # the pre-swap pricing is still reproduced
+        assert fa.price_l2q(lpol.with_width_rule(pp.policy(name), "scan"), fa.HERO_N, 0.01, detail=False, rule="scan",
+                            negation="scratch")["T"] == pytest.approx(T, rel=1e-12)
     assert a["ladders"]["Step 2 (work+1 x data+2)"] == "2348:5 -> 798:5 -> 252:3 -> 101:2 -> 56:leaf"
     assert b["ladders"]["Step 2 (work+1 x data+2)"] == "2348:5 -> 798:3 -> 283:2 -> 147:2 -> 79:leaf"
     # the owner's reconciliation figures, same tables and pricer
-    assert pp.price("replanned_best", rule="scan")["T"] == pytest.approx(3.31993e12, rel=1e-5)
-    assert pp.price("constant_k2", rule="scan")["T"] == pytest.approx(3.77364e12, rel=1e-5)
+    assert pp.price("replanned_best", rule="scan")["T"] == pytest.approx(_up("replanned_best", 3.31993e12, "scan"), rel=1e-5)
+    assert pp.price("constant_k2", rule="scan")["T"] == pytest.approx(_up("constant_k2", 3.77364e12, "scan"), rel=1e-5)
     assert a["step4"] and a["work_width"] == 2347 and a["tables"]["std-k5"]["points"][-1] == "4"

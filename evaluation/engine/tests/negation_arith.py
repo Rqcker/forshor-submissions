@@ -48,8 +48,10 @@ REAL_DELTA = RUN_NEGATIONS * (t_new(RUN_WIDTH) - t_legacy(RUN_WIDTH))
 def sites_of(bloq):
     """{width: count} of the negations in a bloq's call graph, read off the bloqs, not off their prices. The bloq must be built
     under a `gidney_circuit` convention (the default), whose negations are `IncrementerNegate`."""
-    _, sigma = get_bloq_call_graph(bloq, keep=lambda b: isinstance(b, cc.IncrementerNegate))
-    return {b.w: k for b, k in sigma.items() if isinstance(b, cc.IncrementerNegate)}
+    # by class name: the engine can be imported as `l2q_full` (site_engine) or as `fullalg.l2q_full` (some tests): two module objects
+    is_neg = lambda b: type(b).__name__ == "IncrementerNegate"
+    _, sigma = get_bloq_call_graph(bloq, keep=is_neg)
+    return {b.w: k for b, k in sigma.items() if is_neg(b)}
 
 
 def policy_sites(l2q_policy, n, rule="board", spec=None):
