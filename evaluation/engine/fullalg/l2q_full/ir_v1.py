@@ -716,9 +716,9 @@ def lowgate_resources(leaves: Sequence[Dict[str, Any]]) -> Dict[str, int]:
         elif op == "AddScaled":
             add(_cuccaro(len(g["dst"]["active"])))
         elif op == "Negate":
+            # swap 001: complement + one-clean-ancilla incrementer (`negateResources`)
             w = len(g["r"]["active"])
-            c = _cuccaro(w)
-            add({"x": w + c["x"] + 2, "cnot": c["cnot"], "toffoli": c["toffoli"]})
+            add({"x": w, "toffoli": 32 * w})
         elif op in ("signExtend", "signDealloc"):
             out["cnot"] += g["n"]
         elif op == "RadixReverse":

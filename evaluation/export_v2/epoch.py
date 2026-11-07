@@ -114,6 +114,14 @@ def baseline_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[
     return out
 
 
+def negating_bands(policy) -> List[int]:
+    """The arities of a policy's tables that contain a `negate` operation. Modular swap 001 changed what the FULL RUN charges for a negation
+    (complement + a one-clean-ancilla incrementer: 32 w Toffoli, 1 qubit), but `tcost`, which prices the PhaseProduct and PhaseTripleProduct
+    boards, still charges the old way (D24 of the swap log). For a table that negates the boards would therefore disagree, so no
+    such policy is exported. None of the policies listed today has one."""
+    return [b.table.k for b in policy.bands if b.table.census()["negate"]]
+
+
 def first_per_policy(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Each distinct policy once, as the earliest row that has it. The planner's pick often does not change when a later submission
     arrives, so the frontier repeats one policy under many submissions (at 1e-2, sixteen PhaseProduct rows were the same policy with
@@ -164,6 +172,12 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
     for b in baselines:
         entry = policies.setdefault(b["digest"], {"mode": MODES[b["board"]], "board": b["board"], "policy": b["policy"], "uses": []})
         entry["uses"].append({"board": b["board"], "delta": "1e-2", "rowId": b["id"]})
+
+    for digest, entry in policies.items():
+        bad = negating_bands(entry["policy"])
+        if bad:
+            raise ValueError(f"policy {digest[:12]} uses a table that negates (k = {bad}): tcost prices a negation the old way and the full run "
+                             "the new way (modular swap 001), so its boards would disagree; not exporting it until tcost follows the swap")
 
     # Evidence is about the policy, not about a delta, so it is looked up once per distinct policy (one pricing to get its file).
     evidence: Dict[str, Tuple[Optional[Dict[str, Any]], Optional[str]]] = {}

@@ -363,14 +363,14 @@ def _used_extra(policy: PhasePolicy, wx: int, wz: int) -> int:
 
 @lru_cache(maxsize=1 << 14)
 def _lean_clean_anc(policy: PhasePolicy, wx: int, wz: int) -> int:
-    """ForShor's `cleanAnc` (a peak, `max` over `seq`): 1 for any Cuccaro add, `w + 1` for a
-    negate on a `w`-bit register (`negateResources`)."""
+    """ForShor's `cleanAnc` (a peak, `max` over `seq`): 1 for any Cuccaro add and, since modular
+    swap 001, 1 for a negate (`negateResources`: one clean ancilla; it was `w + 1`)."""
     s = policy.step(wx, wz)
     if s is None:
         return 0
     T, w2 = s
     c = T.census()
-    here = max(1 if c["addScaled"] else 0, (w2 + 1) if c["negate"] else 0)
+    here = max(1 if c["addScaled"] else 0, cc.negate_clean_ancilla(w2) if c["negate"] else 0)
     return max(here, _lean_clean_anc(policy, w2, w2))
 
 
@@ -409,10 +409,11 @@ def _qualtran_level_ancilla(T: ToomCookTable, w2: int, spec: cc.ConventionSpec) 
     ancillas plus the zero padding of a shifted source view."""
     if spec.adder == "cuccaro":
         c = T.census()
-        return max(1 if c["addScaled"] else 0, (w2 + 1) if c["negate"] else 0)
+        return max(1 if c["addScaled"] else 0,
+                   cc.negate_clean_ancilla(w2, spec.negate) if c["negate"] else 0)
     add_x = qubit_count_closed_form("Add", w2) - 2 * w2
     sub_x = qubit_count_closed_form("Subtract", w2) - 2 * w2
-    neg_x = qubit_count_closed_form("Negate", w2) - w2
+    neg_x = 1 if spec.negate == "incrementer" else qubit_count_closed_form("Negate", w2) - w2
     peak = 0
     for o in T.ops:
         if o["op"] == "addScaled":
@@ -474,9 +475,9 @@ def _lean_resources(policy: PhasePolicy, wx: int, wz: int, controlled: bool) -> 
             return res
         T, w2 = s
         cen = T.census()
-        # `addScaledResources` = `cuccaroModAddResources (width dst)`; `negateResources` = the
-        # same adder plus `w + 2` X (complement, then add a prepared |1>). Every chunk has
-        # already been grown to `w2` when the program runs.
+        # `addScaledResources` = `cuccaroModAddResources (width dst)`; `negateResources` (swap 001)
+        # = `w` X plus `32 w` Toffoli (one-clean-ancilla incrementer). Every chunk has already
+        # been grown to `w2` when the program runs.
         adds = nodes * 2 * cen["addScaled"]
         negs = nodes * 2 * cen["negate"]
         add_r, neg_r = cc.cuccaro_resources(w2), cc.negate_resources(w2)   # ℕ-truncated, as Lean
@@ -627,7 +628,7 @@ class _PolicyPPBase(Bloq):
         if spec.adder == "cuccaro":
             return bb.add(CuccaroAddScaled(w2, shift, neg, spec.negsrc == "negate_add_negate"),
                           src=src, dst=dst)
-        from qualtran.bloqs.arithmetic import Add, BitwiseNot, Negate
+        from qualtran.bloqs.arithmetic import Add, BitwiseNot
         if shift:
             sb = list(bb.split(src))[::-1]
             zb = list(bb.split(bb.allocate(shift)))
@@ -640,9 +641,9 @@ class _PolicyPPBase(Bloq):
             view, dst = bb.add(Add(QInt(w2)), a=view, b=dst)
             dst = bb.add(BitwiseNot(QInt(w2)), x=dst)
         elif neg:                                     # legacy Negate · Add · Negate on the source
-            view = bb.add(Negate(QInt(w2)), x=view)
+            view = bb.add(cc.negate_bloq(w2, spec), x=view)
             view, dst = bb.add(Add(QInt(w2)), a=view, b=dst)
-            view = bb.add(Negate(QInt(w2)), x=view)
+            view = bb.add(cc.negate_bloq(w2, spec), x=view)
         else:
             view, dst = bb.add(Add(QInt(w2)), a=view, b=dst)
         if shift:
@@ -654,6 +655,8 @@ class _PolicyPPBase(Bloq):
         return src, dst
 
     def _negate(self, bb: BloqBuilder, r, w2: int, spec):
+        if spec.negate == "incrementer":
+            return bb.add(cc.IncrementerNegate(w2), x=r)
         if spec.adder == "cuccaro":
             return bb.add(CuccaroNegate(w2), x=r)
         from qualtran.bloqs.arithmetic import Negate

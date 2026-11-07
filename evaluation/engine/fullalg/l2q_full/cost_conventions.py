@@ -56,6 +56,11 @@ from . import paths as _paths
 LEAVES = ("grid", "merged_cphase", "product")
 ADDERS = ("qualtran", "cuccaro")
 NEGSRC = ("subtract", "negate_add_negate")
+#: Modular swap 001 (2026-11-05): `legacy` = a `w`-bit constant-one register plus a Cuccaro adder
+#: (`2w-3` Toffoli, `w+1` clean qubits); `incrementer` = complement plus Gidney's one-clean-ancilla
+#: increment gate (`32w` Toffoli, 1 clean qubit), as `ResourceModel.lean`'s `negateResources` now charges.
+NEGATE_IMPLS = ("legacy", "incrementer")
+DEFAULT_NEGATE = "incrementer"
 SYNTHESISERS = ("ross_selinger", "fallback", "mixed_fallback")
 
 
@@ -82,6 +87,7 @@ class ConventionSpec:
     rotation_fraction: float = 0.5
     mix: float = 1.0
     r_context: Optional[float] = None
+    negate: str = DEFAULT_NEGATE
 
     def __post_init__(self):
         if self.leaf != "best" and self.leaf not in LEAVES:
@@ -92,6 +98,8 @@ class ConventionSpec:
             raise ValueError(f"adder {self.adder!r} not in {ADDERS}")
         if self.negsrc not in NEGSRC:
             raise ValueError(f"negsrc {self.negsrc!r} not in {NEGSRC}")
+        if self.negate not in NEGATE_IMPLS:
+            raise ValueError(f"negate {self.negate!r} not in {NEGATE_IMPLS}")
         if self.synthesiser not in SYNTHESISERS:
             raise ValueError(f"synthesiser {self.synthesiser!r} not in {SYNTHESISERS}")
 
@@ -190,11 +198,26 @@ def cuccaro_resources(w: int) -> Dict[str, int]:
     return {"x": max(0, 2 * w - 6), "cnot": max(0, 5 * w - 7), "toffoli": max(0, 2 * w - 3)}
 
 
-def negate_resources(w: int) -> Dict[str, int]:
-    """`negateResources` on a `w`-bit register: the Cuccaro adder plus `w + 2` X."""
+def negate_resources(w: int, impl: str = DEFAULT_NEGATE) -> Dict[str, int]:
+    """`negateResources` on a `w`-bit register (ForShor `ResourceModel.lean`).
+
+    ``incrementer`` (swap 001, the Lean default): `w` X for the complement and `32 w` Toffoli for
+    Gidney's one-clean-ancilla increment gate (Khattar-Gidney, arXiv:2407.17966, Table 1). The
+    source gives no CNOT count, so none is charged (T is unaffected).
+    ``legacy``: the Cuccaro adder plus `w + 2` X.
+    """
+    if impl == "incrementer":
+        return {"x": w, "cnot": 0, "toffoli": 32 * w}
+    if impl != "legacy":
+        raise ValueError(f"negate impl {impl!r} not in {NEGATE_IMPLS}")
     r = cuccaro_resources(w)
     r["x"] += w + 2
     return r
+
+
+def negate_clean_ancilla(w: int, impl: str = DEFAULT_NEGATE) -> int:
+    """Clean qubits `negateResources` charges while a `w`-bit negation runs."""
+    return 1 if impl == "incrementer" else w + 1
 
 
 # ---------------------------------------------------------------- realisation bloqs
@@ -218,12 +241,50 @@ class CuccaroAdder(Bloq):
 
     def build_call_graph(self, ssa: SympySymbolAllocator) -> BloqCountDictT:
         from qualtran.bloqs.basic_gates import CNOT, Toffoli, XGate
-        r = negate_resources(self.w) if self.negate else cuccaro_resources(self.w)
+        # `negate=True` is the LEGACY negation (Cuccaro + constant register); the swap-001
+        # negation is `IncrementerNegate`.
+        r = negate_resources(self.w, "legacy") if self.negate else cuccaro_resources(self.w)
         out: Dict[Bloq, int] = {}
         for b, k in ((Toffoli(), r["toffoli"]), (CNOT(), r["cnot"]), (XGate(), r["x"])):
             if k:
                 out[b] = k
         return out
+
+
+def _wrap_tc(v: int, w: int) -> int:
+    m = 1 << w
+    v %= m
+    return v - m if v >= m // 2 else v
+
+
+@attrs.frozen
+class IncrementerNegate(Bloq):
+    """`r <- -r (mod 2^w)` as ForShor's `negateResources` charges it after modular swap 001:
+    `w` X (bitwise complement) then Gidney's increment gate with ONE clean ancilla, `32 w` Toffoli
+    (Khattar-Gidney Table 1, row Incrementer / One clean / [Gid15a]). Classical action declared."""
+    w: int
+
+    @property
+    def signature(self) -> Signature:
+        return Signature([Register("x", QInt(max(1, self.w)))])
+
+    def build_call_graph(self, ssa: SympySymbolAllocator) -> BloqCountDictT:
+        from qualtran.bloqs.basic_gates import XGate, Toffoli
+        r = negate_resources(self.w, "incrementer")
+        return {b: k for b, k in ((Toffoli(), r["toffoli"]), (XGate(), r["x"])) if k}
+
+    def on_classical_vals(self, x):
+        return {"x": _wrap_tc(-int(x), self.w)}
+
+
+def negate_bloq(w: int, spec: "ConventionSpec") -> Bloq:
+    """The bloq a `w`-bit negation is priced as under `spec`."""
+    if spec.negate == "incrementer":
+        return IncrementerNegate(w)
+    if spec.adder == "cuccaro":
+        return CuccaroAdder(w, negate=True)
+    from qualtran.bloqs.arithmetic import Negate
+    return Negate(QInt(w))
 
 
 @attrs.frozen
@@ -296,16 +357,16 @@ def level_callees(census: Dict[str, int], w2: int, spec: ConventionSpec) -> Dict
     if spec.adder == "cuccaro":
         # Lean charges every addScaled one Cuccaro adder whatever its sign (`addScaledResources`)
         put(CuccaroAdder(w2), adds)
-        put(CuccaroAdder(w2, negate=True), negs + (2 * negsrc if spec.negsrc == "negate_add_negate" else 0))
+        put(negate_bloq(w2, spec), negs + (2 * negsrc if spec.negsrc == "negate_add_negate" else 0))
         return out
-    from qualtran.bloqs.arithmetic import Add, Negate, Subtract
+    from qualtran.bloqs.arithmetic import Add, Subtract
     if spec.negsrc == "subtract":
         put(Add(QInt(w2)), adds - negsrc)
         put(Subtract(QInt(w2)), negsrc)
-        put(Negate(QInt(w2)), negs)
+        put(negate_bloq(w2, spec), negs)
     else:
         put(Add(QInt(w2)), adds)
-        put(Negate(QInt(w2)), negs + 2 * negsrc)
+        put(negate_bloq(w2, spec), negs + 2 * negsrc)
     return out
 
 

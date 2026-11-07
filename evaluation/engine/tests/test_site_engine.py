@@ -287,6 +287,9 @@ def test_full_seam_phase_product_equals_tcost(key, w, widths):
     """Seam between the two packages: under the digital-product leaf, Qualtran adders, negated source = one Subtract
     (the site's conventions), the l2q_full PolicyPhaseProduct at (w, w) has tcost's T-without-rotations and rotation
     count for the same policy, at the same width rule.
+    Modular swap 001: `tcost` (the PP/PTP engine) still prices a negation the old way (Qualtran `Negate`, the owner's STO conventions), so
+    the seam is stated under `negate="legacy"`; with the new negation a table that negates no longer matches it
+    (test_full_seam_diverges_from_tcost_for_a_negating_table_under_the_new_negation). No table on the site negates.
     Stage 18 (rewritten): the full run prices at the ForShor drop-in's exact widths (`forshor_exact_width`, max(tight,
     floor)), and the PP board at STO's exact widths (`tcost/exact`, tightWidth); the seam is checked at exact widths
     (the board's) and, as before, at scanned widths (the cross-check). The two exact rules differ only where ForShor's
@@ -296,12 +299,30 @@ def test_full_seam_phase_product_equals_tcost(key, w, widths):
     from l2q_full import cost_conventions as cc
     from l2q_full.bloqs.policy_phase_product import PolicyPhaseProduct
     P = (lib.sto_reference_policies()[PP] if key == "reference" else _opt(key, PP, widths=widths)).with_widths(widths)
-    spec = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract")
+    spec = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract", negate="legacy")
     LP = fa.to_l2q_full(P)
     assert {b.table.width_rule for b in LP.bands} == {widths}
     c = cc.split(PolicyPhaseProduct(LP, w, w, convention=spec))
     s = ts.score_policy(P, w, 0.01)
     assert (c.base, c.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
+
+
+def test_full_seam_diverges_from_tcost_for_a_negating_table_under_the_new_negation():
+    """The other half of the seam test: KMY's table negates, `tcost` prices that negation the old way, and the full run now prices it as
+    complement + incrementer (32 w Toffoli each), so the two disagree on T by exactly the negations' price difference and agree on
+    the rotation count. If they ever agree again the swap has been undone, or `tcost` has been changed to follow it."""
+    from site_engine import fullalg as fa
+    from l2q_full import cost_conventions as cc
+    from l2q_full.bloqs.policy_phase_product import PolicyPhaseProduct
+    P = _opt("kmy", PP, widths="exact").with_widths("exact")
+    LP = fa.to_l2q_full(P)
+    s = ts.score_policy(P, 300, 0.01)
+    base = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract")
+    old = cc.split(PolicyPhaseProduct(LP, 300, 300, convention=base.with_(negate="legacy")))
+    new = cc.split(PolicyPhaseProduct(LP, 300, 300, convention=base.with_(negate="incrementer")))
+    assert (old.base, old.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
+    assert new.rot == old.rot
+    assert new.base > old.base
 
 
 def test_forshor_exact_width_is_sto_tight_width_or_the_floor():
@@ -379,6 +400,7 @@ def test_full_cache_board_and_reference():
     assert c["paper"]["r2_T_2048"] == pytest.approx(2309763671532.619, rel=1e-12) and "not comparable" in c["paper"]["note"]
 
 
+@pytest.mark.legacy_negation
 def test_full_step4_is_in_the_run():
     """Step 4 (cmpLtNW, Steps.lean:50): per modular multiplication two phase products on (work+1) x (scratch+1) and four
     QFTs on the scratch register; it is the largest part of the reference run.
@@ -443,6 +465,7 @@ def test_full_uses_the_product_leaf_of_the_phase_product_board():
         assert (c.base, c.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
 
 
+@pytest.mark.legacy_negation
 def test_full_headline_and_grid_leaf_cross_check():
     """Pins (n = 2048, delta = 0.01) and the audit's figures within the work-width correction. The grid-leaf tier is a
     cross-check (the W x W grid leaf of NaiveLeaf.lean:53, Qualtran adders), never the score."""

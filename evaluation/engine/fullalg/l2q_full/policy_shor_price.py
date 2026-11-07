@@ -354,15 +354,15 @@ class PolicyShorCore(Bloq):
             if spec.adder == "cuccaro":                 # Lean charges one adder whatever the sign
                 put(cc.CuccaroAdder(w), k)
                 if spec.negsrc == "negate_add_negate":
-                    put(cc.CuccaroAdder(w, negate=True), 2 * kn)
+                    put(cc.negate_bloq(w, spec), 2 * kn)
             elif spec.negsrc == "subtract":
                 put(Add(QInt(w)), k - kn)
                 put(Subtract(QInt(w)), kn)
             else:
                 put(Add(QInt(w)), k)
-                put(Negate(QInt(w)), 2 * kn)
+                put(cc.negate_bloq(w, spec), 2 * kn)
         for w, k in self.negate:
-            put(cc.CuccaroAdder(w, negate=True) if spec.adder == "cuccaro" else Negate(QInt(w)), k)
+            put(cc.negate_bloq(w, spec), k)
         for site, k in self.sites:
             put(site_bloq(self.policy, site, spec), k)
         return dict(out)

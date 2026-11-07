@@ -356,10 +356,17 @@ def test_full_board_stage19_pins():
     h = {r["key"]: r for r in c["hero"]["milestones"]}
     # Stage 19 (third round): the site's STO reference has its thresholds moved to exact widths (STO's shipped
     # thresholds price 1.933981965831e12 T, 47,474 qubits)
-    assert (h["reference"]["T"], h["reference"]["qubits"]) == (pytest.approx(2.110297340025e12, rel=1e-12), 47_954)
-    assert (c["forshor_shipped"]["T"], c["forshor_shipped"]["qubits"]) == (pytest.approx(3.240663026770465e12, rel=1e-12), 43_904)
-    # Stage 19: the recalculated KMY benchmark and the leaderboard's PP column follow the PhaseProduct board
-    assert (h["kmy"]["T"], h["kmy"]["qubits"]) == (pytest.approx(1.832437398043e12, rel=1e-12), 27_866)
+    # Modular swap 001: the STO reference has no negate op, so its T rose by exactly the 24,570 negations of the run (all at width 4398)
+    # at 32 w Toffoli = 128 w T each, minus the old 2w - 3 Toffoli: 13,399,396,920 T (it was 2.110297340025e12).
+    assert (h["reference"]["T"], h["reference"]["qubits"]) == (pytest.approx(2.110297340025e12 + 13_399_396_920, rel=1e-11), 47_954)
+    # the shipped ForShor policy's own table negates, so it pays far more (3.240663026770465e12 before the swap, +46.8 %)
+    assert (c["forshor_shipped"]["T"], c["forshor_shipped"]["qubits"]) == (pytest.approx(new["forshor_shipped"][0], rel=1e-12), 43_904)
+    assert c["forshor_shipped"]["T"] > 3.240663026770465e12 * 1.4
+    # Stage 19: the recalculated KMY benchmark and the leaderboard's PP column follow the PhaseProduct board. KMY's table negates too
+    # (it was 1.832437398043e12 before the swap); its static layout is unchanged.
+    kmy_2048 = next(row for row in new["milestones"]["kmy"] if row[0] == 2048)
+    assert (h["kmy"]["T"], h["kmy"]["qubits"]) == (pytest.approx(kmy_2048[1], rel=1e-12), 27_866)
+    assert h["kmy"]["T"] > 1.832437398043e12
     pp = {r["id"]: r["T"] for r in pc.load(tt.PAIR, 0.01)["leaderboard"]["rows"]}
     assert all(r["pp_T"] == pytest.approx(pp[r["id"]], rel=1e-12) for r in c["leaderboard"]["ranked"])
 

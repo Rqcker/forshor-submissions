@@ -84,3 +84,14 @@ def test_every_baseline_policy_has_at_least_one_band_and_is_distinct():
     assert all(b["policy"].bands for b in baselines)
     assert len({b["digest"] for b in baselines}) == len(baselines)
     assert len({b["number"] for b in baselines}) == len(baselines)
+
+
+def test_a_policy_whose_table_negates_is_recognised_and_the_listed_ones_are_not():
+    """The guard behind the swap: a policy built on a negating library table is flagged, and no baseline is."""
+    from export_v2 import epoch, engine
+    eng = engine.load()
+    tables = eng.library.sto_tables(upto=len(eng.library.submissions()))
+    neg = next(t for t in tables if t.mode == eng.tables.PAIR and t.census()["negate"])
+    P, _ = eng.planner.optimal_policy([neg], eng.tables.PAIR, 2048, 0.01, name="negating")
+    assert epoch.negating_bands(eng.seed_policies.canonical(P)) == [neg.k]
+    assert all(epoch.negating_bands(b["policy"]) == [] for b in epoch.baseline_policies())

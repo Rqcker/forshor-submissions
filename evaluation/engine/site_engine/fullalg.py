@@ -59,6 +59,7 @@ import l2q_full  # noqa: E402,F401  (checks it bound the site's vendored Qualtra
 from l2q_full import cost_conventions as cc  # noqa: E402
 from l2q_full import policy as lpol  # noqa: E402
 from l2q_full import policy_ir as pi  # noqa: E402
+from l2q_full import policy_peak as ppk  # noqa: E402
 from l2q_full import policy_shor_ir as psi  # noqa: E402
 from l2q_full import policy_shor_price as pr  # noqa: E402
 from l2q_full import policy_shor_sym as sy  # noqa: E402
@@ -385,6 +386,11 @@ def _price(LP, n: int, delta: float, detail: bool, ir: str = "board") -> Dict[st
     g = _gate_counts(c)
     widths = dict(c.widths)
     lay = layout(LP, widths)
+    # The live-qubit peak (ForShor's `orderFindingQubitsU`), under the negation the headline convention uses (swap 001: one clean ancilla).
+    # It differs from `lay["total"]`, the static layout allocation, which sizes each register's reserve for its own worst step and never
+    # contains a negation's transient scratch.
+    base_regs = widths["xW"] + (widths["yW"] + 1) + widths["workW"] + widths["scratchW"] + 1
+    peak_extra = ppk.order_finding_peak(LP, widths["xW"], widths["yW"], widths["workW"], widths["scratchW"], HEADLINE.negate)
     main = _ladder(LP, *main_shape(c))
     checks = {"lean_grid_leaf": {**grid, "label": "same structure, Lean's W x W grid leaf (NaiveLeaf.lean:53), "
                                                   "Qualtran adders: a cross-check, not the score"},
@@ -398,6 +404,8 @@ def _price(LP, n: int, delta: float, detail: bool, ir: str = "board") -> Dict[st
            "tier": TIER if ir == "board" else TIER_SCAN, "census_trust": CENSUS_TRUST,
            **head, "converged": True,
            "qubits": lay["total"], "layout": lay,
+           "qubits_layout": lay["total"], "qubits_peak": base_regs + peak_extra, "peak_base_registers": base_regs, "peak_extra": peak_extra,
+           "negate": HEADLINE.negate,
            "toffoli": g["and"] + g["toffoli"] + g["cswap"], "cnot": g["cnot"], "clifford": g["clifford"], "gate_counts": g,
            "cross_checks": checks,
            "width_rule": width_rule() if ir == "board" else "scan",
