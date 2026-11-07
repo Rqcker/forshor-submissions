@@ -35,16 +35,30 @@ ARCHIVE_PR = "https://github.com/VerifiedQC/ShorTableOptimization/pull/{}"
 NEGATION_OF = {"gidney_circuit": "incrementer", "legacy": "scratch"}
 
 
-#: Board rows whose Q is, or equals, a quantity Lean's kernel has checked: (board, row id) -> the kernel-checked qubit number at n = 2048,
-#: exact widths, ForShor `oneQubit` (the epoch's negation). A row listed here gets `leanPeak = True`, and `build_epoch_input` refuses to
-#: export it unless the engine's Q equals the number. The numbers are those of ForShor's theorems `Peak.Board.Row<id>.peak_oneQubit_exact`
-#: (PhaseTripleProduct/Proofs/Peak/BoardNumerals/, ForShor eb00c5adc72832469a5f223fbec6c8b75745d2dd, listed in the swap-002 manifest).
-#: `pp` is empty: the board's PhaseProduct policies have no kernel numeral yet (shard S7); to flip a row, add (`"pp"`, row id) -> the
-#: kernel's TOTAL qubits for that policy (the same quantity as the row's full-run `qubits`) and re-export. Nothing else changes but the text.
-LEAN_PEAK: Dict[str, Dict[str, int]] = {
+#: Board rows whose Q is, or equals, a quantity Lean's kernel has checked. A row listed here gets `leanPeak` and `build_epoch_input` refuses to
+#: export it unless the engine's Q equals the number, so a label never claims Lean evidence the number does not have.
+#:  "ptp": row id -> the kernel-checked qubit number at n = 2048, exact widths, ForShor `oneQubit`: the theorems
+#:         `Peak.Board.Row<id>.peak_oneQubit_exact` (PhaseTripleProduct/Proofs/Peak/BoardNumerals/, in ForShor main eb00c5adc72832469a5f223fbec6c8b75745d2dd;
+#:         both negation methods give the same number: no table negates).
+#:  "pp":  (row id, the policy's 2048 ladder) -> the full order-finding run's Q, the Lean module and whether ForShor's CI builds it. From shard S7: the
+#:         theorems `Shor.QubitCount.PolicyNumeralsBoard.<module>.balanced_exact_oneQubit` (QubitCount/Proofs/PolicyNumeralsBoard/<module>.lean) say the
+#:         balanced peak adds N extra qubits; Q = 4095 + 8795 + N (`board_q_agrees`). They are on ForShor branch swap003 (commit b6fab89, based on the pin), NOT
+#:         in ForShor main yet. Row 6f7d25984ff8 re-optimises per delta, so it has two policies (K8 at 1e-2 and 3e-4, K6 at 1e-4 and 1e-6), told apart by the ladder.
+#:         `ci` is False for the four modules that need 13 to 15 GB (library PolicyNumeralsBoardExactHeavy): kernel-checked locally, not built in CI.
+LEAN_PEAK: Dict[str, Dict[Any, Any]] = {
     "ptp": {"82eaf805f71c": 6405, "6f7d25984ff8": 7095, "85fbe1296fbd": 6261,
             "265a0f53acbc": 6342, "2ed7dc90d130": 6573, "c733baf3cd08": 6828},
-    "pp": {},
+    "pp": {
+        ("6f036362302e", "2048:2 -> 1026:2 -> 515:2 -> 259:2 -> 131:2 -> 67:2 -> 35:leaf"): {"q": 13236, "module": "Row6f036362302eExact", "n": 346, "ci": True},
+        ("ea01254c45f8", "2048:3 -> 687:3 -> 232:3 -> 81:3 -> 30:leaf"): {"q": 13284, "module": "Rowea01254c45f8Exact", "n": 394, "ci": True},
+        ("7df40770c0b6", "2048:4 -> 517:4 -> 134:4 -> 39:leaf"): {"q": 13310, "module": "Row7df40770c0b6Exact", "n": 420, "ci": True},
+        ("a3972b965049", "2048:5 -> 421:5 -> 94:leaf"): {"q": 13404, "module": "Rowa3972b965049Exact", "n": 514, "ci": True},
+        ("6f7d25984ff8", "2048:6 -> 354:4 -> 94:3 -> 35:leaf"): {"q": 13406, "module": "Row6f7d25984ff8K6Exact", "n": 516, "ci": True},
+        ("c7f81cb40081", "2048:6 -> 354:6 -> 71:leaf"): {"q": 13496, "module": "Rowc7f81cb40081Exact", "n": 606, "ci": False},
+        ("6f7d25984ff8", "2048:8 -> 279:4 -> 76:3 -> 29:leaf"): {"q": 13676, "module": "Row6f7d25984ff8K8Exact", "n": 786, "ci": False},
+        ("f4aff955f16b", "2048:8 -> 279:3 -> 96:3 -> 35:leaf"): {"q": 13660, "module": "Rowf4aff955f16bExact", "n": 770, "ci": False},
+        ("f0f15fefe959", "2048:8 -> 279:3 -> 96:3 -> 35:leaf"): {"q": 13660, "module": "Rowf0f15fefe959Exact", "n": 770, "ci": False},
+    },
 }
 
 
@@ -230,12 +244,22 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
                 verification = {"stoMirror": evidence[r["digest"]][0], "forshorPolicy": None}   # None for a planner policy the STO mirror has not checked (D9)
                 detail = mapping.panel_path(epoch, r["id"], b, delta)
                 # the number the kernel checked is compared with the Q the panel will show: the full run's live peak, or the PTP panel's Q
-                lean_q = LEAN_PEAK["ptp" if b == "ptp" else "pp"].get(r["id"]) if b in ("ptp", "full") else None
+                lean_peak: Any = False
+                if b == "ptp":
+                    lean_q = LEAN_PEAK["ptp"].get(r["id"])
+                    lean_peak = lean_q is not None
+                elif b == "full":
+                    ev = LEAN_PEAK["pp"].get((r["id"], view["ladder_str"]))
+                    lean_q = ev["q"] if ev else None
+                    lean_peak = {k: ev[k] for k in ("module", "n", "ci")} if ev else False
+                else:
+                    lean_q = None
                 shown = view["full"]["qubits_peak"] if b == "full" else view["qubits"]
                 if lean_q is not None and shown != lean_q:
                     raise ValueError(f"row {r['id']} on {b}: Q {shown} is not the kernel-checked {lean_q}; the label would be false")
-                panel = mapping.panel_of(view, epoch=epoch, row_id=r["id"], board=b, delta=delta, verification=verification,
-                                         lean_peak=lean_q is not None)   # per row; False unless a kernel numeral exists (LEAN_PEAK)
+                if b == "full" and lean_q is not None and 4095 + 8795 + lean_peak["n"] != lean_q:
+                    raise ValueError(f"row {r['id']}: 4095 + 8795 + {lean_peak['n']} is not {lean_q}")
+                panel = mapping.panel_of(view, epoch=epoch, row_id=r["id"], board=b, delta=delta, verification=verification, lean_peak=lean_peak)
                 if detail in panels:
                     raise ValueError(f"two listed rows share the id {r['id']} on {b} at {delta}")
                 panels[detail] = panel

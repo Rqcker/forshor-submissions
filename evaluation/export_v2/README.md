@@ -36,11 +36,13 @@ At w = 8 / 9 / 2048 the first row gives X / CNOT / Toffoli of 37 / 114 / 68, 46 
 text until it exists.
 
 The qubit text of the full board's peak (`mapping.peak_label`, `mapping.peak_rule`) is a function of the per-row flag `leanPeak` (default False:
-"Lean has not evaluated it on this policy"). It is set per row from `epoch.LEAN_PEAK` (board, row id -> the kernel-checked qubit number): `build_epoch_input` refuses to export a row whose Q
-differs from that number. The table holds the six PhaseTripleProduct board rows (ForShor `Peak.Board.Row<id>.peak_oneQubit_exact`: 6405, 7095, 6261, 6342,
-6573, 6828); on a PhaseTripleProduct panel the flag replaces the engine's "formula, not Lean-proved" qubit label and rule (`mapping.PTP_LEAN_LABEL`,
-`mapping.ptp_lean_rule`: the Q equals ForShor's upper bound `ptpPeakQubits`, a bound on an existential circuit). The PhaseProduct rows have no kernel numeral yet
-(`LEAN_PEAK["pp"]` is empty); to flip one, add (its row id -> the kernel's total qubits for that policy) and re-export.
+"Lean has not evaluated it on this policy"). It is set per row from `epoch.LEAN_PEAK`, and `build_epoch_input` refuses to export a row whose Q differs from the kernel-checked number there.
+PhaseTripleProduct: six board rows (ForShor main, `Peak.Board.Row<id>.peak_oneQubit_exact`: 6405, 7095, 6261, 6342, 6573, 6828); the flag replaces the
+engine's "formula, not Lean-proved" qubit label and rule (`mapping.PTP_LEAN_LABEL`, `mapping.ptp_lean_rule`: Q equals ForShor's upper bound
+`ptpPeakQubits`, a bound on an existential circuit). PhaseProduct: nine policies (shard S7: `Shor.QubitCount.PolicyNumeralsBoard.Row<id>Exact.balanced_exact_oneQubit`,
+Q = 4095 + 8795 + N), keyed by (row id, ladder) because row 6f7d25984ff8 re-optimises per delta; the flag is a dict (`module`, `n`, `ci`) and the label/rule
+say the theorems are on ForShor branch swap003 (not merged into main yet) and whether ForShor's CI will build the module (`ci`) or only a developer machine
+checked it (13 to 15 GB; library `PolicyNumeralsBoardExactHeavy`). Only the qubit text changes.
 
 ## Evidence rules
 

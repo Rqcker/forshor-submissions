@@ -76,7 +76,7 @@ def test_the_label_depends_on_the_per_row_lean_peak_flag_and_defaults_to_not_eva
     assert (mapping.PEAK_LABEL, mapping.PEAK_RULE) == (mapping.peak_label(False), mapping.peak_rule(False))
     assert mapping.peak_label().endswith("not Lean-evaluated on this policy)")
     assert "Lean has not evaluated it on this policy" in mapping.peak_rule()
-    assert "not Lean-evaluated" not in mapping.peak_label(True) and "Lean-evaluated on this policy)" in mapping.peak_label(True)
+    assert "not Lean-evaluated" not in mapping.peak_label(True) and "Lean-evaluated on this policy; " + mapping.SWAP003 in mapping.peak_label(True)
     assert "has not evaluated" not in mapping.peak_rule(True) and "kernel has evaluated" in mapping.peak_rule(True)
     case = GOLDEN["cases"]["full_submission"]
     kw = dict(epoch=GOLDEN["epoch"], row_id=case["rowId"], board=case["board"], delta=case["delta"], verification=case["panel"]["verification"])
@@ -171,4 +171,21 @@ def test_a_ptp_panel_whose_q_equals_a_kernel_checked_peak_says_so_and_nothing_el
     # the epoch table: six PTP rows with the kernel's numbers; no PhaseProduct row until shard S7 lands
     assert epoch.LEAN_PEAK["ptp"] == {"82eaf805f71c": 6405, "6f7d25984ff8": 7095, "85fbe1296fbd": 6261,
                                       "265a0f53acbc": 6342, "2ed7dc90d130": 6573, "c733baf3cd08": 6828}
-    assert epoch.LEAN_PEAK["pp"] == {}
+    # the nine PhaseProduct policies of shard S7: Q = 4095 + 8795 + N, five built in ForShor's CI after the merge, four checked locally only
+    pp = epoch.LEAN_PEAK["pp"]
+    assert len(pp) == 9 and sorted(v["ci"] for v in pp.values()).count(False) == 4
+    for v in pp.values():
+        assert 4095 + 8795 + v["n"] == v["q"] and v["module"].endswith("Exact")
+    assert {v["q"] for v in pp.values()} == {13236, 13284, 13310, 13404, 13406, 13496, 13676, 13660}
+
+
+def test_a_pp_full_run_label_says_whether_ci_will_build_the_lean_module_and_that_the_theorems_are_not_merged():
+    ci = {"module": "Row6f036362302eExact", "n": 346, "ci": True}
+    local = {"module": "Rowc7f81cb40081Exact", "n": 606, "ci": False}
+    for ev in (ci, local):
+        rule, label = mapping.peak_rule(ev), mapping.peak_label(ev)
+        assert ev["module"] in rule and f"4095 + 8795 + {ev['n']}" in rule and "balanced_exact_oneQubit" in rule
+        assert "swap003" in rule and "swap003" in label and "does not contain them yet" in rule and "has not evaluated" not in rule
+    assert "developer machine only" in mapping.peak_label(local) and "developer machine only" not in mapping.peak_label(ci)
+    assert "not built by ForShor's CI" in mapping.peak_rule(local) and "13 to 15 GB" in mapping.peak_rule(local)
+    assert "PolicyNumeralsBoardExact)" in mapping.peak_rule(ci) and "13 to 15 GB" not in mapping.peak_rule(ci)

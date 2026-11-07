@@ -36,8 +36,7 @@ def _table_step(x: Raw) -> Raw:
 # (PEAK_LABEL, PEAK_RULE); the golden test holds them equal once golden.json has been regenerated from that builder.
 #
 # The text depends on ONE per-row fact, `leanPeak`: has Lean's kernel evaluated the peak for THIS policy (same method, same width rule as the
-# epoch's)? It defaults to False, so every row keeps "Lean has not evaluated it on this policy" until a later step switches it for the rows
-# the A13 manifest covers; that step passes `lean_peak=True` and edits no text.
+# epoch's)? It defaults to False, so a row keeps "Lean has not evaluated it on this policy" unless epoch.LEAN_PEAK lists it.
 PIN = "eb00c5adc72832469a5f223fbec6c8b75745d2dd"   # the ForShor merge commit of PR #79 (a later step fills it in)
 _PEAK_LABEL_HEAD = "live-qubit peak of the balanced order-finding circuit (a port of ForShor's orderFindingQubitsU, "
 _PEAK_RULE_HEAD = (
@@ -51,13 +50,37 @@ _PEAK_RULE_HEAD = (
 _PEAK_RULE_TAIL = " It is not the static layout allocation, which is kept in layout.total."
 
 
-def peak_label(lean_peak: bool = False) -> str:
-    return _PEAK_LABEL_HEAD + ("Lean-evaluated on this policy)" if lean_peak else "not Lean-evaluated on this policy)")
+# `leanPeak` is False (the port's number, not Lean-evaluated) or evidence for one PhaseProduct policy: True (the generic wording) or a dict
+# {"module": "Row<id>Exact", "n": N, "ci": bool}: the kernel-checked theorem `Shor.QubitCount.PolicyNumeralsBoard.<module>.balanced_exact_oneQubit`
+# (ForShor branch swap003, commit b6fab89 on the pin, NOT yet merged into ForShor main) says the balanced peak adds N qubits to the registers,
+# and `ci` says whether ForShor's CI will build that module (library PolicyNumeralsBoardExact, at most 12.1 GB) or only a developer machine did
+# (library PolicyNumeralsBoardExactHeavy, 13 to 15 GB, not in CI). The label differs only by "checked on a developer machine only".
+SWAP003 = "ForShor branch swap003 (commit b6fab89, based on the pin), not yet merged"
 
 
-def peak_rule(lean_peak: bool = False) -> str:
-    return _PEAK_RULE_HEAD + ("Lean's kernel has evaluated this policy's peak, and the port equals it." if lean_peak
-                              else "Lean has not evaluated it on this policy.") + _PEAK_RULE_TAIL
+def _lean_peak_local(lean_peak: Any) -> bool:
+    return isinstance(lean_peak, dict) and not lean_peak.get("ci", True)
+
+
+def peak_label(lean_peak: Any = False) -> str:
+    if not lean_peak:
+        return _PEAK_LABEL_HEAD + "not Lean-evaluated on this policy)"
+    return _PEAK_LABEL_HEAD + "Lean-evaluated on this policy" + ("; kernel-checked on a developer machine only; " if _lean_peak_local(lean_peak) else "; ") + SWAP003 + ")"
+
+
+def peak_rule(lean_peak: Any = False) -> str:
+    if not lean_peak:
+        evidence = "Lean has not evaluated it on this policy."
+    else:
+        evidence = ("Lean's kernel has evaluated this policy's peak, and the port equals it: "
+                    + (f"the theorem Shor.QubitCount.PolicyNumeralsBoard.{lean_peak['module']}.balanced_exact_oneQubit (ReferenceBalancedPeakIs: exact width "
+                       f"rule, the negation method oneQubit) gives {lean_peak['n']} extra qubits, and 4095 + 8795 + {lean_peak['n']} is this Q (4095 exponent "
+                       "qubits; the registers above with 4096 exponent qubits are one more). " if isinstance(lean_peak, dict) else "")
+                    + f"The theorems are on {SWAP003}; ForShor's main branch does not contain them yet. "
+                    + ("Once merged, ForShor's CI builds this module (library PolicyNumeralsBoardExact)." if not _lean_peak_local(lean_peak) else
+                       "It was kernel-checked on a developer machine only: the module needs 13 to 15 GB, lives in the library PolicyNumeralsBoardExactHeavy "
+                       "and is not built by ForShor's CI."))
+    return _PEAK_RULE_HEAD + evidence + _PEAK_RULE_TAIL
 
 
 PEAK_LABEL = peak_label()   # the default (leanPeak = False) texts
@@ -80,7 +103,7 @@ def ptp_lean_rule(engine_rule: str, row_id: str) -> str:
         "table of this policy negates, so ForShor's scratch method gives the same number."))
 
 
-def full_run_of(view: Raw, lean_peak: bool = False) -> Raw:
+def full_run_of(view: Raw, lean_peak: Any = False) -> Raw:
     f = view["full"]
     cc = f["cross_checks"]
     return {
@@ -119,7 +142,7 @@ def full_run_of(view: Raw, lean_peak: bool = False) -> Raw:
     }
 
 
-def panel_of(view: Raw, *, epoch: str, row_id: str, board: str, delta: str, verification: Raw, lean_peak: bool = False) -> Raw:
+def panel_of(view: Raw, *, epoch: str, row_id: str, board: str, delta: str, verification: Raw, lean_peak: Any = False) -> Raw:
     """One `forshor.policy/v2` document from an engine `policy_view` (plus `full`, `usage`, `tables_used` for the full board).
     `lean_peak`: Lean's kernel has evaluated this policy's qubit peak (per row; False until a manifest says so); only the qubit label and
     rule depend on it: the full run's (PhaseProduct) and, on the PhaseTripleProduct board, the panel's own."""
