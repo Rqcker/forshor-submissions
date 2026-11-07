@@ -28,7 +28,9 @@ from typing import Any, Dict, Optional, Union
 
 import attrs
 from qualtran import Bloq, QInt, QUInt, Register, Signature
-from qualtran.bloqs.arithmetic import Add, Negate
+from qualtran.bloqs.arithmetic import Add
+
+from ..cost_conventions import IncrementerNegate, negate_resources
 from qualtran.bloqs.basic_gates import CZPowGate
 from qualtran.resource_counting import BloqCountDictT, SympySymbolAllocator
 
@@ -127,8 +129,9 @@ class LeanRecursivePhaseProduct(Bloq):
           operand-bit pairs costs 3 rz and 2 cnot, over `q^d` leaves.
         * **adders** -- `addScaledResources dst _src _negSrc _shift = cuccaroModAddResources
           (width dst)`, i.e. `{x: 2w-6, cnot: 5w-7, toffoli: 2w-3}`, and it ignores `negSrc`
-          entirely. `sides * n_add` of them per node, at the CHILD width. `negateResources` is
-          the same adder plus `w + 2` X, `sides * n_neg` per node.
+          entirely. `sides * n_add` of them per node, at the CHILD width. `negateResources` (modular
+          swap 001) is the complement plus the one-ancilla Gidney increment
+          (`cost_conventions.negate_resources`), `sides * n_neg` per node.
         * **sign extension** -- `signExtend r n => {cnot := n}` (`zeroExtend` is free). One per
           side per node, on the top -- signed -- limb, by `W_child - topLimb(W_parent)`, and a
           matching `signDealloc`, which charges the same again.
@@ -150,12 +153,13 @@ class LeanRecursivePhaseProduct(Bloq):
             nodes = self.q ** i
             w, w2 = lad[i], lad[i + 1]
             adds = nodes * sides * self.n_add
-            # `negateResources` is the same Cuccaro adder plus `w + 2` X. Tables with no `negate`
-            # op (the standard ones) never reached this term; ForShor's template table does.
+            # `negateResources` (swap 001), the shared charge `cost_conventions.negate_resources`. Tables with no
+            # `negate` op (the standard ones) never reached this term; ForShor's template table does.
             negs = nodes * sides * self.n_neg
-            res["toffoli"] += (adds + negs) * (2 * w2 - 3)
-            res["cnot"] += (adds + negs) * (5 * w2 - 7)
-            res["x"] += (adds + negs) * (2 * w2 - 6) + negs * (w2 + 2)
+            nr = negate_resources(w2)
+            res["toffoli"] += adds * (2 * w2 - 3) + negs * nr["toffoli"]
+            res["cnot"] += adds * (5 * w2 - 7) + negs * nr["cnot"]
+            res["x"] += adds * (2 * w2 - 6) + negs * nr["x"]
             # `phaseSplitLogicalWidth`: lower limbs get w//k, the top one absorbs the rest.
             top_limb = w - (self.k - 1) * (w // self.k)
             res["cnot"] += 2 * nodes * sides * (w2 - top_limb)
@@ -188,7 +192,7 @@ class LeanRecursivePhaseProduct(Bloq):
                 counts[Add(QInt(W2))] = sides * self.n_add
             n_negate = sides * (self.n_neg + 2 * self.n_add_negsrc)
             if n_negate:
-                counts[Negate(QInt(W2))] = n_negate
+                counts[IncrementerNegate(W2)] = n_negate
             return counts
         return {CZPowGate(exponent=ssa.new_symbol("e")): self.w * self.w}
 
@@ -303,7 +307,7 @@ class LeanAsymRecursivePhaseProduct(Bloq):
                 counts[Add(QInt(w2))] = sides * self.n_add
             n_negate = sides * (self.n_neg + 2 * self.n_add_negsrc)
             if n_negate:
-                counts[Negate(QInt(w2))] = n_negate
+                counts[IncrementerNegate(w2)] = n_negate
             return counts
         return {CZPowGate(exponent=ssa.new_symbol("e")): self.wx * self.wz}
 

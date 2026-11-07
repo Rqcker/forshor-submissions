@@ -10,8 +10,9 @@ The negation matters here and only here. ``impl`` is the negation subroutine, as
 
 * ``legacy``: a `w`-bit constant-one register plus a Cuccaro adder. A table that negates charges `W + 1` scratch per level, and
   Step 3's constant comparison on the scratch register charges `sW + 2` (`sW` = 4398 at n = 2048, so 4,400).
-* ``incrementer`` (modular swap 001, ForShor `8e37ce7`): complement plus Gidney's one-clean-ancilla increment gate. A table that
-  negates charges 1, and Step 3 charges 3.
+* ``gidney_circuit`` (the default) and ``incrementer`` (the superseded 32 w-Toffoli reading of the same circuit): complement plus
+  Gidney's one-clean-ancilla increment gate (ForShor's `oneQubit` NegationMethod). A table that negates charges 1, and Step 3
+  charges 3. The two differ in T (see `cost_conventions.negate_resources`), never in qubits, so the peak does not tell them apart.
 
 Natural-number subtraction truncates at 0, as in Lean. The balanced plan is `Balanced.defaultRule`'s, copied from L2Q's
 `policy_shor_ir.balanced_default_plan` (the owner's port, cross-checked there against Lean).
@@ -23,7 +24,7 @@ from typing import Optional, Tuple
 
 from . import policy as pol
 
-IMPLS = ("legacy", "incrementer")
+IMPLS = ("legacy", "incrementer", "gidney_circuit")
 
 
 def _sub(a: int, b: int) -> int:
@@ -124,11 +125,11 @@ def modmul_phase_peaks(P: pol.PhasePolicy, dW: int, wW: int, sW: int, impl: str)
     def qp(n: int) -> int:
         return qft_peak(P, n, impl)
     return [2 + pp(dW + 1, wW + 1), qp(wW), qp(dW + 1), 2 + pp(wW + 1, dW + 2),
-            3 if impl == "incrementer" else sW + 2,     # Step 3's constant comparison and subtraction on the scratch register
+            sW + 2 if impl == "legacy" else 3,     # Step 3's constant comparison and subtraction on the scratch register
             qp(sW), 2 + pp(wW + 1, sW + 1), 2 + pp(dW + 2, wW + 1)]
 
 
-def order_finding_peak(P: pol.PhasePolicy, xW: int, dW: int, wW: int, sW: int, impl: str = "incrementer") -> int:
+def order_finding_peak(P: pol.PhasePolicy, xW: int, dW: int, wW: int, sW: int, impl: str = "gidney_circuit") -> int:
     """`orderFindingPeakUD`: peak extra qubits of the unconditionally balanced order-finding circuit."""
     if impl not in IMPLS:
         raise ValueError(f"impl {impl!r} not in {IMPLS}")
@@ -136,14 +137,14 @@ def order_finding_peak(P: pol.PhasePolicy, xW: int, dW: int, wW: int, sW: int, i
     return max(mm, qft_peak(P, xW, impl))
 
 
-def order_finding_qubits(P: pol.PhasePolicy, xW: int, dW: int, wW: int, sW: int, impl: str = "incrementer") -> int:
+def order_finding_qubits(P: pol.PhasePolicy, xW: int, dW: int, wW: int, sW: int, impl: str = "gidney_circuit") -> int:
     """`Policy.orderFindingQubitsU`: the exponent, data (with its carry bit), work and scratch registers and the flag, plus the peak."""
     return xW + (dW + 1) + wW + sW + 1 + order_finding_peak(P, xW, dW, wW, sW, impl)
 
 
 # ---- one product on its own: PhaseProduct (two operands) and PhaseTripleProduct (three) ----------------------------------------
 
-def chain_peak_extra(levels, operands: int, impl: str = "incrementer") -> int:
+def chain_peak_extra(levels, operands: int, impl: str = "gidney_circuit") -> int:
     """The extra qubits, over the operand registers, at the live peak of ONE lowered product that follows a chain of levels.
 
     ``levels`` is the chain from the top, one ``(width, k, child_width, negates, adds)`` per recursive level; the product ends in a

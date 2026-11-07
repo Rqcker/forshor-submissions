@@ -26,6 +26,22 @@ STO_COMMIT = "361e81e25965506423d169530a7decb5b27973d4"
 ARCHIVE_PR = "https://github.com/VerifiedQC/ShorTableOptimization/pull/{}"
 
 
+#: The epoch model's `negation` field names ForShor's NegationMethod, not the engine's `ConventionSpec.negate` implementation. Mapping:
+#:   epoch `incrementer`  = ForShor `oneQubit` = engine `gidney_circuit` (the DEFAULT): complement plus Gidney's one-clean-ancilla increment,
+#:                          charged as ONE clean qubit with the Lean counts (Toffoli 12w-28 / 10w-18, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1);
+#:   epoch `scratch`      = ForShor `scratch` = engine `legacy` (a w-bit constant-one register plus a Cuccaro adder).
+#: The engine's own `incrementer` (a flat 32 w Toffoli) is the SUPERSEDED first draft of PR #79 and has no epoch name: an engine run priced
+#: with it cannot start an epoch. The model field stays `incrementer` (no contract change); only this table and the README explain it.
+NEGATION_OF = {"gidney_circuit": "incrementer", "legacy": "scratch"}
+
+
+def negation_label(engine_impl: str) -> str:
+    """The epoch model's `negation` value for the engine's negation convention (see `NEGATION_OF`)."""
+    if engine_impl not in NEGATION_OF:
+        raise ValueError(f"the engine's negation {engine_impl!r} has no epoch name (known: {sorted(NEGATION_OF)})")
+    return NEGATION_OF[engine_impl]
+
+
 def _git(*args: str) -> str:
     return subprocess.check_output(["git", *args], cwd=REPO, text=True).strip()
 
@@ -50,7 +66,7 @@ def model_of(*, sto_commit: str = STO_COMMIT, engine_revision: Optional[str] = N
         "forshor": {"pin": forshor_pin()},
         "sto": {"commit": sto_commit},
         "lean": (REPO / "lean-toolchain").read_text().strip(),
-        "widthRule": "exact", "negation": eng.fullalg.HEADLINE.negate, "n": pricing.N,
+        "widthRule": "exact", "negation": negation_label(eng.fullalg.HEADLINE.negate), "n": pricing.N,
         "rotation": {"synthesis": "Ross-Selinger measured mean, 3.075*log2(1/eps) + 0.86", "fraction": 0.5},
     }
 
@@ -115,10 +131,11 @@ def baseline_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[
 
 
 def negating_bands(policy) -> List[int]:
-    """The arities of a policy's tables that contain a `negate` operation. Modular swap 001 changed what the FULL RUN charges for a negation
-    (complement + a one-clean-ancilla incrementer: 32 w Toffoli, 1 qubit), but `tcost`, which prices the PhaseProduct and PhaseTripleProduct
-    boards, still charges the old way (D24 of the swap log). For a table that negates the boards would therefore disagree, so no
-    such policy is exported. None of the policies listed today has one."""
+    """The arities of a policy's tables that contain a `negate` operation. The FULL RUN charges a negation as ForShor's `negateResources` does
+    (complement plus a one-clean-ancilla incrementer, with the Lean counts of `NEGATION_OF`: Toffoli 12w-28 / 10w-18, CNOT 17w-22 / 17w-5,
+    X 5w-3 / 5w+1; 1 qubit), but `tcost`, which prices the PhaseProduct and PhaseTripleProduct boards, still prices a negation as Qualtran's
+    `Negate` (D24 of the swap log). For a table that negates the boards would therefore disagree, so no such policy is exported.
+    None of the policies listed today has one."""
     return [b.table.k for b in policy.bands if b.table.census()["negate"]]
 
 
@@ -199,7 +216,8 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
                 view["title"] = view["policy_json"]["name"] = title
                 verification = {"stoMirror": evidence[r["digest"]][0], "forshorPolicy": None}   # None for a planner policy the STO mirror has not checked (D9)
                 detail = mapping.panel_path(epoch, r["id"], b, delta)
-                panel = mapping.panel_of(view, epoch=epoch, row_id=r["id"], board=b, delta=delta, verification=verification)
+                panel = mapping.panel_of(view, epoch=epoch, row_id=r["id"], board=b, delta=delta, verification=verification,
+                                         lean_peak=bool(r.get("leanPeak", False)))   # per row; False until a manifest says Lean evaluated it
                 if detail in panels:
                     raise ValueError(f"two listed rows share the id {r['id']} on {b} at {delta}")
                 panels[detail] = panel

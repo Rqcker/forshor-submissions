@@ -1,5 +1,5 @@
 {
- "note": "Stage 19 (2026-10-29): the full board prices the PhaseProduct board's exact-width policies (recalculated); built from engine/cache/fullalg_1e-02.json; STO reference with thresholds moved to exact widths (Stage 19, third round). Regenerated 2026-11-06 under modular swap 001 (negation = complement + one-clean-ancilla incrementer, 32 w Toffoli, was a w-bit constant-one register + Cuccaro): every T moved, no ladder or static layout did. The Stage 19 originals are in full_board_stage19_1e-02.PRE_SWAP.json.",
+ "note": "Stage 19 (2026-10-29): the full board prices the PhaseProduct board's exact-width policies (recalculated); built from engine/cache/fullalg_1e-02.json; STO reference with thresholds moved to exact widths (Stage 19, third round). Regenerated 2026-11-06 under the FIRST DRAFT of modular swap 001 (negation priced as a flat 32 w Toffoli, SUPERSEDED; was a w-bit constant-one register + Cuccaro): every T moved, no ladder or static layout did. These T are the draft pins: test_stage13.py::test_full_board_stage19_pins subtracts the draft over-charge (recomputed per point from the real counts) before comparing with the cache. The Stage 19 originals are in full_board_stage19_1e-02.PRE_SWAP.json.",
  "delta": 0.01,
  "model": "native-l2q-product/2-exact-balanced",
  "width_rule": "exact",

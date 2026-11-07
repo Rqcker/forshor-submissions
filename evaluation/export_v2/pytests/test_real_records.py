@@ -13,8 +13,9 @@ DATA = Path(__file__).parent / "data"
 CURRENT_MODEL = json.loads((DATA / "golden.json").read_text())["model"]
 REAL = DATA / "real"
 TREE = {"lean": "leanprover/lean4:v4.36.0-rc1", "forshorPin": "6d55ad9968dc067c68a7023bbbaed6c955d9190c", "stoBase": "361e81e"}
-# The records were produced at ForShor 6d55ad9. They are evidence only for a model that pins that revision; the current epoch pins 8e37ce7 (modular
-# swap 001), so against CURRENT_MODEL they are refused (the last test below).
+# The records were produced at ForShor 6d55ad9. They are evidence only for a model that pins that revision; the epoch pins a later commit (golden.json's
+# model still names 8e37ce7, the unmerged swap-001 commit; the epoch will pin `<FORSHOR_PIN>`, the merge commit of PR #79), so against CURRENT_MODEL
+# they are refused (the last test below). The test reads the pin from golden.json and does not depend on its value.
 MODEL = {**CURRENT_MODEL, "forshor": {"pin": TREE["forshorPin"]}}
 
 

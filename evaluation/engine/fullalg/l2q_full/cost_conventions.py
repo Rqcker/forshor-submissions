@@ -56,11 +56,20 @@ from . import paths as _paths
 LEAVES = ("grid", "merged_cphase", "product")
 ADDERS = ("qualtran", "cuccaro")
 NEGSRC = ("subtract", "negate_add_negate")
-#: Modular swap 001 (2026-11-05): `legacy` = a `w`-bit constant-one register plus a Cuccaro adder
-#: (`2w-3` Toffoli, `w+1` clean qubits); `incrementer` = complement plus Gidney's one-clean-ancilla
-#: increment gate (`32w` Toffoli, 1 clean qubit), as `ResourceModel.lean`'s `negateResources` now charges.
-NEGATE_IMPLS = ("legacy", "incrementer")
-DEFAULT_NEGATE = "incrementer"
+#: The negation subroutine's cost convention.
+#:   `gidney_circuit` (the DEFAULT): complement plus Gidney's one-clean-ancilla increment gate, priced by the counts of the explicit
+#:     circuit built and simulated in `bloqs/gidney_increment.py` (Toffoli 12w-28 even / 10w-18 odd, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1,
+#:     one clean qubit): exactly what ForShor's `negateResources` charges (the `oneQubit` NegationMethod, `negateChargeAt`).
+#:   `legacy`: a `w`-bit constant-one register plus a Cuccaro adder (`2w-3` Toffoli, `w+1` clean qubits): ForShor's `scratch` method.
+#:   `incrementer`: SUPERSEDED. Complement plus `32 w` Toffoli (and no CNOT), the first reading of Khattar-Gidney's Table 1, which listed
+#:     Gidney's TOTAL gate count as Toffolis. It over-charges T and is kept selectable only to reproduce PR #79's first-draft numbers; it is
+#:     never a default.
+#: Do not confuse this name with the EPOCH model's `negation: "incrementer"` (export_v2): that label means ForShor's `oneQubit`, i.e.
+#: `gidney_circuit` here (see `export_v2/epoch.py::NEGATION_OF`).
+NEGATE_IMPLS = ("legacy", "incrementer", "gidney_circuit")
+DEFAULT_NEGATE = "gidney_circuit"
+#: The impls whose negation borrows one clean qubit (everything except `legacy`).
+ONE_QUBIT_NEGATE = ("incrementer", "gidney_circuit")
 SYNTHESISERS = ("ross_selinger", "fallback", "mixed_fallback")
 
 
@@ -201,11 +210,16 @@ def cuccaro_resources(w: int) -> Dict[str, int]:
 def negate_resources(w: int, impl: str = DEFAULT_NEGATE) -> Dict[str, int]:
     """`negateResources` on a `w`-bit register (ForShor `ResourceModel.lean`).
 
-    ``incrementer`` (swap 001, the Lean default): `w` X for the complement and `32 w` Toffoli for
-    Gidney's one-clean-ancilla increment gate (Khattar-Gidney, arXiv:2407.17966, Table 1). The
-    source gives no CNOT count, so none is charged (T is unaffected).
-    ``legacy``: the Cuccaro adder plus `w + 2` X.
+    ``gidney_circuit`` (the default; what Lean charges): the counts of the explicit circuit of
+    `bloqs/gidney_increment.py` (Toffoli 12w-28 even / 10w-18 odd, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1; Lean's
+    truncating subtraction, exact for w >= 7, an upper bound below).
+    ``legacy``: the Cuccaro adder plus `w + 2` X (ForShor's `scratch` method).
+    ``incrementer``: SUPERSEDED first draft, `w` X and a flat `32 w` Toffoli, no CNOT (Khattar-Gidney's Table 1 listed
+    Gidney's total gate count as Toffolis). Kept selectable only to reproduce that draft; not a default.
     """
+    if impl == "gidney_circuit":
+        from .bloqs.gidney_increment import bound_counts
+        return bound_counts(w)
     if impl == "incrementer":
         return {"x": w, "cnot": 0, "toffoli": 32 * w}
     if impl != "legacy":
@@ -217,7 +231,7 @@ def negate_resources(w: int, impl: str = DEFAULT_NEGATE) -> Dict[str, int]:
 
 def negate_clean_ancilla(w: int, impl: str = DEFAULT_NEGATE) -> int:
     """Clean qubits `negateResources` charges while a `w`-bit negation runs."""
-    return 1 if impl == "incrementer" else w + 1
+    return 1 if impl in ONE_QUBIT_NEGATE else w + 1
 
 
 # ---------------------------------------------------------------- realisation bloqs
@@ -259,19 +273,21 @@ def _wrap_tc(v: int, w: int) -> int:
 
 @attrs.frozen
 class IncrementerNegate(Bloq):
-    """`r <- -r (mod 2^w)` as ForShor's `negateResources` charges it after modular swap 001:
-    `w` X (bitwise complement) then Gidney's increment gate with ONE clean ancilla, `32 w` Toffoli
-    (Khattar-Gidney Table 1, row Incrementer / One clean / [Gid15a]). Classical action declared."""
+    """`r <- -r (mod 2^w)` as ForShor's `negateResources` charges it (ForShor `oneQubit`): the complement then Gidney's
+    increment gate with ONE clean ancilla, with the counts of `negate_resources(w, impl)`: for `impl = "gidney_circuit"`
+    (the default) the explicit circuit's counts, for `impl = "incrementer"` the SUPERSEDED flat `32 w` Toffoli.
+    Classical action declared."""
     w: int
+    impl: str = DEFAULT_NEGATE
 
     @property
     def signature(self) -> Signature:
         return Signature([Register("x", QInt(max(1, self.w)))])
 
     def build_call_graph(self, ssa: SympySymbolAllocator) -> BloqCountDictT:
-        from qualtran.bloqs.basic_gates import XGate, Toffoli
-        r = negate_resources(self.w, "incrementer")
-        return {b: k for b, k in ((Toffoli(), r["toffoli"]), (XGate(), r["x"])) if k}
+        from qualtran.bloqs.basic_gates import CNOT, XGate, Toffoli
+        r = negate_resources(self.w, self.impl)
+        return {b: k for b, k in ((Toffoli(), r["toffoli"]), (CNOT(), r["cnot"]), (XGate(), r["x"])) if k}
 
     def on_classical_vals(self, x):
         return {"x": _wrap_tc(-int(x), self.w)}
@@ -279,8 +295,8 @@ class IncrementerNegate(Bloq):
 
 def negate_bloq(w: int, spec: "ConventionSpec") -> Bloq:
     """The bloq a `w`-bit negation is priced as under `spec`."""
-    if spec.negate == "incrementer":
-        return IncrementerNegate(w)
+    if spec.negate in ONE_QUBIT_NEGATE:
+        return IncrementerNegate(w, spec.negate)
     if spec.adder == "cuccaro":
         return CuccaroAdder(w, negate=True)
     from qualtran.bloqs.arithmetic import Negate

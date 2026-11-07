@@ -19,6 +19,25 @@ python -m export_v2 request OUT.json --policy FILE --evidence-dir DIR --head-sha
 npx tsx scripts/publisher/validate-v2.ts OUT.json
 ```
 
+## Negation: what the epoch field `negation` means
+
+The epoch model carries `negation: "incrementer"` (no contract change). That label names ForShor's `NegationMethod`, not the engine's
+`ConventionSpec.negate` option, and the two vocabularies differ:
+
+| Epoch `negation` | ForShor method | Engine `negate` | What a w-bit negation is charged |
+| --- | --- | --- | --- |
+| `incrementer` | `oneQubit` | `gidney_circuit` (the default) | complement plus Gidney's one-clean-ancilla increment: Toffoli 12w-28 (even w) / 10w-18 (odd w), CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1 (exact for w >= 7, upper bounds below); ONE clean qubit |
+| `scratch` | `scratch` | `legacy` | a w-bit constant-one register plus a Cuccaro adder (Toffoli 2w-3, w+1 clean qubits) |
+| none | none | `incrementer` | SUPERSEDED first draft of PR #79 (flat 32 w Toffoli, no CNOT). Selectable, never the default, and it cannot start an epoch (`epoch.negation_label` refuses it) |
+
+At w = 8 / 9 / 2048 the first row gives X / CNOT / Toffoli of 37 / 114 / 68, 46 / 148 / 72 and 10237 / 34794 / 24548, and `scratch` at 2048 gives
+6140 / 10233 / 4093 with 2049 clean qubits: ForShor's `negateChargeAt` examples (`Emit/Json/Common.lean`), asserted in
+`engine/tests/test_swap001.py`. The mapping lives in `epoch.NEGATION_OF`. The ForShor pin is the merge commit of PR #79, written `<FORSHOR_PIN>` in
+text until it exists.
+
+The qubit text of the full board's peak (`mapping.peak_label`, `mapping.peak_rule`) is a function of the per-row flag `leanPeak` (default False:
+"Lean has not evaluated it on this policy"). A later step sets it per row, from the manifest of Lean-evaluated policies, without editing text.
+
 ## Evidence rules
 
 Evidence is for one policy (its digest: mode and bands, not the display title). A harness record counts only if the harness

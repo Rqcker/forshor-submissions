@@ -32,25 +32,46 @@ def _table_step(x: Raw) -> Raw:
     return {"W": x["W"], "k": x.get("k"), "table": x.get("table"), "digest": x.get("digest")}
 
 
-# The full run's qubit count is the live-qubit peak, not the static layout. The same two strings are in forshor-site's scripts/fixture-v2.ts
-# (PEAK_LABEL, PEAK_RULE); the golden test holds them equal.
-PEAK_LABEL = "live-qubit peak of the balanced order-finding circuit (a port of ForShor's orderFindingQubitsU, not Lean-evaluated on this policy)"
-PEAK_RULE = ("The registers (exponent, data with its carry bit, work, scratch) and the flag, 12,890 qubits at n = 2048, plus the largest number of "
-             "extra qubits any step of the unconditionally balanced order-finding circuit needs: ForShor's Policy.orderFindingQubitsU "
-             "(QubitCount/Statement.lean). A negation is the register's complement plus Gidney's one-clean-ancilla incrementer (modular swap 001, "
-             "ForShor 8e37ce7: one clean qubit, 32 w Toffoli), so the Step 3 scratch no longer binds. Computed by a Python port that reproduces "
-             "Lean's evaluation for ForShor's standard-table policies and Lean's kernel-checked anchor (13,449 qubits for constant k = 2 at scanned "
-             "widths, 4096 exponent qubits); Lean has not evaluated it on this policy. It is not the static layout allocation, which is kept in layout.total.")
+# The full run's qubit count is the live-qubit peak, not the static layout. The same strings are in forshor-site's scripts/fixture-v2.ts
+# (PEAK_LABEL, PEAK_RULE); the golden test holds them equal once golden.json has been regenerated from that builder.
+#
+# The text depends on ONE per-row fact, `leanPeak`: has Lean's kernel evaluated the peak for THIS policy (same method, same width rule as the
+# epoch's)? It defaults to False, so every row keeps "Lean has not evaluated it on this policy" until a later step switches it for the rows
+# the A13 manifest covers; that step passes `lean_peak=True` and edits no text.
+PIN = "<FORSHOR_PIN>"   # the ForShor merge commit of PR #79 (a later step fills it in)
+_PEAK_LABEL_HEAD = "live-qubit peak of the balanced order-finding circuit (a port of ForShor's orderFindingQubitsU, "
+_PEAK_RULE_HEAD = (
+    "The registers (exponent, data with its carry bit, work, scratch) and the flag, 12,890 qubits at n = 2048, plus the largest number of "
+    "extra qubits any step of the unconditionally balanced order-finding circuit needs: ForShor's Policy.orderFindingQubitsU "
+    "(QubitCount/Statement.lean). A negation is the register's complement plus Gidney's one-clean-ancilla increment gate (ForShor's `oneQubit` "
+    "negation method, the model's `negation: \"incrementer\"`), charged as ONE clean qubit with Lean's counts per w-bit negation: Toffoli "
+    "12w - 28 (even w) or 10w - 18 (odd w), CNOT 17w - 22 or 17w - 5, X 5w - 3 or 5w + 1 (exact for w >= 7, upper bounds below), at ForShor "
+    + PIN + ", so the Step 3 scratch no longer binds. Computed by a Python port that reproduces Lean's evaluation for ForShor's "
+    "standard-table policies and Lean's kernel-checked anchor (13,449 qubits for constant k = 2 at scanned widths, 4096 exponent qubits); ")
+_PEAK_RULE_TAIL = " It is not the static layout allocation, which is kept in layout.total."
 
 
-def full_run_of(view: Raw) -> Raw:
+def peak_label(lean_peak: bool = False) -> str:
+    return _PEAK_LABEL_HEAD + ("Lean-evaluated on this policy)" if lean_peak else "not Lean-evaluated on this policy)")
+
+
+def peak_rule(lean_peak: bool = False) -> str:
+    return _PEAK_RULE_HEAD + ("Lean's kernel has evaluated this policy's peak, and the port equals it." if lean_peak
+                              else "Lean has not evaluated it on this policy.") + _PEAK_RULE_TAIL
+
+
+PEAK_LABEL = peak_label()   # the default (leanPeak = False) texts
+PEAK_RULE = peak_rule()
+
+
+def full_run_of(view: Raw, lean_peak: bool = False) -> Raw:
     f = view["full"]
     cc = f["cross_checks"]
     return {
         "T": f["T"], "TBase": f["T_base"], "rotations": f["rotations"], "tPerRotation": f["T_per_rotation"], "eps": f["eps"],
         "toffoli": f["toffoli"], "clifford": f["clifford"], "cnot": f["cnot"],
         "qubits": f["qubits_peak"], "qubitsLayout": f["qubits_layout"], "peakExtra": f["peak_extra"],
-        "qubitsLabel": PEAK_LABEL, "qubitsRule": PEAK_RULE,
+        "qubitsLabel": peak_label(lean_peak), "qubitsRule": peak_rule(lean_peak),
         "ladder": ladder_of(f["ladder_str"]), "ladderLabel": f["ladder_str"], "label": f["label"], "mainLabel": f["main_label"],
         "layout": {
             "total": f["layout"]["total"], "flag": f["layout"]["flag"], "rule": f["layout"]["rule"],
@@ -82,8 +103,10 @@ def full_run_of(view: Raw) -> Raw:
     }
 
 
-def panel_of(view: Raw, *, epoch: str, row_id: str, board: str, delta: str, verification: Raw) -> Raw:
-    """One `forshor.policy/v2` document from an engine `policy_view` (plus `full`, `usage`, `tables_used` for the full board)."""
+def panel_of(view: Raw, *, epoch: str, row_id: str, board: str, delta: str, verification: Raw, lean_peak: bool = False) -> Raw:
+    """One `forshor.policy/v2` document from an engine `policy_view` (plus `full`, `usage`, `tables_used` for the full board).
+    `lean_peak`: Lean's kernel has evaluated this policy's qubit peak (per row; False until a manifest says so); only the full run's
+    qubit label and rule depend on it."""
     sc, gl = view.get("scan_cross_check"), view.get("grid_leaf_cross_check")
     tb = view["t_breakdown"]
     return {
@@ -127,7 +150,7 @@ def panel_of(view: Raw, *, epoch: str, row_id: str, board: str, delta: str, veri
         },
         "verification": verification,
         "costCheck": {"claim": "counted-in-python-not-proved-in-lean", "engines": ["tcost", "forshor_qualtran"], "agree": bool(view["agree"])},
-        "fullRun": full_run_of(view) if board == "full" else None,
+        "fullRun": full_run_of(view, lean_peak) if board == "full" else None,
     }
 
 

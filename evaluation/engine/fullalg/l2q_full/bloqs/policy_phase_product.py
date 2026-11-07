@@ -326,7 +326,8 @@ class CuccaroAddScaled(Bloq):
 
 @attrs.frozen
 class CuccaroNegate(Bloq):
-    """`r ← −r` priced as ForShor's `negateResources`. Classical action declared."""
+    """`r ← −r` priced as the LEGACY `negateResources` (Cuccaro adder + constant register; before
+    modular swap 001). Classical action declared. The current negation is `cc.IncrementerNegate`."""
     w: int
 
     @property
@@ -413,7 +414,7 @@ def _qualtran_level_ancilla(T: ToomCookTable, w2: int, spec: cc.ConventionSpec) 
                    cc.negate_clean_ancilla(w2, spec.negate) if c["negate"] else 0)
     add_x = qubit_count_closed_form("Add", w2) - 2 * w2
     sub_x = qubit_count_closed_form("Subtract", w2) - 2 * w2
-    neg_x = 1 if spec.negate == "incrementer" else qubit_count_closed_form("Negate", w2) - w2
+    neg_x = 1 if spec.negate in ("incrementer", "gidney_circuit") else qubit_count_closed_form("Negate", w2) - w2
     peak = 0
     for o in T.ops:
         if o["op"] == "addScaled":
@@ -475,9 +476,9 @@ def _lean_resources(policy: PhasePolicy, wx: int, wz: int, controlled: bool) -> 
             return res
         T, w2 = s
         cen = T.census()
-        # `addScaledResources` = `cuccaroModAddResources (width dst)`; `negateResources` (swap 001)
-        # = `w` X plus `32 w` Toffoli (one-clean-ancilla incrementer). Every chunk has already
-        # been grown to `w2` when the program runs.
+        # `addScaledResources` = `cuccaroModAddResources (width dst)`; `negateResources` = the complement plus
+        # Gidney's one-clean-ancilla increment (`cc.negate_resources`: Toffoli 12w-28 / 10w-18, CNOT 17w-22 / 17w-5,
+        # X 5w-3 / 5w+1). Every chunk has already been grown to `w2` when the program runs.
         adds = nodes * 2 * cen["addScaled"]
         negs = nodes * 2 * cen["negate"]
         add_r, neg_r = cc.cuccaro_resources(w2), cc.negate_resources(w2)   # ℕ-truncated, as Lean
@@ -655,8 +656,8 @@ class _PolicyPPBase(Bloq):
         return src, dst
 
     def _negate(self, bb: BloqBuilder, r, w2: int, spec):
-        if spec.negate == "incrementer":
-            return bb.add(cc.IncrementerNegate(w2), x=r)
+        if spec.negate in ("incrementer", "gidney_circuit"):
+            return bb.add(cc.IncrementerNegate(w2, spec.negate), x=r)
         if spec.adder == "cuccaro":
             return bb.add(CuccaroNegate(w2), x=r)
         from qualtran.bloqs.arithmetic import Negate

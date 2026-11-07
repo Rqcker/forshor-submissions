@@ -40,7 +40,7 @@ def test_children_share_one_pool_so_levels_add_their_growth_and_take_the_larger_
 
 def test_the_incrementer_charges_one_scratch_qubit_and_the_old_negation_a_register():
     levels = [lv(1000, 4, 300, negates=True, adds=True)]
-    assert ppk.chain_peak_extra(levels, 2, "incrementer") == 2 * 200 + 1
+    assert ppk.chain_peak_extra(levels, 2, "gidney_circuit") == 2 * 200 + 1
     assert ppk.chain_peak_extra(levels, 2, "legacy") == 2 * 200 + 301           # child_width + 1
 
 
@@ -66,7 +66,7 @@ def test_bad_arguments_are_refused():
 def test_pp_live_peak_equals_peak_reserve_and_is_below_the_static_layout(key, rule):
     P = _opt(key, PP, widths=rule)
     live = fr.live_peak_qubits(P, N)
-    ref = 2 * N + ppk.peak_reserve(fa.to_l2q_full(P, rule=rule), N, N, "incrementer")
+    ref = 2 * N + ppk.peak_reserve(fa.to_l2q_full(P, rule=rule), N, N, "gidney_circuit")
     assert live == ref
     assert live <= fr.lean_static_qubits(P, N)
 
@@ -94,7 +94,7 @@ def test_the_legacy_negation_cannot_lower_the_peak():
         for mode in (PP, PTP):
             levels = fr._levels(_opt(key, mode), N)
             operands = 2 if mode == PP else 3
-            assert ppk.chain_peak_extra(levels, operands, "legacy") >= ppk.chain_peak_extra(levels, operands, "incrementer")
+            assert ppk.chain_peak_extra(levels, operands, "legacy") >= ppk.chain_peak_extra(levels, operands, "gidney_circuit")
 
 
 # ---- what the view reports ----------------------------------------------------------------------------------------------------

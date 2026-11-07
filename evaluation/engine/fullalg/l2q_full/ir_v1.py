@@ -716,9 +716,13 @@ def lowgate_resources(leaves: Sequence[Dict[str, Any]]) -> Dict[str, int]:
         elif op == "AddScaled":
             add(_cuccaro(len(g["dst"]["active"])))
         elif op == "Negate":
-            # swap 001: complement + one-clean-ancilla incrementer (`negateResources`)
+            # `negateResources` (ForShor, modular swap 001 + the counted circuit): complement plus Gidney's one-clean-ancilla
+            # increment gate. Toffoli 12w-28 / 10w-18, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1 (even / odd w), Lean's truncating subtraction
+            # (`bloqs/gidney_increment.bound_counts`; equal to `cost_conventions.negate_resources(w, "gidney_circuit")`).
             w = len(g["r"]["active"])
-            add({"x": w, "toffoli": 32 * w})
+            ev, tr = w % 2 == 0, (lambda a, b: max(0, a - b))
+            add({"x": tr(5 * w, 3) if ev else 5 * w + 1, "cnot": tr(17 * w, 22) if ev else tr(17 * w, 5),
+                 "toffoli": tr(12 * w, 28) if ev else tr(10 * w, 18)})
         elif op in ("signExtend", "signDealloc"):
             out["cnot"] += g["n"]
         elif op == "RadixReverse":
