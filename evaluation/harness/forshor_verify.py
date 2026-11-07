@@ -612,10 +612,9 @@ def run(submission: Path, forshor: Path = DEFAULT_FORSHOR, out_root: Path = DEFA
     t0 = time.time()
     secs: Dict[str, float] = {}
     if from_policy:
-        from policy_to_template import TemplateError, template_text
-        pols = tt.load_policies(submission)
+        from policy_to_template import TemplateError, template_from_file
         try:
-            data = template_text(pols[0]).encode()
+            data = template_from_file(submission).encode()
         except TemplateError as e:
             raise HarnessError("intake", f"cannot write a ForShor policy from this policy: {e}")
         check_imports(data.decode())
