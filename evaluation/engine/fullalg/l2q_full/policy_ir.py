@@ -38,7 +38,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-from . import ir_v1, policy as pol, schemas
+from . import cost_conventions as cc, ir_v1, policy as pol, schemas
 
 #: Band-body template families: ``<family>_<i>``.
 BAND_FAMILIES = ("phase_product", "cphase_product")
@@ -60,10 +60,17 @@ class NativePolicy:
     are ForShor's); ``doc`` is the IR with every band body tagged with its band's table name.
     """
 
-    def __init__(self, policy: pol.PhasePolicy, doc: ir_v1.Doc, info: Dict[str, Any]):
+    def __init__(self, policy: pol.PhasePolicy, doc: ir_v1.Doc, info: Dict[str, Any], negation: Optional[str] = None):
         self.policy = policy
         self.doc = doc
         self.info = info
+        #: the document's `negation` method ("oneQubit" | "scratch"); None = key absent (a tree that predates NegationMethod)
+        self.negation = negation
+
+    @property
+    def negate_impl(self) -> str:
+        """`ConventionSpec.negate` that prices this policy's negations (`cost_conventions.negate_impl`)."""
+        return cc.negate_impl(self.negation)
 
     @property
     def names(self) -> List[str]:
@@ -130,9 +137,21 @@ def load_native(sub: Union[Dict[str, Any], str, Path]) -> NativePolicy:
     """Read ForShor's ``forshor_policy_submission`` output, IR included.
 
     Refuses (never repairs): a wrong schema, a submission with ``ir: null``, a band-body set that is
-    not one body per band and flavour, a body whose recursion arity is not its table's ``q k``."""
+    not one body per band and flavour, a body whose recursion arity is not its table's ``q k``, a
+    ``negation`` that is neither "oneQubit" nor "scratch".
+
+    The optional policy-level ``negation`` (ForShor's `ShorLoweringPolicy.negation`, swap 002) is read into
+    :attr:`NativePolicy.negation`; absent stays None (see `cost_conventions.negate_impl`)."""
     if not isinstance(sub, dict):
         sub = json.loads(Path(sub).read_text(encoding="utf-8"))
+    negation = sub.get("negation")
+    if "negation" in sub:
+        try:
+            cc.negate_impl(negation)                   # refuses an unknown method, including null
+        except ValueError as e:
+            raise NativeIRError(str(e)) from None
+        if negation is None:
+            raise NativeIRError("negation null: expected \"oneQubit\", \"scratch\" or no key")
     P, _, info = pol.load_policy_submission(sub)       # schema, C1, ordering, table data
     if sub.get("ir") is None:
         raise NativeIRError("policy submission has no native IR (`ir` is null); use policy.compose")
@@ -143,7 +162,7 @@ def load_native(sub: Union[Dict[str, Any], str, Path]) -> NativePolicy:
     doc = ir_v1.parse_doc(sub)
     doc = tag_bands(doc, [b.table.name for b in P.bands])
     _check_shape(P, doc)
-    return NativePolicy(P, doc, info)
+    return NativePolicy(P, doc, info, negation)
 
 
 # ============================================================================ the oracle

@@ -26,6 +26,10 @@ Stages (each fails closed and names itself):
                the document the trusted tree's own built `forshor_policy_submission` emits (Stage 15: read from the build, never
                a fixed number; the tree's checked-in `policy.json` only when no binary is built), thresholds strictly decreasing, each band's table replayed (`tcost`) and its
                Toom-Cook identity checked (the same checks as an STO table).
+  4b negation  (swap 002) With `--from-policy`: the `negation` key of the policy JSON ("oneQubit", the default, or "scratch") must equal
+               the `negation` of the document Lean printed, else REJECTED. The price (stage 5) uses the printed method; the record
+               carries `negation` {requested, printed, priced_as}. A tree that predates ForShor's NegationMethod prints no key: its
+               Cuccaro negation is what `scratch` names, it is priced as such and the record says so (`REQUIRE_PRINTED_NEGATION`).
   5 price      The policy as a fixed banded policy in the paper model (the headline: single-run T of the full order-finding
                run at n = 2048), and, as a conversion check, the submitted document priced by ForShor's native pricer: the
                document and the converted policy must give the same number.
@@ -466,6 +470,40 @@ def lean_build(work: Path, out: Path, args: Optional[List[str]] = None) -> Tuple
 
 
 # ---------------------------------------------------------------------------------------------- stage 4
+#: ForShor's `Shor.NegationMethod` (swap 002). A ForShor tree at eb00c5a or later prints `"negation"` in every
+#: `forshor_policy_submission` document; an older tree (6d55ad9, 10fe620: the trees this harness builds today) has no such
+#: key and its `negateResources` is the Cuccaro charge, i.e. what `scratch` names. The price follows the printed document.
+NEGATIONS = ("oneQubit", "scratch")
+#: False while the build tree predates `NegationMethod` (a document without the key is accepted and priced `legacy`, see
+#: `check_negation`); flip to True with the ForShor pin bump so that a missing key is a verification failure.
+REQUIRE_PRINTED_NEGATION = False
+
+
+def check_negation(doc: Dict[str, Any], requested: Optional[str] = None) -> Dict[str, Any]:
+    """The policy's negation method: what Lean printed against what was submitted. Returns the record entry.
+
+    ``doc`` is the printed policy.json (data, not trusted); ``requested`` is the `negation` key of the submitted policy JSON
+    (absent = "oneQubit"), or None when the submission is a template file (nothing to compare: the template is the source
+    and the printed document says what it built). A printed value that is not a method, or that differs from the requested
+    one, is a verification failure: otherwise Lean would build one method and Python price another."""
+    printed = doc.get("negation")
+    if "negation" in doc and (not isinstance(printed, str) or printed not in NEGATIONS):
+        raise HarnessError("python", f"policy.json negation {printed!r} is not one of {NEGATIONS}")
+    if printed is None:
+        if requested == "scratch":
+            raise HarnessError("python", "the submitted policy asks for negation 'scratch' but the policy.json Lean printed has no "
+                                         "`negation` key: the build tree predates ForShor's NegationMethod (eb00c5a)")
+        if REQUIRE_PRINTED_NEGATION:
+            raise HarnessError("python", "policy.json has no `negation` key (ForShor eb00c5a and later print it)")
+    elif requested is not None and printed != requested:
+        raise HarnessError("python", f"negation mismatch: the submitted policy JSON says {requested!r} (no key = 'oneQubit') but "
+                                     f"the policy ForShor built and printed says {printed!r}")
+    from site_engine import fullalg as fa
+    return {"requested": requested, "printed": printed, "priced_as": fa.cc.negate_impl(printed),
+            **({"note": "the build tree prints no `negation`: it predates NegationMethod and its negation is the Cuccaro charge "
+                        "(ForShor's `scratch`), which is what is priced"} if printed is None else {})}
+
+
 def _pt(p: Dict[str, Any]) -> str:
     """ForShor point dict -> tcost spelling. frac 0 is infinity; frac m is the point 1/m."""
     if p["kind"] == "int":
@@ -524,13 +562,15 @@ def price(doc: Dict[str, Any], P: tt.Policy, delta: float, n: int = HERO_N) -> D
     # scanned widths (fullalg.REFERENCE_SCAN), the board's labelled cross-check. Comparing a scan document with the
     # exact board price would fail the conversion check for a faithful conversion.
     rule = fa.doc_width_rule(doc)
-    r = fa.price_full(P, n, delta, detail=False, rule=rule)
+    negation = doc.get("negation")        # the printed document's own method (swap 002); absent: the repo default (legacy)
+    r = fa.price_full(P, n, delta, detail=False, rule=rule, negation=negation)
     out = {"model": r["model"], "tier": r["tier"], "width_rule": rule, "n": n, "delta": delta, "single_run_T": float(r["T"]),
            "qubits": int(r["qubits"]),
            "rotations": int(r["rotations"]), "toffoli": r.get("toffoli"), "cnot": r.get("cnot"), "ladder_str": r.get("ladder_str"),
            "lean_grid_leaf_T": r["lean_grid_leaf_T"]}
     t_doc = float(fa.price_document(doc, n, delta)["T"])
     t_conv = float(r["T"])
+    out["negation"] = {"printed": negation, "priced_as": fa.cc.negate_impl(negation)}
     out["native"] = {"tier": r["tier"], "width_rule": rule, "T_document": t_doc, "T_converted_policy": t_conv,
                      "conversion_agrees": t_doc == t_conv}
     if t_doc != t_conv:
@@ -560,7 +600,7 @@ def _tree_digest(forshor: Path) -> str:
 
 def record(out: Path, data: bytes, cid: str, forshor: Path, doc: Dict[str, Any], P: tt.Policy, checks: List[Dict[str, Any]],
            priced: Dict[str, Any], stats: Dict[str, Any], seconds: Dict[str, float],
-           max_heartbeats: Optional[int] = None) -> Path:
+           max_heartbeats: Optional[int] = None, negation: Optional[Dict[str, Any]] = None) -> Path:
     rid = f"F{cid[:12]}"
     d = out / rid
     d.mkdir(parents=True, exist_ok=True)
@@ -570,6 +610,7 @@ def record(out: Path, data: bytes, cid: str, forshor: Path, doc: Dict[str, Any],
         "schema": RECORD_SCHEMA, "id": rid, "content_sha256": cid, "created_at": now, "lean_verified": True,
         "bands": [{"threshold": b.threshold, "k": b.table.k, "digest": b.table.digest, "shrinks": c["shrinks"],
                    "table": b.table.to_json()} for b, c in zip(P.bands, checks)],
+        "negation": negation,       # {"requested", "printed", "priced_as"[, "note"]}: Lean's printed method and how it was priced
         "single_run_T": priced["single_run_T"], "qubits": priced["qubits"], "rotations": priced["rotations"],
         "n": priced["n"], "delta": priced["delta"], "model": priced["model"], "native": priced["native"],
         "benchmark": doc["benchmark"], "precision": {k: doc["precision"][k] for k in ("eta", "m")},
@@ -611,11 +652,12 @@ def run(submission: Path, forshor: Path = DEFAULT_FORSHOR, out_root: Path = DEFA
         max_heartbeats: Optional[int] = None, wait_slot: bool = True) -> Dict[str, Any]:
     t0 = time.time()
     secs: Dict[str, float] = {}
+    requested: Optional[str] = None      # the submitted policy JSON's `negation` (absent = "oneQubit"); None for a template file
     if from_policy:
-        from policy_to_template import TemplateError, template_text
-        pols = tt.load_policies(submission)
+        from policy_to_template import TemplateError, requested_negation_from_file, template_from_file
         try:
-            data = template_text(pols[0]).encode()
+            requested = requested_negation_from_file(submission)
+            data = template_from_file(submission).encode()
         except TemplateError as e:
             raise HarnessError("intake", f"cannot write a ForShor policy from this policy: {e}")
         check_imports(data.decode())
@@ -638,17 +680,18 @@ def run(submission: Path, forshor: Path = DEFAULT_FORSHOR, out_root: Path = DEFA
         stats["exe_args"] = exe_args(forshor)
         secs["lean"] = round(time.time() - t, 1)
         t = time.time()
+        neg = check_negation(doc, requested)
         P, checks = python_stage(doc, forshor, f"forshor-{cid[:8]}")
         secs["python"] = round(time.time() - t, 1)
         if lean_only:
-            return {"id": f"F{cid[:12]}", "status": "lean-ok", "bands": [(b.threshold, b.table.k) for b in P.bands], "stats": stats,
+            return {"id": f"F{cid[:12]}", "status": "lean-ok", "negation": neg, "bands": [(b.threshold, b.table.k) for b in P.bands], "stats": stats,
                     "seconds": secs, "policy_json": str(out / "policy.json"),
                     "forshor": {**forshor_provenance(forshor), "reference_document": reference_document(forshor)[1]}}
         t = time.time()
         priced = price(doc, P, delta)
         secs["price"] = round(time.time() - t, 1)
-        d = record(out, data, cid, forshor, doc, P, checks, priced, stats, secs, max_heartbeats)
-        return {"id": d.name, "status": "verified", "dir": str(d), "bands": [(b.threshold, b.table.k) for b in P.bands],
+        d = record(out, data, cid, forshor, doc, P, checks, priced, stats, secs, max_heartbeats, neg)
+        return {"id": d.name, "status": "verified", "dir": str(d), "negation": neg, "bands": [(b.threshold, b.table.k) for b in P.bands],
                 "single_run_T": priced["single_run_T"], "native": priced["native"], "stats": stats, "seconds": secs,
                 "forshor": {k: v for k, v in forshor_provenance(forshor).items() if k in ("commit", "lean_toolchain", "mathlib", "tree")}}
     finally:
