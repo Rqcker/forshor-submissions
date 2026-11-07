@@ -50,7 +50,7 @@ def model_of(*, sto_commit: str = STO_COMMIT, engine_revision: Optional[str] = N
         "forshor": {"pin": forshor_pin()},
         "sto": {"commit": sto_commit},
         "lean": (REPO / "lean-toolchain").read_text().strip(),
-        "widthRule": "exact", "n": pricing.N,
+        "widthRule": "exact", "negation": eng.fullalg.HEADLINE.negate, "n": pricing.N,
         "rotation": {"synthesis": "Ross-Selinger measured mean, 3.075*log2(1/eps) + 0.86", "fraction": 0.5},
     }
 

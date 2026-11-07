@@ -32,12 +32,25 @@ def _table_step(x: Raw) -> Raw:
     return {"W": x["W"], "k": x.get("k"), "table": x.get("table"), "digest": x.get("digest")}
 
 
+# The full run's qubit count is the live-qubit peak, not the static layout. The same two strings are in forshor-site's scripts/fixture-v2.ts
+# (PEAK_LABEL, PEAK_RULE); the golden test holds them equal.
+PEAK_LABEL = "live-qubit peak of the balanced order-finding circuit (a port of ForShor's orderFindingQubitsU, not Lean-evaluated on this policy)"
+PEAK_RULE = ("The registers (exponent, data with its carry bit, work, scratch) and the flag, 12,890 qubits at n = 2048, plus the largest number of "
+             "extra qubits any step of the unconditionally balanced order-finding circuit needs: ForShor's Policy.orderFindingQubitsU "
+             "(QubitCount/Statement.lean). A negation is the register's complement plus Gidney's one-clean-ancilla incrementer (modular swap 001, "
+             "ForShor 8e37ce7: one clean qubit, 32 w Toffoli), so the Step 3 scratch no longer binds. Computed by a Python port that reproduces "
+             "Lean's evaluation for ForShor's standard-table policies and Lean's kernel-checked anchor (13,449 qubits for constant k = 2 at scanned "
+             "widths, 4096 exponent qubits); Lean has not evaluated it on this policy. It is not the static layout allocation, which is kept in layout.total.")
+
+
 def full_run_of(view: Raw) -> Raw:
     f = view["full"]
     cc = f["cross_checks"]
     return {
         "T": f["T"], "TBase": f["T_base"], "rotations": f["rotations"], "tPerRotation": f["T_per_rotation"], "eps": f["eps"],
-        "toffoli": f["toffoli"], "clifford": f["clifford"], "cnot": f["cnot"], "qubits": f["qubits"],
+        "toffoli": f["toffoli"], "clifford": f["clifford"], "cnot": f["cnot"],
+        "qubits": f["qubits_peak"], "qubitsLayout": f["qubits_layout"], "peakExtra": f["peak_extra"],
+        "qubitsLabel": PEAK_LABEL, "qubitsRule": PEAK_RULE,
         "ladder": ladder_of(f["ladder_str"]), "ladderLabel": f["ladder_str"], "label": f["label"], "mainLabel": f["main_label"],
         "layout": {
             "total": f["layout"]["total"], "flag": f["layout"]["flag"], "rule": f["layout"]["rule"],

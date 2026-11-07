@@ -130,7 +130,7 @@ VERIFIED = {"lean": {"status": "policy-verified", "policy_verified": True, "runs
 
 def test_forshor_evidence_counts_only_at_the_epochs_pin_and_maps_its_two_flags():
     got, why = evidence.forshor_from_seed(VERIFIED, MODEL)
-    assert got is None and "10fe620" in why and "6d55ad9" in why
+    assert got is None and "10fe620" in why and MODEL["forshor"]["pin"][:9] in why
     at_pin = copy.deepcopy(VERIFIED)
     at_pin["lean"]["runs"][0]["forshor"]["commit"] = MODEL["forshor"]["pin"]
     got, why = evidence.forshor_from_seed(at_pin, MODEL)

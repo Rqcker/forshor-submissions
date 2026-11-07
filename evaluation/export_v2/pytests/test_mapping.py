@@ -11,7 +11,7 @@ GOLDEN = json.loads((Path(__file__).parent / "data" / "golden.json").read_text()
 
 
 def test_epoch_matches_forshor_sites_hash_of_the_same_model():
-    assert canon.epoch_of(GOLDEN["model"]) == GOLDEN["epoch"] == "db4be672dc2626b6"
+    assert canon.epoch_of(GOLDEN["model"]) == GOLDEN["epoch"] == "c64165fdd0b538d6"
 
 
 def test_canonical_json_is_sorted_compact_and_rejects_nan():

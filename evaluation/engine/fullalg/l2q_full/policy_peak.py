@@ -139,3 +139,29 @@ def order_finding_peak(P: pol.PhasePolicy, xW: int, dW: int, wW: int, sW: int, i
 def order_finding_qubits(P: pol.PhasePolicy, xW: int, dW: int, wW: int, sW: int, impl: str = "incrementer") -> int:
     """`Policy.orderFindingQubitsU`: the exponent, data (with its carry bit), work and scratch registers and the flag, plus the peak."""
     return xW + (dW + 1) + wW + sW + 1 + order_finding_peak(P, xW, dW, wW, sW, impl)
+
+
+# ---- one product on its own: PhaseProduct (two operands) and PhaseTripleProduct (three) ----------------------------------------
+
+def chain_peak_extra(levels, operands: int, impl: str = "incrementer") -> int:
+    """The extra qubits, over the operand registers, at the live peak of ONE lowered product that follows a chain of levels.
+
+    ``levels`` is the chain from the top, one ``(width, k, child_width, negates, adds)`` per recursive level; the product ends in a
+    leaf below the last. ``operands`` is 2 for a PhaseProduct and 3 for a PhaseTripleProduct. This is `peak_reserve`'s recursion for
+    a square product, and for three operands the shape of ForShor's `ptpWsTD` (PhaseTripleProduct/Proofs/QubitsTight.lean): a level
+    grows each of its operands from `width` to `k` chunks of `child_width` (activating `operands * (k*child - width)` qubits) and
+    then holds the larger of one child's peak and its arithmetic's scratch, the children sharing one pool. The leaf of a
+    PhaseTripleProduct needs its sandwich's two ancillas (`ptpWsTD`'s base case); a PhaseProduct's leaf needs none.
+
+    The scratch is `table_scratch`'s: 1 for a table that adds or negates under the incrementer, `child_width + 1` for a negating
+    table under the legacy negation. ForShor proves `ptpWsTD` without the scratch (`LowGate.usedQubits` excludes `cleanAnc`); it is
+    included here, as in the order-finding peak, and under the incrementer it never exceeds the leaf's two."""
+    if impl not in IMPLS:
+        raise ValueError(f"impl {impl!r} not in {IMPLS}")
+    if operands not in (2, 3):
+        raise ValueError("a product has two operands (PhaseProduct) or three (PhaseTripleProduct)")
+    tail = 2 if operands == 3 else 0
+    for width, k, child, negates, adds in reversed(list(levels)):
+        scratch = (child + 1 if impl == "legacy" else 1) if negates else (1 if adds else 0)
+        tail = operands * _sub(k * child, width) + max(tail, scratch)
+    return tail

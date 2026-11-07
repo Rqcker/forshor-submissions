@@ -7,7 +7,8 @@ from . import engine
 from .mapping import DELTA_VALUES
 
 N = 2048
-FULL_KEYS = ("n", "T", "T_base", "rotations", "T_per_rotation", "eps", "toffoli", "clifford", "cnot", "qubits", "layout", "ladder_str",
+FULL_KEYS = ("n", "T", "T_base", "rotations", "T_per_rotation", "eps", "toffoli", "clifford", "cnot", "qubits", "layout",
+             "qubits_layout", "qubits_peak", "peak_base_registers", "peak_extra", "negate", "ladder_str",
              "label", "main_label", "parts", "cross_checks", "lean_grid_leaf_T", "literal_lean_T", "work_width", "widths", "m_bits",
              "precision_rule", "census_trust", "trial_count", "end_to_end")
 

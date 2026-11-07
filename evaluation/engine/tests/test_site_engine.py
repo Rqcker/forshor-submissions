@@ -562,7 +562,8 @@ def test_qubits_phase_product_lean_static_allocation():
     assert 12_350 + 2 * fa.pp_lean_static_qubits(ref_scan, 2107)["reserve_x"] == 15_048
     from site_engine import policy_view as pv
     assert pv.view(_ref(), N, 0.01)["qubits_lean_static"]["qubits"] == 6624     # Lean static at scanned widths (cross-check)
-    assert pv.view(_ref(), N, 0.01)["qubits"] == 4992                            # Stage 13 headline: the formula at exact widths
+    assert pv.view(_ref(), N, 0.01)["qubits_static"]["qubits"] == 4992           # the static-layout formula at exact widths, kept as a cross-check
+    assert pv.view(_ref(), N, 0.01)["qubits"] == 4399                            # the board's Q is now the live-qubit peak (test_live_peak_products.py)
 
 
 def test_qubits_full_run_lean_reference_layout():

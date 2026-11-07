@@ -100,8 +100,49 @@ QUBITS_RULE_PP = ("static layout 2w + Rx + Rz evaluated at the exact child width
                   "ForShor scanned widths (qubits_lean_static_scan) and Qualtran's QubitCount peak (qubits_qualtran_peak)")
 QUBITS_RULE_PP_SCAN = ("Lean static layout 2w + Rx + Rz (Policy.reserveNeed, PolicyWorkspace.lean) at ForShor scanned "
                        "widths, the proved allocation")
+#: The live-qubit peak of one product, the same measure as the full order-finding board's Q (`live_peak_qubits`).
+QUBITS_LABEL_PEAK = "live-qubit peak (formula, not Lean-proved)"
+QUBITS_RULE_PEAK_PP = ("The live-qubit peak of one PhaseProduct: its two operand registers plus the most extra qubits live at any moment. "
+                       "Each recursive level activates the qubits that grow its chunks to the child width and then holds the larger of one "
+                       "child's peak and its arithmetic's scratch (1 qubit for an addition or a negation by the one-clean-ancilla "
+                       "incrementer), the children sharing one pool: ForShor's peakReserveD (QubitCount/Statement.lean), the recursion the "
+                       "order-finding peak is built from, here at the exact widths of this board. It is a formula, not a Lean-proved "
+                       "count. It is not the static layout (qubitsStatic), which gives every child slot a private workspace")
+QUBITS_RULE_PEAK_PTP = ("The live-qubit peak of one PhaseTripleProduct: its three operand registers plus the most extra qubits live at any "
+                        "moment. Each recursive level activates the qubits that grow all three operands to the child width and then holds the "
+                        "larger of one child's peak and its arithmetic's scratch; the leaf's sandwich needs 2 ancillas: the shape of "
+                        "ForShor's ptpWsTD (PhaseTripleProduct/Proofs/QubitsTight.lean) at the exact widths of this board, plus the scratch. "
+                        "It is a formula, not a Lean-proved count. Qualtran's own count of the same circuit is kept as qubitsQualtranPeak")
 QUBITS_RULE_PTP = ("Qualtran QubitCount peak (tcost decomposition, exact widths); Lean has no PhaseTripleProduct layout, so "
                    "there is no Lean count to show")
+
+
+def _levels(P: tt.Policy, n: int):
+    """The recursive levels of P at n, from the top: ``(width, k, child_width, negates, adds)``, as `policy_peak.chain_peak_extra` takes."""
+    out, w = [], n
+    for T in tt.chain_for(P, n):
+        c = T.child_width(w, P.widths)
+        kinds = {op[0] for op in T.ops}
+        out.append((w, T.k, c, "negate" in kinds, "addScaled" in kinds))
+        w = c
+    return out
+
+
+@lru_cache(maxsize=8192)
+def _live_peak(P: tt.Policy, n: int, impl: str) -> int:
+    from l2q_full import policy_peak as ppk
+    operands = 2 if P.mode == tt.PAIR else 3
+    return operands * int(n) + ppk.chain_peak_extra(_levels(P, n), operands, impl)
+
+
+def live_peak_qubits(P: tt.Policy, n: int) -> int:
+    """The live-qubit peak of ONE product at width n: the operand registers (2n for a PhaseProduct, 3n for a PhaseTripleProduct) plus
+    the extra qubits live at the circuit's peak (`policy_peak.chain_peak_extra`), under the negation the model prices
+    (`fullalg.HEADLINE.negate`, part of the cache key). The same measure as the full order-finding board's Q, applied to one product.
+    It is not the static layout (`static_reserve`), which gives every child slot a private workspace, nor Qualtran's own count
+    (`qubits`)."""
+    from . import fullalg as fa
+    return _live_peak(P, int(n), fa.HEADLINE.negate)
 
 
 @lru_cache(maxsize=8192)
