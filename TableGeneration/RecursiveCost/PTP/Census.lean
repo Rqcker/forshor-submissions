@@ -84,13 +84,7 @@ theorem leafCCPhase_resources (M : LowGateResourceModel) (φ : Angle) (x y z : E
 `shorGateResourceModel`. -/
 def opRes (C : ℕ) {k : ℕ} : valid_ops k → GateResources
   | .addScaled _ _ _ _ => cuccaroModAddResources C
-  | .negate _ =>
-      { h := (cuccaroModAddResources C).h
-        x := C + (cuccaroModAddResources C).x + 2
-        cnot := (cuccaroModAddResources C).cnot
-        toffoli := (cuccaroModAddResources C).toffoli
-        rz := (cuccaroModAddResources C).rz
-        cleanAnc := C + (cuccaroModAddResources C).cleanAnc }
+  | .negate _ => { x := C, toffoli := 32 * C, cleanAnc := 1 }   -- modular swap 001: complement plus the one-clean-ancilla incrementer
   | _ => {}
 
 theorem opGate_resources {k : ℕ} (Lay : NodeLayout k) (s : Fin 3) (op : valid_ops k) :
@@ -157,9 +151,9 @@ theorem ptpNode_resources (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ) (φ : 
     let N := negCount T.ops
     let P := cpCount T.ops
     R.rz = P * (C * C * C) ∧
-    R.cnot = 3 * ((A + N) * (5 * C - 7)) ∧
-    R.toffoli = 3 * ((A + N) * (2 * C - 3)) + P * (2 * (C * C + C * C * C)) ∧
-    R.x = 3 * (A * (2 * C - 6) + N * (C + (2 * C - 6) + 2)) ∧
+    R.cnot = 3 * (A * (5 * C - 7)) ∧
+    R.toffoli = 3 * (A * (2 * C - 3) + N * (32 * C)) + P * (2 * (C * C + C * C * C)) ∧
+    R.x = 3 * (A * (2 * C - 6) + N * C) ∧
     R.h = 0 := by
   intro R C A N P
   have hw : ∀ s i, (Lay.slot s i).width = C := Lay.slot_width
@@ -215,9 +209,9 @@ theorem ptpNodeCCPhase_resources (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ)
     let N := negCount T.ops
     let P := cpCount T.ops
     R.rz = P * (5 * (C * C * C)) ∧
-    R.cnot = 3 * ((A + N) * (5 * C - 7)) + P * (2 * (C * C * C)) ∧
-    R.toffoli = 3 * ((A + N) * (2 * C - 3)) + P * (2 * (C * C * C)) ∧
-    R.x = 3 * (A * (2 * C - 6) + N * (C + (2 * C - 6) + 2)) ∧
+    R.cnot = 3 * (A * (5 * C - 7)) + P * (2 * (C * C * C)) ∧
+    R.toffoli = 3 * (A * (2 * C - 3) + N * (32 * C)) + P * (2 * (C * C * C)) ∧
+    R.x = 3 * (A * (2 * C - 6) + N * C) ∧
     R.h = 0 := by
   intro R C A N P
   have hw : ∀ s i, (Lay.slot s i).width = C := Lay.slot_width
@@ -233,7 +227,7 @@ theorem ptpNodeCCPhase_resources (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ)
   · have h := go fCnot; simp only [fCnot, opRes, cuccaroModAddResources] at h
     rw [show R.cnot = _ from h]; ring
   · have h := go fToff; simp only [fToff, opRes, cuccaroModAddResources] at h
-    rw [show R.toffoli = _ from h]; ring
+    rw [show R.toffoli = _ from h]
   · have h := go fX; simp only [fX, opRes, cuccaroModAddResources] at h
     rw [show R.x = _ from h]; ring
   · have h := go fH; simp only [fH, opRes, cuccaroModAddResources] at h; rw [show R.h = _ from h]; ring
@@ -248,7 +242,7 @@ theorem body_cleanAnc_le {k : ℕ} (Lay : NodeLayout k) (child : ℕ → Fin k �
       (LowGate.resources shorGateResourceModel (opGate Lay s op)).cleanAnc ≤ Lay.width + 1 := by
     intro s op
     rw [opGate_resources]
-    cases op <;> simp [opRes, cuccaroModAddResources] <;> omega
+    cases op <;> simp [opRes, cuccaroModAddResources]
   intro ops
   induction ops with
   | nil => intro t; simp [body, LowGate.resources]
@@ -429,9 +423,9 @@ def leafCensusCCPhase (w : ℕ) : Census :=
 `P` checkpoints, children costing `ch` each. -/
 def nodeCensus (C A N P : ℕ) (ch : Census) : Census :=
   ⟨P * ch.h,
-   3 * (A * (2 * C - 6) + N * (C + (2 * C - 6) + 2)) + P * ch.x,
-   3 * ((A + N) * (5 * C - 7)) + P * ch.cnot,
-   3 * ((A + N) * (2 * C - 3)) + P * ch.toffoli,
+   3 * (A * (2 * C - 6) + N * C) + P * ch.x,
+   3 * (A * (5 * C - 7)) + P * ch.cnot,
+   3 * (A * (2 * C - 3) + N * (32 * C)) + P * ch.toffoli,
    P * ch.rz⟩
 
 /-- **Policy-level PTP census** at width `n`: the node formula composed down the

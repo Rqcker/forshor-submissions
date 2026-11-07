@@ -163,6 +163,18 @@ clean qubits). No module STO imports was removed. **STO changes: the pin, and th
 | `test_cost_model_lean.py` | 6 passed |
 | regenerated `companion-cost-model.tsv` against the committed one | 5 lines differ, all the negate column |
 
+`lake build TableGeneration` does **not** build the PhaseTripleProduct modules (`TableGeneration/RecursiveCost/PTP/**`); they are built by naming them
+(58 modules, 6712 jobs). They also carried the old negation cost, found 2026-11-07 when the PhaseTripleProduct harness could not load `PTP.Census`:
+
+* `PTP/Census.lean`: `opRes`'s negate record and `nodeCensus` are the incrementer's (`x = C`, `toffoli = 32 C`, no CNOTs), and the node-census
+  closed forms follow (`R.x = 3 (A (2C - 6) + N C)`, `R.cnot = 3 (A (5C - 7))`, `R.toffoli = 3 (A (2C - 3) + N (32 C)) + ...`). They now agree
+  with ForShor's `nodeCensus` (`PhaseTripleProduct/Statement.lean`).
+* `PTP/CensusFull.lean`, `PTP/ExactRecursion.lean`: the CNOT-with-extension count is over additions only (a negation has no CNOTs), as in ForShor's `ptpCnotFullD`.
+* `PTP/Asymptotic.lean`: the per-level linear coefficient is `27 A + 99 N + 6` (a negation is 3 + 96 gates per bit of width, it was 30), the
+  `+ 6 N` term kept so the statement downstream keeps its shape.
+
+All 58 modules build; no theorem statement other than those was changed. `ptpCleanAnc` and its bounds (`<= C + 1`) are unchanged: they remain valid upper bounds.
+
 Not rerun on this pin yet: `check_mathlib_confinement.py`, the verifier hardening / preflight / archive / deadline / promote
 tests, `check_ptp_layers.py`, `PTPAxiomCheck.lean`, `ref_pp_2048.json` / `ref_ptp_2048.json`, the fault policies. Every
 policy's Lean evidence is bound to the pin it ran at, so all earlier evidence (pin `6d55ad9`) no longer counts for the epoch.
