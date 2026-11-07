@@ -65,7 +65,8 @@ def _lean_peak_local(lean_peak: Any) -> bool:
 def peak_label(lean_peak: Any = False) -> str:
     if not lean_peak:
         return _PEAK_LABEL_HEAD + "not Lean-evaluated on this policy)"
-    return _PEAK_LABEL_HEAD + "Lean-evaluated on this policy" + ("; kernel-checked on a developer machine only; " if _lean_peak_local(lean_peak) else "; ") + SWAP003 + ")"
+    # at most 200 characters (the contract's limit): the full statement is in the rule
+    return _PEAK_LABEL_HEAD + "Lean-evaluated on this policy" + (", on a developer machine only; " if _lean_peak_local(lean_peak) else "; theorems ") + "on an unmerged ForShor branch)"
 
 
 def peak_rule(lean_peak: Any = False) -> str:
