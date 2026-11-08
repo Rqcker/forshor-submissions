@@ -32,7 +32,7 @@ The epoch model carries `negation: "incrementer"` (no contract change). That lab
 
 At w = 8 / 9 / 2048 the first row gives X / CNOT / Toffoli of 37 / 114 / 68, 46 / 148 / 72 and 10237 / 34794 / 24548, and `scratch` at 2048 gives
 6140 / 10233 / 4093 with 2049 clean qubits: ForShor's `negateChargeAt` examples (`Emit/Json/Common.lean`), asserted in
-`engine/tests/test_swap001.py`. The mapping lives in `epoch.NEGATION_OF`. The ForShor pin is the merge commit of PR #79, written `eb00c5adc72832469a5f223fbec6c8b75745d2dd` in
+`engine/tests/test_swap001.py`. The mapping lives in `epoch.NEGATION_OF`. The ForShor pin is the merge commit of PR #80 (on top of PR #79's `eb00c5adc72832469a5f223fbec6c8b75745d2dd`), `21e129aeefc0fd1bbb8fa63402f5799af2490788`, written in
 text until it exists.
 
 The qubit text of the full board's peak (`mapping.peak_label`, `mapping.peak_rule`) is a function of the per-row flag `leanPeak` (default False:
@@ -41,7 +41,7 @@ PhaseTripleProduct: six board rows (ForShor main, `Peak.Board.Row<id>.peak_oneQu
 engine's "formula, not Lean-proved" qubit label and rule (`mapping.PTP_LEAN_LABEL`, `mapping.ptp_lean_rule`: Q equals ForShor's upper bound
 `ptpPeakQubits`, a bound on an existential circuit). PhaseProduct: nine policies (shard S7: `Shor.QubitCount.PolicyNumeralsBoard.Row<id>Exact.balanced_exact_oneQubit`,
 Q = 4095 + 8795 + N), keyed by (row id, ladder) because row 6f7d25984ff8 re-optimises per delta; the flag is a dict (`module`, `n`, `ci`) and the label/rule
-say the theorems are on ForShor branch swap003 (not merged into main yet) and whether ForShor's CI will build the module (`ci`) or only a developer machine
+say the theorems are in ForShor main at the pin and whether ForShor's CI builds the module (`ci`) or only a developer machine
 checked it (13 to 15 GB; library `PolicyNumeralsBoardExactHeavy`). Only the qubit text changes.
 
 ## Evidence rules

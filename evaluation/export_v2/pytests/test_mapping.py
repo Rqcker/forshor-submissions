@@ -69,14 +69,14 @@ def test_the_peak_text_says_the_truth_about_the_negation_and_names_the_placehold
                  "17w - 22", "17w - 5", "5w - 3", "5w + 1", "exact for w >= 7", mapping.PIN):
         assert fact in rule, fact
     # the placeholder until PR #79's merge commit exists; a one-line sed then fills in the 40-hex SHA and this still holds
-    assert mapping.PIN == "eb00c5adc72832469a5f223fbec6c8b75745d2dd" or re.fullmatch(r"[0-9a-f]{40}", mapping.PIN)
+    assert mapping.PIN == "21e129aeefc0fd1bbb8fa63402f5799af2490788" or re.fullmatch(r"[0-9a-f]{40}", mapping.PIN)
 
 
 def test_the_label_depends_on_the_per_row_lean_peak_flag_and_defaults_to_not_evaluated():
     assert (mapping.PEAK_LABEL, mapping.PEAK_RULE) == (mapping.peak_label(False), mapping.peak_rule(False))
     assert mapping.peak_label().endswith("not Lean-evaluated on this policy)")
     assert "Lean has not evaluated it on this policy" in mapping.peak_rule()
-    assert "not Lean-evaluated" not in mapping.peak_label(True) and "Lean-evaluated on this policy; theorems on an unmerged ForShor branch)" in mapping.peak_label(True)
+    assert "not Lean-evaluated" not in mapping.peak_label(True) and mapping.peak_label(True).endswith("Lean-evaluated on this policy; kernel-checked, built in ForShor CI)")
     assert "has not evaluated" not in mapping.peak_rule(True) and "kernel has evaluated" in mapping.peak_rule(True)
     case = GOLDEN["cases"]["full_submission"]
     kw = dict(epoch=GOLDEN["epoch"], row_id=case["rowId"], board=case["board"], delta=case["delta"], verification=case["panel"]["verification"])
@@ -185,7 +185,7 @@ def test_a_pp_full_run_label_says_whether_ci_will_build_the_lean_module_and_that
     for ev in (ci, local):
         rule, label = mapping.peak_rule(ev), mapping.peak_label(ev)
         assert ev["module"] in rule and f"4095 + 8795 + {ev['n']}" in rule and "balanced_exact_oneQubit" in rule
-        assert "swap003" in rule and "unmerged ForShor branch" in label and len(label) <= 200 and len(rule) <= 2000 and "does not contain them yet" in rule and "has not evaluated" not in rule
+        assert "swap003" not in rule + label and "unmerged" not in rule + label and "main branch at the pin" in rule and len(label) <= 200 and len(rule) <= 2000 and "has not evaluated" not in rule
     assert "developer machine only" in mapping.peak_label(local) and "developer machine only" not in mapping.peak_label(ci)
     assert "not built by ForShor's CI" in mapping.peak_rule(local) and "13 to 15 GB" in mapping.peak_rule(local)
     assert "PolicyNumeralsBoardExact)" in mapping.peak_rule(ci) and "13 to 15 GB" not in mapping.peak_rule(ci)

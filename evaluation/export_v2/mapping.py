@@ -37,7 +37,7 @@ def _table_step(x: Raw) -> Raw:
 #
 # The text depends on ONE per-row fact, `leanPeak`: has Lean's kernel evaluated the peak for THIS policy (same method, same width rule as the
 # epoch's)? It defaults to False, so a row keeps "Lean has not evaluated it on this policy" unless epoch.LEAN_PEAK lists it.
-PIN = "eb00c5adc72832469a5f223fbec6c8b75745d2dd"   # the ForShor merge commit of PR #79 (a later step fills it in)
+PIN = "21e129aeefc0fd1bbb8fa63402f5799af2490788"   # the ForShor merge commit of PR #80 (on top of #79's eb00c5a): the epoch's pin
 _PEAK_LABEL_HEAD = "live-qubit peak of the balanced order-finding circuit (a port of ForShor's orderFindingQubitsU, "
 _PEAK_RULE_HEAD = (
     "The registers (exponent, data with its carry bit, work, scratch) and the flag, 12,890 qubits at n = 2048, plus the largest number of "
@@ -52,10 +52,9 @@ _PEAK_RULE_TAIL = " It is not the static layout allocation, which is kept in lay
 
 # `leanPeak` is False (the port's number, not Lean-evaluated) or evidence for one PhaseProduct policy: True (the generic wording) or a dict
 # {"module": "Row<id>Exact", "n": N, "ci": bool}: the kernel-checked theorem `Shor.QubitCount.PolicyNumeralsBoard.<module>.balanced_exact_oneQubit`
-# (ForShor branch swap003, commit b6fab89 on the pin, NOT yet merged into ForShor main) says the balanced peak adds N qubits to the registers,
-# and `ci` says whether ForShor's CI will build that module (library PolicyNumeralsBoardExact, at most 12.1 GB) or only a developer machine did
-# (library PolicyNumeralsBoardExactHeavy, 13 to 15 GB, not in CI). The label differs only by "checked on a developer machine only".
-SWAP003 = "ForShor branch swap003 (commit b6fab89, based on the pin), not yet merged"
+# (in ForShor main at the pin) says the balanced peak adds N qubits to the registers, and `ci` says whether ForShor's CI builds that module
+# (library PolicyNumeralsBoardExact, at most 12.1 GB) or only a developer machine checked it (library PolicyNumeralsBoardExactHeavy, 13 to 15 GB,
+# not in CI). The label differs only by that split.
 
 
 def _lean_peak_local(lean_peak: Any) -> bool:
@@ -66,7 +65,7 @@ def peak_label(lean_peak: Any = False) -> str:
     if not lean_peak:
         return _PEAK_LABEL_HEAD + "not Lean-evaluated on this policy)"
     # at most 200 characters (the contract's limit): the full statement is in the rule
-    return _PEAK_LABEL_HEAD + "Lean-evaluated on this policy" + (", on a developer machine only; " if _lean_peak_local(lean_peak) else "; theorems ") + "on an unmerged ForShor branch)"
+    return _PEAK_LABEL_HEAD + "Lean-evaluated on this policy; " + ("kernel-checked on a developer machine only, not in ForShor CI)" if _lean_peak_local(lean_peak) else "kernel-checked, built in ForShor CI)")
 
 
 def peak_rule(lean_peak: Any = False) -> str:
@@ -77,8 +76,8 @@ def peak_rule(lean_peak: Any = False) -> str:
                     + (f"the theorem Shor.QubitCount.PolicyNumeralsBoard.{lean_peak['module']}.balanced_exact_oneQubit (ReferenceBalancedPeakIs: exact width "
                        f"rule, the negation method oneQubit) gives {lean_peak['n']} extra qubits, and 4095 + 8795 + {lean_peak['n']} is this Q (4095 exponent "
                        "qubits; the registers above with 4096 exponent qubits are one more). " if isinstance(lean_peak, dict) else "")
-                    + f"The theorems are on {SWAP003}; ForShor's main branch does not contain them yet. "
-                    + ("Once merged, ForShor's CI builds this module (library PolicyNumeralsBoardExact)." if not _lean_peak_local(lean_peak) else
+                    + "The theorem is in ForShor's main branch at the pin. "
+                    + ("ForShor's CI builds this module (library PolicyNumeralsBoardExact)." if not _lean_peak_local(lean_peak) else
                        "It was kernel-checked on a developer machine only: the module needs 13 to 15 GB, lives in the library PolicyNumeralsBoardExactHeavy "
                        "and is not built by ForShor's CI."))
     return _PEAK_RULE_HEAD + evidence + _PEAK_RULE_TAIL

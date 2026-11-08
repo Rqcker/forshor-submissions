@@ -3,7 +3,7 @@
 Run from evaluation/: python -m pytest export_v2/pytests/test_ptp_q_equals_lean.py --runslow -q
 
 ForShor's `ptp_peak_qubits_exact` (PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row<id>.lean, kernel-checked at ForShor
-`eb00c5adc72832469a5f223fbec6c8b75745d2dd`) bounds the framework `qubitCount` of a circuit following each board policy by
+`eb00c5adc72832469a5f223fbec6c8b75745d2dd`, unchanged in the epoch pin 21e129aeefc0fd1bbb8fa63402f5799af2490788) bounds the framework `qubitCount` of a circuit following each board policy by
 `3n + ptpWsTD + ptpCleanAncD`. The engine's live-qubit peak adds the clean scratch to the named qubits in the same way
 (`policy_peak.chain_peak_extra`, three operands), so the two must agree row by row. The numbers below are copied from the
 kernel-checked theorems `peak_oneQubit_exact` of the six board rows (no board policy negates, so `scratch` gives the same).

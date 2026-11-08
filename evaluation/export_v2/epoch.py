@@ -38,7 +38,7 @@ NEGATION_OF = {"gidney_circuit": "incrementer", "legacy": "scratch"}
 #: Board rows whose Q is, or equals, a quantity Lean's kernel has checked. A row listed here gets `leanPeak` and `build_epoch_input` refuses to
 #: export it unless the engine's Q equals the number, so a label never claims Lean evidence the number does not have.
 #:  "ptp": row id -> the kernel-checked qubit number at n = 2048, exact widths, ForShor `oneQubit`: the theorems
-#:         `Peak.Board.Row<id>.peak_oneQubit_exact` (PhaseTripleProduct/Proofs/Peak/BoardNumerals/, in ForShor main eb00c5adc72832469a5f223fbec6c8b75745d2dd;
+#:         `Peak.Board.Row<id>.peak_oneQubit_exact` (PhaseTripleProduct/Proofs/Peak/BoardNumerals/, in ForShor main at the pin;
 #:         both negation methods give the same number: no table negates).
 #:  "pp":  (row id, the policy's 2048 ladder) -> the full order-finding run's Q, the Lean module and whether ForShor's CI builds it. From shard S7: the
 #:         theorems `Shor.QubitCount.PolicyNumeralsBoard.<module>.balanced_exact_oneQubit` (QubitCount/Proofs/PolicyNumeralsBoard/<module>.lean) say the

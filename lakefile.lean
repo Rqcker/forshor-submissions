@@ -33,14 +33,14 @@ the name from the manifest, not from the remote lakefile. Renaming is cosmetic a
 costs the build cache (D3).
 
 Pinned to an exact commit rather than `main`: a ForShor rename or module move then
-cannot break this build until the pin is bumped on purpose. eb00c5a is the merge
-commit of PR #79 on ForShor (negation as complement plus a one-clean-ancilla incrementer, with Lean's real counts;
-branch `swap/negation-incrementer`; its tree equals the PR head 2b7aaf7 on which CI passed), which descends from 6d55ad9, the
+cannot break this build until the pin is bumped on purpose. 21e129a is the merge
+commit of PR #80 on ForShor (the board PhaseProduct policies and their kernel-checked order-finding peaks, PTP page text), on top of eb00c5a, the merge
+commit of PR #79 (negation as complement plus a one-clean-ancilla incrementer, with Lean's real counts); each merge commit's tree equals its PR head on which CI passed, which descends from 6d55ad9, the
 `qubitCount` branch tip of 2026-11-04 (qubit count, unconditional balanced split, module
 reorganisation; Gauss-Jordan `@[csimp]` restored ahead of its compiled callers).
 -/
 require «Fast_multiplication» from git
-  "https://github.com/VerifiedQC/ForShor.git" @ "eb00c5adc72832469a5f223fbec6c8b75745d2dd"
+  "https://github.com/VerifiedQC/ForShor.git" @ "21e129aeefc0fd1bbb8fa63402f5799af2490788"
 
 @[default_target]
 lean_lib TableGeneration where
