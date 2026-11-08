@@ -30,6 +30,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -88,6 +89,14 @@ def policy_from_document(eng, doc: Dict[str, Any]):
                                                        "operations": b["ops"]})) for b in doc["bands"]))
 
 
+def policy_from_ptp_document(eng, doc: Dict[str, Any]):
+    """The PhaseTripleProduct policy ForShor's PTP executable printed, as the engine's policy (same spelling of points and operations as the PhaseProduct document)."""
+    T = eng.tables
+    return T.Policy(mode=T.TRIPLE, name="forshor-printed-ptp", bands=tuple(
+        T.Band(int(b["threshold"]), T.Table.from_json({"mode": T.TRIPLE, "k": int(b["k"]), "point_order": [_point(p) for p in b["points"]],
+                                                       "operations": b["ops"]})) for b in doc["bands"]))
+
+
 def forshor_record(eng, P, doc: Dict[str, Any], pin: str) -> Dict[str, Any]:
     """`verification.forshorPolicy` for a PhaseProduct policy, from ForShor's printed document: its bands are the submitted bands and its own IR
     prices to the same single-run T as the policy does (the site's two agreement checks). Raises Refused when either fails."""
@@ -108,24 +117,44 @@ def forshor_record(eng, P, doc: Dict[str, Any], pin: str) -> Dict[str, Any]:
     return {"verified": True, "bandsAgree": True, "irPriceAgrees": True, "claim": FORSHOR_CLAIM, "forshorCommit": pin}
 
 
-def forshor_build(forshor_tree: Path, template: str, workdir: Path, timeout: int = 7200) -> Dict[str, Any]:
-    """The Lean file as ForShor's `PolicyTemplate`, in a disposable copy of the checkout: ForShor's lexical gate, its build, then the document it prints
-    (`lake exe forshor_policy_submission --balanced`). Raises `Refused` at stage `lexical` or `forshor`; the file is only ever compiled, never run by us."""
+#: What ForShor builds for each kind of Lean submission: the file's name in ForShor's tree, the targets, the executable and its arguments.
+#: PhaseProduct: `PolicyTemplate.lean`, document printed under `--balanced`. PhaseTripleProduct: `PTPPolicyTemplate.lean`, no IR.
+FORSHOR_KINDS = {
+    "pp": ("PolicyTemplate.lean", ["PolicySubmission", "forshor_policy_submission"], ["forshor_policy_submission", "--balanced"]),
+    "ptp": ("PTPPolicyTemplate.lean", ["PTPPolicySubmission", "forshor_ptp_policy_submission"], ["forshor_ptp_policy_submission"]),
+}
+
+
+def lean_kind(lean_text: str) -> str:
+    """`"pp"` or `"ptp"`: the board a submitted `Policy.lean` is for, from the namespace it declares (exactly one of the two)."""
+    pp = re.search(r"^\s*namespace\s+PolicySubmission\b", lean_text, re.M)
+    ptp = re.search(r"^\s*namespace\s+PTPPolicySubmission\b", lean_text, re.M)
+    if bool(pp) == bool(ptp):
+        raise Refused("format", "the Lean file must declare exactly one of `namespace PolicySubmission` (PhaseProduct) and `namespace PTPPolicySubmission` (PhaseTripleProduct)")
+    return "ptp" if ptp else "pp"
+
+
+def forshor_build(forshor_tree: Path, template: str, workdir: Path, timeout: int = 7200, kind: str = "pp") -> Dict[str, Any]:
+    """The Lean file as ForShor's template (`kind`: `pp` or `ptp`), in a disposable copy of the checkout: ForShor's lexical gate, its build, then the document its
+    executable prints. Raises `Refused` at stage `lexical` or `forshor`; the file is only ever compiled, never run by us."""
+    filename, targets, exe = FORSHOR_KINDS[kind]
     tree = workdir / "forshor-tree"
     if tree.exists():
         shutil.rmtree(tree)
     subprocess.run((["cp", "-Rc"] if sys.platform == "darwin" else ["cp", "-a"]) + [str(forshor_tree), str(tree)], check=True)
-    target = tree / "ForShor" / "ShorVerification" / "Submission" / "PolicyTemplate.lean"
+    target = tree / "ForShor" / "ShorVerification" / "Submission" / filename
+    if not target.parent.is_dir() or (kind == "ptp" and not (target.parent / "PTPPolicyCheck.lean").exists()):
+        raise RuntimeError(f"the ForShor checkout has no {'PhaseTripleProduct' if kind == 'ptp' else 'policy'} submission files (it needs ForShor's PTPPolicyCheck and PTPPolicyMain)")
     target.write_text(template)
     gate = subprocess.run(["bash", "scripts/check_template_lexical.sh", str(target)], cwd=tree, capture_output=True, text=True)
     if gate.returncode != 0:
         raise Refused("lexical", "ForShor's lexical gate refused the file: " + (gate.stdout + gate.stderr)[-500:].strip())
     log = workdir / "forshor.log"
     with open(log, "w") as out:
-        built = subprocess.run(["lake", "build", "PolicySubmission", "forshor_policy_submission"], cwd=tree, stdout=out, stderr=subprocess.STDOUT, timeout=timeout)
+        built = subprocess.run(["lake", "build", *targets], cwd=tree, stdout=out, stderr=subprocess.STDOUT, timeout=timeout)
     if built.returncode != 0:
         raise Refused("forshor", "ForShor's build of the policy template failed: " + log.read_text()[-500:])
-    printed = subprocess.run(["lake", "exe", "forshor_policy_submission", "--balanced"], cwd=tree, capture_output=True, text=True, timeout=timeout)
+    printed = subprocess.run(["lake", "exe", *exe], cwd=tree, capture_output=True, text=True, timeout=timeout)
     if printed.returncode != 0:
         raise Refused("forshor", "ForShor's check refused the policy: " + (printed.stderr or printed.stdout)[-500:])
     return json.loads(printed.stdout)
@@ -138,20 +167,25 @@ def forshor_check(eng, P, forshor_tree: Path, workdir: Path, pin: str, timeout: 
 
 
 def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir: Path, timeout: int = 7200):
-    """A submitted `Policy.lean` (ForShor's PolicyTemplate format) to (the policy as site policy JSON, ForShor's printed document). ForShor builds the
-    file, so the document is the policy it kernel-checked; the boards then check the same tables in the STO mirror and price them. Only exact widths and
-    the default negation are priced, so a file that asks for anything else is refused rather than priced as something it is not."""
+    """A submitted `Policy.lean` (ForShor's PolicyTemplate format for PhaseProduct, its PTPPolicyTemplate format for PhaseTripleProduct, told apart by the namespace it
+    declares) to (the policy as site policy JSON, ForShor's printed document). ForShor builds the file, so the document is the policy it kernel-checked; the boards then
+    check the same tables in the STO mirror and price them. Only exact widths and the default negation are priced, so a file that asks for anything else is refused
+    rather than priced as something it is not."""
     if len(lean_text.encode()) > MAX_LEAN_BYTES:
         raise Refused("format", f"the Lean file is larger than {MAX_LEAN_BYTES} bytes")
+    kind = lean_kind(lean_text)
     if forshor_tree is None:
         raise RuntimeError("a Lean policy needs ForShor's build, and no ForShor checkout was given (--forshor-tree)")
-    doc = forshor_build(forshor_tree, lean_text, workdir, timeout)
+    doc = forshor_build(forshor_tree, lean_text, workdir, timeout, kind=kind)
     if doc.get("negation", "oneQubit") != "oneQubit":
         raise Refused("format", f"the policy asks for negation {doc.get('negation')!r}; the boards price oneQubit only")
-    from site_engine import fullalg as fa
-    if fa.doc_width_rule(doc) != "exact":
-        raise Refused("format", "the policy does not use exact widths; the boards price at exact widths")
-    P = policy_from_document(eng, doc)
+    if kind == "pp":
+        from site_engine import fullalg as fa
+        if fa.doc_width_rule(doc) != "exact":
+            raise Refused("format", "the policy does not use exact widths; the boards price at exact widths")
+        P = policy_from_document(eng, doc)
+    else:
+        P = policy_from_ptp_document(eng, doc)
     if not P.bands or any(not 2 <= b.table.k <= MAX_FORSHOR_K for b in P.bands):
         raise Refused("format", f"every band takes 2 <= k <= {MAX_FORSHOR_K}")
     return P.to_json(), doc
@@ -217,7 +251,9 @@ def run_intake(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str
 
     forshor = None
     P = eng.tables.Policy.from_json(policy_json)
-    if printed is not None:
+    if printed is not None and str(printed.get("schema", "")).startswith("forshor.ptp-"):
+        log("  ForShor kernel-checked the PhaseTripleProduct policy (it has no IR, so the row carries no ForShor record)")
+    elif printed is not None:
         forshor = forshor_record(eng, P, printed, model["forshor"]["pin"])
         log("  ForShor policy-verified")
     elif forshor_tree and P.mode == eng.tables.PAIR and max(b.table.k for b in P.bands) <= MAX_FORSHOR_K:

@@ -192,9 +192,9 @@ def test_a_lean_policy_becomes_the_policy_ForShor_printed_for_it(monkeypatch, tm
     eng = engine.load()
     doc = json.loads(DROPIN.read_text())
     seen = {}
-    monkeypatch.setattr(intake_v2, "forshor_build", lambda tree, text, workdir, timeout=7200: seen.update(text=text, tree=tree) or doc)
-    policy_json, printed = intake_v2.policy_from_lean(eng, "-- the submitted file", tmp_path / "forshor", tmp_path / "w")
-    assert seen["text"] == "-- the submitted file", "the submitted bytes are what ForShor builds"
+    monkeypatch.setattr(intake_v2, "forshor_build", lambda tree, text, workdir, timeout=7200, kind="pp": seen.update(text=text, tree=tree, kind=kind) or doc)
+    policy_json, printed = intake_v2.policy_from_lean(eng, "namespace PolicySubmission\n-- the submitted file", tmp_path / "forshor", tmp_path / "w")
+    assert seen["text"].endswith("-- the submitted file") and seen["kind"] == "pp", "the submitted bytes are what ForShor builds"
     assert printed is doc
     assert [(b["threshold"], b["k"]) for b in policy_json["bands"]] == [(int(b["threshold"]), int(b["k"])) for b in doc["bands"]]
     assert policy_json["mode"] == eng.tables.PAIR
@@ -206,11 +206,11 @@ def test_a_lean_policy_that_asks_for_something_the_boards_do_not_price_is_refuse
     base = json.loads(DROPIN.read_text())
     monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **k: dict(base, negation="scratch"))
     with pytest.raises(intake_v2.Refused, match="oneQubit only"):
-        intake_v2.policy_from_lean(eng, "x", tmp_path, tmp_path)
+        intake_v2.policy_from_lean(eng, "namespace PolicySubmission", tmp_path, tmp_path)
     with pytest.raises(intake_v2.Refused, match="larger than"):
         intake_v2.policy_from_lean(eng, "x" * (intake_v2.MAX_LEAN_BYTES + 1), tmp_path, tmp_path)
     with pytest.raises(RuntimeError, match="--forshor-tree"):
-        intake_v2.policy_from_lean(eng, "x", None, tmp_path)
+        intake_v2.policy_from_lean(eng, "namespace PolicySubmission", None, tmp_path)
 
 
 def test_the_lexical_gate_refuses_before_anything_is_built(tmp_path):
@@ -245,3 +245,54 @@ def test_the_command_line_takes_exactly_one_of_the_two_inputs(tmp_path):
     f.write_text("{}")
     with pytest.raises(SystemExit):
         intake_v2.main(["--policy", str(f), "--lean-policy", str(f), "--login", "u", "--pull", "1", "--tree", str(tmp_path), "--publisher-url", "http://x"])
+
+
+# ---- a PhaseTripleProduct Lean submission (namespace PTPPolicySubmission, ForShor's PTPPolicyTemplate format)
+PTP_PRINTED = EVAL / "export_v2" / "pytests" / "data" / "ptp_printed_k4.json"     # a real document ForShor's forshor_ptp_policy_submission printed
+PTP_ARCHIVE = EVAL / "export_v2" / "evidence-archive" / "7a11b2b8b6d68718"
+PTP_DIGEST = "265a0f53acbcdd4f"                                                    # the board's PhaseTripleProduct k = 4 baseline, accepted at the pins
+
+
+def test_the_board_is_told_from_the_namespace_the_file_declares():
+    assert intake_v2.lean_kind("import X\nnamespace PolicySubmission\n") == "pp"
+    assert intake_v2.lean_kind("import X\nnamespace PTPPolicySubmission\n") == "ptp"
+    for bad in ("def x := 1\n", "namespace PolicySubmission\nnamespace PTPPolicySubmission\n"):
+        with pytest.raises(intake_v2.Refused, match="exactly one"):
+            intake_v2.lean_kind(bad)
+
+
+def test_a_ptp_lean_policy_becomes_the_policy_ForShor_printed_for_it(monkeypatch, tmp_path):
+    from export_v2 import engine
+    eng = engine.load()
+    doc = json.loads(PTP_PRINTED.read_text())
+    seen = {}
+    monkeypatch.setattr(intake_v2, "forshor_build", lambda tree, text, workdir, timeout=7200, kind="pp": seen.update(kind=kind) or doc)
+    policy_json, printed = intake_v2.policy_from_lean(eng, "namespace PTPPolicySubmission\n", tmp_path / "forshor", tmp_path / "w")
+    assert seen["kind"] == "ptp" and printed is doc
+    assert policy_json["mode"] == eng.tables.TRIPLE
+    assert [(b["threshold"], b["k"]) for b in policy_json["bands"]] == [(int(b["threshold"]), int(b["k"])) for b in doc["bands"]]
+    archived = json.loads((PTP_ARCHIVE / f"{PTP_DIGEST}.policy.json").read_text())
+    from export_v2.canon import policy_digest
+    assert policy_digest(policy_json) == policy_digest(archived), "the printed tables are the board's archived policy, digest for digest"
+
+
+def test_a_ptp_lean_submission_is_published_on_the_ptp_board_without_a_ForShor_record(monkeypatch, tmp_path, model):
+    calls = []
+    archived = json.loads((PTP_ARCHIVE / f"{PTP_DIGEST}.policy.json").read_text())
+
+    def mirror(policy_json, board, tree, out_dir, **kw):
+        assert board == "ptp" and kw.get("fast") is True
+        calls.append(("mirror", board))
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for ext in ("policy", "record", "evidence"):
+            shutil.copy(PTP_ARCHIVE / f"{PTP_DIGEST}.{ext}.json", out_dir / f"{PTP_DIGEST}.{ext}.json")
+        return json.loads((PTP_ARCHIVE / f"{PTP_DIGEST}.evidence.json").read_text())
+
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
+    monkeypatch.setattr(intake_v2, "policy_from_lean", lambda eng, text, tree, workdir, timeout=7200: (archived, {"schema": "forshor.ptp-policy-submission/v1"}))
+    monkeypatch.setattr(intake_v2, "forshor_record", lambda *a, **k: pytest.fail("a PhaseTripleProduct policy has no IR, so no ForShor record is made"))
+    result = intake_v2.run_intake(None, lean_policy="namespace PTPPolicySubmission\n", login="tester", pull=12, url="http://x", token="t", tree=tmp_path,
+                                  workdir=tmp_path / "w", forshor_tree=tmp_path / "f", run_mirror_fn=mirror, log=lambda s: None)
+    assert result["policy"]["mode"] == "PhaseTripleProduct" and result["policy"]["forshorPolicy"] is False and result["policy"]["stoMirror"] is True
+    req = [p for u, p in calls if isinstance(u, str) and u.endswith("/v2/publish")][0]
+    assert {p["board"] for p in req["priced"]} == {"ptp"}
