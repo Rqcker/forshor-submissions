@@ -72,6 +72,30 @@ class WorkingFiles(unittest.TestCase):
         with self.assertRaisesRegex(cli.UserError, 'symlink'):
             cli.validate_changes(self.root, self.base)
 
+    def test_a_policy_file_is_the_whole_submission_and_helpers_are_refused(self):
+        self.assertFalse(cli.policy_format(self.root), 'the older stub is not a policy file')
+        (self.root / cli.POLICY).write_text('import ForShor.X\nnamespace PolicySubmission\ndef policy := 1\nend PolicySubmission\n')
+        self.assertTrue(cli.policy_format(self.root))
+        self.assertEqual(cli.validate_changes(self.root, self.base), [cli.POLICY])
+        self.assertEqual(cli.source_files(self.root), [self.root / cli.POLICY])
+        helper = self.root / cli.HELPERS / 'Proof.lean'
+        helper.parent.mkdir(parents=True)
+        helper.write_text('a helper\n')
+        with self.assertRaisesRegex(cli.UserError, 'Only .*Policy.lean may change in a policy submission'):
+            cli.validate_changes(self.root, self.base)
+        self.assertEqual(cli.source_files(self.root), [self.root / cli.POLICY], 'a helper is never copied into the checker')
+        helper.unlink()
+        (self.root / 'protected.lean').write_text('changed\n')
+        with self.assertRaisesRegex(cli.UserError, 'protected.lean'):
+            cli.validate_changes(self.root, self.base)
+
+    def test_the_ptp_namespace_is_a_policy_file_too_and_a_symlink_is_not(self):
+        (self.root / cli.POLICY).write_text('namespace PTPPolicySubmission\nend PTPPolicySubmission\n')
+        self.assertTrue(cli.policy_format(self.root))
+        (self.root / cli.POLICY).unlink()
+        (self.root / cli.POLICY).symlink_to(self.root / 'protected.lean')
+        self.assertFalse(cli.policy_format(self.root))
+
     def test_checker_cache_cannot_replace_an_unrecognized_directory(self):
         cache = cli.storage(self.root) / 'checker'
         cache.mkdir()

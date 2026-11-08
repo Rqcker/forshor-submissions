@@ -58,3 +58,19 @@ a PhaseProduct k = 3 file in 4 minutes; a PhaseProduct k = 8, 4, 3 file builds i
 
 * A PhaseTripleProduct row carries no `forshorPolicy` record: ForShor has no IR for it, so there is no agreement tier. ForShor's kernel check is still a gate (a failed build is a refusal).
 * `scripts/verifier.py` allows `Policy.lean` and, through `HELPER_PREFIX`, helper files under `TableGeneration/Submission/Policy/`; if only `Policy.lean` is to be accepted, the new workflow must refuse the rest.
+
+## How the pieces connect (`./forshor check`, the pull-request job, the publish job)
+
+A policy submission is checked by `scripts/verifier.py`, unchanged for the older table-generator submissions: when `TableGeneration/Submission/Policy.lean` declares `namespace PolicySubmission` or
+`namespace PTPPolicySubmission` it hands over to `scripts/policy_verifier.py`, which refuses any changed file other than `Policy.lean`, runs `evaluation/intake_v2.py --no-publish` and writes the
+`table-generation-submission-result.json` (`status`, `phase: "full"`, the checks) and `verification.json` that `./forshor check` and the workflow artifacts already carry.
+
+| Step | Who runs it | What |
+|---|---|---|
+| `./forshor check` | the participant, on their machine | `scripts/verifier.py` from a checkout of the base commit with the submitted file copied in. `./forshor setup` (and the first `check`) clone and build the two Lean trees named in `evaluation/policy-trees.json` and a Python environment for the engine, under `.git/forshor`. Needs no publisher, no token, no pull request. |
+| pull-request job (`table-generation-submission.yml`) | CI, no secrets | the same `scripts/verifier.py` with `FORSHOR_TREE`, `STO_TREE`, `ENGINE_PYTHON` set (and `TABLE_GEN_LOGIN` the PR author); upload `verification.json` with the other artifacts. |
+| publish job (`publish-results.yml`, trusted) | CI, with the publisher identity | for a result whose `kind` is `policy`: `python evaluation/intake_v2.py --publish-from verification.json --login "$PR_AUTHOR" --pull "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --run-id "$RUN_ID" --publisher-url "$PUBLISHER_URL" [--archive ...]` with `PUBLISHER_TOKEN`. No Lean; about 5 seconds; everything in the verification is checked again. |
+
+Not done: the publish job's branch for `kind: policy` in the workflow YAML and in `scripts/ci/publication.js`, and `./forshor status`/`watch` following a policy publication (they read the older publication record). The STO fork is a private repository, so a participant's `./forshor setup`
+can clone it only if they have access to it (or it is made available).
+

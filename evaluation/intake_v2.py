@@ -153,7 +153,9 @@ def forshor_build(forshor_tree: Path, template: str, workdir: Path, timeout: int
     with open(log, "w") as out:
         built = subprocess.run(["lake", "build", *targets], cwd=tree, stdout=out, stderr=subprocess.STDOUT, timeout=timeout)
     if built.returncode != 0:
-        raise Refused("forshor", "ForShor's build of the policy template failed: " + log.read_text()[-500:])
+        text = log.read_text()
+        errors = [line for line in text.splitlines() if "error" in line.lower()]          # Lean's own error lines, not the tail of a long build log
+        raise Refused("forshor", "ForShor's build of the policy template failed: " + ("\n".join(errors[:6]) or text[-500:])[:900])
     printed = subprocess.run(["lake", "exe", *exe], cwd=tree, capture_output=True, text=True, timeout=timeout)
     if printed.returncode != 0:
         raise Refused("forshor", "ForShor's check refused the policy: " + (printed.stderr or printed.stdout)[-500:])

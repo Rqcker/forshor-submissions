@@ -1669,6 +1669,11 @@ def main() -> int:
         result = verify_axiom_dependencies(repo, out_dir)
         print(f"{result['status']}: {result['details']}")
         return 0 if result["status"] == "success" else 1
+    # A submitted `Policy.lean` that declares a ForShor policy namespace is the policy format: it has its own checks (scripts/policy_verifier.py), run from
+    # this same trusted checkout. Anything else is the older table-generator submission and goes on below, unchanged.
+    import policy_verifier
+    if policy_verifier.applies(repo):
+        return policy_verifier.run(repo, out_dir, get_changed_files=get_changed_files, preflight=args.preflight_only)
     # The preflight runs no subprocesses, so it needs no budget.
     if not args.preflight_only:
         start_deadline()
