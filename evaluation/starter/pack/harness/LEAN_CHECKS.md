@@ -102,11 +102,11 @@ Running a check executes Lean on your machine. For code you do not trust, use a 
 ## The PhaseTripleProduct submission file (ForShor)
 
 A PhaseTripleProduct `Policy.lean` (`namespace PTPPolicySubmission`, `templates/ptp.Policy.lean`) is built by ForShor like the PhaseProduct one, with its own library and
-executable. They are in the ForShor branch `ptp/submission-template` (`21e129a` plus `PTPPolicyTemplate.lean`, `PTPPolicyCheck.lean`, `PTPPolicyMain.lean` and two lakefile entries),
-not in `21e129a`:
+executable. They are in ForShor `main` from `349849e` (PR #83: `PTPPolicyTemplate.lean`, `PTPPolicyCheck.lean`, `PTPPolicyMain.lean` and two lakefile entries),
+not in the pinned `21e129a`, which they change nothing in:
 
 ```bash
-F=/path/to/ForShor            # at that branch, built (lake exe cache get, then lake build)
+F=/path/to/ForShor            # ForShor main at 349849e or later, built (lake exe cache get, then lake build)
 python starter.py template my_ptp_policy.json --out Policy.lean --forshor $F
 cp Policy.lean $F/ForShor/ShorVerification/Submission/PTPPolicyTemplate.lean   # ForShor's name for the file
 cd $F
