@@ -65,21 +65,23 @@ def _acc(out: Dict[str, int], res: Dict[str, int], m: int = 1) -> None:
 
 # ============================================================================ the QFT
 @lru_cache(maxsize=1 << 14)
-def _qft_lean(policy: PhasePolicy, w: int) -> Tuple[int, ...]:
+def _qft_lean(policy: PhasePolicy, w: int, negate: str = cc.DEFAULT_NEGATE) -> Tuple[int, ...]:
     if w < 2:
         return tuple(w if k == "h" else 0 for k in CHANNELS)
     left, right = w // 2, w - w // 2
     out = _zero()
-    _acc(out, PolicyPhaseProduct(policy, left + 1, right + 1).lean_resources())
+    _acc(out, PolicyPhaseProduct(policy, left + 1, right + 1,
+                                 convention=cc.QUALTRAN.with_(negate=negate)).lean_resources())
     out["cnot"] += 3 * (left // 2)                     # RadixReverse(w, left)
     for sub in (left, right):
-        _acc(out, dict(zip(CHANNELS, _qft_lean(policy, sub))))
+        _acc(out, dict(zip(CHANNELS, _qft_lean(policy, sub, negate))))
     return tuple(out[k] for k in CHANNELS)
 
 
-def qft_lean_resources(policy: PhasePolicy, w: int) -> Dict[str, int]:
-    """``LowGate.resources`` of the IR's ``qft`` at width ``w`` under ``policy``."""
-    return dict(zip(CHANNELS, _qft_lean(_norm_policy(policy), int(w))))
+def qft_lean_resources(policy: PhasePolicy, w: int, negate: str = cc.DEFAULT_NEGATE) -> Dict[str, int]:
+    """``LowGate.resources`` of the IR's ``qft`` at width ``w`` under ``policy`` (``negate``: the negation
+    implementation, `cost_conventions.negate_impl` of the policy's ``negation``)."""
+    return dict(zip(CHANNELS, _qft_lean(_norm_policy(policy), int(w), negate)))
 
 
 @attrs.frozen
@@ -109,7 +111,7 @@ class PolicyQFT(Bloq):
         return dict(out)
 
     def lean_resources(self) -> Dict[str, int]:
-        return qft_lean_resources(self.policy, self.w)
+        return qft_lean_resources(self.policy, self.w, self.convention.negate)
 
     def __str__(self) -> str:
         return f"PolicyQFT({self.policy.name}, {self.w})"
@@ -259,12 +261,13 @@ def expand_sites(policy: PhasePolicy, sites: Tuple, doc_id: Optional[int],
     return _items(out)
 
 
-def site_lean_resources(policy: PhasePolicy, site: Tuple[str, int, int]) -> Dict[str, int]:
+def site_lean_resources(policy: PhasePolicy, site: Tuple[str, int, int],
+                        negate: str = cc.DEFAULT_NEGATE) -> Dict[str, int]:
     name, a, b = site
     if name == "qft":
-        return qft_lean_resources(policy, a)
+        return qft_lean_resources(policy, a, negate)
     cls = CPolicyPhaseProduct if name == "cphase_product" else PolicyPhaseProduct
-    return cls(policy, a, b).lean_resources()
+    return cls(policy, a, b, convention=cc.QUALTRAN.with_(negate=negate)).lean_resources()
 
 
 # ============================================================================ the layout
@@ -370,15 +373,16 @@ class PolicyShorCore(Bloq):
     # ---- meaning view
     def lean_resources(self) -> Dict[str, int]:
         """``LowGate.resources`` of the instantiated ``shor`` template (`ir_v1.lowgate_resources` rules:
-        ``AddScaled`` = ``cuccaroModAddResources (width dst)``, ``Negate`` = ``negateResources``)."""
+        ``AddScaled`` = ``cuccaroModAddResources (width dst)``, ``Negate`` = ``negateResources`` under the
+        convention's negation method: ``convention.negate``, i.e. the policy's ``negation``)."""
         out = _zero()
         _acc(out, {"h": self.h, "x": self.x, "cnot": self.cnot, "toffoli": self.toffoli})
         for w, k in self.add_scaled:
             _acc(out, cc.cuccaro_resources(w), k)
         for w, k in self.negate:
-            _acc(out, cc.negate_resources(w), k)
+            _acc(out, cc.negate_resources(w, self.convention.negate), k)
         for site, k in self.sites:
-            _acc(out, site_lean_resources(self.policy, site), k)
+            _acc(out, site_lean_resources(self.policy, site, self.convention.negate), k)
         return out
 
     def layout_qubits(self) -> int:
