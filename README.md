@@ -119,6 +119,8 @@ The original upstream README follows. Its public-repository branch/promotion ins
 
 # Shor Table Optimization
 
+> **Interim fork, not the official repository.** This copy proposes banded PhaseProduct / PhaseTripleProduct policies, a planner and a ForShor bridge on top of upstream `361e81e` (adds files only; not merged upstream). See [`JMC_NOTES.md`](JMC_NOTES.md) for what was added, how to build and check it, and [`JMC_VALIDATION.md`](JMC_VALIDATION.md) for the checks run. Upstream: [VerifiedQC/ShorTableOptimization](https://github.com/VerifiedQC/ShorTableOptimization).
+
 A benchmark for machine-found, machine-checked interpolation tables.
 
 Recursive phase multiplication splits a large multiplication into smaller ones
@@ -157,18 +159,25 @@ python3 scripts/test_verifier_hardening.py                       # scanner canno
 python3 scripts/test_archive_completeness.py                     # admitted files are archived, seconds
 python3 scripts/test_publish_promotion.py                        # promotion may only write what it generates, seconds
 python3 scripts/check_mathlib_confinement.py                     # Mathlib stays out of the contract, seconds
+python3 scripts/test_submission_syntax_gate.py                   # the parse-tree gate holds, seconds
+python3 scripts/verifier.py --out-dir artifacts --axioms-only    # contract theorems still propext-only, needs a built tree
 python3 scripts/verifier.py --out-dir artifacts                  # the full verifier: runs lake build, minutes
 python3 scripts/test_cost_model_lean.py                          # Lean-only cost-model checks: drives Lean, minutes
 ```
 
 The last two need a built Lean tree and are not quick: the full verifier runs
 `lake build` and then elaborates generated Lean files, and the cost-model checks
-drive the Lean oracle. The rest are pure Python over the working tree.
+drive the Lean oracle. `--axioms-only` needs a built tree too, but only
+elaborates two `#print axioms` lines against it. The rest are pure Python over
+the working tree.
 
 Every one of these runs in CI. Submissions are gated by the verifier plus the
-hardening, preflight and archive checks; promotion by the promotion, confinement
-and archive checks; and the Lean cost-model checks run on the ForShor dependency
-bump (`update-forshor.yml`).
+hardening, preflight, archive and parse-tree-gate checks; promotion by the
+promotion, confinement and archive checks together with the axiom audit, which
+runs whenever a pull request or a push touches Lean, the toolchain or the
+dependency pins -- everything that can move the axioms -- so such a change
+cannot loosen the audit unnoticed; and the Lean cost-model checks
+run on the ForShor dependency bump (`update-forshor.yml`).
 
 The template passes preflight. The full verifier rejects it, because it handles
 no benchmark targets yet.
@@ -225,13 +234,27 @@ code. This list is the one copy; `AGENTS.md` points here.
 - compile-time execution and elaborator extension: `#eval`, `run_cmd`,
   `run_meta`, `run_elab`, `initialize`, `macro`, `macro_rules`, `elab`,
   `elab_rules`, `syntax`, `notation`, and the fixity commands;
-- external implementation hooks: `extern`, `implemented_by`;
+- external implementation hooks: `extern`, `implemented_by`, `csimp`;
 - non-kernel computation: `native_decide`, and `decide +native`;
 - unbounded elaboration: `set_option maxHeartbeats 0`, or a ceiling of 10^10 or
   more.
 
+The list above is a blocklist over the file's text. A submission must also pass
+`scripts/ci/submission_syntax_gate.lean`, which parses it and judges the parse
+tree instead: every top-level command must be one of an allowed set, so
+`attribute` and anything not on that list are refused by kind rather than by
+spelling, and `set_option` ceilings bind at command, term and tactic position
+-- which is what stops `debug.skipKernelTC`, a setting the `#print axioms`
+audit cannot see.
+
 The accepted axiom set is `propext` alone, and a submitted file may import only
 the contract modules and other accepted policies.
+
+One trap worth knowing before you hit it: `==` and `!=` on `Int` or `Fin`
+resolve to a classical `BEq` instance on the current toolchain, so they pull
+`Classical.choice` into the audit even though you declared no axiom and used no
+`native_decide`. Write `decide (a = b)` for `Int` and compare `.val` for `Fin`.
+`Nat` is unaffected.
 
 ## Opening a Pull Request
 
@@ -293,7 +316,11 @@ the companion's cost model is byte-identical to
 
 ## Repository Layout
 
-The submission contract, which is protected and Mathlib-free:
+The submission contract. Every file here is unchangeable by a submission --
+the changed-file rule admits only `Submission/Policy.lean` and `Submission/
+Policy/**` -- and every file but the library roots is Mathlib-free. Most are
+also in `verifier.py`'s `PROTECTED_FILES`; `ContractSoundness.lean` is not, and
+is unchangeable by the changed-file rule alone.
 
 - `TableGeneration/Basic.lean` defines symbolic registers, states, points, and
   primitive operations.
@@ -308,7 +335,9 @@ The submission contract, which is protected and Mathlib-free:
   submitter discharges by `decide` says what the companion's Prop-valued
   obligations say.
 - `TableGeneration.lean` and `TableGeneration/Submission.lean` are the library
-  roots.
+  roots. `TableGeneration.lean` imports `RecursiveCost.Correctness`, so it is
+  the one file here that reaches Mathlib; `check_mathlib_confinement.py` carves
+  out exactly that exception.
 
 `TableGeneration/Submission/Policy.lean` is the submitted policy and the one file
 a submission changes. It is not protected; `Defs.lean` and `Correctness.lean`

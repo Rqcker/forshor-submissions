@@ -616,16 +616,22 @@ def get_changed_files(repo: Path) -> tuple[bool, list[str], str]:
         print(f"verifier: WARNING: {details}", file=sys.stderr)
         return True, [], details
 
+    # NOT `--depth=1`. The diff below is three-dot, so it needs a merge base,
+    # and a shallow fetch grafts the base commit with no parents -- severing
+    # ancestry that the submitter's own checkout (`fetch-depth: 0`) already
+    # has. Every fork that branched before the current `submission/template`
+    # tip lands here, which `sync-submission-template.yml` makes common, and
+    # the submitter is then rejected with a bare `fatal: ...: no merge base`
+    # instead of the written diagnostic.
     has_base = run_cmd(["git", "cat-file", "-e", f"{base}^{{commit}}"], repo, 60)
     if has_base["returncode"] != 0:
-        fetch_origin = run_cmd(["git", "fetch", "--no-tags", "--depth=1", "origin", base], repo, 300)
+        fetch_origin = run_cmd(["git", "fetch", "--no-tags", "origin", base], repo, 300)
         if fetch_origin["returncode"] != 0 and base_repo:
             run_cmd(
                 [
                     "git",
                     "fetch",
                     "--no-tags",
-                    "--depth=1",
                     f"https://github.com/{base_repo}.git",
                     base,
                 ],
@@ -999,11 +1005,21 @@ def verify_axiom_dependencies(repo: Path, out_dir: Path) -> dict[str, str]:
     found = parse_axiom_names(output)
     unexpected = sorted(found - ALLOWED_AXIOMS)
     if unexpected:
-        return check_result(
-            "axiom dependencies",
-            False,
-            "Unexpected theorem axioms: " + ", ".join(unexpected),
-        )
+        detail = "Unexpected theorem axioms: " + ", ".join(unexpected)
+        # A submitter who wrote no axiom and used no `native_decide` can still
+        # land here, because which `Decidable`/`BEq` instance an `==` resolves
+        # to is the toolchain's choice, not theirs. On v4.36.0-rc1 `BEq Int`
+        # and `BEq (Fin k)` go through `Std.PreorderPackage.toBEq`, which is
+        # classical. Naming the likely cause costs one line and saves a
+        # submitter staring at axioms they never wrote.
+        if "Classical.choice" in unexpected:
+            detail += (
+                ". If you did not declare an axiom, the usual cause is `==` or"
+                " `!=` on `Int` or `Fin`: those resolve to a classical `BEq`"
+                " instance. Use `decide (a = b)` for `Int`, and compare `.val`"
+                " for `Fin`; `Nat` is unaffected."
+            )
+        return check_result("axiom dependencies", False, detail)
 
     detail = (
         "No axioms were reported."
@@ -1627,10 +1643,32 @@ def main() -> int:
         action="store_true",
         help="Run structural submission checks without installing or invoking Lean.",
     )
+    parser.add_argument(
+        "--axioms-only",
+        action="store_true",
+        help=(
+            "Audit the two submission theorems' axioms against a built checkout "
+            "and exit. Needs no submission, so CI can run it when the toolchain "
+            "or the dependency pins move."
+        ),
+    )
     args = parser.parse_args()
 
     repo = Path(args.repo).resolve()
     out_dir = (repo / args.out_dir).resolve()
+
+    # The audit is the one check that fails OPEN: if a toolchain change makes a
+    # contract definition depend on a classical axiom, nothing fails to build
+    # and no output looks wrong -- every later submission is simply rejected,
+    # pointing at the submitter. Observed on Lean v4.36.0-rc1, where `BEq Int`
+    # began resolving through `Std.PreorderPackage.toBEq`, which is classical.
+    # So it also runs outside the submission path, on the same code, via this
+    # flag. `verify()` is not reused here: its preflight is about a submission
+    # diff, and there is no submission.
+    if args.axioms_only:
+        result = verify_axiom_dependencies(repo, out_dir)
+        print(f"{result['status']}: {result['details']}")
+        return 0 if result["status"] == "success" else 1
     # The preflight runs no subprocesses, so it needs no budget.
     if not args.preflight_only:
         start_deadline()

@@ -1,7 +1,7 @@
 import TableGeneration.RecursiveCost.CompanionTransport
-import FastMultiplication.ShorVerification.Framework.Gatecount.ResourceModel
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Widths
-import FastMultiplication.ShorVerification.Implementation.GateCount.Definitions
+import ForShor.ShorVerification.Framework.Gatecount.ResourceModel
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Widths
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.GateCount.Basic
 
 /-!
 # The companion's cost model, at the widths and in the language this planner uses

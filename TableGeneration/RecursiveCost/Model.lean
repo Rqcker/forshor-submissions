@@ -3,7 +3,7 @@ import TableGeneration.RecursiveCost.CompanionCost
 
 namespace TableGeneration.RecursiveCost
 
-open Operations
+open TableGeneration.Operations
 
 /-!
 # Recursive PhaseProduct cost model
@@ -31,7 +31,7 @@ through `CompanionCost.lean`.
 
 /-- Lower-limb width for the top-heavy split, at bare widths. -/
 def phaseLimbWidth (xWidth zWidth k : Nat) : Nat :=
-  min (Shor.phaseLimbWidthOfWidth xWidth k) (Shor.phaseLimbWidthOfWidth zWidth k)
+  min (xWidth / k) (zWidth / k)
 
 @[simp] theorem phaseLimbWidth_eq_forshor (xWidth zWidth k : Nat) :
     phaseLimbWidth xWidth zWidth k
