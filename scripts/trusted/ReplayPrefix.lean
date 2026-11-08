@@ -289,7 +289,7 @@ def main (args : List String) : IO UInt32 := do
         ndecls := ndecls + ds.size
         for r in ds do
           if r.kind == "theorem" then
-            let mirror := (`TableGeneration.RecursiveCost.BandedPolicy).isPrefixOf n || (`TableGeneration.RecursiveCost.PTP).isPrefixOf n
+            let mirror := (`TableGeneration.RecursiveCost.BandedPolicy).isPrefixOf n || (`TableGeneration.RecursiveCost.PTPCheck).isPrefixOf n || (`TableGeneration.RecursiveCost.PTPPlan).isPrefixOf n || (`ForShor.ShorVerification.Implementation.PhaseTripleProduct).isPrefixOf n
             thms := thms.push (Json.mkObj [("name", Json.str r.name), ("module", Json.str n.toString),
               ("axioms", Json.arr (r.axioms.map Json.str)), ("sorry", Json.bool r.hasSorry),
               ("type", Json.str (if mirror then r.typeFull else ""))])

@@ -18,7 +18,7 @@ with `PUBLISHER_TOKEN` in the environment (the identity token the publisher's IA
 |---|---|
 | `$POLICY_LEAN` | the participant's `TableGeneration/Submission/Policy.lean` from the PR. It is only compiled by ForShor (after ForShor's lexical gate), never run by us. `--forshor-tree` is required with it. `--policy FILE.json` (site policy JSON: `mode` and `bands`) is the other input, for rehearsals and for a PhaseTripleProduct policy, which has no Lean template yet; give exactly one of the two. |
 | `$PR_AUTHOR`, `$PR_NUMBER`, `$PR_HEAD_SHA` | from the PR event. `forshor` is a reserved handle and is refused. The row is named `<login>_sub<N>`, N assigned by the publisher's ledger. |
-| `$STO_TREE` | a **built** Lean tree for the STO mirror at the epoch's pins: the interim STO fork, branch `port/forshor-21e129a`, ForShor `21e129a`, Lean 4.36.0-rc1. `lake build TableGeneration` does **not** build the PhaseTripleProduct modules: build `TableGeneration/RecursiveCost/PTP/**` by name too (the module list is in the fork's `JMC_VALIDATION.md`). |
+| `$STO_TREE` | a **built** Lean tree for the STO mirror: this repository (synced from the STO fork's `main` at `2558595`). Build it with the targets in `evaluation/policy-trees.json` (`sto_build`: `BandedPolicy`, `BridgeClosure`, `BandedPolicy.Plan`, `Instances.RefPP`, `PTPPlan.Plan`, `PTPCheck.AxiomAudit`); `lake build TableGeneration` alone does not build them. |
 | `$FORSHOR_TREE` | a built ForShor checkout at `21e129a` (`lake build PolicySubmission forshor_policy_submission`). Copied per run (it is written into), so use a cache and a copy-on-write or a throwaway checkout. Optional: without it, no row has the `ForShor` tag. |
 | `$ARCHIVE_CHECKOUT` | a checkout of the `submission-results` branch, as `publish_v2.py --archive` reads it. Omit only for a local rehearsal. |
 
@@ -44,12 +44,13 @@ first band of k = 8 took about 2.4 hours in the report stage, so set the limits 
 * Cache the two Lean trees (they are several GB and take tens of minutes cold), and set `TMPDIR` to a directory the job controls: a 2.4-hour run once lost a file in the system temporary directory.
 * Post `result.json` back on the PR (the CLI follows publication, `./forshor status`), and re-run on exit 2.
 
-## ForShor tree for the submission check
+## The Lean trees for the submission check
 
-Both boards are checked by ForShor, with the same lexical gate. The PhaseProduct files are in ForShor `21e129a`. The PhaseTripleProduct files (`PTPPolicyTemplate.lean`, `PTPPolicyCheck.lean`,
-`PTPPolicyMain.lean`, two lakefile entries) are in ForShor `main` from `349849e` (PR #83), which is the pin `21e129a` plus documentation changes and those files and nothing else. `--forshor-tree` must therefore be a build
-of ForShor `main` at `349849e` or later; the epoch's pin stays `21e129a`, because the added files change no theorem or definition the pricing or the evidence depends on. The STO tree must be the fork's `main` at `2558595`
-or later (`ShorTableOptimization_temp`, which contains `--fast`, PR #5), because `intake_v2.py` runs the mirror with `--fast`.
+Both boards are checked by ForShor, with the same lexical gate; the STO mirror checks the policy itself. Two trees:
+
+* **The STO mirror's tree is this repository.** Its `TableGeneration/` is the STO fork's `main` at `2558595`, byte for byte (branch `sync/sto-fork-2558595`; `lake-manifest.json` and `lean-toolchain` were already identical), and so are the harness scripts (`scripts/check_ptp_policy.py` with `--fast`,
+  `PTPPolicyReport.lean`, `ptp_exact_width.py`, `ptp_policy_json_to_lean.py`, `trusted/`), `JMC_NOTES.md` and `JMC_VALIDATION.md` (the evidence records the tree's pins from the notes). The older in-repo `TableGeneration/RecursiveCost/PTP/` (59 files and `PTP.lean`) is gone, as in the fork: the PTP proofs are ForShor's. Verified: the documented mirror targets build in the synced repo, and `scripts/verifier.py` with `STO_TREE` = the repo took both the PhaseProduct and the PhaseTripleProduct example to a successful full-phase result. Nothing private is cloned.
+* **ForShor** is a public clone: `main` from `349849e` (PR #83), the pin `21e129a` plus documentation and the PhaseTripleProduct submission files. The epoch's pin stays `21e129a`, because the added files change no theorem or definition the pricing or the evidence depends on.
 
 Measured: a PhaseTripleProduct file with bands k = 8 and k = 4 went from the Lean file to a published row in 2.5 minutes (gate, ForShor build and kernel check about 25 s, mirror with `--fast` about a minute);
 a PhaseProduct k = 3 file in 4 minutes; a PhaseProduct k = 8, 4, 3 file builds in ForShor in 40 s and prints in about 5.5 minutes.
@@ -71,6 +72,5 @@ A policy submission is checked by `scripts/verifier.py`, unchanged for the older
 | pull-request job (`table-generation-submission.yml`) | CI, no secrets | the same `scripts/verifier.py` with `FORSHOR_TREE`, `STO_TREE`, `ENGINE_PYTHON` set (and `TABLE_GEN_LOGIN` the PR author); upload `verification.json` with the other artifacts. |
 | publish job (`publish-results.yml`, trusted) | CI, with the publisher identity | for a result whose `kind` is `policy`: `python evaluation/intake_v2.py --publish-from verification.json --login "$PR_AUTHOR" --pull "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --run-id "$RUN_ID" --publisher-url "$PUBLISHER_URL" [--archive ...]` with `PUBLISHER_TOKEN`. No Lean; about 5 seconds; everything in the verification is checked again. |
 
-Not done: the publish job's branch for `kind: policy` in the workflow YAML and in `scripts/ci/publication.js`, and `./forshor status`/`watch` following a policy publication (they read the older publication record). The STO fork is a private repository, so a participant's `./forshor setup`
-can clone it only if they have access to it (or it is made available).
+Not done: the publish job's branch for `kind: policy` in the workflow YAML and in `scripts/ci/publication.js`, and `./forshor status`/`watch` following a policy publication (they read the older publication record).
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Exact PTP widths in Python, mirroring `TableGeneration.RecursiveCost.PTP.Exact`
-(`ptpTightWidth`, `ladderX`) definition for definition, for the site's PTP pricer.
+"""Exact PTP widths in Python, mirroring ForShor's `Implementation/PhaseTripleProduct` (`Proofs/Values/Exact.lean`:
+`ptpTightWidth`; `Statement.lean`: `ladderX`) definition for definition, for the site's PTP pricer.
 
     from ptp_exact_width import ptp_tight_width, exact_ladder, ptp_scan_width
     ptp_tight_width(k, operations, n)  -> int   # exact width of one table at operand width n
