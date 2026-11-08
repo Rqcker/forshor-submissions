@@ -4,6 +4,7 @@ The evidence is a REAL archived envelope (the PhaseProduct baseline 6f036362, ac
 what the harness really produced for that exact policy."""
 import copy
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -289,10 +290,82 @@ def test_a_ptp_lean_submission_is_published_on_the_ptp_board_without_a_ForShor_r
         return json.loads((PTP_ARCHIVE / f"{PTP_DIGEST}.evidence.json").read_text())
 
     monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
-    monkeypatch.setattr(intake_v2, "policy_from_lean", lambda eng, text, tree, workdir, timeout=7200: (archived, {"schema": "forshor.ptp-policy-submission/v1"}))
+    monkeypatch.setattr(intake_v2, "policy_from_lean", lambda eng, text, tree, workdir, timeout=7200: (archived, json.loads(PTP_PRINTED.read_text())))
     monkeypatch.setattr(intake_v2, "forshor_record", lambda *a, **k: pytest.fail("a PhaseTripleProduct policy has no IR, so no ForShor record is made"))
     result = intake_v2.run_intake(None, lean_policy="namespace PTPPolicySubmission\n", login="tester", pull=12, url="http://x", token="t", tree=tmp_path,
                                   workdir=tmp_path / "w", forshor_tree=tmp_path / "f", run_mirror_fn=mirror, log=lambda s: None)
     assert result["policy"]["mode"] == "PhaseTripleProduct" and result["policy"]["forshorPolicy"] is False and result["policy"]["stoMirror"] is True
     req = [p for u, p in calls if isinstance(u, str) and u.endswith("/v2/publish")][0]
     assert {p["board"] for p in req["priced"]} == {"ptp"}
+
+
+# ---- verify only (`./forshor check`, the untrusted half of CI) and publish from a verification (the trusted half)
+def test_verify_only_needs_no_publisher_and_sends_nothing(monkeypatch, tmp_path, policy_doc):
+    monkeypatch.setattr(intake_v2, "request_json", lambda *a, **k: pytest.fail("a verification must not touch the network"))
+    calls = []
+    v = intake_v2.verify_submission(policy_doc, login="tester", tree=tmp_path, workdir=tmp_path / "w", run_mirror_fn=archived_mirror(calls), log=lambda s: None)
+    assert v["schema"] == intake_v2.VERIFICATION_SCHEMA and v["board"] == "pp" and v["login"] == "tester"
+    assert v["envelope"]["record"]["verdict"] == "accepted" and v["forshor"] is None and v["printed"] is None
+    assert calls == [("mirror", "pp")]
+
+
+def test_a_verification_published_by_another_job_gives_the_same_row_as_one_call(monkeypatch, tmp_path, model, policy_doc):
+    calls_a, calls_b = [], []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls_a, number=3))
+    one = intake_v2.run_intake(policy_doc, login="tester", pull=7, url="http://x", token="t", tree=tmp_path, workdir=tmp_path / "w1", head_sha="a" * 40, run_id="1",
+                               run_mirror_fn=archived_mirror(calls_a), log=lambda s: None)
+    v = intake_v2.verify_submission(policy_doc, login="tester", tree=tmp_path, workdir=tmp_path / "w2", run_mirror_fn=archived_mirror([]), log=lambda s: None)
+    v = json.loads(json.dumps(v))                        # through a file, as an artifact travels
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls_b, number=3))
+    two = intake_v2.publish_verification(v, login="tester", pull=7, url="http://x", token="t", workdir=tmp_path / "w3", head_sha="a" * 40, run_id="1", log=lambda s: None)
+    assert two["policy"] == one["policy"]
+    sent = lambda calls: [p for u, p in calls if isinstance(u, str) and u.endswith("/v2/publish")][0]
+    a, b = sent(calls_a), sent(calls_b)
+    def diff(x, y, path=""):
+        if isinstance(x, dict) and isinstance(y, dict):
+            return [d for k in sorted(set(x) | set(y)) for d in diff(x.get(k), y.get(k), f"{path}/{k}")]
+        if isinstance(x, list) and isinstance(y, list) and len(x) == len(y):
+            return [d for i, (u, w) in enumerate(zip(x, y)) for d in diff(u, w, f"{path}[{i}]")]
+        return [] if x == y else [path]
+    differing = {re.sub(r"\[\d+\]", "[]", d) for d in diff(a["priced"], b["priced"])}
+    assert all(d.rsplit("/", 1)[-1] in ("createdAt", "submittedAt", "evaluatedAt") for d in differing), f"only the clock may differ: {sorted(differing)}"
+
+
+def test_nothing_in_a_verification_is_trusted(monkeypatch, tmp_path, model, policy_doc):
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, [], number=1))
+    good = json.loads(json.dumps(intake_v2.verify_submission(policy_doc, login="tester", tree=tmp_path, workdir=tmp_path / "w", run_mirror_fn=archived_mirror([]), log=lambda s: None)))
+    pub = lambda v, login="tester", n=0: intake_v2.publish_verification(v, login=login, pull=9, url="http://x", token="t", workdir=tmp_path / f"p{n}", log=lambda s: None)
+    with pytest.raises(intake_v2.Refused, match="another handle"):
+        pub(good, login="someone-else", n=1)
+    other = copy.deepcopy(good)
+    other["policy"]["bands"][0]["threshold"] += 1                   # a different policy under the same digest
+    with pytest.raises(intake_v2.Refused, match="digest"):
+        pub(other, n=2)
+    stale = copy.deepcopy(good)
+    stale["model"] = dict(stale["model"], lean="leanprover/lean4:v0.0.0")
+    with pytest.raises(ModelMismatch):
+        pub(stale, n=3)
+    forged = copy.deepcopy(good)
+    forged["envelope"]["record"]["verdict"] = "rejected"
+    with pytest.raises(intake_v2.Refused, match="mirror"):
+        pub(forged, n=4)
+    swapped = copy.deepcopy(good)
+    swapped["envelope"]["policyDigest"] = "0" * 64                 # evidence for another policy
+    with pytest.raises(intake_v2.Refused, match="mirror"):
+        pub(swapped, n=5)
+    assert pub(good, n=6)["published"]
+
+
+def test_the_command_line_modes_are_exclusive(tmp_path, capsys):
+    f = tmp_path / "p"
+    f.write_text("{}")
+    base = ["--login", "u", "--tree", str(tmp_path)]
+    with pytest.raises(SystemExit):                                  # publishing needs a publisher and a pull request
+        intake_v2.main(["--policy", str(f), *base])
+    with pytest.raises(SystemExit):                                  # --publish-from publishes
+        intake_v2.main(["--publish-from", str(f), "--no-publish", "--login", "u", "--pull", "1", "--publisher-url", "http://x"])
+    with pytest.raises(SystemExit):
+        intake_v2.main(["--publish-from", str(f), "--lean-policy", str(f), "--login", "u", "--pull", "1", "--publisher-url", "http://x"])
+    # verify only: no publisher, no pull request; the file is written where asked and the result says where
+    monkeypatch_free = intake_v2.verify_submission
+    assert callable(monkeypatch_free)

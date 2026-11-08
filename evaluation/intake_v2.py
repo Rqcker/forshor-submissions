@@ -205,24 +205,29 @@ def _now() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def run_intake(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str, pull: int, url: str, token: str, tree: Path, workdir: Path,
-               head_sha: Optional[str] = None, run_id: Optional[str] = None, forshor_tree: Optional[Path] = None,
-               stage_timeout: Optional[int] = None, mirror_timeout: int = 7200, archive_commit: Optional[str] = None,
-               archive_view: Optional[Callable[[], Any]] = None,
-               run_mirror_fn: Optional[Callable[..., Dict[str, Any]]] = None, python: str = sys.executable,
-               log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
-    """The pipeline above. Returns the publisher's result plus `row` (name, board ranks, evidence). Raises `Refused`, `ReservedHandle`, `ModelMismatch`."""
-    from export_v2 import engine, epoch, request
+VERIFICATION_SCHEMA = "forshor.policy-verification/v1"
+
+
+def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str, url: Optional[str] = None, token: str = "local", tree: Path, workdir: Path,
+                      forshor_tree: Optional[Path] = None, stage_timeout: Optional[int] = None, mirror_timeout: int = 7200,
+                      run_mirror_fn: Optional[Callable[..., Dict[str, Any]]] = None, python: str = sys.executable,
+                      log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
+    """Everything up to the publish: the reserved handle and (when a publisher URL is given) the epoch, then ForShor's gate and build (a Lean submission), the STO mirror
+    and ForShor's check. Returns the verification: the policy, ForShor's printed document, the mirror's envelope and the model it was verified under, as data a trusted
+    job can publish from (`publish_verification`). Nothing is priced and nothing leaves the machine. Raises `Refused`, `ReservedHandle`, `ModelMismatch`."""
+    from export_v2 import engine, epoch
     from export_v2.canon import policy_digest
     from export_v2.evidence import EvidenceStore, run_mirror
+    from publish_v2 import HOUSE_HANDLE
     eng = engine.load()
     model = epoch.model_of()
-    state_of = lambda: request_json(url.rstrip("/") + "/v2/state", token)
-
-    state = state_of()
-    policy_name(state, login)                                   # the reserved handle, before any compute
-    if state["model"] != model:
-        raise ModelMismatch(f"live epoch {state['epoch']} was built for a different model than this checkout's; not publishing")
+    if login.lower() == HOUSE_HANDLE:                           # the reserved handle, before any compute (also offline)
+        raise ReservedHandle(f"the handle {HOUSE_HANDLE} is reserved for planner policies")
+    if url:
+        state = request_json(url.rstrip("/") + "/v2/state", token)
+        policy_name(state, login)
+        if state["model"] != model:
+            raise ModelMismatch(f"live epoch {state['epoch']} was built for a different model than this checkout's; not publishing")
 
     workdir.mkdir(parents=True, exist_ok=True)
     printed = None
@@ -231,37 +236,87 @@ def run_intake(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str
         policy_doc, printed = policy_from_lean(eng, lean_policy, forshor_tree, workdir)
     policy_json = normalise(policy_doc)
     digest = policy_digest(policy_json)
-    head_sha = head_sha or hashlib.sha1(digest.encode()).hexdigest()
-    run_id = run_id or str(int(dt.datetime.now(dt.timezone.utc).timestamp()))
-    submitted_at = _now()
-    pr_url = f"https://github.com/{REPO}/pull/{pull}"
-    evaluation_key = hashlib.sha256(f"{head_sha}:{run_id}:{pull}".encode()).hexdigest()
-    metadata = {"headSha": head_sha, "pullRequestUrl": pr_url, "githubLogin": login, "runId": run_id, "submittedAt": submitted_at,
-                "evaluationKey": evaluation_key}
     board = "ptp" if policy_json["mode"] == eng.tables.TRIPLE else "pp"
     log(f"policy {digest[:12]} ({policy_json['mode']}, {len(policy_json['bands'])} bands): the Lean mirror at exact widths ...")
     envelope = (run_mirror_fn or run_mirror)(policy_json, board, tree, workdir / "evidence", timeout=mirror_timeout, python=python, stage_timeout=stage_timeout, fast=True)   # `fast`: PhaseTripleProduct only, see run_mirror
-    store = EvidenceStore(workdir / "evidence")
-    mirror, why = store.stomirror(policy_json, model, board)
+    mirror, why = EvidenceStore(workdir / "evidence").stomirror(policy_json, model, board)
     if mirror is None:
         rec = envelope.get("record", {})
         rej = rec.get("rejection") or {}
         raise Refused(rej.get("stage") or "mirror", f"{rej.get('reason') or why}: {str(rej.get('detail') or '')[:400]}".strip(": "))
     log("  accepted by the STO mirror")
 
-    forshor = None
     P = eng.tables.Policy.from_json(policy_json)
     if printed is not None and str(printed.get("schema", "")).startswith("forshor.ptp-"):
         log("  ForShor kernel-checked the PhaseTripleProduct policy (it has no IR, so the row carries no ForShor record)")
+        forshor = None
     elif printed is not None:
         forshor = forshor_record(eng, P, printed, model["forshor"]["pin"])
         log("  ForShor policy-verified")
     elif forshor_tree and P.mode == eng.tables.PAIR and max(b.table.k for b in P.bands) <= MAX_FORSHOR_K:
         log("ForShor's build and printed document ...")
-        forshor = forshor_check(eng, P, Path(forshor_tree), workdir, model["forshor"]["pin"])
+        import policy_to_template as ptt
+        printed = forshor_build(Path(forshor_tree), ptt.template_text(P, "ForShor"), workdir)
+        forshor = forshor_record(eng, P, printed, model["forshor"]["pin"])
         log("  ForShor policy-verified")
     else:
+        forshor = None
         log("no ForShor check (" + ("PhaseTripleProduct" if P.mode != eng.tables.PAIR else "no ForShor checkout given" if not forshor_tree else f"k above {MAX_FORSHOR_K}") + ")")
+    return {"schema": VERIFICATION_SCHEMA, "digest": digest, "mode": policy_json["mode"], "board": board, "policy": policy_json, "printed": printed,
+            "envelope": envelope, "forshor": forshor, "model": model, "login": login, "createdAt": _now()}
+
+
+def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, token: str, workdir: Path, head_sha: Optional[str] = None, run_id: Optional[str] = None,
+                         archive_commit: Optional[str] = None, archive_view: Optional[Callable[[], Any]] = None,
+                         log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
+    """Price and publish a verification (`verify_submission`'s output, possibly produced by another job). No Lean runs here and nothing in `v` is trusted: the policy's digest, the
+    mirror's envelope (against this checkout's model and the policy), the printed document and ForShor's record are all checked again, and the handle and epoch against the live
+    publisher. Raises `Refused`, `ReservedHandle`, `ModelMismatch`."""
+    from export_v2 import engine, epoch, request
+    from export_v2.canon import policy_digest
+    from export_v2.evidence import EvidenceStore
+    eng = engine.load()
+    model = epoch.model_of()
+    if v.get("schema") != VERIFICATION_SCHEMA:
+        raise Refused("format", "not a policy verification")
+    if v.get("login") != login:
+        raise Refused("format", "the verification was made for another handle")
+    if v.get("model") != model:
+        raise ModelMismatch("the verification was made under another model than this checkout's")
+    state_of = lambda: request_json(url.rstrip("/") + "/v2/state", token)
+    state = state_of()
+    policy_name(state, login)                                   # the reserved handle
+    if state["model"] != model:
+        raise ModelMismatch(f"live epoch {state['epoch']} was built for a different model than this checkout's; not publishing")
+
+    policy_json = normalise(v["policy"])
+    digest = policy_digest(policy_json)
+    if digest != v.get("digest"):
+        raise Refused("format", "the verification's policy does not match its digest")
+    board = "ptp" if policy_json["mode"] == eng.tables.TRIPLE else "pp"
+    # the mirror's envelope goes back where the engine reads evidence from, byte for byte as the harness wrote the policy file
+    ev = workdir / "evidence"
+    ev.mkdir(parents=True, exist_ok=True)
+    (ev / f"{digest[:16]}.policy.json").write_text(json.dumps(policy_json, indent=1, ensure_ascii=False))
+    (ev / f"{digest[:16]}.evidence.json").write_text(json.dumps(v["envelope"], indent=1, ensure_ascii=False))
+    store = EvidenceStore(ev)
+    mirror, why = store.stomirror(policy_json, model, board)
+    if mirror is None:
+        raise Refused("mirror", f"the mirror evidence does not hold for this policy: {why}")
+    P = eng.tables.Policy.from_json(policy_json)
+    printed = v.get("printed")
+    forshor = None
+    if printed is not None and not str(printed.get("schema", "")).startswith("forshor.ptp-"):
+        forshor = forshor_record(eng, P, printed, model["forshor"]["pin"])
+    elif printed is not None:
+        if [(b.threshold, b.table.k) for b in policy_from_ptp_document(eng, printed).bands] != [(b.threshold, b.table.k) for b in P.bands]:
+            raise Refused("forshor", "the bands ForShor printed are not the submitted bands")
+    head_sha = head_sha or hashlib.sha1(digest.encode()).hexdigest()
+    run_id = run_id or str(int(dt.datetime.now(dt.timezone.utc).timestamp()))
+    submitted_at = _now()
+    pr_url = f"https://github.com/{REPO}/pull/{pull}"
+    evaluation_key = hashlib.sha256(f"{head_sha}:{run_id}:{pull}".encode()).hexdigest()
+    metadata = {"headSha": head_sha, "pullRequestUrl": pr_url, "githubLogin": login, "runId": run_id, "submittedAt": submitted_at, "evaluationKey": evaluation_key}
 
     # Production: the accepted ids and the archive commit are the `submission-results` branch's (`archive_view`, as publish_v2 reads it). A local
     # rehearsal has no such branch: the accepted ids are the publisher's own ledger plus this submission.
@@ -279,17 +334,35 @@ def run_intake(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str
     return result
 
 
+def run_intake(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str, pull: int, url: str, token: str, tree: Path, workdir: Path,
+               head_sha: Optional[str] = None, run_id: Optional[str] = None, forshor_tree: Optional[Path] = None,
+               stage_timeout: Optional[int] = None, mirror_timeout: int = 7200, archive_commit: Optional[str] = None,
+               archive_view: Optional[Callable[[], Any]] = None,
+               run_mirror_fn: Optional[Callable[..., Dict[str, Any]]] = None, python: str = sys.executable,
+               log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
+    """The pipeline above, verify then publish in one call. Returns the publisher's result. Raises `Refused`, `ReservedHandle`, `ModelMismatch`."""
+    v = verify_submission(policy_doc, lean_policy=lean_policy, login=login, url=url, token=token, tree=tree, workdir=workdir, forshor_tree=forshor_tree,
+                          stage_timeout=stage_timeout, mirror_timeout=mirror_timeout, run_mirror_fn=run_mirror_fn, python=python, log=log)
+    return publish_verification(v, login=login, pull=pull, url=url, token=token, workdir=workdir, head_sha=head_sha, run_id=run_id,
+                                archive_commit=archive_commit, archive_view=archive_view, log=log)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--policy", type=Path, help="a policy as site policy JSON (the pack's format)")
-    ap.add_argument("--lean-policy", type=Path, help="a submitted Policy.lean (ForShor's PolicyTemplate format); needs --forshor-tree. Exactly one of --policy and --lean-policy")
+    ap.add_argument("--lean-policy", type=Path, help="a submitted Policy.lean (ForShor's PolicyTemplate format); needs --forshor-tree. Exactly one of --policy, --lean-policy and --publish-from")
+    ap.add_argument("--no-publish", action="store_true",
+                    help="verify only (the reserved handle, ForShor's gate and build, the STO mirror, ForShor's check) and write a verification file; nothing is priced, nothing is "
+                         "sent, no publisher or token is needed. This is `./forshor check`, and the untrusted half of CI")
+    ap.add_argument("--verification-out", type=Path, help="with --no-publish: where to write the verification (default: WORKDIR/verification.json)")
+    ap.add_argument("--publish-from", type=Path, help="price and publish a verification written by --no-publish (the trusted half of CI): no Lean runs, and everything in it is checked again")
     ap.add_argument("--login", required=True, help="the submitter's GitHub handle (the PR author)")
-    ap.add_argument("--pull", type=int, required=True, help="the pull request number")
+    ap.add_argument("--pull", type=int, help="the pull request number (not needed with --no-publish)")
     ap.add_argument("--head-sha", help="the PR head commit (40 hex); default: derived from the policy")
     ap.add_argument("--run-id")
-    ap.add_argument("--tree", type=Path, required=True, help="the built Lean tree for the STO mirror, at the epoch's pins")
-    ap.add_argument("--forshor-tree", type=Path, help="a built ForShor checkout at the epoch's pin (copied per run); omit to skip the ForShor check")
-    ap.add_argument("--publisher-url", default=os.environ.get("PUBLISHER_URL"))
+    ap.add_argument("--tree", type=Path, help="the built Lean tree for the STO mirror, at the epoch's pins (not needed with --publish-from)")
+    ap.add_argument("--forshor-tree", type=Path, help="a built ForShor checkout (copied per run); omit to skip the ForShor check of a JSON policy; required for a Lean policy")
+    ap.add_argument("--publisher-url", default=os.environ.get("PUBLISHER_URL"), help="with --no-publish: optional, checks the handle and the epoch against the live publisher first")
     ap.add_argument("--workdir", type=Path, default=Path("intake-work"))
     ap.add_argument("--archive", type=Path, help="a checkout of the `submission-results` branch (as publish_v2.py reads it; needs GH_TOKEN); omit for a local rehearsal")
     ap.add_argument("--archive-commit", help="the submission-results commit to record (default: the live snapshot's, read from the published dashboard)")
@@ -297,16 +370,38 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--mirror-timeout", type=int, default=7200)
     ap.add_argument("--out", type=Path, help="write the result JSON here")
     a = ap.parse_args(argv)
-    if not a.publisher_url:
-        ap.error("--publisher-url (or PUBLISHER_URL) is required")
-    if (a.policy is None) == (a.lean_policy is None):
-        ap.error("give exactly one of --policy and --lean-policy")
+    modes = [a.policy is not None, a.lean_policy is not None, a.publish_from is not None]
+    if sum(modes) != 1:
+        ap.error("give exactly one of --policy, --lean-policy and --publish-from")
+    if a.publish_from is not None:
+        if a.no_publish:
+            ap.error("--publish-from publishes: it cannot be combined with --no-publish")
+        if not a.publisher_url or a.pull is None:
+            ap.error("--publish-from needs --publisher-url (or PUBLISHER_URL) and --pull")
+    else:
+        if a.tree is None:
+            ap.error("--tree is required to verify")
+        if not a.no_publish and (not a.publisher_url or a.pull is None):
+            ap.error("publishing needs --publisher-url (or PUBLISHER_URL) and --pull; use --no-publish to verify only")
+    token = os.environ.get("PUBLISHER_TOKEN", "local")
+    archive_view = (lambda: __import__("publish_v2")._archive_view(a.archive)) if a.archive else None
     try:
-        result = run_intake(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, login=a.login, pull=a.pull, url=a.publisher_url, token=os.environ.get("PUBLISHER_TOKEN", "local"),
-                            tree=a.tree, workdir=a.workdir, head_sha=a.head_sha, run_id=a.run_id, forshor_tree=a.forshor_tree,
-                            stage_timeout=a.stage_timeout, mirror_timeout=a.mirror_timeout,
-                            archive_commit=a.archive_commit,
-                            archive_view=(lambda: __import__("publish_v2")._archive_view(a.archive)) if a.archive else None)
+        if a.publish_from is not None:
+            result = publish_verification(json.loads(a.publish_from.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=token, workdir=a.workdir,
+                                          head_sha=a.head_sha, run_id=a.run_id, archive_commit=a.archive_commit, archive_view=archive_view)
+        elif a.no_publish:
+            v = verify_submission(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, login=a.login,
+                                  url=a.publisher_url, token=token, tree=a.tree, workdir=a.workdir, forshor_tree=a.forshor_tree, stage_timeout=a.stage_timeout,
+                                  mirror_timeout=a.mirror_timeout)
+            path = a.verification_out or (a.workdir / "verification.json")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(v) + "\n")
+            result = {"verified": True, "verification": str(path), "policy": {"digest": v["digest"], "mode": v["mode"], "bands": len(v["policy"]["bands"]),
+                      "stoMirror": True, "forshorPolicy": bool(v["forshor"]), "forshorChecked": v["printed"] is not None}}
+        else:
+            result = run_intake(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, login=a.login,
+                                pull=a.pull, url=a.publisher_url, token=token, tree=a.tree, workdir=a.workdir, head_sha=a.head_sha, run_id=a.run_id, forshor_tree=a.forshor_tree,
+                                stage_timeout=a.stage_timeout, mirror_timeout=a.mirror_timeout, archive_commit=a.archive_commit, archive_view=archive_view)
         code = 0
     except (Refused, ReservedHandle, ModelMismatch) as e:
         result, code = {"refused": True, "stage": getattr(e, "stage", type(e).__name__), "reason": getattr(e, "reason", str(e))}, 1
