@@ -72,12 +72,12 @@ moves a primitive is caught directly. Comparing whole plans would be indirect: a
 compensating pair of errors in two primitives could cancel. Includes widths
 below `w = 3`, where truncated `Nat` subtraction makes the published closed
 forms diverge from the structural counts. -/
-def costLine (width : Nat) : String :=
+def costLine (m : Shor.NegationMethod) (width : Nat) : String :=
   String.intercalate "\t"
     [ "cost"
     , toString width
     , toString (cuccaroModAddGateCount width)
-    , toString (cuccaroNegateGateCount width)
+    , toString (negateGateCount width m)
     , toString (directSignedPhaseProductGateCount width width) ]
 
 /-- The per-node allocation charge at one `(width, k, childWidth)`. -/
@@ -109,6 +109,19 @@ def rejectModelFlag (args : List String) : IO Unit :=
            {modelVersion}; v2 mirrored the companion's deleted \
            phaseProductCostModel. Drop the flag.")
   | none => pure ()
+
+/-- `--negation=oneQubit|scratch` (default `oneQubit`, ForShor's real charge). `scratch` is the pre-swap
+Cuccaro charge: it reproduces every number this oracle printed at ForShor 6d55ad9 (the regression oracle for
+the port to the `oneQubit` charge). Returns the method and the remaining arguments. -/
+def takeNegationFlag (args : List String) : IO (Shor.NegationMethod × List String) := do
+  match args.find? (fun arg => arg.startsWith "--negation=") with
+  | none => pure (.oneQubit, args)
+  | some arg =>
+      let rest := args.filter (fun a => a != arg)
+      match arg.drop "--negation=".length |>.toString with
+      | "oneQubit" => pure (.oneQubit, rest)
+      | "scratch" => pure (.scratch, rest)
+      | other => throw (IO.userError s!"--negation={other}: expected oneQubit or scratch")
 
 def printPlans
     (candidates : List Candidate) (rawWidths : List String) : IO Unit := do
@@ -179,12 +192,18 @@ open TableGeneration.RecursiveCost.TestOracle
 
 def main (args : List String) : IO Unit := do
   rejectModelFlag args
+  let (m, args) ← takeNegationFlag args
+  let archived := archivedCandidates.map (·.withNegation m)
   match args with
   | "--catalog" :: _ =>
       for candidate in archivedCandidates do
         IO.println (candidateLine candidate)
+  | "--transitions" :: rawWidths =>
+      -- plans over the short program that covers every width transition, including `negate`:
+      -- the only plans here whose numbers depend on the negation method
+      printPlans [transitionCandidate.withNegation m] rawWidths
   | "--best-known" :: rawWidths =>
-      printPlans archivedCandidates rawWidths
+      printPlans archived rawWidths
   | "--reference" :: rawWidths =>
       for raw in rawWidths do
         let width ← parseWidth raw
@@ -193,7 +212,7 @@ def main (args : List String) : IO Unit := do
   | "--costs" :: rawWidths =>
       let widths ← rawWidths.mapM parseWidth
       for width in widths do
-        IO.println (costLine width)
+        IO.println (costLine m width)
         for k in [2, 3, 5, 8, 16] do
           for childWidth in [width / 2, width / 2 + 1, width, width + 1] do
             IO.println (allocLine width k childWidth)
@@ -207,10 +226,11 @@ def main (args : List String) : IO Unit := do
       IO.println "width scan agreement passed"
   | "--dense-sparse" :: rawWidths =>
       let widths ← rawWidths.mapM parseWidth
-      checkDenseSparseAgreement "binary" [binaryCandidate] widths
-      checkDenseSparseAgreement "transitions" [transitionCandidate] widths
-      checkDenseSparseAgreement "combined" [binaryCandidate, transitionCandidate] widths
-      checkDenseSparseAgreement "best-known" archivedCandidates widths
+      checkDenseSparseAgreement "binary" [binaryCandidate.withNegation m] widths
+      checkDenseSparseAgreement "transitions" [transitionCandidate.withNegation m] widths
+      checkDenseSparseAgreement "combined"
+        [binaryCandidate.withNegation m, transitionCandidate.withNegation m] widths
+      checkDenseSparseAgreement "best-known" archived widths
       IO.println "dense/sparse agreement passed"
   | rawWidths =>
-      printPlans [binaryCandidate] rawWidths
+      printPlans [binaryCandidate.withNegation m] rawWidths

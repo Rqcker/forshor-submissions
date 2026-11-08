@@ -116,24 +116,45 @@ written out, so the familiar closed forms are theorems.
 def cuccaroModAddGateCount (width : Nat) : Nat :=
   (Shor.cuccaroModAddResources width).totalGates
 
-/-- Negation total, from the companion's `negateResources` (complement plus the
-one-clean-ancilla incrementer, modular swap 001). Equals `33w`. The name keeps
-"cuccaro" from before the swap, when this was a Cuccaro adder against a constant. -/
+/-- Negation total under a negation method, from the companion's `negateResourcesFor`.
+
+`.oneQubit` (the default, ForShor's `negateResources`): complement plus Gidney's one-clean-ancilla
+increment, `34 w - 53` (even `w >= 4`) / `32 w - 22` (odd `w >= 3`) gates, charged as
+X `5 w - 3 / 5 w + 1`, CNOT `17 w - 22 / 17 w - 5`, Toffoli `12 w - 28 / 10 w - 18`.
+`.scratch` (ForShor's `negateResourcesPreSwap`): complement plus a Cuccaro adder against a clean
+constant-one register, `10 w - 14` gates for `w >= 3`; this is the charge of ForShor 6d55ad9. -/
+def negateGateCount (width : Nat) (m : Shor.NegationMethod := .oneQubit) : Nat :=
+  (Companion.negateResourcesAtWidth width m).totalGates
+
+/-- Cuccaro-based negation total (the pre-swap, `scratch`, charge). Equals `10w - 14` for `w >= 3`.
+Kept as the regression anchor: `negateGateCount width .scratch`. -/
 def cuccaroNegateGateCount (width : Nat) : Nat :=
-  (Companion.negateResourcesAtWidth width).totalGates
+  negateGateCount width .scratch
 
 theorem cuccaroModAddGateCount_eq (width : Nat) (hw : 3 <= width) :
     cuccaroModAddGateCount width = 9 * width - 16 :=
   Companion.cuccaroModAddResources_totalGates width hw
 
-theorem cuccaroNegateGateCount_eq (width : Nat) :
-    cuccaroNegateGateCount width = 33 * width :=
-  Companion.negateResourcesAtWidth_totalGates width
+theorem cuccaroNegateGateCount_eq (width : Nat) (hw : 3 <= width) :
+    cuccaroNegateGateCount width = 10 * width - 14 :=
+  Companion.negateResourcesAtWidth_scratch_totalGates width hw
 
-/-- The planner's negation cost is what the operative model charges any register
-of that width. -/
+theorem negateGateCount_oneQubit_eq (width : Nat) (hw : 3 <= width) :
+    negateGateCount width .oneQubit
+      = if width % 2 = 0 then 34 * width - 53 else 32 * width - 22 :=
+  Companion.negateResourcesAtWidth_oneQubit_totalGates width hw
+
+/-- The planner's negation cost is what the operative model, under the same method, charges any
+register of that width. -/
+theorem negateGateCount_eq_modelFor (m : Shor.NegationMethod) (r : Shor.ExtReg) :
+    (Shor.negateResourcesFor m r).totalGates = negateGateCount (Shor.ExtReg.width r) m :=
+  Companion.shorGateResourceModelFor_negate_atWidth m r
+
+theorem negateGateCount_eq_model (r : Shor.ExtReg) :
+    (Shor.negateResources r).totalGates = negateGateCount (Shor.ExtReg.width r) := rfl
+
 theorem cuccaroNegateGateCount_eq_model (r : Shor.ExtReg) :
-    (Shor.negateResources r).totalGates
+    (Shor.negateResourcesPreSwap r).totalGates
       = cuccaroNegateGateCount (Shor.ExtReg.width r) := rfl
 
 /-- The planner's adder cost is what the operative model charges `addScaled` at
@@ -162,34 +183,49 @@ this planner charges what `Shor.shorGateCostModel` actually charges.
 the two carries over.
 -/
 def phaseArithmeticOpCost {k : Nat}
-    (workingWidth : Nat) : valid_ops k -> Nat
+    (workingWidth : Nat) (op : valid_ops k)
+    (m : Shor.NegationMethod := .oneQubit) : Nat :=
+  match op with
   | .shiftL _ _ => 0
   | .shiftR _ _ => 0
-  | .negate _ => 2 * cuccaroNegateGateCount workingWidth
+  | .negate _ => 2 * negateGateCount workingWidth m
   | .addScaled _ _ _ _ => 2 * cuccaroModAddGateCount workingWidth
   | .phaseProduct _ => 0
 
 /-- What this planner charges never exceeds what the companion's recurrence
-layer assumes. This is the companion's exact-below-bound relationship, lifted
-from the primitives to one operation. -/
-theorem phaseArithmeticOpCost_le {k : Nat} (workingWidth : Nat) (op : valid_ops k) :
-    phaseArithmeticOpCost workingWidth op
-      <= Companion.phaseArithmeticOpCost workingWidth op := by
+layer assumes, under any negation method. This is the companion's exact-below-bound
+relationship, lifted from the primitives to one operation. -/
+theorem phaseArithmeticOpCost_le_for (m : Shor.NegationMethod) {k : Nat} (workingWidth : Nat)
+    (op : valid_ops k) :
+    phaseArithmeticOpCost workingWidth op m
+      <= Companion.phaseArithmeticOpCostFor m workingWidth op := by
   cases op with
   | shiftL _ _ => exact Nat.le_refl 0
   | shiftR _ _ => exact Nat.le_refl 0
   | negate _ =>
       exact Nat.mul_le_mul_left 2
-        (Companion.negateResourcesAtWidth_totalGates_le_negateGateBound workingWidth)
+        (Companion.negateResourcesAtWidth_totalGates_le_negateWidthBound workingWidth m)
   | addScaled _ _ _ _ =>
       exact Nat.mul_le_mul_left 2
         (Companion.cuccaroModAddResources_totalGates_le_rippleAdderGateBound workingWidth)
   | phaseProduct _ => exact Nat.le_refl 0
 
+/-- The `oneQubit` instance: against the companion's `Shor.phaseArithmeticOpCost`. -/
+theorem phaseArithmeticOpCost_le {k : Nat} (workingWidth : Nat) (op : valid_ops k) :
+    phaseArithmeticOpCost workingWidth op
+      <= Companion.phaseArithmeticOpCost workingWidth op := by
+  have h := phaseArithmeticOpCost_le_for .oneQubit workingWidth op
+  have e : Companion.phaseArithmeticOpCostFor .oneQubit workingWidth op
+      = Companion.phaseArithmeticOpCost workingWidth op := by
+    unfold Companion.phaseArithmeticOpCostFor Companion.phaseArithmeticOpCost
+    exact Shor.phaseArithmeticOpCostFor_oneQubit _ _
+  rw [e] at h
+  exact h
+
 /-- Total nonrecursive arithmetic cost of a table-generation program. -/
 def phaseProgramOverhead {k : Nat}
-    (workingWidth : Nat) (ops : Prog k) : Nat :=
-  ops.foldr (fun op total => phaseArithmeticOpCost workingWidth op + total) 0
+    (workingWidth : Nat) (ops : Prog k) (m : Shor.NegationMethod := .oneQubit) : Nat :=
+  ops.foldr (fun op total => phaseArithmeticOpCost workingWidth op m + total) 0
 
 /-- Logical width of the most-significant limb of a top-heavy split. -/
 def topLimbWidth (width limbWidth k : Nat) : Nat :=
@@ -221,34 +257,34 @@ deriving Repr, DecidableEq
 
 /-- Analyze a verified program at the supplied PhaseProduct operand widths. -/
 def analyzeProgram {k : Nat}
-    (xWidth zWidth : Nat) (ops : Prog k) : ProgramAnalysis :=
+    (xWidth zWidth : Nat) (ops : Prog k) (m : Shor.NegationMethod := .oneQubit) : ProgramAnalysis :=
   let childWidth := nextSignedWidth xWidth zWidth ops
   { childWidth
     arithmeticGateCount :=
-      phaseProgramOverhead childWidth ops +
+      phaseProgramOverhead childWidth ops m +
         signExtensionAllocationGateCount xWidth zWidth k childWidth
     arithmeticOperationCount := TableGeneration.arithmeticOperationCount ops
     recursiveCallCount := TableGeneration.phaseProductCount ops }
 
 /-- Planner-oriented balanced analysis using the compact array width scan. -/
 def analyzeBalancedProgram {k : Nat}
-    (width : Nat) (ops : Prog k) : ProgramAnalysis :=
+    (width : Nat) (ops : Prog k) (m : Shor.NegationMethod := .oneQubit) : ProgramAnalysis :=
   let childWidth := nextBalancedSignedWidth width ops
   { childWidth
     arithmeticGateCount :=
-      phaseProgramOverhead childWidth ops +
+      phaseProgramOverhead childWidth ops m +
         signExtensionAllocationGateCount width width k childWidth
     arithmeticOperationCount := TableGeneration.arithmeticOperationCount ops
     recursiveCallCount := TableGeneration.phaseProductCount ops }
 
 @[simp] theorem analyzeProgram_recursiveCallCount {k : Nat}
-    (xWidth zWidth : Nat) (ops : Prog k) :
-    (analyzeProgram xWidth zWidth ops).recursiveCallCount =
+    (xWidth zWidth : Nat) (ops : Prog k) (m : Shor.NegationMethod) :
+    (analyzeProgram xWidth zWidth ops m).recursiveCallCount =
       TableGeneration.phaseProductCount ops := rfl
 
 @[simp] theorem analyzeProgram_arithmeticOperationCount {k : Nat}
-    (xWidth zWidth : Nat) (ops : Prog k) :
-    (analyzeProgram xWidth zWidth ops).arithmeticOperationCount =
+    (xWidth zWidth : Nat) (ops : Prog k) (m : Shor.NegationMethod) :
+    (analyzeProgram xWidth zWidth ops m).arithmeticOperationCount =
       TableGeneration.arithmeticOperationCount ops := rfl
 
 theorem commonNeededWidth_pos {k : Nat} (needed : Shor.NeededWidths k) :

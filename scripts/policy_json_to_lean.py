@@ -14,6 +14,12 @@ Input (the sto_site `reference_policies.json` band shape, one policy):
 `point_order` is the order the program's phaseProduct checkpoints consume the
 points (STO `generatePointsInOrder`), which is what the table check needs.
 
+Optional top-level `"negation": "oneQubit" | "scratch"` (ForShor `Shor.NegationMethod`; swap-002). Absent or
+`"oneQubit"` (the default) generates exactly the Lean it did before the key existed. `"scratch"` adds
+`negation := .scratch` to `def policy : BandedPolicy` (data part); `toShorPolicySubmission` copies it, so
+`forshorSubmission` carries it too. Needs a ForShor pin that has `NegationMethod` (`21e129aeefc0fd1bbb8fa63402f5799af2490788`).
+Any other value is an error.
+
 Usage:
     policy_json_to_lean.py POLICY.json --module NAME [--target-width N] [--index I] > NAME.lean
     # or split, so a harness can evaluate the data before proving anything:
@@ -33,10 +39,26 @@ import sys
 
 MODES = {"PhaseProduct": ".PhaseProduct", "PhaseTripleProduct": ".PhaseTripleProduct"}
 IDENT = re.compile(r"^[A-Z][A-Za-z0-9_]*$")
+# ForShor `Shor.NegationMethod` (Framework/NegationMethod.lean): `oneQubit` is the default.
+NEGATIONS = ("oneQubit", "scratch")
 
 
 class PolicyError(ValueError):
     pass
+
+
+def negation_of(policy: dict) -> str | None:
+    """The optional top-level `"negation"` key: `"oneQubit"` (the default) or `"scratch"`.
+
+    Returns None when the key is absent or names the default, so that a policy which does not ask for
+    anything else generates the same Lean as before the key existed; "scratch" otherwise. Any other
+    value (including null or a non-string) is an error."""
+    if "negation" not in policy:
+        return None
+    v = policy["negation"]
+    if not isinstance(v, str) or v not in NEGATIONS:
+        raise PolicyError(f'bad negation {v!r}: expected "oneQubit" (the default) or "scratch"')
+    return None if v == "oneQubit" else v
 
 
 def point_lean(s: str) -> str:
@@ -129,6 +151,7 @@ def render(policy: dict, module: str, target: int | None, part: str = "all", dat
         raise PolicyError(f"bad width rule {widths!r}")
     if widths == "exact" and part != "data" and (exact_ladder is None or target is None):
         raise PolicyError("--widths exact needs the exact ladder and a target width")
+    negation = negation_of(policy)
     out = []
     if part == "cert":
         if not data_module or not IDENT.match(data_module):
@@ -173,7 +196,10 @@ def render(policy: dict, module: str, target: int | None, part: str = "all", dat
         out.append("/-- The policy: bands widest first. -/")
         out.append("def policy : BandedPolicy where")
         out.append(f"  mode := {MODES[mode]}")
-        out.append("  bands := [" + ", ".join(f"⟨{t}, {n}⟩" for t, n in band_names) + "]\n")
+        out.append("  bands := [" + ", ".join(f"⟨{t}, {n}⟩" for t, n in band_names) + "]")
+        if negation is not None:
+            out.append("  negation := .scratch")
+        out.append("")
     if part == "data":
         out.append(f"end TableGeneration.PolicyMirror.Instances.{module}\n")
         return "\n".join(out)
@@ -221,7 +247,11 @@ def render(policy: dict, module: str, target: int | None, part: str = "all", dat
     out.append("/-- The submission record. -/")
     out.append("def submission : PolicySubmission := ⟨policy, accepted⟩\n")
     if mode == "PhaseProduct":
-        out.append("/-- The same policy as ForShor's object (`Shor.ShorPolicySubmission`, every band C1–C4). -/")
+        if negation is None:
+            out.append("/-- The same policy as ForShor's object (`Shor.ShorPolicySubmission`, every band C1–C4). -/")
+        else:
+            out.append("/-- The same policy as ForShor's object (`Shor.ShorPolicySubmission`, every band C1–C4); it carries the")
+            out.append("policy's `negation` (`toShorPolicySubmission` copies it). -/")
         out.append("def forshorSubmission : Shor.ShorPolicySubmission := toShorPolicySubmission policy accepted rfl\n")
     if target is not None and widths == "scan":
         out.append(f"/-- Every band the recursion from width {target} selects strictly contracts (no leaf fallback on the chain). -/")

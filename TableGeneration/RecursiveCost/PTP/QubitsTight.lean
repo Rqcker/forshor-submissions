@@ -20,10 +20,15 @@ an *interval* `[base, base + ptpWorkspace)` whose slot blocks are spaced `C'` ap
   formula, previously unproved, is a proved **upper bound** on the number of distinct qubits the
   circuit names (`LowGate.usedQubits`).
 
-**What is not bounded.** The framework's qubit total is `usedQubits + resources.cleanAnc`
-(`LowGate.qubitCount`); the Cuccaro/negation scratch counted in `cleanAnc` is *not* part of these
-bounds, and `cleanAnc` of the full recursive circuit is not proved here (only single-node lemmas such
-as `ptpNode_cleanAnc_le`). The formula is also loose by up to a factor `k` per level below depth one:
+**What these bounds do not include.** The framework's qubit total is `usedQubits + resources.cleanAnc`
+(`LowGate.qubitCount`); the negation/Cuccaro scratch counted in `cleanAnc` is not part of the bounds in this file.
+It is bounded by `PolicyImplD.cleanAnc_le` (`ExactRecursion.lean`): the `cleanAnc` of every gate-level
+recursion, in the policy's own resource model `P.resourceModel`, is at most `ptpCleanAncD P wd n` (`1` under
+`oneQubit`, `C + 1` at the widest negating node under `scratch`). ForShor combines the two into
+`PTPPeakQubits` (`qubitCount ≤ 3 n + ptpWsTD P wd n + ptpCleanAncD P wd n`, `Proofs/Peak/Peak.lean`); this
+suite mirrors the two summands (`exists_policyImplD_tight`, `cleanAnc_le`) but not that combined claim.
+
+The formula is also loose by up to a factor `k` per level below depth one:
 `ptpReserveNeed` gives every child slot a private workspace, while the construction shares one pool.
 -/
 
@@ -47,17 +52,6 @@ def ptpReserveNeedD (P : PTPPolicy) (wd : WidthRule) (n : ℕ) : ℕ :=
   | none => 0
   | some T =>
       if _h : wd T n < n then (T.k * wd T n - n) + T.k * ptpReserveNeedD P wd (wd T n) else 0
-termination_by n
-
-/-- `ptpCleanAnc` with node widths `wd`. -/
-def ptpCleanAncD (P : PTPPolicy) (wd : WidthRule) (n : ℕ) : ℕ :=
-  match P.choose n with
-  | none => 0
-  | some T =>
-      if _h : wd T n < n then
-        max (if negCount T.ops = 0 then (if addCount T.ops = 0 then 0 else 1) else wd T n + 1)
-          (ptpCleanAncD P wd (wd T n))
-      else 0
 termination_by n
 
 theorem ptpReserveNeedD_scan (P : PTPPolicy) : ∀ n, ptpReserveNeedD P scanRule n = ptpReserveNeed P n := by
@@ -99,8 +93,8 @@ theorem ptpWsTD_le_formula (P : PTPPolicy) (wd : WidthRule)
         set r := ptpReserveNeedD P wd (wd T n)
         set a := ptpCleanAncD P wd (wd T n)
         have h2 : r ≤ T.k * r := Nat.le_mul_of_pos_left r hk1
-        have h3 : max a 2 ≤ max (max (if negCount T.ops = 0 then (if addCount T.ops = 0 then 0 else 1)
-            else wd T n + 1) a) 2 := max_le_max (le_max_right _ _) le_rfl
+        have h3 : max a 2 ≤ max (max (nodeCleanAncFor P.negation (wd T n) (addCount T.ops)
+            (negCount T.ops)) a) 2 := max_le_max (le_max_right _ _) le_rfl
         omega
       · rw [ptpWsTD, ptpReserveNeedD, ptpCleanAncD, hc]
         simp only [dif_neg hlt]; simp

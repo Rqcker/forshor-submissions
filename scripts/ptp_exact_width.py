@@ -123,6 +123,33 @@ def scan_ladder(policy: dict, n: int) -> list:
     return _ladder(policy, n, ptp_scan_width)
 
 
+def ptp_peak_qubits(policy: dict, n: int, rule: str = "exact", negation: str = "oneQubit") -> dict:
+    """ForShor's `ptpPeakQubits P wd n = 3 n + ptpWsTD P wd n + ptpCleanAncD P wd n` (PhaseTripleProduct/Statement.lean),
+    the bound of the Lean claims `ptp_peak_qubits` (any rule), `ptp_peak_qubits_exact`, `ptp_peak_qubits_scan`: some
+    circuit following the policy has framework `qubitCount` at most this. `rule` is "exact" (`exactRule`, the board's) or
+    "scan" (`ptpScanWidth`); `negation` is "oneQubit" or "scratch" (ForShor `NegationMethod`).
+
+    ptpWsTD: base 2 (the sandwich leaf's two ancillas), plus 3 (k C' - w) at every recursing node (width w, child C').
+    ptpCleanAncD: max over recursing nodes of `nodeCleanAncFor`: no negate and no add: 0; no negate: 1;
+    with a negate: 1 (oneQubit) or C' + 1 (scratch). Returns {"ws", "clean", "peak"}."""
+    if rule not in ("exact", "scan"):
+        raise ValueError(f"rule {rule!r}")
+    if negation not in ("oneQubit", "scratch"):
+        raise ValueError(f"negation {negation!r}")
+    lad = exact_ladder(policy, n) if rule == "exact" else scan_ladder(policy, n)
+    ws, clean = 2, 0
+    for (w, k), (c, _) in zip(lad, lad[1:]):
+        if k is None:
+            continue
+        ops = _choose(policy, w)["operations"]
+        adds = sum(1 for o in ops if o[0] == "addScaled")
+        negs = sum(1 for o in ops if o[0] == "negate")
+        ws += 3 * max(k * c - w, 0)
+        node = (0 if adds == 0 else 1) if negs == 0 else (1 if negation == "oneQubit" else c + 1)
+        clean = max(clean, node)
+    return {"ws": ws, "clean": clean, "peak": 3 * n + ws + clean}
+
+
 def main(argv=None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     doc = json.loads(open(argv[0]).read())

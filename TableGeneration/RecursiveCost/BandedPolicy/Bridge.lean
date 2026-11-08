@@ -107,12 +107,20 @@ in the submission, so it applies to this value in a ForShor build. -/
 def toShorPolicySubmission (P : BandedPolicy) (h : P.check = true)
     (hmode : P.mode = .PhaseProduct) : Shor.ShorPolicySubmission where
   bands := bandsToSetups P.bands (check_pp_tables h hmode)
+  negation := P.negation
   sorted := by rw [bandsToSetups_fst]; exact BandedPolicy.check_sorted h
 
 /-- The ForShor policy an accepted STO `PhaseProduct` policy denotes. -/
 def toForShor (P : BandedPolicy) (h : P.check = true) (hmode : P.mode = .PhaseProduct) :
     Shor.ShorLoweringPolicy :=
   (toShorPolicySubmission P h hmode).policy
+
+/-- The ForShor policy carries the banded policy's negation method, hence is priced under it. -/
+theorem toForShor_negation (P : BandedPolicy) (h : P.check = true) (hmode : P.mode = .PhaseProduct) :
+    (toForShor P h hmode).negation = P.negation := rfl
+
+theorem toShorPolicySubmission_negation (P : BandedPolicy) (h : P.check = true)
+    (hmode : P.mode = .PhaseProduct) : (toShorPolicySubmission P h hmode).negation = P.negation := rfl
 
 /-- It is admissible in ForShor's sense (every band C1–C4). -/
 theorem toForShor_admissible (P : BandedPolicy) (h : P.check = true)
