@@ -98,3 +98,22 @@ is priced by `starter.py forshor-doc` on upstream's IR, the board's labelled cro
 (`examples/forshor_upstream_scan.policy.json`).
 
 Running a check executes Lean on your machine. For code you do not trust, use a disposable VM or container.
+
+## The PhaseTripleProduct submission file (ForShor)
+
+A PhaseTripleProduct `Policy.lean` (`namespace PTPPolicySubmission`, `templates/ptp.Policy.lean`) is built by ForShor like the PhaseProduct one, with its own library and
+executable. They are in the ForShor branch `ptp/submission-template` (`21e129a` plus `PTPPolicyTemplate.lean`, `PTPPolicyCheck.lean`, `PTPPolicyMain.lean` and two lakefile entries),
+not in `21e129a`:
+
+```bash
+F=/path/to/ForShor            # at that branch, built (lake exe cache get, then lake build)
+python starter.py template my_ptp_policy.json --out Policy.lean --forshor $F
+cp Policy.lean $F/ForShor/ShorVerification/Submission/PTPPolicyTemplate.lean   # ForShor's name for the file
+cd $F
+bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PTPPolicyTemplate.lean   # the same lexical gate
+lake build PTPPolicySubmission forshor_ptp_policy_submission && lake exe forshor_ptp_policy_submission > policy.json
+```
+
+The build kernel-checks the table contract, the strict decrease of the thresholds and the exact-width threshold rule from 2048 (`decide +kernel`) and audits the axioms;
+a bad table, a threshold that breaks the rule or an attribute that reaches compiled code makes it fail. Measured: a policy with bands k = 8 and k = 4 builds in about 25 seconds.
+The executable prints the bands, the negation method and the benchmark width; there is no IR for a PhaseTripleProduct policy (the boards price it in the results engine).
