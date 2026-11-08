@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-"""One submission, end to end: a policy JSON through the Lean checks to the v2 publisher (and so onto the boards).
+"""One submission, end to end: a policy (the submitted Lean file `Policy.lean`, or its site policy JSON) through the Lean checks to the v2 publisher (and so onto the boards).
 
-    python intake_v2.py --policy P.json --login HANDLE --pull N --tree STO_TREE --publisher-url URL
+    python intake_v2.py (--lean-policy Policy.lean | --policy P.json) --login HANDLE --pull N --tree STO_TREE --publisher-url URL
                         [--forshor-tree FORSHOR_CHECKOUT] [--workdir DIR] [--head-sha SHA] [--run-id ID] [--stage-timeout S]
 
 This is the whole of "everything after the participant's policy exists", in one command a workflow can call (GitHub CI supplies the PR's login, number
 and head commit, the Lean trees and the publisher's URL and token; nothing else is needed). It never runs anything a participant wrote except Lean
 on the policy's own data:
 
-  1. reads the policy and normalises it to the policy the engine prices (a declared width ladder and any other extra key are dropped, never passed to Lean);
+  1. reads the policy and normalises it to the policy the engine prices (a declared width ladder and any other extra key are dropped, never passed to Lean).
+     With `--lean-policy` the submission is the Lean file itself: ForShor's lexical gate runs on it, ForShor builds it (needs `--forshor-tree`) and the document it
+     prints is the policy (exact widths and the default negation only; 2 <= k <= 8 per band); the document's bands are what the mirror and the pricing use;
   2. refuses the reserved handle, and a publisher whose epoch was built for a different model than this checkout's, BEFORE any compute;
   3. runs the STO mirror (PhaseProduct) or the PhaseTripleProduct harness at exact widths in the Lean tree at the epoch's pins: an envelope that is not
      accepted ends the run, with the stage and reason;
-  4. for a PhaseProduct policy whose k are all at most 6, and when a ForShor checkout is given: writes ForShor's PolicyTemplate for it into a disposable copy of
-     the checkout, builds it, prints ForShor's document and requires its bands to be the submitted bands and its own IR to price to the same T as the policy.
-     A check that was attempted and fails ends the run. Without a checkout, or with a k above 6 (ForShor takes 1 < k <= 6), the row carries no ForShor record;
+  4. for a PhaseProduct policy whose k are all at most 8, and when a ForShor checkout is given: (JSON input) writes ForShor's PolicyTemplate for it into a disposable
+     copy of the checkout and builds it, or (Lean input) uses the build of step 1; prints ForShor's document and requires its bands to be the submitted bands and its own
+     IR to price to the same T as the policy. A check that was attempted and fails ends the run. Without a checkout, or for a PhaseTripleProduct policy, the row carries no
+     ForShor record (a Lean submission always has one);
   5. prices the policy once, then publishes it through `publish_v2_with_recovery` (the CI client): a conflict or transport error re-reads the live state
      and refreshes only what depends on it.
 
@@ -41,7 +44,8 @@ from publish import RetryPublication, request_json  # noqa: E402  (v1 helpers, u
 from publish_v2 import ModelMismatch, ReservedHandle, policy_name, publish_v2_with_recovery  # noqa: E402
 
 REPO = "zapatacomputing/forshor-submissions"
-MAX_FORSHOR_K = 6
+MAX_FORSHOR_K = 8           # a submission's bands take 2 <= k <= 8
+MAX_LEAN_BYTES = 1_000_000  # the size limit of the submitted Lean file
 
 
 class Refused(Exception):
@@ -104,14 +108,18 @@ def forshor_record(eng, P, doc: Dict[str, Any], pin: str) -> Dict[str, Any]:
     return {"verified": True, "bandsAgree": True, "irPriceAgrees": True, "claim": FORSHOR_CLAIM, "forshorCommit": pin}
 
 
-def forshor_check(eng, P, forshor_tree: Path, workdir: Path, pin: str, timeout: int = 7200) -> Dict[str, Any]:
-    """ForShor's build of the policy's template in a disposable copy of the checkout, then its printed document, then `forshor_record`."""
-    import policy_to_template as ptt
+def forshor_build(forshor_tree: Path, template: str, workdir: Path, timeout: int = 7200) -> Dict[str, Any]:
+    """The Lean file as ForShor's `PolicyTemplate`, in a disposable copy of the checkout: ForShor's lexical gate, its build, then the document it prints
+    (`lake exe forshor_policy_submission --balanced`). Raises `Refused` at stage `lexical` or `forshor`; the file is only ever compiled, never run by us."""
     tree = workdir / "forshor-tree"
     if tree.exists():
         shutil.rmtree(tree)
     subprocess.run((["cp", "-Rc"] if sys.platform == "darwin" else ["cp", "-a"]) + [str(forshor_tree), str(tree)], check=True)
-    (tree / "ForShor" / "ShorVerification" / "Submission" / "PolicyTemplate.lean").write_text(ptt.template_text(P, "ForShor"))
+    target = tree / "ForShor" / "ShorVerification" / "Submission" / "PolicyTemplate.lean"
+    target.write_text(template)
+    gate = subprocess.run(["bash", "scripts/check_template_lexical.sh", str(target)], cwd=tree, capture_output=True, text=True)
+    if gate.returncode != 0:
+        raise Refused("lexical", "ForShor's lexical gate refused the file: " + (gate.stdout + gate.stderr)[-500:].strip())
     log = workdir / "forshor.log"
     with open(log, "w") as out:
         built = subprocess.run(["lake", "build", "PolicySubmission", "forshor_policy_submission"], cwd=tree, stdout=out, stderr=subprocess.STDOUT, timeout=timeout)
@@ -120,7 +128,33 @@ def forshor_check(eng, P, forshor_tree: Path, workdir: Path, pin: str, timeout: 
     printed = subprocess.run(["lake", "exe", "forshor_policy_submission", "--balanced"], cwd=tree, capture_output=True, text=True, timeout=timeout)
     if printed.returncode != 0:
         raise Refused("forshor", "ForShor's check refused the policy: " + (printed.stderr or printed.stdout)[-500:])
-    return forshor_record(eng, P, json.loads(printed.stdout), pin)
+    return json.loads(printed.stdout)
+
+
+def forshor_check(eng, P, forshor_tree: Path, workdir: Path, pin: str, timeout: int = 7200) -> Dict[str, Any]:
+    """ForShor's build of the policy's template in a disposable copy of the checkout, then its printed document, then `forshor_record`."""
+    import policy_to_template as ptt
+    return forshor_record(eng, P, forshor_build(forshor_tree, ptt.template_text(P, "ForShor"), workdir, timeout), pin)
+
+
+def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir: Path, timeout: int = 7200):
+    """A submitted `Policy.lean` (ForShor's PolicyTemplate format) to (the policy as site policy JSON, ForShor's printed document). ForShor builds the
+    file, so the document is the policy it kernel-checked; the boards then check the same tables in the STO mirror and price them. Only exact widths and
+    the default negation are priced, so a file that asks for anything else is refused rather than priced as something it is not."""
+    if len(lean_text.encode()) > MAX_LEAN_BYTES:
+        raise Refused("format", f"the Lean file is larger than {MAX_LEAN_BYTES} bytes")
+    if forshor_tree is None:
+        raise RuntimeError("a Lean policy needs ForShor's build, and no ForShor checkout was given (--forshor-tree)")
+    doc = forshor_build(forshor_tree, lean_text, workdir, timeout)
+    if doc.get("negation", "oneQubit") != "oneQubit":
+        raise Refused("format", f"the policy asks for negation {doc.get('negation')!r}; the boards price oneQubit only")
+    from site_engine import fullalg as fa
+    if fa.doc_width_rule(doc) != "exact":
+        raise Refused("format", "the policy does not use exact widths; the boards price at exact widths")
+    P = policy_from_document(eng, doc)
+    if not P.bands or any(not 2 <= b.table.k <= MAX_FORSHOR_K for b in P.bands):
+        raise Refused("format", f"every band takes 2 <= k <= {MAX_FORSHOR_K}")
+    return P.to_json(), doc
 
 
 def _published_archive_commit(url: str, token: str) -> str:
@@ -137,7 +171,7 @@ def _now() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def run_intake(policy_doc: Any, *, login: str, pull: int, url: str, token: str, tree: Path, workdir: Path,
+def run_intake(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str, pull: int, url: str, token: str, tree: Path, workdir: Path,
                head_sha: Optional[str] = None, run_id: Optional[str] = None, forshor_tree: Optional[Path] = None,
                stage_timeout: Optional[int] = None, mirror_timeout: int = 7200, archive_commit: Optional[str] = None,
                archive_view: Optional[Callable[[], Any]] = None,
@@ -149,6 +183,18 @@ def run_intake(policy_doc: Any, *, login: str, pull: int, url: str, token: str, 
     from export_v2.evidence import EvidenceStore, run_mirror
     eng = engine.load()
     model = epoch.model_of()
+    state_of = lambda: request_json(url.rstrip("/") + "/v2/state", token)
+
+    state = state_of()
+    policy_name(state, login)                                   # the reserved handle, before any compute
+    if state["model"] != model:
+        raise ModelMismatch(f"live epoch {state['epoch']} was built for a different model than this checkout's; not publishing")
+
+    workdir.mkdir(parents=True, exist_ok=True)
+    printed = None
+    if lean_policy is not None:                                 # a Lean submission: ForShor builds it, its printed document is the policy
+        log("ForShor's lexical gate, build and printed document (the submitted Lean file) ...")
+        policy_doc, printed = policy_from_lean(eng, lean_policy, forshor_tree, workdir)
     policy_json = normalise(policy_doc)
     digest = policy_digest(policy_json)
     head_sha = head_sha or hashlib.sha1(digest.encode()).hexdigest()
@@ -158,17 +204,9 @@ def run_intake(policy_doc: Any, *, login: str, pull: int, url: str, token: str, 
     evaluation_key = hashlib.sha256(f"{head_sha}:{run_id}:{pull}".encode()).hexdigest()
     metadata = {"headSha": head_sha, "pullRequestUrl": pr_url, "githubLogin": login, "runId": run_id, "submittedAt": submitted_at,
                 "evaluationKey": evaluation_key}
-    state_of = lambda: request_json(url.rstrip("/") + "/v2/state", token)
-
-    state = state_of()
-    policy_name(state, login)                                   # the reserved handle, before any compute
-    if state["model"] != model:
-        raise ModelMismatch(f"live epoch {state['epoch']} was built for a different model than this checkout's; not publishing")
-
-    workdir.mkdir(parents=True, exist_ok=True)
     board = "ptp" if policy_json["mode"] == eng.tables.TRIPLE else "pp"
     log(f"policy {digest[:12]} ({policy_json['mode']}, {len(policy_json['bands'])} bands): the Lean mirror at exact widths ...")
-    envelope = (run_mirror_fn or run_mirror)(policy_json, board, tree, workdir / "evidence", timeout=mirror_timeout, python=python, stage_timeout=stage_timeout)
+    envelope = (run_mirror_fn or run_mirror)(policy_json, board, tree, workdir / "evidence", timeout=mirror_timeout, python=python, stage_timeout=stage_timeout, fast=True)   # `fast`: PhaseTripleProduct only, see run_mirror
     store = EvidenceStore(workdir / "evidence")
     mirror, why = store.stomirror(policy_json, model, board)
     if mirror is None:
@@ -179,7 +217,10 @@ def run_intake(policy_doc: Any, *, login: str, pull: int, url: str, token: str, 
 
     forshor = None
     P = eng.tables.Policy.from_json(policy_json)
-    if forshor_tree and P.mode == eng.tables.PAIR and max(b.table.k for b in P.bands) <= MAX_FORSHOR_K:
+    if printed is not None:
+        forshor = forshor_record(eng, P, printed, model["forshor"]["pin"])
+        log("  ForShor policy-verified")
+    elif forshor_tree and P.mode == eng.tables.PAIR and max(b.table.k for b in P.bands) <= MAX_FORSHOR_K:
         log("ForShor's build and printed document ...")
         forshor = forshor_check(eng, P, Path(forshor_tree), workdir, model["forshor"]["pin"])
         log("  ForShor policy-verified")
@@ -204,7 +245,8 @@ def run_intake(policy_doc: Any, *, login: str, pull: int, url: str, token: str, 
 
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--policy", type=Path, required=True)
+    ap.add_argument("--policy", type=Path, help="a policy as site policy JSON (the pack's format)")
+    ap.add_argument("--lean-policy", type=Path, help="a submitted Policy.lean (ForShor's PolicyTemplate format); needs --forshor-tree. Exactly one of --policy and --lean-policy")
     ap.add_argument("--login", required=True, help="the submitter's GitHub handle (the PR author)")
     ap.add_argument("--pull", type=int, required=True, help="the pull request number")
     ap.add_argument("--head-sha", help="the PR head commit (40 hex); default: derived from the policy")
@@ -221,8 +263,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     a = ap.parse_args(argv)
     if not a.publisher_url:
         ap.error("--publisher-url (or PUBLISHER_URL) is required")
+    if (a.policy is None) == (a.lean_policy is None):
+        ap.error("give exactly one of --policy and --lean-policy")
     try:
-        result = run_intake(json.loads(a.policy.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=os.environ.get("PUBLISHER_TOKEN", "local"),
+        result = run_intake(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, login=a.login, pull=a.pull, url=a.publisher_url, token=os.environ.get("PUBLISHER_TOKEN", "local"),
                             tree=a.tree, workdir=a.workdir, head_sha=a.head_sha, run_id=a.run_id, forshor_tree=a.forshor_tree,
                             stage_timeout=a.stage_timeout, mirror_timeout=a.mirror_timeout,
                             archive_commit=a.archive_commit,

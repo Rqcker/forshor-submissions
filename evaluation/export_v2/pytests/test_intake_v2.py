@@ -47,6 +47,7 @@ def fake_publisher(model, calls, number=1):
 
 def archived_mirror(calls):
     def run(policy_json, board, tree, out_dir, **kw):
+        assert kw.get("fast") is True, "the mirror is run with --fast (the PhaseTripleProduct harness skips its interpreted report stage)"
         calls.append(("mirror", board))
         out_dir.mkdir(parents=True, exist_ok=True)
         for ext in ("policy", "record", "evidence"):
@@ -180,3 +181,67 @@ def test_weighted_cost_is_computed_for_a_table_the_archive_has_no_value_for_and_
     wrong = [(T.digest[:10], mapping.weighted_cost_of(T.to_json()["operations"]), w) for T, w in known if mapping.weighted_cost_of(T.to_json()["operations"]) != w]
     assert not wrong, wrong[:5]
     assert mapping.weighted_cost_of([["addScaled", 0, 1, 1, 0], ["shiftL", 1, 1], ["phaseProduct", 0], ["phaseProduct", 1], ["negate", 2], ["phaseProduct", 2]]) == 3 + 5 * 2
+
+
+# ---- a submission that is the Lean file itself (Policy.lean, ForShor's PolicyTemplate format)
+DROPIN = EVAL / "starter" / "pack" / "examples" / "forshor_dropin.policy.json"   # a real document ForShor printed at 21e129a
+
+
+def test_a_lean_policy_becomes_the_policy_ForShor_printed_for_it(monkeypatch, tmp_path):
+    from export_v2 import engine
+    eng = engine.load()
+    doc = json.loads(DROPIN.read_text())
+    seen = {}
+    monkeypatch.setattr(intake_v2, "forshor_build", lambda tree, text, workdir, timeout=7200: seen.update(text=text, tree=tree) or doc)
+    policy_json, printed = intake_v2.policy_from_lean(eng, "-- the submitted file", tmp_path / "forshor", tmp_path / "w")
+    assert seen["text"] == "-- the submitted file", "the submitted bytes are what ForShor builds"
+    assert printed is doc
+    assert [(b["threshold"], b["k"]) for b in policy_json["bands"]] == [(int(b["threshold"]), int(b["k"])) for b in doc["bands"]]
+    assert policy_json["mode"] == eng.tables.PAIR
+
+
+def test_a_lean_policy_that_asks_for_something_the_boards_do_not_price_is_refused(monkeypatch, tmp_path):
+    from export_v2 import engine
+    eng = engine.load()
+    base = json.loads(DROPIN.read_text())
+    monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **k: dict(base, negation="scratch"))
+    with pytest.raises(intake_v2.Refused, match="oneQubit only"):
+        intake_v2.policy_from_lean(eng, "x", tmp_path, tmp_path)
+    with pytest.raises(intake_v2.Refused, match="larger than"):
+        intake_v2.policy_from_lean(eng, "x" * (intake_v2.MAX_LEAN_BYTES + 1), tmp_path, tmp_path)
+    with pytest.raises(RuntimeError, match="--forshor-tree"):
+        intake_v2.policy_from_lean(eng, "x", None, tmp_path)
+
+
+def test_the_lexical_gate_refuses_before_anything_is_built(tmp_path):
+    tree = tmp_path / "forshor"
+    (tree / "ForShor" / "ShorVerification" / "Submission").mkdir(parents=True)
+    (tree / "scripts").mkdir()
+    (tree / "scripts" / "check_template_lexical.sh").write_text("#!/usr/bin/env bash\necho 'reaches compiled code' >&2\nexit 1\n")
+    w = tmp_path / "w"
+    w.mkdir()
+    with pytest.raises(intake_v2.Refused) as e:
+        intake_v2.forshor_build(tree, "unsafe def x := 1\n", w)
+    assert e.value.stage == "lexical" and "reaches compiled code" in e.value.reason
+    assert not (w / "forshor.log").exists(), "no build was started"
+
+
+def test_a_lean_submission_is_published_with_the_ForShor_record_and_never_written_as_a_template(monkeypatch, tmp_path, model, policy_doc):
+    calls = []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
+    monkeypatch.setattr(intake_v2, "policy_from_lean", lambda eng, text, tree, workdir, timeout=7200: (policy_doc, {"printed": True}))
+    monkeypatch.setattr(intake_v2, "forshor_record", lambda eng, P, doc, pin: {"verified": True, "bandsAgree": True, "irPriceAgrees": True, "claim": "c", "forshorCommit": pin})
+    monkeypatch.setattr(intake_v2, "forshor_check", lambda *a, **k: pytest.fail("the JSON route's template writer must not run for a Lean submission"))
+    result = intake_v2.run_intake(None, lean_policy="-- the file", login="tester", pull=11, url="http://x", token="t", tree=tmp_path, workdir=tmp_path / "w",
+                                  forshor_tree=tmp_path / "f", run_mirror_fn=archived_mirror(calls), log=lambda s: None)
+    assert result["policy"]["forshorPolicy"] is True and result["policy"]["stoMirror"] is True
+    assert calls[0][0] == "http://x/v2/state", "the handle and epoch are checked before ForShor builds anything"
+
+
+def test_the_command_line_takes_exactly_one_of_the_two_inputs(tmp_path):
+    with pytest.raises(SystemExit):
+        intake_v2.main(["--login", "u", "--pull", "1", "--tree", str(tmp_path), "--publisher-url", "http://x"])
+    f = tmp_path / "p"
+    f.write_text("{}")
+    with pytest.raises(SystemExit):
+        intake_v2.main(["--policy", str(f), "--lean-policy", str(f), "--login", "u", "--pull", "1", "--tree", str(tmp_path), "--publisher-url", "http://x"])
