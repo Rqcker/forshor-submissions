@@ -60,12 +60,15 @@ def _legacy_negation(request):
     from site_engine import fullalg as fa
     names = ("HEADLINE", "GRID_LEAF", "LITERAL_LEAN")
     saved = {n: getattr(fa, n) for n in names}
+    saved_default = fa.cc.DEFAULT_NEGATE
     for n in names:
         setattr(fa, n, saved[n].with_(negate="legacy"))
+    fa.cc.DEFAULT_NEGATE = "legacy"        # swap 002: a price call names its method (`negate_impl(None)` reads this default at call time)
     fa._price.cache_clear()
     try:
         yield
     finally:
         for n in names:
             setattr(fa, n, saved[n])
+        fa.cc.DEFAULT_NEGATE = saved_default
         fa._price.cache_clear()
