@@ -95,7 +95,7 @@ def main() -> int:
 
     run = lambda *c: subprocess.run([a.python, str(pack / "starter.py"), *c], cwd=pack, check=True, capture_output=True, text=True)
     # derived examples and Lean inputs, written by the pack's own commands
-    (pack / "examples" / "seed_pp_S707dd51bf951.PolicyTemplate.lean").write_text(run("template", "examples/seed_pp_S707dd51bf951.policy.json").stdout)
+    (pack / "examples" / "seed_pp_S707dd51bf951.Policy.lean").write_text(run("template", "examples/seed_pp_S707dd51bf951.policy.json").stdout)
     for name, policy in (("pp_policy", "templates/pp_policy.json"), ("ptp_policy", "templates/ptp_policy.json")):
         (pack / "templates" / f"{name}.lean-input.json").write_text(run("lean-input", policy).stdout)
     run("examples", "--write-expected")

@@ -11,7 +11,7 @@ is not a submission. There are three boards, each ranked separately by **Q × T*
 |---|---|---|---|
 | PhaseProduct (PP), Q × T of one phase product at n = 2048 | a banded PP policy (site policy JSON) | Python (Qualtran costing) at the **exact** widths, which the board derives | the policy's tables and thresholds, through the STO policy mirror |
 | PhaseTripleProduct (PTP), the same for a triple product | a banded PTP policy (site policy JSON) | Python (Qualtran costing) at exact widths, digital triple-product leaf | the policy's tables and thresholds at exact widths, through the PhaseTripleProduct harness (ForShor's `Shor.PTP`); ForShor also proves a gate-level recursion following the policy correct, at the scan and at the exact widths (O2, O5; with the suite's own Toffoli+Rz+Toffoli sandwich leaf, not the board's digital leaf) |
-| Full order finding, Q × T (single-run T) of Shor's order-finding circuit at n = 2048 | a PP policy (site policy JSON, written as a ForShor `PolicyTemplate.lean`) | the IR ForShor prints under `--balanced`, priced exactly: exact register widths, the balanced split for unequal operands, m2048, Step 4 `cmpLtNW`, 4095 modular multiplications | ForShor's own build (`21e129a`) (`ShorPolicySubmission`, C1 to C4 by `decide +kernel`, `policy_submission_correct`) |
+| Full order finding, Q × T (single-run T) of Shor's order-finding circuit at n = 2048 | a PP policy (site policy JSON; submitted as the Lean file `Policy.lean`) | the IR ForShor prints under `--balanced`, priced exactly: exact register widths, the balanced split for unequal operands, m2048, Step 4 `cmpLtNW`, 4095 modular multiplications | ForShor's own build (`21e129a`) (`ShorPolicySubmission`, C1 to C4 by `decide +kernel`, `policy_submission_correct`) |
 
 **Trust, in one line.** The T counts are Qualtran's, counted in Python, and *not proved in Lean*; Q is a formula over the policy's widths (ForShor has
 checked it in Lean for the boards' own policies, not for yours). Lean proves the structure: the tables, the thresholds and the widths (and, for the full run, ForShor's
@@ -25,7 +25,7 @@ Rotations are priced with Ross–Selinger, 3.075 log2(1/ε) + 0.86 T at ε = 0.5
 | `SUBMISSION_FORMAT.md` | The rules a submission must meet. Read this first. |
 | `SKILL.md` | The same workflow, written for AI agents (Claude and others). |
 | `starter.py` | `price`, `forshor-doc`, `template`, `lean-input`, `examples` (see below). |
-| `templates/` | `pp_policy.json` and `ptp_policy.json` (site policy JSON; both price as they stand), their Lean-checker inputs `*.lean-input.json`, and `PolicyTemplate.lean` (ForShor's shipped template, verbatim). |
+| `templates/` | `pp_policy.json` and `ptp_policy.json` (site policy JSON; both price as they stand), their Lean-checker inputs `*.lean-input.json`, and `Policy.lean` (the submission file: ForShor's shipped template, verbatim). |
 | `examples/` | The STO reference PP, a re-planned PP seed, a PTP seed, the board's reference document (ForShor `21e129a`'s printed `policy.json` for the shipped template at exact widths), upstream ForShor's own document (scanned widths, the cross-check), a policy with a declared ladder, and the expected output of each (`expected/`). |
 | `harness/LEAN_CHECKS.md` | How to run the Lean checks. The build trees are not in the pack; the file says where they come from. |
 | `harness/policy_to_template.py` | The site's converter from a PP policy to a ForShor template (used by `starter.py template`). |
@@ -50,11 +50,11 @@ python starter.py examples --check     # prices every example and compares with 
 * **PP or PTP:** copy `templates/pp_policy.json` or `templates/ptp_policy.json` and replace the tables and thresholds
   with your own. Do not declare widths. If you declare a width ladder, the board ignores it and shows a notice (see
   `examples/declared_ladder_ignored.policy.json`).
-* **Full order finding:** the same PP policy. The site writes it as ForShor's `PolicyTemplate.lean`; you can do the
-  same with `python starter.py template my_pp_policy.json --out PolicyTemplate.lean --forshor /path/to/ForShor`
-  (`templates/PolicyTemplate.lean` is the shipped one, from ForShor `21e129a`). ForShor's Lean library is `ForShor`;
-  `--forshor` checks the name against your checkout. Up to k = 6 and any number of bands: ForShor's check has no
-  heartbeat wall. ForShor's policies also carry an optional `negation` (`oneQubit` or `scratch`); the boards price
+* **Full order finding:** the same PP policy. **What you submit is one Lean file, `TableGeneration/Submission/Policy.lean`**
+  (the only file a pull request may change). Write it by hand from `templates/Policy.lean` (ForShor's shipped template, from
+  `21e129a`), or generate it with `python starter.py template my_pp_policy.json --out Policy.lean --forshor /path/to/ForShor`.
+  ForShor's Lean library is `ForShor`; `--forshor` checks the name against your checkout. Bands take k up to 8, any number
+  of bands; a PhaseTripleProduct policy is submitted the same way as a `PTPPolicy` (no template for it is in this pack yet). ForShor's policies also carry an optional `negation` (`oneQubit` or `scratch`); the boards price
   `oneQubit` only, and `starter.py` refuses a policy that asks for `scratch`.
 
 ## 3. Price it
@@ -89,8 +89,8 @@ See `harness/LEAN_CHECKS.md`. The Lean build trees are not in the pack. In short
 * PP: `python starter.py lean-input my_pp_policy.json`, then the STO policy mirror (`check_banded_policy.py --widths exact`, in the interim STO fork,
   `courtneyjzapata/ShorTableOptimization_temp`, branch `port/forshor-21e129a`).
 * PTP: the same input, then `check_ptp_policy.py --widths exact` of the same fork (against ForShor's `Shor.PTP`).
-* Full run: ForShor at the pinned commit `21e129a` (VerifiedQC/ForShor). The template goes to
-  `ForShor/ShorVerification/Submission/PolicyTemplate.lean`. Then:
+* Full run: ForShor at the pinned commit `21e129a` (VerifiedQC/ForShor). Your `Policy.lean` goes to
+  `ForShor/ShorVerification/Submission/PolicyTemplate.lean` for the check (ForShor's own name for the file). Then:
   `lake exe cache get`, `lake build PolicySubmission forshor_policy_submission`, then
   `lake exe forshor_policy_submission --balanced > policy.json` and `python starter.py forshor-doc policy.json`.
 
@@ -124,7 +124,7 @@ How to send a policy is in `SUBMISSION_FORMAT.md`, section 6: the pack prices an
 ## Licences
 
 `engine/vendor/Qualtran-main` is Qualtran (Apache-2.0, see its `LICENSE`). `engine/fullalg/l2q_full` is from
-Lean-To-Qualtran (Apache-2.0, `engine/fullalg/LICENSE.l2q`). `templates/PolicyTemplate.lean` and
+Lean-To-Qualtran (Apache-2.0, `engine/fullalg/LICENSE.l2q`). `templates/Policy.lean` and
 `examples/forshor_dropin.policy.json` / `examples/forshor_upstream_scan.policy.json` (also in `engine/fullalg/data`) are from ForShor (Apache-2.0, `templates/LICENSE.forshor`). The rest of the pack
 (`starter.py`, the site engine and the documentation) is provided by Zapata Quantum and the University of Maryland
 for the challenge, under the licence of the repository that publishes it.

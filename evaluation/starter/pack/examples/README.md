@@ -8,7 +8,7 @@ pack and compares T and Q with the boards' rows). All runs use n = 2048 and δ =
 |---|---|
 | `sto_reference_pp.policy.json` | STO's reference PhaseProduct policy (bands 2048:k6, 385:k3, 140:k2, 73:k2, 40:k2). Priced on the PP board and the full order-finding board. |
 | `seed_pp_S707dd51bf951.policy.json` | A seeded PhaseProduct policy, re-planned under exact widths (one band, k = 3). Priced on both boards. |
-| `seed_pp_S707dd51bf951.PolicyTemplate.lean` | The same policy as a ForShor template (`starter.py template`), for ForShor at `21e129a`. |
+| `seed_pp_S707dd51bf951.Policy.lean` | The same policy as a submission file, `TableGeneration/Submission/Policy.lean` (`starter.py template`), for ForShor at `21e129a`. |
 | `seed_ptp_S80e6a121410d.policy.json` | A seeded PhaseTripleProduct policy (one band, k = 4), priced on the PTP board. |
 | `forshor_dropin.policy.json` | The board's reference document: ForShor `21e129a`'s printed `policy.json` for the shipped template, `lake exe forshor_policy_submission --balanced` (exact widths, balanced split, trial count 386), printed 2026-11-08. It carries `negation` (`oneQubit`) and the per-method `negate_charge`. |
 | `forshor_upstream_scan.policy.json` | ForShor `21e129a`'s printed document for the same template at its default width scan (scanned widths, no balanced split): priced on upstream's IR, the cross-check. |
@@ -18,6 +18,6 @@ pack and compares T and Q with the boards' rows). All runs use n = 2048 and δ =
 Each `expected/*.json` has, for a policy: the board's T and exact ladder, Q (the live-qubit peak) and the score Q × T, the engines' agreement, the scanned-width cross-check and, for a
 PhaseProduct policy, the full run (T, Q, score, main ladder, trial count and the labelled cross-checks, which are not the score).
 
-Lean status: the pack does not run Lean. These example policies have **not** been run through the Lean harnesses at the pinned ForShor commit; the 15 policies the results seed lists were (13
-accepted; `harness/LEAN_CHECKS.md` says what the runs took). `starter.py price` prices a policy as written, at the thresholds in the file, as the site's intake does. The table names in the
+Lean status: the pack does not run Lean. These example policies have **not** been run through the Lean harnesses at the pinned ForShor commit; all 15 policies the results seed lists were, and all 15 were
+accepted (13 by the harness's default path, two PhaseTripleProduct policies with its `--fast` mode; `harness/LEAN_CHECKS.md` says what the runs took). `starter.py price` prices a policy as written, at the thresholds in the file, as the site's intake does. The table names in the
 ladders (STO archive id, DP id, KMY id, or "pasted") come from the library snapshot in `engine/data`.

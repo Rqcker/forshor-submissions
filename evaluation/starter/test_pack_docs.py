@@ -23,6 +23,18 @@ for f in sorted(pack.rglob("*.md")):
     for n, line in enumerate(f.read_text().splitlines(), 1):
         if line.endswith("|") and not line.startswith("|") and not line.startswith(("`", " ", ">", "-", "*")):
             bad.append(f"{rel}:{n}: a table row that does not start with '|' (an orphan fragment): {line[:60]!r}")
+# the submission file is `Policy.lean`: no file called PolicyTemplate*.lean may ship, and every shipped .lean example must be named Policy.lean or end in .Policy.lean
+for f in sorted(pack.rglob("*.lean")):
+    rel = str(f.relative_to(pack))
+    if not rel.startswith("engine/") and not (f.name == "Policy.lean" or f.name.endswith(".Policy.lean")):
+        bad.append(f"{rel}: a Lean file in the pack that is not named Policy.lean")
+if not (pack / "templates" / "Policy.lean").exists():
+    bad.append("templates/Policy.lean is missing")
+# the old wording must not survive: the pack never says the file is submitted as PolicyTemplate.lean, and never quotes the old k <= 6 limit
+for w in ("PolicyTemplate.lean`; you", "k ≤ 6 is the supported", "1 < k ≤ 6", "1 < k <= 6", "2 ≤ k ≤ 6"):
+    for f in sorted(pack.rglob("*.md")):
+        if not str(f.relative_to(pack)).startswith("engine/") and w in f.read_text():
+            bad.append(f"{f.relative_to(pack)}: {w!r}")
 print(f"{len(bad)} stale references")
 for b in bad:
     print("  ", b)

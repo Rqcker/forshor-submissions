@@ -41,7 +41,7 @@ Every board is ranked by the score **Q × T** (qubits times T count, lower is be
 |---|---|---|
 | PhaseProduct (PP) | a banded PP policy, site policy JSON | T of one phase product at the exact widths the board derives; Q the peak of one product |
 | PhaseTripleProduct (PTP) | a banded PTP policy, site policy JSON | T of one triple product at exact widths (digital triple-product leaf); Q the peak of one triple product |
-| Full order finding | a PP policy: the board prices any k; with every k ≤ 6 it can also go to ForShor as `PolicyTemplate.lean` (the `ForShor` tag) | single-run T of Shor's order-finding circuit on the IR ForShor prints under `--balanced`; Q its peak (12,890 base registers plus the policy's extra) |
+| Full order finding | a PP policy: the board prices any k; **submitted as the Lean file `Policy.lean`** (bands k ≤ 8), which ForShor builds (the `ForShor` tag) | single-run T of Shor's order-finding circuit on the IR ForShor prints under `--balanced`; Q its peak (12,890 base registers plus the policy's extra) |
 
 A PP policy enters both the PP board and the full run. They often prefer different policies: price both.
 
@@ -129,10 +129,10 @@ The Lean checkers' input for PP or PTP (widths are dropped):
 python starter.py lean-input my_policy.json --out my_policy.lean-input.json
 ```
 
-The full run's ForShor template (PP only; ForShor's check takes 1 < k ≤ 6, a policy with a larger k has no template and no `ForShor` tag but is still priced on the full board):
+The submission file, `TableGeneration/Submission/Policy.lean` (PP; bands take 1 < k ≤ 8; the only file a pull request may change; a PhaseTripleProduct policy is submitted the same way as a `PTPPolicy`, and this pack has no template for it yet):
 
 ```bash
-python starter.py template my_pp_policy.json --out PolicyTemplate.lean --forshor /path/to/ForShor
+python starter.py template my_pp_policy.json --out Policy.lean --forshor /path/to/ForShor
 ```
 
 ForShor's Lean library is `ForShor`; `--forshor` checks the name against your checkout, which must be at the pinned commit `21e129aeefc0fd1bbb8fa63402f5799af2490788`.
@@ -149,7 +149,7 @@ The build trees are not in the pack; `harness/LEAN_CHECKS.md` says where they co
 
 - **PP:** the STO policy mirror, `check_banded_policy.py --widths exact --target-width 2048` (the interim STO fork, branch `port/forshor-21e129a`).
 - **PTP:** `check_ptp_policy.py --widths exact --target-width 2048` of the same fork, against ForShor's `Shor.PTP`. Build the PhaseTripleProduct modules by name first.
-- **Full run:** ForShor at `21e129a` (VerifiedQC/ForShor). Put the template at `ForShor/ShorVerification/Submission/PolicyTemplate.lean`. Then:
+- **Full run:** ForShor at `21e129a` (VerifiedQC/ForShor). Put your `Policy.lean` at `ForShor/ShorVerification/Submission/PolicyTemplate.lean` (ForShor's name for the file). Then:
 
   ```bash
   lake exe cache get
@@ -262,7 +262,7 @@ you name with `--out` or `--json`.
 | `a table fails the Toom-Cook check` | the program does not consume its points in order, does not restore the registers, or breaks the exact identity | fix the table, not the threshold |
 | widths notice | the file declares a ladder or widths | remove them: the board derives exact widths and ignores declared ones |
 | rejected at stage `threshold` | a band is applied where it does not shrink the width, or at a width below k | raise that band's threshold (the reason names it), and re-check the exact ladder |
-| `starter.py template` refuses | k > 6, or a PTP policy | ForShor's check takes PP policies with 1 < k ≤ 6; a k > 6 policy is still priced on the full board, without the `ForShor` tag |
+| `starter.py template` refuses | k > 8, or a PTP policy | the template tool writes PP policies with 1 < k ≤ 8; a PTP policy has no template in this pack yet; a k > 8 policy is still priced but cannot be submitted |
 | `forshor-doc` prints `DIFFERS` | the printed document does not match the converted policy, or is a scan document | rebuild with `--balanced`. A document without `width_rule` is priced on the upstream cross-check, not the board's IR. |
 | `error: the policy asks for negation 'scratch'` | ForShor's `scratch` method is not priced by the boards or this pack | remove the `negation` key (or set `"oneQubit"`) |
 | a Lean run is killed for memory or time | over the memory cap, or the stage limit you set | run one or two checks at a time; some are hours long (see Lean Checks). If it persists, report the policy and the record rather than raising the cap. |
@@ -275,7 +275,7 @@ you name with `--out` or `--json`.
 - Never say a policy is "verified" because `price` ran. `price` runs Python only. Lean decides correctness, and no
   level proves the T count.
 - Never use `sorry`, `admit`, `axiom`, `native_decide`, `#eval`, `set_option`, macros, `unsafe`, `extern`, `csimp` or
-  `implemented_by` in a `PolicyTemplate.lean`. Never edit any other ForShor file.
+  `implemented_by` in a `Policy.lean`. Never edit any other ForShor file.
 - Never present a policy that asks for `negation: scratch` as priced. Never say Q is Lean-proved for a policy of yours.
 - Never present a local number as final. The site prices the policy again, and its numbers count.
 
