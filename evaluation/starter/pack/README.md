@@ -25,7 +25,7 @@ Rotations are priced with Ross–Selinger, 3.075 log2(1/ε) + 0.86 T at ε = 0.5
 | `SUBMISSION_FORMAT.md` | The rules a submission must meet. Read this first. |
 | `SKILL.md` | The same workflow, written for AI agents (Claude and others). |
 | `starter.py` | `price`, `forshor-doc`, `template`, `lean-input`, `examples` (see below). |
-| `templates/` | `pp_policy.json` and `ptp_policy.json` (site policy JSON; both price as they stand), their Lean-checker inputs `*.lean-input.json`, and `Policy.lean` (the submission file: ForShor's shipped template, verbatim). |
+| `templates/` | `pp_policy.json` and `ptp_policy.json` (site policy JSON; both price as they stand), their Lean-checker inputs `*.lean-input.json`, `ptp.Policy.lean` (the PhaseTripleProduct submission file, from ForShor's `PTPPolicyTemplate.lean`) and `Policy.lean` (the PhaseProduct submission file: ForShor's shipped template, verbatim). |
 | `examples/` | The STO reference PP, a re-planned PP seed, a PTP seed, the board's reference document (ForShor `21e129a`'s printed `policy.json` for the shipped template at exact widths), upstream ForShor's own document (scanned widths, the cross-check), a policy with a declared ladder, and the expected output of each (`expected/`). |
 | `harness/LEAN_CHECKS.md` | How to run the Lean checks. The build trees are not in the pack; the file says where they come from. |
 | `harness/policy_to_template.py` | The site's converter from a PP policy to a ForShor template (used by `starter.py template`). |
@@ -54,7 +54,7 @@ python starter.py examples --check     # prices every example and compares with 
   (the only file a pull request may change). Write it by hand from `templates/Policy.lean` (ForShor's shipped template, from
   `21e129a`), or generate it with `python starter.py template my_pp_policy.json --out Policy.lean --forshor /path/to/ForShor`.
   ForShor's Lean library is `ForShor`; `--forshor` checks the name against your checkout. Bands take k up to 8, any number
-  of bands; a PhaseTripleProduct policy is submitted the same way as a `PTPPolicy` (no template for it is in this pack yet). ForShor's policies also carry an optional `negation` (`oneQubit` or `scratch`); the boards price
+  of bands; a PhaseTripleProduct policy is submitted the same way, as a `PTPPolicy` (`templates/ptp.Policy.lean`; the namespace says which board). ForShor's policies also carry an optional `negation` (`oneQubit` or `scratch`); the boards price
   `oneQubit` only, and `starter.py` refuses a policy that asks for `scratch`.
 
 ## 3. Price it

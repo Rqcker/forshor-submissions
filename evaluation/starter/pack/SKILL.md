@@ -129,7 +129,7 @@ The Lean checkers' input for PP or PTP (widths are dropped):
 python starter.py lean-input my_policy.json --out my_policy.lean-input.json
 ```
 
-The submission file, `TableGeneration/Submission/Policy.lean` (PP; bands take 1 < k ≤ 8; the only file a pull request may change; a PhaseTripleProduct policy is submitted the same way as a `PTPPolicy`, and this pack has no template for it yet):
+The submission file, `TableGeneration/Submission/Policy.lean` (PP; bands take 1 < k ≤ 8; the only file a pull request may change; a PhaseTripleProduct policy is submitted in the same file as a `PTPPolicy` in `namespace PTPPolicySubmission`, format `templates/ptp.Policy.lean`, written by the same command):
 
 ```bash
 python starter.py template my_pp_policy.json --out Policy.lean --forshor /path/to/ForShor
@@ -262,7 +262,7 @@ you name with `--out` or `--json`.
 | `a table fails the Toom-Cook check` | the program does not consume its points in order, does not restore the registers, or breaks the exact identity | fix the table, not the threshold |
 | widths notice | the file declares a ladder or widths | remove them: the board derives exact widths and ignores declared ones |
 | rejected at stage `threshold` | a band is applied where it does not shrink the width, or at a width below k | raise that band's threshold (the reason names it), and re-check the exact ladder |
-| `starter.py template` refuses | k > 8, or a PTP policy | the template tool writes PP policies with 1 < k ≤ 8; a PTP policy has no template in this pack yet; a k > 8 policy is still priced but cannot be submitted |
+| `starter.py template` refuses | k > 8, or a PTP policy | the template tool writes PP and PTP policies with 1 < k ≤ 8; a k > 8 policy is still priced but cannot be submitted |
 | `forshor-doc` prints `DIFFERS` | the printed document does not match the converted policy, or is a scan document | rebuild with `--balanced`. A document without `width_rule` is priced on the upstream cross-check, not the board's IR. |
 | `error: the policy asks for negation 'scratch'` | ForShor's `scratch` method is not priced by the boards or this pack | remove the `negation` key (or set `"oneQubit"`) |
 | a Lean run is killed for memory or time | over the memory cap, or the stage limit you set | run one or two checks at a time; some are hours long (see Lean Checks). If it persists, report the policy and the record rather than raising the cap. |

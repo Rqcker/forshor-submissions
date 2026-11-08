@@ -31,7 +31,7 @@ The site also reads `{"policy": {...}}` and `{"policies": [...]}` (at most 8 pol
 
 ## 2. The submission file `Policy.lean` (and the full order-finding board)
 
-A submission is this one Lean file, `Policy.lean`, holding the policy: for PhaseProduct a ForShor `ShorPolicySubmission` (bands with 2 ≤ k ≤ 8), for PhaseTripleProduct the same file with a `PTPPolicy` (bands with 2 ≤ k ≤ 8; this pack has no template for it yet).
+A submission is this one Lean file, `Policy.lean`, holding the policy: for PhaseProduct a ForShor `ShorPolicySubmission` (bands with 2 ≤ k ≤ 8), for PhaseTripleProduct a ForShor `PTPPolicy` in `namespace PTPPolicySubmission` (bands with 2 ≤ k ≤ 8; the format is `templates/ptp.Policy.lean`, ForShor's `PTPPolicyTemplate.lean`, and `starter.py template` writes it from a PTP site policy). The namespace the file declares says which board it is for. Both are built by ForShor (`lake build PolicySubmission forshor_policy_submission`, or `lake build PTPPolicySubmission forshor_ptp_policy_submission`) after ForShor's lexical gate; the PhaseTripleProduct files are in the ForShor branch `ptp/submission-template` (`21e129a` plus those files), not in `21e129a` itself.
 The full order-finding board prices every PP policy (section 1). ForShor builds the PhaseProduct file (`starter.py template` writes it from site policy JSON) at the pinned commit `21e129aeefc0fd1bbb8fa63402f5799af2490788`
 (VerifiedQC/ForShor `main`, the merge of PR #80, which contains PR #79). Its Lean library is `ForShor`. If you write the file by hand, these rules apply:
 
