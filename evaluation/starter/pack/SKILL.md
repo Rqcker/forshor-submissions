@@ -15,7 +15,7 @@ strict, and a single violation is a rejection.
 
 ## Setup
 
-Create a Python 3.11 or 3.12 virtual environment and install the pack's requirements:
+Create a Python 3.11 or 3.12 virtual environment and install the pack's requirements. The default `python3` on a machine is often newer: find a 3.12 or 3.11 interpreter first (`python3.12 --version`, `ls /opt/homebrew/bin/python3*`, `pyenv versions`, or `uv python install 3.12`) and use it for the venv:
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
@@ -41,7 +41,7 @@ Every board is ranked by the score **Q × T** (qubits times T count, lower is be
 |---|---|---|
 | PhaseProduct (PP) | a banded PP policy, site policy JSON | T of one phase product at the exact widths the board derives; Q the peak of one product |
 | PhaseTripleProduct (PTP) | a banded PTP policy, site policy JSON | T of one triple product at exact widths (digital triple-product leaf); Q the peak of one triple product |
-| Full order finding | a PP policy (k ≤ 6), which goes to ForShor as `PolicyTemplate.lean` | single-run T of Shor's order-finding circuit on the IR ForShor prints under `--balanced`; Q its peak (12,890 base registers plus the policy's extra) |
+| Full order finding | a PP policy: the board prices any k; with every k ≤ 6 it can also go to ForShor as `PolicyTemplate.lean` (the `ForShor` tag) | single-run T of Shor's order-finding circuit on the IR ForShor prints under `--balanced`; Q its peak (12,890 base registers plus the policy's extra) |
 
 A PP policy enters both the PP board and the full run. They often prefer different policies: price both.
 
@@ -94,6 +94,23 @@ Iterate here: other tables, other thresholds, a different k at each level.
 - Thresholds matter as much as tables. A wide top table (k = 5 or 6) can pay off at 2048.
 - The PP leaf is the digital product, so stopping the recursion earlier trades rotations for Toffolis.
 
+## Searching Many Policies
+
+`starter.py price` prices one file at a time (a file may hold up to 8 policies). To search, price in-process with the pack's own engine: from the pack's root, with its venv,
+
+```python
+import sys; sys.path.insert(0, "engine")
+import site_engine
+from site_engine import frontier as fr
+from tcost import score as ts, tables as tt
+P = tt.Policy.from_json(policy_dict).with_widths("exact")
+T = ts.score_policy(P, 2048, 0.01)["t_count"]        # the board's T
+Q = fr.live_peak_qubits(P, 2048)                       # the board's Q
+score = Q * T
+```
+
+This is exactly what `starter.py price` calls for the board numbers (about 0.01 s a policy), so the two agree. The full-run price is slower (`site_engine.fullalg.price_full`). Tables to start from are in `engine/data` and in the policies of the boards (the page's data, `/results/v2/dashboard.json`, names each row's panel file, whose `policyJson` has the bands). Re-price the final policy with `starter.py price` before you report it.
+
 ## Thresholds Must Be Safe
 
 The PP mirror and the PhaseTripleProduct harness apply a **threshold rule**, proved in Lean. On the recursion that the policy actually
@@ -112,7 +129,7 @@ The Lean checkers' input for PP or PTP (widths are dropped):
 python starter.py lean-input my_policy.json --out my_policy.lean-input.json
 ```
 
-The full run's ForShor template (PP only, 1 < k ≤ 6):
+The full run's ForShor template (PP only; ForShor's check takes 1 < k ≤ 6, a policy with a larger k has no template and no `ForShor` tag but is still priced on the full board):
 
 ```bash
 python starter.py template my_pp_policy.json --out PolicyTemplate.lean --forshor /path/to/ForShor
@@ -227,7 +244,7 @@ mkdir -p ~/.claude/skills/forshor-challenge-submission
 cp SKILL.md ~/.claude/skills/forshor-challenge-submission/SKILL.md
 ```
 
-Restart the agent after installing or updating the skill. Updating the pack does not update an installed copy: copy
+If your agent runs in a sandbox that cannot write to `~/.claude/skills`, put the folder wherever your agent loads skills from. Restart the agent after installing or updating the skill. Updating the pack does not update an installed copy: copy
 it again.
 
 ## Uninstall
@@ -245,7 +262,7 @@ you name with `--out` or `--json`.
 | `a table fails the Toom-Cook check` | the program does not consume its points in order, does not restore the registers, or breaks the exact identity | fix the table, not the threshold |
 | widths notice | the file declares a ladder or widths | remove them: the board derives exact widths and ignores declared ones |
 | rejected at stage `threshold` | a band is applied where it does not shrink the width, or at a width below k | raise that band's threshold (the reason names it), and re-check the exact ladder |
-| `starter.py template` refuses | k > 6, or a PTP policy | the full run takes PP policies with 1 < k ≤ 6 |
+| `starter.py template` refuses | k > 6, or a PTP policy | ForShor's check takes PP policies with 1 < k ≤ 6; a k > 6 policy is still priced on the full board, without the `ForShor` tag |
 | `forshor-doc` prints `DIFFERS` | the printed document does not match the converted policy, or is a scan document | rebuild with `--balanced`. A document without `width_rule` is priced on the upstream cross-check, not the board's IR. |
 | `error: the policy asks for negation 'scratch'` | ForShor's `scratch` method is not priced by the boards or this pack | remove the `negation` key (or set `"oneQubit"`) |
 | a Lean run is killed for memory or time | over the memory cap, or the stage limit you set | run one or two checks at a time; some are hours long (see Lean Checks). If it persists, report the policy and the record rather than raising the cap. |

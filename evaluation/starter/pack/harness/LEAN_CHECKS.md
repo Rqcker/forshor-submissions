@@ -10,8 +10,6 @@ are the ones in the submission repository.
 | PhaseTripleProduct (PTP) banded policy, site policy JSON | `scripts/check_ptp_policy.py --widths exact`, against ForShor's `Shor.PTP` | the same fork | The same tree. `lake build TableGeneration` does **not** build the PhaseTripleProduct modules: build them by name first (`lake build TableGeneration.RecursiveCost.PTP.Census` and the other modules under `TableGeneration/RecursiveCost/PTP/`) or the harness fails at its report stage |
 | Full order finding, ForShor `PolicyTemplate.lean` | ForShor's own build at `21e129a`: `lake build PolicySubmission forshor_policy_submission`, then `lake exe forshor_policy_submission --balanced` | a ForShor checkout | `VerifiedQC/ForShor`, commit `21e129aeefc0fd1bbb8fa63402f5799af2490788` |
 
-cy_submission` (about 25 minutes). |
-
 Use a machine with at least 16 GB of memory. Run one or two Lean checks at a time and keep every run under a memory cap (each tree's `scripts/memcap.py`). Measured on the policies of the
 results seed: most checks take seconds to a few minutes; a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the mirror's report stage, and the PhaseTripleProduct policy with a k = 8
 first band did not finish in 12 hours. Give a long run a stage limit (`--timeout`), and set `TMPDIR` to a directory you control: a run that long lost a file in the system temporary directory once.

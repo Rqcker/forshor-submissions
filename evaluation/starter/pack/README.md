@@ -34,7 +34,10 @@ Rotations are priced with Ross–Selinger, 3.075 log2(1/ε) + 0.86 T at ε = 0.5
 
 ## 1. Install
 
-You need Python 3.11 or 3.12.
+The challenge page is a browser application: its text is not readable with `curl`. Its data is public JSON (`/results/v2/dashboard.json`), and the commands for taking part are in `SUBMISSION_FORMAT.md` section 6 and the page's Participate dialog.
+
+
+You need Python 3.11 or 3.12 (the default `python3` is often newer: find one with `python3.12 --version`, `pyenv versions` or `uv python install 3.12`).
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
