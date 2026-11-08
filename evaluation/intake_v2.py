@@ -130,6 +130,7 @@ def _now() -> str:
 def run_intake(policy_doc: Any, *, login: str, pull: int, url: str, token: str, tree: Path, workdir: Path,
                head_sha: Optional[str] = None, run_id: Optional[str] = None, forshor_tree: Optional[Path] = None,
                stage_timeout: Optional[int] = None, mirror_timeout: int = 7200, archive_commit: Optional[str] = None,
+               archive_view: Optional[Callable[[], Any]] = None,
                run_mirror_fn: Optional[Callable[..., Dict[str, Any]]] = None, python: str = sys.executable,
                log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
     """The pipeline above. Returns the publisher's result plus `row` (name, board ranks, evidence). Raises `Refused`, `ReservedHandle`, `ModelMismatch`."""
@@ -175,8 +176,10 @@ def run_intake(policy_doc: Any, *, login: str, pull: int, url: str, token: str, 
     else:
         log("no ForShor check (" + ("PhaseTripleProduct" if P.mode != eng.tables.PAIR else "no ForShor checkout given" if not forshor_tree else f"k above {MAX_FORSHOR_K}") + ")")
 
-    archive = archive_commit or state["publication"]["archiveCommit"]
-    accepted_now = lambda: (sorted(set(state_of().get("submissionIds", [])) | {head_sha}), archive)
+    # Production: the accepted ids and the archive commit are the `submission-results` branch's (`archive_view`, as publish_v2 reads it). A local
+    # rehearsal has no such branch: the accepted ids are the publisher's own ledger plus this submission.
+    archive = archive_commit or (archive_view()[1] if archive_view else state["publication"]["archiveCommit"])
+    accepted_now = archive_view or (lambda: (sorted(set(state_of().get("submissionIds", [])) | {head_sha}), archive))
 
     def price() -> Dict[str, Any]:
         return request.build_request(policy_json, model=model, store=store, head_sha=head_sha, pull_number=pull, github_login=login, run_id=run_id,
@@ -200,6 +203,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--forshor-tree", type=Path, help="a built ForShor checkout at the epoch's pin (copied per run); omit to skip the ForShor check")
     ap.add_argument("--publisher-url", default=os.environ.get("PUBLISHER_URL"))
     ap.add_argument("--workdir", type=Path, default=Path("intake-work"))
+    ap.add_argument("--archive", type=Path, help="a checkout of the `submission-results` branch (as publish_v2.py reads it; needs GH_TOKEN); omit for a local rehearsal")
     ap.add_argument("--stage-timeout", type=int)
     ap.add_argument("--mirror-timeout", type=int, default=7200)
     ap.add_argument("--out", type=Path, help="write the result JSON here")
@@ -209,7 +213,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         result = run_intake(json.loads(a.policy.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=os.environ.get("PUBLISHER_TOKEN", "local"),
                             tree=a.tree, workdir=a.workdir, head_sha=a.head_sha, run_id=a.run_id, forshor_tree=a.forshor_tree,
-                            stage_timeout=a.stage_timeout, mirror_timeout=a.mirror_timeout)
+                            stage_timeout=a.stage_timeout, mirror_timeout=a.mirror_timeout,
+                            archive_view=(lambda: __import__("publish_v2")._archive_view(a.archive)) if a.archive else None)
         code = 0
     except (Refused, ReservedHandle, ModelMismatch) as e:
         result, code = {"refused": True, "stage": getattr(e, "stage", type(e).__name__), "reason": getattr(e, "reason", str(e))}, 1

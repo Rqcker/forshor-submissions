@@ -73,6 +73,20 @@ def test_a_policy_is_published_with_the_mirror_evidence_and_the_next_name(monkey
     assert calls[0][0] == "http://x/v2/state", "the live state is read before any compute"
 
 
+def test_in_production_the_accepted_ids_and_archive_commit_are_the_archive_branchs(monkeypatch, tmp_path, model, policy_doc):
+    calls = []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
+    seen = []
+    def view():
+        seen.append(1)
+        return (["1" * 40, "2" * 40], "c" * 40)
+    intake_v2.run_intake(policy_doc, login="tester", pull=9, url="http://x", token="t", tree=tmp_path, workdir=tmp_path / "w",
+                         run_mirror_fn=archived_mirror(calls), archive_view=view, log=lambda s: None)
+    req = [p for u, p in calls if u.endswith("/v2/publish")][0]
+    assert req["archive"]["acceptedIds"] == ["1" * 40, "2" * 40] and req["evaluation"]["archiveCommit"] == "c" * 40
+    assert len(seen) >= 2, "read before pricing and again by the recovery loop"
+
+
 def test_the_reserved_handle_and_a_foreign_epoch_are_refused_before_the_lean_run(monkeypatch, tmp_path, model, policy_doc):
     calls = []
     monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
