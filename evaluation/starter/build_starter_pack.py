@@ -9,8 +9,9 @@ The pack is a participant's local copy of what prices a policy on the results bo
     harness/{LEAN_CHECKS.md,policy_to_template.py}, templates/, examples/{README.md,examples.json,*.policy.json};
   * engine/: `evaluation/engine` whole, the engine the exporter priced the results seed with, minus tests/, cache/ and bytecode
     (the vendored Qualtran tree is included: Qualtran imports bloqs lazily);
-  * examples/forshor_dropin.policy.json and forshor_upstream_scan.policy.json: the engine's two ForShor printed documents
-    (`engine/fullalg/data`), priced from their own IR;
+  * examples/forshor_dropin.policy.json and forshor_upstream_scan.policy.json are pack inputs (in pack/examples), not copied from the engine:
+    ForShor `21e129a`'s own printed documents for its shipped template, `lake exe forshor_policy_submission --balanced` and the default width scan
+    (printed 2026-11-08; both price to the same T as the documents the engine carries, and add the `negation` and `negate_charge` fields);
   * examples/board_snapshot.json: the rows of the results seed at delta = 0.01 (name, T, Q, Q x T per board), so `starter.py price`
     can say where a policy would rank. `--seed` is the exporter's epoch input (forshor.epoch-input/v2) the seed was made from;
   * examples/expected/*.json: `starter.py examples --write-expected`, run on the PACK's own engine copy;
@@ -36,8 +37,6 @@ ENGINE = REPO / "evaluation" / "engine"
 SRC = HERE / "pack"
 EXCLUDE_DIRS = {"tests", "cache", "__pycache__", ".pytest_cache"}
 EXCLUDE_FILES = {"requirements.txt", "README.md"}
-EXAMPLE_DOCS = {"forshor_dropin.policy.json": "fullalg/data/policy.forshor.exact_balanced.json",
-                "forshor_upstream_scan.policy.json": "fullalg/data/policy.forshor.json"}
 
 
 def sha256(path: Path) -> str:
@@ -87,8 +86,6 @@ def main() -> int:
     copy_engine(pack / "engine")
     origins = {"pack": "evaluation/starter/pack (hand-written)", "engine": f"evaluation/engine at {git('rev-parse', '--short', 'HEAD')} (tests, caches excluded)"}
 
-    for dst, src in EXAMPLE_DOCS.items():
-        shutil.copy(ENGINE / src, pack / "examples" / dst)
     snap = snapshot(a.seed)
     (pack / "examples" / "board_snapshot.json").write_text(json.dumps(snap, indent=1) + "\n")
 

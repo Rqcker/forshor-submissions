@@ -10,8 +10,8 @@ pack and compares T and Q with the boards' rows). All runs use n = 2048 and δ =
 | `seed_pp_S707dd51bf951.policy.json` | A seeded PhaseProduct policy, re-planned under exact widths (one band, k = 3). Priced on both boards. |
 | `seed_pp_S707dd51bf951.PolicyTemplate.lean` | The same policy as a ForShor template (`starter.py template`), for ForShor at `21e129a`. |
 | `seed_ptp_S80e6a121410d.policy.json` | A seeded PhaseTripleProduct policy (one band, k = 4), priced on the PTP board. |
-| `forshor_dropin.policy.json` | The board's reference document: a ForShor-printed `policy.json` for the shipped template with `--balanced` (exact widths, balanced split, trial count 386). It predates ForShor's `negation` field; it is priced from its own IR with the current negation counts. |
-| `forshor_upstream_scan.policy.json` | An upstream ForShor printed document for the same template at ForShor's default width scan (scanned widths, no balanced split): priced on upstream's IR, the cross-check. |
+| `forshor_dropin.policy.json` | The board's reference document: ForShor `21e129a`'s printed `policy.json` for the shipped template, `lake exe forshor_policy_submission --balanced` (exact widths, balanced split, trial count 386), printed 2026-11-08. It carries `negation` (`oneQubit`) and the per-method `negate_charge`. |
+| `forshor_upstream_scan.policy.json` | ForShor `21e129a`'s printed document for the same template at its default width scan (scanned widths, no balanced split): priced on upstream's IR, the cross-check. |
 | `declared_ladder_ignored.policy.json` | The STO reference with a `declared_ladder`: the same prices, plus the notice that the board ignores the ladder. |
 | `board_snapshot.json` | The rows of the results boards at δ = 0.01 when the pack was built (name, T, Q, Q × T, whether the row has STO mirror evidence): what `starter.py price` ranks against. The page shows the live boards. |
 

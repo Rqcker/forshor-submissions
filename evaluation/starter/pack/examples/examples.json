@@ -23,13 +23,13 @@
    "full": false
   },
   {
-   "name": "the board's reference document: a ForShor printed policy.json for the shipped template (exact widths, balanced split, trial count 386); it predates ForShor's `negation` field and is priced from its own IR with the current negation counts",
+   "name": "the board's reference document: ForShor 21e129a's printed policy.json for the shipped template (`--balanced`: exact widths, balanced split, trial count 386; it carries `negation` and `negate_charge`)",
    "kind": "forshor-doc",
    "file": "forshor_dropin.policy.json",
    "expected": "forshor_dropin.json"
   },
   {
-   "name": "an upstream ForShor printed policy.json (scanned widths, no balanced split): the cross-check IR",
+   "name": "ForShor 21e129a's printed policy.json for the same template at its default width scan (scanned widths, no balanced split): the cross-check IR",
    "kind": "forshor-doc",
    "file": "forshor_upstream_scan.policy.json",
    "expected": "forshor_upstream_scan.json"
