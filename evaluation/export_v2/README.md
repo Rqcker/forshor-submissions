@@ -88,7 +88,7 @@ about the policy, and only the rotation-synthesis price depends on delta.
 
 All 15 distinct listed policies were run through the interim STO fork's harnesses (`check_banded_policy.py`, `check_ptp_policy.py`, `--widths exact`) at the epoch's pins: Lean
 4.36.0-rc1, ForShor `21e129a` (the merge of PR #80, on top of PR #79), STO base `361e81e`. The fork is `courtneyjzapata/ShorTableOptimization_temp`, branch `port/forshor-21e129a`
-(`349017d`, not pushed). The envelopes (policy, record, evidence; no logs) are archived in `evidence-archive/494185cf666f9752/`.
+(`349017d`, not pushed). The envelopes (policy, record, evidence; no logs) are archived in `evidence-archive/494185cf666f9752/` (the first 13, and the timed-out record of `48063efa`) and, for all 15 accepted, in `evidence-archive/7a11b2b8b6d68718/` (the current epoch).
 
 | Policy | Ladder (threshold, k) | Result | Report stage |
 | --- | --- | --- | --- |
@@ -99,12 +99,19 @@ All 15 distinct listed policies were run through the interim STO fork's harnesse
 | PhaseProduct planner `92d5b75d` | 8, 3 | **accepted** (second attempt, see below) | 8,624 s |
 | PhaseTripleProduct baselines k = 3, 4, 5 (`85fbe129`, `265a0f53`, `2ed7dc90`) | one band | all **accepted** | 7 s, 23 s, 773 s |
 | PhaseTripleProduct planner `627bb6e3` | 4 | **accepted** | 11 s |
-| PhaseTripleProduct planner `48063efa` | 8, 4 | **not accepted: report stage killed at its 12 h limit** (a resource limit, not a rejection) | 43,201 s |
-| PhaseTripleProduct baseline k = 6 (`c733baf3`) | one band | **no outcome** (it was still running when the seed was made; the archive holds no record for it) | |
+| PhaseTripleProduct planner `48063efa` | 8, 4 | first attempt: report stage killed at its 12 h limit (a resource limit, not a rejection). **Accepted** with `--fast` (2026-11-08, see below) | 43,201 s (default path); skipped with `--fast` |
+| PhaseTripleProduct baseline k = 6 (`c733baf3`) | one band | default path had not finished after 6 h. **Accepted** with `--fast` (2026-11-08) | skipped with `--fast` |
 
-13 of 15 policies have evidence, which covers 80 of the 88 board rows of the seed. The earlier guess in the section below that the k = 8 policies would "likely repeat" a timeout was wrong
+All 15 policies have evidence, which covers all 88 board rows of the seed (13 by the default path, two by `--fast`). The earlier guess in the section below that the k = 8 policies would "likely repeat" a timeout was wrong
 for PhaseProduct: all three were accepted once the stage limit was raised (6 h), taking about 2.4 h each in the report stage. What took 2.4 h at the older pins also took 2.4 h here, so
 expect long checks for large first bands; the PhaseTripleProduct k = 8 policy did not finish in 12 h.
+
+**`run-mirror --fast` (PhaseTripleProduct only).** Only the harness's report stage is slow: `lean --run` interprets the exact ladder, the census and the formula numbers (773 s at k = 5, over 12 h at a k = 8 band), while the kernel
+certificate that follows takes 10 to 25 s even at k = 8 (it recomputes `ladderX` itself: `ladder_exact ... := by decide +kernel`). With `--fast` the fork's `check_ptp_policy.py` skips the report, takes the exact ladder from `ptp_exact_width`
+(Python, milliseconds, an untrusted oracle) and lets the certificate prove it, so a wrong ladder or a failed threshold rule makes the certificate fail to build. Measured on the k = 5 baseline: 39 s against about 820 s, the same 19 audited
+theorems with the same statements and axioms, the same `ptp_peak_qubits`. `48063efa` and `c733baf3` were accepted this way (about a minute each). What `--fast` does not produce: the report's census and formula numbers (diagnostics; the gate-level census
+theorems are in the certificate) and the specific threshold-rejection reason (the certificate simply does not build). A false reject would mean a Python/Lean disagreement; the default path is the fallback. The flag is in the fork's branch
+`harness/ptp-fast-report`; the PhaseProduct harness has no such option and still takes hours at k = 8.
 
 Findings from these runs (each one produced a false `rejected` that is not a verdict on the policy; treat any `rejected` whose detail is not a threshold, contract or timeout message as an
 infrastructure failure and re-run it):

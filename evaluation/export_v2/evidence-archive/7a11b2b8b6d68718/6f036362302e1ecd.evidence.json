@@ -1,0 +1,307 @@
+{
+ "schema": "forshor.mirror-evidence/v1",
+ "policyDigest": "6f036362302e1ecd489d48832cb1e2d0a7bec1ec060cba80a763493475ce70cb",
+ "policyFile": {
+  "name": "6f036362302e1ecd.policy.json",
+  "sha256": "74b27276b66f2be3ea34946b30b55ca1e17ffcfcaba51093dff574f2967becb9"
+ },
+ "harness": "check_banded_policy",
+ "record": {
+  "tool": "check_banded_policy",
+  "started": "2026-11-08T09:13:50.463338+00:00",
+  "policy_sha256": "74b27276b66f2be3ea34946b30b55ca1e17ffcfcaba51093dff574f2967becb9",
+  "target_width": 2048,
+  "seconds": {
+   "stage": 60.04,
+   "data": 22.06,
+   "report": 4.92,
+   "cert": 8.58,
+   "replay:Submitted": 9.31,
+   "replay:SubmittedCert": 11.82
+  },
+  "verdict": "accepted",
+  "widths_rule": "exact",
+  "mode": "PhaseProduct",
+  "bands": [
+   {
+    "threshold": 67,
+    "k": 2
+   }
+  ],
+  "declared_ladder": null,
+  "workdir": "/var/folders/9b/f1mkdfl16898l4bcj2pz6sxr0000gn/T/banded_policy_rk30f36s",
+  "report": {
+   "mode": "PhaseProduct",
+   "target_width": 2048,
+   "ladder": [
+    {
+     "width": 2048,
+     "k": 2
+    },
+    {
+     "width": 1027,
+     "k": 2
+    },
+    {
+     "width": 517,
+     "k": 2
+    },
+    {
+     "width": 262,
+     "k": 2
+    },
+    {
+     "width": 134,
+     "k": 2
+    },
+    {
+     "width": 70,
+     "k": 2
+    },
+    {
+     "width": 38,
+     "k": null
+    }
+   ],
+   "tight_ladder": [
+    {
+     "width": 2048,
+     "k": 2
+    },
+    {
+     "width": 1026,
+     "k": 2
+    },
+    {
+     "width": 515,
+     "k": 2
+    },
+    {
+     "width": 259,
+     "k": 2
+    },
+    {
+     "width": 131,
+     "k": 2
+    },
+    {
+     "width": 67,
+     "k": 2
+    },
+    {
+     "width": 35,
+     "k": null
+    }
+   ],
+   "bands": [
+    {
+     "threshold": 67,
+     "k": 2,
+     "child_width_at_threshold": 37,
+     "tight_width_at_threshold": 35,
+     "check": true,
+     "ops": 5,
+     "points": 3
+    }
+   ],
+   "check": true,
+   "chain_contracts": true,
+   "chain_contracts_tight": true,
+   "threshold_failure": null,
+   "bands_contract": true,
+   "declared_ok": null,
+   "declared_threshold_ok": null,
+   "declared_tight_ok": null
+  },
+  "exact_ladder": [
+   {
+    "width": 2048,
+    "k": 2
+   },
+   {
+    "width": 1026,
+    "k": 2
+   },
+   {
+    "width": 515,
+    "k": 2
+   },
+   {
+    "width": 259,
+    "k": 2
+   },
+   {
+    "width": 131,
+    "k": 2
+   },
+   {
+    "width": 67,
+    "k": 2
+   },
+   {
+    "width": 35,
+    "k": null
+   }
+  ],
+  "scan_ladder": [
+   {
+    "width": 2048,
+    "k": 2
+   },
+   {
+    "width": 1027,
+    "k": 2
+   },
+   {
+    "width": 517,
+    "k": 2
+   },
+   {
+    "width": 262,
+    "k": 2
+   },
+   {
+    "width": 134,
+    "k": 2
+   },
+   {
+    "width": 70,
+    "k": 2
+   },
+   {
+    "width": 38,
+    "k": null
+   }
+  ],
+  "advisory": {
+   "bands_contract": true,
+   "chain_contracts_scan": true
+  },
+  "lean_sha256": {
+   "Submitted.lean": "a3fe6ce59ba3f47491bcc9efd5f8a605f3b4efedafc92a1220f53a8e82986b31",
+   "SubmittedCert.lean": "0421d21e546e1f2fd38fa4daa6978dbcd900b9481ba4bd3bd9e4e8bb856a78bd"
+  },
+  "replay": {
+   "modules": [
+    {
+     "module": "TableGeneration.RecursiveCost.BandedPolicy.Instances.Submitted",
+     "verdict": "replayed",
+     "decls": 5,
+     "peak_gb": 4.95,
+     "seconds": 9.3
+    },
+    {
+     "module": "TableGeneration.RecursiveCost.BandedPolicy.Instances.SubmittedCert",
+     "verdict": "replayed",
+     "decls": 22,
+     "peak_gb": 5.84,
+     "seconds": 11.8
+    }
+   ],
+   "prefix": "per-module"
+  },
+  "audit": {
+   "accepted": {
+    "axioms": [
+     "Quot.sound",
+     "propext"
+    ],
+    "type": "Eq TableGeneration.PolicyMirror.Instances.Submitted.policy.check Bool.true"
+   },
+   "correct": {
+    "axioms": [
+     "Classical.choice",
+     "Quot.sound",
+     "propext"
+    ],
+    "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhase n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+   },
+   "correct_reg": {
+    "axioms": [
+     "Classical.choice",
+     "Quot.sound",
+     "propext"
+    ],
+    "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), (∀ (s : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity), TableGeneration.PolicyMirror.Fits n (xs s)) → Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhaseReg n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+   },
+   "capacity": {
+    "axioms": [
+     "Classical.choice",
+     "Quot.sound",
+     "propext"
+    ],
+    "type": "∀ (n : Nat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), (∀ (s : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity), TableGeneration.PolicyMirror.Fits n (xs s)) → TableGeneration.PolicyMirror.Instances.Submitted.policy.CapacityOK n xs"
+   },
+   "bands_contract": {
+    "axioms": [
+     "Classical.choice",
+     "Quot.sound",
+     "propext"
+    ],
+    "type": "Eq TableGeneration.PolicyMirror.Instances.Submitted.policy.bandsContract Bool.true"
+   },
+   "correct_tight": {
+    "axioms": [
+     "Classical.choice",
+     "Quot.sound",
+     "propext"
+    ],
+    "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), (∀ (s : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity), TableGeneration.PolicyMirror.Fits n (xs s)) → Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhaseRegTight n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+   },
+   "exact_ladder": {
+    "axioms": [
+     "propext"
+    ],
+    "type": "Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.ladderTight 2048) TableGeneration.PolicyMirror.Instances.SubmittedCert.exactLadder"
+   },
+   "declared_tight_widths": {
+    "axioms": [
+     "propext"
+    ],
+    "type": "Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.declOKTight TableGeneration.PolicyMirror.Instances.SubmittedCert.exactLadder) Bool.true"
+   },
+   "declared_tight_correct": {
+    "axioms": [
+     "Classical.choice",
+     "Quot.sound",
+     "propext"
+    ],
+    "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), (∀ (s : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity), TableGeneration.PolicyMirror.Fits n (xs s)) → Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhaseRegW (TableGeneration.PolicyMirror.ladderWidthTight TableGeneration.PolicyMirror.Instances.SubmittedCert.exactLadder) n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+   },
+   "chain_contracts_tight": {
+    "axioms": [
+     "propext"
+    ],
+    "type": "Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.chainContractsTight 2048) Bool.true"
+   },
+   "thresholds_at_target": {
+    "axioms": [
+     "Classical.choice",
+     "Quot.sound",
+     "propext"
+    ],
+    "type": "∀ (m : Nat) (T : TableGeneration.PolicyMirror.PolicyTable), TableGeneration.PolicyMirror.Instances.Submitted.policy.ExactReach 2048 m → Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.choose m) (Option.some T) → And (instLENat.le T.k m) (instLTNat.lt (T.tightWidth m) m)"
+   },
+   "correct_at_target": {
+    "axioms": [
+     "Classical.choice",
+     "Quot.sound",
+     "propext"
+    ],
+    "type": "∀ (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), (∀ (s : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity), TableGeneration.PolicyMirror.Fits 2048 (xs s)) → Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhaseRegTight 2048 φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+   },
+   "exact_ladder_at_target": {
+    "axioms": [
+     "propext"
+    ],
+    "type": "And (Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.ladderTight 2048) TableGeneration.PolicyMirror.Instances.SubmittedCert.exactLadder) (Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.chainContractsTight 2048) Bool.true)"
+   }
+  },
+  "finished": "2026-11-08T09:15:47.264082+00:00"
+ },
+ "tree": {
+  "lean": "leanprover/lean4:v4.36.0-rc1",
+  "forshorPin": "21e129aeefc0fd1bbb8fa63402f5799af2490788",
+  "stoBase": "361e81e"
+ }
+}

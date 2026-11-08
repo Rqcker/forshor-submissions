@@ -1,0 +1,341 @@
+{
+ "tool": "check_ptp_policy",
+ "policy": "/private/tmp/claude-501/-Users-joshua-Desktop/cec70136-0d39-4db1-a1da-40472d4d74c7/scratchpad/evidence4/2ed7dc90d130f0d5.policy.json",
+ "started": "2026-11-08T09:27:35.342676+00:00",
+ "policy_sha256": "4e29480da4c44d31a2c4ce47d6606debd4260e3ce4362bc6efd05dee2c669ff8",
+ "target_width": 2048,
+ "widths": "exact",
+ "seconds": {
+  "data": 9.66,
+  "report": 773.32,
+  "cert": 12.52,
+  "replay:PTPSubmitted": 10.57,
+  "replay:PTPSubmittedCert": 14.93
+ },
+ "replay": [
+  {
+   "module": "TableGeneration.RecursiveCost.PTPCheck.PTPSubmitted",
+   "verdict": "replayed",
+   "decls": 7,
+   "theorems": 5,
+   "axiom_union": [],
+   "sorry": false,
+   "peak_gb": 4.01,
+   "seconds": 10.5
+  },
+  {
+   "module": "TableGeneration.RecursiveCost.PTPCheck.PTPSubmittedCert",
+   "verdict": "replayed",
+   "decls": 24,
+   "theorems": 23,
+   "axiom_union": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "sorry": false,
+   "peak_gb": 5.98,
+   "seconds": 14.9
+  }
+ ],
+ "verdict": "accepted",
+ "name": "baseline-k5",
+ "mode": "PhaseTripleProduct",
+ "bands": [
+  {
+   "threshold": 425,
+   "k": 5
+  }
+ ],
+ "report": {
+  "target_width": 2048,
+  "ladder": [
+   {
+    "width": 2048,
+    "k": 5
+   },
+   {
+    "width": 480,
+    "k": 5
+   },
+   {
+    "width": 165,
+    "k": null
+   }
+  ],
+  "ladder_exact": [
+   {
+    "width": 2048,
+    "k": 5
+   },
+   {
+    "width": 425,
+    "k": 5
+   },
+   {
+    "width": 98,
+    "k": null
+   }
+  ],
+  "chain_contracts_exact": true,
+  "chain_contracts_tight": true,
+  "threshold_failure": null,
+  "ladder_pp_scan": [
+   {
+    "width": 2048,
+    "k": 5
+   },
+   {
+    "width": 480,
+    "k": 5
+   },
+   {
+    "width": 165,
+    "k": null
+   }
+  ],
+  "bands": [
+   {
+    "threshold": 425,
+    "k": 5,
+    "contract": true,
+    "ptp_child_width_at_threshold": 154,
+    "exact_width_at_threshold": 98,
+    "pp_scan_child_width_at_threshold": 154,
+    "adds": 58,
+    "negates": 0,
+    "checkpoints": 13,
+    "ops": 89,
+    "points": 13
+   }
+  ],
+  "check": true,
+  "chain_contracts": true,
+  "census": {
+   "h": 0,
+   "x": 898884,
+   "cnot": 2266698,
+   "toffoli": 1528446492,
+   "rz": 759169125,
+   "total": 2290781199
+  },
+  "cnot_with_extension": 2272488,
+  "toffoli_uncompute": 763770150,
+  "census_ccphase_leaf": {
+   "h": 0,
+   "x": 898884,
+   "cnot": 1520604948,
+   "toffoli": 1519244442,
+   "rz": 3795845625,
+   "total": 6836593899
+  },
+  "reserve_need_per_operand": 2077,
+  "clean_ancilla_peak": 1,
+  "qubits": 12377,
+  "qubits_ccphase_leaf": 12376,
+  "qubits_bound_scan": 15821,
+  "census_exact": {
+   "h": 0,
+   "x": 576636,
+   "cnot": 1461078,
+   "toffoli": 321952992,
+   "rz": 159061448,
+   "total": 483052154
+  },
+  "cnot_with_extension_exact": 1462170,
+  "toffoli_uncompute_exact": 160684524,
+  "workspace_exact": 7847,
+  "qubits_bound_exact": 13991
+ },
+ "report_tiers": {
+  "ladder, child widths, check": "evaluation tier; check and chain re-proved by the kernel in `cert`",
+  "census": "PROVED at every depth (cert `gate_recursion`, Lean ptp_gate_full): rz/toffoli/x/h of the gate-level recursion = ptpResources (sandwich leaf, 1 Rz per cell); census.cnot EXCLUDES the split's sign-extension fan-out — the circuit's CNOT is `cnot_with_extension` (ptpCnotFull); `toffoli_uncompute` = And† (ptpAndDag), compute Toffoli (And) = toffoli - toffoli_uncompute",
+  "reserve_need_per_operand, clean_ancilla_peak, qubits": "FORMULA (ForShor reserveNeed shape, private workspace per child). `qubits` (= ptpQubits) is proved only as a bound on the qubits the circuit NAMES (`LowGate.usedQubits`, `ptp_qubits_le_ptpQubits`); it is not a bound on the framework's qubitCount (named qubits + the model's clean scratch), for which see `ptp_peak_qubits` below. The constructed circuit of `gate_recursion` has a different, proved bound on the named qubits: <= 3n + ptpWorkspace (per level 3k·C' reserve, children share one pool, 2 leaf ancillas). `clean_ancilla_peak` is this suite's formula under its own cost convention; the method-aware scratch bound (ForShor `ptpCleanAnc`, `ptpCleanAncD`) is proved inside `ptp_peak_qubits`",
+  "census_ccphase_leaf, qubits_ccphase_leaf": "FORMULA, documented alternative: the same with the CCPhase leaf (5 Rz per cell; ptpNodeCCPhase_resources, ptpResourcesCCPhase_depth_one)",
+  "ladder_pp_scan": "comparison only (PP's nextSignedWidth), not used",
+  "census_exact, cnot_with_extension_exact, toffoli_uncompute_exact, workspace_exact, qubits_bound_exact": "FORMULA PROVED at every depth on the EXACT ladder (cert `gate_recursion_exact`, Lean ptp_gate_full_exact, --widths exact only): the gate-level recursion with every node's children at ptpTightWidth exists, is correct, and has rz/toffoli/x/h = ptpResourcesX, CNOT = ptpCnotFullX (extension fan-out included; census_exact.cnot excludes it), And† = ptpAndDagX, qubits <= 3n + ptpWorkspaceX; the NUMBERS at the target width are compiled evaluation (lean --run) of those formulas, not kernel-reduced; ptpResourcesD recurses exactly as ladderX (choose, ptpTightWidth < n), agreement by construction, not a theorem (HG7 F1/F2)",
+  "qubits_bound_scan": "PROVED bound for the scan-ladder circuit of `gate_recursion` (3n + ptpWorkspace), on the named qubits only (no clean scratch)",
+  "ptp_peak_qubits": "Lean-proved UPPER BOUND on the framework's qubitCount (named qubits + clean scratch), `ptpPeakQubits = 3n + ptpWsTD + ptpCleanAncD`: ForShor `ptp_peak_qubits` (any width rule), `ptp_peak_qubits_exact` (exact rule, the board's) and `ptp_peak_qubits_scan` (scan rule), Implementation/PhaseTripleProduct/Statement.lean (PTPPeakQubits*) at ForShor 21e129aeefc0fd1bbb8fa63402f5799af2490788. EXISTENTIAL, like PTPQubitsTight: some circuit following the policy has qubitCount <= the number; not an equality in general. ptpWsTD is the workspace the construction touches (base 2 + 3(k C' - w) per node), ptpCleanAncD the largest clean scratch of one node under the policy's `negation` (1 for `oneQubit`, C' + 1 for `scratch`). The number is evaluated here in Python (ptp_exact_width.ptp_peak_qubits) and cross-checked against ForShor's kernel-evaluated numerals (scripts/test_ptp_peak_qubits.py); the ForShor claims concern ForShor's own PTPPolicy on the same tables, not this suite's TableGeneration.PTP object. Not kernel-reduced in this suite's certificate."
+ },
+ "python_exact_ladder": [
+  [
+   2048,
+   5
+  ],
+  [
+   425,
+   5
+  ],
+  [
+   98,
+   null
+  ]
+ ],
+ "advisory": {
+  "chain_contracts_scan": true
+ },
+ "ptp_peak_qubits": {
+  "negation": "oneQubit",
+  "tier": "see report_tiers.ptp_peak_qubits",
+  "scan": {
+   "ws": 2093,
+   "clean": 1,
+   "peak": 8238
+  },
+  "exact": {
+   "ws": 428,
+   "clean": 1,
+   "peak": 6573
+  }
+ },
+ "lean_sha256": {
+  "PTPSubmitted.lean": "0c194965335788e39775a7481780872bb5aadc72e482099a1641e362cc15de55",
+  "PTPSubmittedCert.lean": "90cd84bc8292808625cabeaa0ee5de537ecfddf8226e3a545d72783250d930e5"
+ },
+ "audit": {
+  "accepted": {
+   "axioms": [
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq TableGeneration.PTPCheck.PTPSubmitted.policy.check Bool.true"
+  },
+  "correct": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (x : Fin 3 → Int), Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.evalPhase n φ x) (instHMul.hMul (instHMul.hMul (instHMul.hMul φ (x 0).cast) (x 1).cast) (x 2).cast)"
+  },
+  "correct_wrapped": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth n (x s)) → Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.evalPhaseW n φ x) (instHMul.hMul (instHMul.hMul (instHMul.hMul φ (x 0).cast) (x 1).cast) (x 2).cast)"
+  },
+  "width_sound": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b → ∀ (n : Fin 3 → Nat), (∀ (s : Fin 3), instLTNat.lt 0 (n s)) → ∀ (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth (n s) (x s)) → ∀ (s : Fin 3), And (Shor.PTP.AllFits (Shor.PTP.childWidth3 n b.table.ops) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops) (And (Eq (Shor.PTP.runF id (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops).fst (List.map (fun p => Shor.PTP.regVal (expectedRow p) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s))) b.table.pts)) (And (∀ (v : Int), List.instMembership.mem (Shor.PTP.runF id (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops).fst v → Shor.FitsSignedWidth (Shor.PTP.childWidth3 n b.table.ops) v) (And (Eq (Shor.PTP.runF (Shor.tcWrapInt (Shor.PTP.childWidth3 n b.table.ops)) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops) (Shor.PTP.runF id (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops)) (Eq (Shor.PTP.runF id (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops).snd (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s))))))"
+  },
+  "gate_node": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b → ∀ (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth n (x s)) → ∀ (Lay : Shor.PTP.NodeLayout b.table.k), instLENat.le (Shor.PTP.childWidth n b.table.ops) Lay.width → ∀ (φ : Shor.Angle) (ta ua : Nat), Shor.PTP.NodeAnc Lay ta ua → ∀ (bas : qs.Basis), Shor.PTP.AncClean ta ua bas → (∀ (s : Fin 3) (i : Fin b.table.k), Eq (Shor.extToInt (Lay.slot s i) bas) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth n b.table.k) (x s) i)) → Eq (inst_1.evalL (Shor.PTP.ptpNode b.table Lay n φ ta ua) (qs.ket bas)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal φ.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (x 0).cast (x 1).cast) (x 2).cast))) (qs.ket bas))"
+  },
+  "gate_recursion": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (X : Fin 3 → Shor.ExtReg) (base : Nat),\n  Shor.PTP.Good X n base →\n    Exists fun W =>\n      Exists fun G =>\n        And (Shor.PTP.PolicyImpl TableGeneration.PTPCheck.PTPSubmitted.policy X n W G)\n          (And (∀ (q : Nat), List.instMembership.mem W q → And (instLENat.le base q) (instLTNat.lt q (instHAdd.hAdd base (Shor.PTP.ptpWorkspace TableGeneration.PTPCheck.PTPSubmitted.policy n))))\n            (And (∀ (φ : Shor.Angle) (b : qs.Basis), (∀ (s : Fin 3), Shor.FitsSignedWidth n (Shor.extToInt (X s) b)) → (∀ (q : Nat), List.instMembership.mem W q → Eq (inst.bit q b) Bool.false) → Eq (inst_1.evalL (G φ) (qs.ket b)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal φ.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (Shor.extToInt (X 0) b).cast (Shor.extToInt (X 1) b).cast) (Shor.extToInt (X 2) b).cast))) (qs.ket b)))\n              (∀ (φ : Shor.Angle),\n                have R := Shor.LowGate.resources Shor.shorGateResourceModel (G φ);\n                And (Eq R.rz (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).rz) (And (Eq R.toffoli (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).toffoli) (And (Eq R.x (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).x) (And (Eq R.h (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).h) (And (Eq R.cnot (Shor.PTP.ptpCnotFull TableGeneration.PTPCheck.PTPSubmitted.policy n)) (And (Eq (Shor.PTP.adjToffCount (G φ)) (Shor.PTP.ptpAndDag TableGeneration.PTPCheck.PTPSubmitted.policy n)) (instLENat.le (G φ).usedQubits.card (instHAdd.hAdd (instHMul.hMul 3 n) (Shor.PTP.ptpWorkspace TableGeneration.PTPCheck.PTPSubmitted.policy n)))))))))))"
+  },
+  "chain_contracts_exact": {
+   "axioms": [
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.chainContractsX 2048) Bool.true"
+  },
+  "ladder_exact": {
+   "axioms": [
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.ladderX 2048) (List.cons { fst := 2048, snd := Option.some 5 } (List.cons { fst := 425, snd := Option.some 5 } (List.cons { fst := 98, snd := Option.none } List.nil)))"
+  },
+  "correct_exact": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth n (x s)) → Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.evalPhaseTight n φ x) (instHMul.hMul (instHMul.hMul (instHMul.hMul φ (x 0).cast) (x 1).cast) (x 2).cast)"
+  },
+  "exact_minimal": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b → ∀ (n : Nat), instLTNat.lt 0 n → Exists fun x => And (Shor.FitsSignedWidth n x) (Exists fun v => And (List.instMembership.mem (Shor.PTP.opTrace b.table n x) v) (Not (Shor.FitsSignedWidth (instHSub.hSub (Shor.PTP.ptpTightWidth b.table n) 1) v)))"
+  },
+  "exact_le_scan": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b → ∀ (n : Nat), instLTNat.lt 0 n → instLENat.le (Shor.PTP.ptpTightWidth b.table n) (Shor.PTP.childWidth n b.table.ops)"
+  },
+  "exact_floor": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b → ∀ (n : Nat), Eq (Shor.PTP.exactWidth b.table n) (Shor.PTP.ptpTightWidth b.table n)"
+  },
+  "gate_node_exact": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b → ∀ (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth n (x s)) → ∀ (Lay : Shor.PTP.NodeLayout b.table.k), instLENat.le (Shor.PTP.ptpTightWidth b.table n) Lay.width → ∀ (φ : Shor.Angle) (ta ua : Nat), Shor.PTP.NodeAnc Lay ta ua → ∀ (bas : qs.Basis), Shor.PTP.AncClean ta ua bas → (∀ (s : Fin 3) (i : Fin b.table.k), Eq (Shor.extToInt (Lay.slot s i) bas) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth n b.table.k) (x s) i)) → Eq (inst_1.evalL (Shor.PTP.ptpNode b.table Lay n φ ta ua) (qs.ket bas)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal φ.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (x 0).cast (x 1).cast) (x 2).cast))) (qs.ket bas))"
+  },
+  "gate_recursion_exact": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (X : Fin 3 → Shor.ExtReg) (base : Nat),\n  Shor.PTP.Good X n base →\n    Exists fun W =>\n      Exists fun G =>\n        And (Shor.PTP.PolicyImplX TableGeneration.PTPCheck.PTPSubmitted.policy X n W G)\n          (And (∀ (q : Nat), List.instMembership.mem W q → And (instLENat.le base q) (instLTNat.lt q (instHAdd.hAdd base (Shor.PTP.ptpWorkspaceX TableGeneration.PTPCheck.PTPSubmitted.policy n))))\n            (And (∀ (φ : Shor.Angle) (b : qs.Basis), (∀ (s : Fin 3), Shor.FitsSignedWidth n (Shor.extToInt (X s) b)) → (∀ (q : Nat), List.instMembership.mem W q → Eq (inst.bit q b) Bool.false) → Eq (inst_1.evalL (G φ) (qs.ket b)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal φ.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (Shor.extToInt (X 0) b).cast (Shor.extToInt (X 1) b).cast) (Shor.extToInt (X 2) b).cast))) (qs.ket b)))\n              (∀ (φ : Shor.Angle),\n                have R := Shor.LowGate.resources Shor.shorGateResourceModel (G φ);\n                And (Eq R.rz (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy n).rz) (And (Eq R.toffoli (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy n).toffoli) (And (Eq R.x (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy n).x) (And (Eq R.h (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy n).h) (And (Eq R.cnot (Shor.PTP.ptpCnotFullX TableGeneration.PTPCheck.PTPSubmitted.policy n)) (And (Eq (Shor.PTP.adjToffCount (G φ)) (Shor.PTP.ptpAndDagX TableGeneration.PTPCheck.PTPSubmitted.policy n)) (instLENat.le (G φ).usedQubits.card (instHAdd.hAdd (instHMul.hMul 3 n) (Shor.PTP.ptpWorkspaceX TableGeneration.PTPCheck.PTPSubmitted.policy n)))))))))))"
+  },
+  "chain_contracts_tight": {
+   "axioms": [
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.chainContractsTight 2048) Bool.true"
+  },
+  "thresholds_at_target": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (m : Nat) (T : Shor.PTP.PTPTable), TableGeneration.PTPCheck.PTPSubmitted.policy.ExactReach 2048 m → Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.choose m) (Option.some T) → And (instLENat.le T.k m) (instLTNat.lt (Shor.PTP.ptpTightWidth T m) m)"
+  },
+  "correct_at_target": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (φ : Rat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth 2048 (x s)) → Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.evalPhaseTight 2048 φ x) (instHMul.hMul (instHMul.hMul (instHMul.hMul φ (x 0).cast) (x 1).cast) (x 2).cast)"
+  },
+  "exact_ladder_at_target": {
+   "axioms": [
+    "propext"
+   ],
+   "type": "And (Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.ladderX 2048) TableGeneration.PTPCheck.PTPSubmittedCert.exactLadder) (Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.chainContractsTight 2048) Bool.true)"
+  },
+  "gate_recursion_exact_at_target": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (X : Fin 3 → Shor.ExtReg) (base : Nat),\n  Shor.PTP.Good X 2048 base →\n    Exists fun W =>\n      Exists fun G =>\n        And (Shor.PTP.PolicyImplX TableGeneration.PTPCheck.PTPSubmitted.policy X 2048 W G)\n          (And (∀ (q : Nat), List.instMembership.mem W q → And (instLENat.le base q) (instLTNat.lt q (instHAdd.hAdd base (Shor.PTP.ptpWorkspaceX TableGeneration.PTPCheck.PTPSubmitted.policy 2048))))\n            (And (∀ (φ : Shor.Angle) (b : qs.Basis), (∀ (s : Fin 3), Shor.FitsSignedWidth 2048 (Shor.extToInt (X s) b)) → (∀ (q : Nat), List.instMembership.mem W q → Eq (inst.bit q b) Bool.false) → Eq (inst_1.evalL (G φ) (qs.ket b)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal φ.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (Shor.extToInt (X 0) b).cast (Shor.extToInt (X 1) b).cast) (Shor.extToInt (X 2) b).cast))) (qs.ket b)))\n              (∀ (φ : Shor.Angle),\n                have R := Shor.LowGate.resources Shor.shorGateResourceModel (G φ);\n                And (Eq R.rz (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy 2048).rz) (And (Eq R.toffoli (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy 2048).toffoli) (And (Eq R.x (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy 2048).x) (And (Eq R.h (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy 2048).h) (And (Eq R.cnot (Shor.PTP.ptpCnotFullX TableGeneration.PTPCheck.PTPSubmitted.policy 2048)) (And (Eq (Shor.PTP.adjToffCount (G φ)) (Shor.PTP.ptpAndDagX TableGeneration.PTPCheck.PTPSubmitted.policy 2048)) (instLENat.le (G φ).usedQubits.card (instHAdd.hAdd (instHMul.hMul 3 2048) (Shor.PTP.ptpWorkspaceX TableGeneration.PTPCheck.PTPSubmitted.policy 2048)))))))))))"
+  }
+ },
+ "finished": "2026-11-08T09:41:16.433636+00:00"
+}
