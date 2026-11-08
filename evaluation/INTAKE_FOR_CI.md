@@ -44,9 +44,17 @@ first band of k = 8 took about 2.4 hours in the report stage, so set the limits 
 * Cache the two Lean trees (they are several GB and take tens of minutes cold), and set `TMPDIR` to a directory the job controls: a 2.4-hour run once lost a file in the system temporary directory.
 * Post `result.json` back on the PR (the CLI follows publication, `./forshor status`), and re-run on exit 2.
 
-## Open (what is not built yet)
+## ForShor tree for the submission check
 
-* **PhaseTripleProduct as a Lean submission.** The submission format is the Lean file `Policy.lean`, with bands up to k = 8 for PhaseProduct and PhaseTripleProduct. PhaseProduct works end to end (measured: a k = 8, 4, 3 policy builds in ForShor in
-  40 s and prints in about 5.5 minutes; the pack's k = 3 example ran from the Lean file to a published row in 4 minutes, with the same policy digest as the JSON route). For PhaseTripleProduct there is no Lean template, no ForShor entry point that prints
-  a PTP policy for the mirror, and no gate for it: ForShor has the PTP proofs (`Shor.PTP`, `PTPPolicy`) and board-row files, but not a checked-in submission template or executable. Until one exists, a PTP policy can only enter as `--policy` JSON.
-* The path of the file in the PR is `TableGeneration/Submission/Policy.lean`; `scripts/verifier.py` allows that file today (and, through `HELPER_PREFIX`, helpers under `Policy/`; if only `Policy.lean` is to be accepted, drop the helper prefix there).
+Both boards are checked by ForShor, with the same lexical gate. The PhaseProduct files are in ForShor `21e129a`. The PhaseTripleProduct files (`PTPPolicyTemplate.lean`, `PTPPolicyCheck.lean`,
+`PTPPolicyMain.lean`, two lakefile entries) are in the ForShor branch `ptp/submission-template`, which is `21e129a` plus those files and changes nothing else. `--forshor-tree` must therefore be a build of that
+branch (a superset of `21e129a`); the epoch's pin stays `21e129a`, because the added files change no theorem or definition the pricing or the evidence depends on. The STO tree must contain the fork's branch
+`harness/ptp-fast-report`, because `intake_v2.py` runs the mirror with `--fast`.
+
+Measured: a PhaseTripleProduct file with bands k = 8 and k = 4 went from the Lean file to a published row in 2.5 minutes (gate, ForShor build and kernel check about 25 s, mirror with `--fast` about a minute);
+a PhaseProduct k = 3 file in 4 minutes; a PhaseProduct k = 8, 4, 3 file builds in ForShor in 40 s and prints in about 5.5 minutes.
+
+## Open
+
+* A PhaseTripleProduct row carries no `forshorPolicy` record: ForShor has no IR for it, so there is no agreement tier. ForShor's kernel check is still a gate (a failed build is a refusal).
+* `scripts/verifier.py` allows `Policy.lean` and, through `HELPER_PREFIX`, helper files under `TableGeneration/Submission/Policy/`; if only `Policy.lean` is to be accepted, the new workflow must refuse the rest.
