@@ -19,3 +19,4 @@ TableGeneration/RecursiveCost/PTP/Instances/PTPSubmitted*.lean
 # cached frontier as stale (hours to recompute). They are data, not build output.
 !evaluation/engine/paper_model/artifacts/
 !evaluation/engine/paper_model/Clifford_plus_T_scaling/artifacts/
+dist-starter/
