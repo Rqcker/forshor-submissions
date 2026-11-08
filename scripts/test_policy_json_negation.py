@@ -4,7 +4,8 @@
 Stdlib only, no Lean. Run: python3 -I scripts/test_policy_json_negation.py
 
 * GOLDEN: SHA-256 of the Lean text the two generators produced for every `policies/*.json` BEFORE the key
-  existed (recorded with the generators of 364400d; scripts/tests/policy_json_lean_golden.json). A policy
+  existed (PhaseProduct: recorded with the generators of 364400d; PhaseTripleProduct in this fork: recorded with this fork's generator
+  before the key, `origin/main` 3a4ba21, because it is re-pointed at ForShor's `Shor.PTP`; scripts/tests/policy_json_lean_golden.json). A policy
   with no `negation`, or `"oneQubit"`, must still generate exactly those bytes.
 * `"scratch"` adds `negation := .scratch` as a field of `def policy` (BandedPolicy / PTPPolicy, data part) and
   nothing else; any other value is a PolicyError. The Lean it emits is checked by building a generated module

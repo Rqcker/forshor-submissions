@@ -140,38 +140,99 @@ three: 3,240,663,026,770 / 1,933,981,965,831 / 1,650,011,804,372. The documents 
 and `Scc866e679f67` are identical in every top-level field to the `bb2aae0` ones, for both executables.
 Not rerun: full per-module kernel replay, 31 planner seeds.
 
-## Pin bump to ForShor `21e129aeefc0fd1bbb8fa63402f5799af2490788` (PR #79, negation method)
+## PhaseTripleProduct moved to ForShor, pin ForShor `52a2c9e`, 2026-11-05 (branch `ptp-canonical-forshor`)
 
-Built and run on 2026-11-07 against ForShor `21e129aeefc0fd1bbb8fa63402f5799af2490788` (the PR #79 head; the merge
-commit has the same tree), toolchain and Mathlib unchanged. Details and numbers: `ForShor_modular_swaps/swap-002_policy_negation_option/shards/B2.md`.
+ForShor `main` `52a2c9e` is `qubitCount` (ForShor PR #75, the same Lean tree as `6d55ad9`) plus
+PhaseTripleProduct (PR #76): the PTP proofs now live in ForShor (`Implementation/PhaseTripleProduct`,
+`Statement.lean` / `Proofs/` / `Main.lean`, namespace `Shor.PTP`, on ForShor's own table language). This
+fork no longer carries a copy: `TableGeneration/RecursiveCost/PTP/` (25 proof modules, the fault and
+recursion witnesses, the standard-model specialisation, the umbrella) is deleted, and what remains is the
+planner and its 31 seeds (`PTPAxiomCheck`-guarded, `TableGeneration/RecursiveCost/PTPPlan/`), the
+policy-checker harness, and two re-export modules in `PTPCheck/`. Only ForShor's revision moved at the pin
+(Mathlib `4dc43842` and the toolchain are unchanged).
 
-What changed at the pin (ForShor `Framework/Gatecount/ResourceModel.lean`, `Framework/NegationMethod.lean`):
-`Shor.negateResources` (so `shorGateResourceModel`, `shorGateCostModel`) is the `oneQubit` negation (complement plus
-Gidney's single-ancilla increment: Toffoli `12 w - 28` / `10 w - 18`, CNOT `17 w - 22` / `17 w - 5`, X `5 w - 3` / `5 w + 1`
-for `w` even / odd, one clean qubit). The construction this repository used to mirror (complement + constant-one register
-+ Cuccaro adder, `10 w - 14` gates, `w + 1` clean qubits) is the `scratch` method (`negateResourcesPreSwap`).
+**Edits.** Planner and seeds: imports, namespace (`TableGeneration.PTP` -> `TableGeneration.PTPPlan`),
+`open _root_.Operations Shor.PTP`. Two additions, both in this fork's files: `deriving instance DecidableEq
+for Operations.valid_ops` (ForShor's table language has none; the planner and the seeds compare tables),
+and `sortedDesc_eq_mirror` (ForShor's `Shor.PTP.sortedDesc` is the same definition as the mirror's, which
+`PlanCore` reasons about). The planner's theorems are unchanged in meaning. Harness: generated modules now
+live in `PTPCheck/` against ForShor's `Shor.PTP`; the audit's statement pins changed only by namespace
+(`TableGeneration.PTP.` -> `Shor.PTP.`, since ForShor's statements are verbatim copies) and the audit
+matched them on the reference policy. `check_ptp_layers.py` (the STO PTP layer order, which no longer
+exists) is replaced by `check_ptp_single_source.py`. `scripts/` may not import ForShor directly (the
+confinement check), so `PTPCheck/{AxiomAudit,ForShorPTP}.lean` re-export it.
 
-Port (this repository): the mirror is method-indexed with default `oneQubit`. `Companion.negateResourcesAtWidth w m`,
-`negateGateCount w m`, `phaseArithmeticOpCost`/`phaseProgramOverhead`/`analyze*Program` (trailing `m := .oneQubit`),
-`Candidate.negation`, the champion lowering, `PTPPolicy.negation` / `BandedPolicy.negation` (copied by
-`toShorPolicySubmission`), the PTP closed forms `negateXGatesFor ...`, `nodeCensusFor`, `nodeCleanAncFor`, and every PTP
-census/recursion theorem (taken from ForShor's S3 versions) are stated for an arbitrary method. `modelVersion` is
-`forshor-phase-product-gates-v4` (`oneQubit`); `modelVersionFor .scratch` is the old `v3`.
+| check | result |
+|---|---|
+| ForShor PTP modules at the new pin (`lake build` of `Main` and four `Proofs` modules) | OK, 6549 jobs, 94 s, peak 3.3 GB |
+| `lake build` of all 179 tracked fork modules (205 before; 28 PTP modules deleted, 2 added) | OK, 8695 jobs, peak 3.6 GB. 60 warning lines, all deprecations in files this branch did not change (`PlanCore` 13, `BandedPolicy/*`, `Companion*`, ...); none from `PTPPlan/`, `PTPCheck/` or `scripts/` |
+| planner seeds (31 modules, incl. the `_unsorted`, `_foreignidx`, `_foreigntab` negative controls) | all build; each control's `reconstruction_fails` is decided by the kernel |
+| `lake env lean scripts/PTPAxiomCheck.lean` | 33 theorems (24 ForShor, 9 planner), all within {propext, Classical.choice, Quot.sound} |
+| `check_ptp_single_source.py` | ok; fails on each of a planted PTP definition, a `sorry` in `PTPPlan/`, and a re-created `PTP/` folder |
+| `check_mathlib_confinement.py` | 190 Lean files scanned, Mathlib confined to `TableGeneration/RecursiveCost/` |
+| verifier hardening / preflight / archive / deadline / promote audit | 23 / 10 / 11 / 5 / 6 passed |
+| `test_publish_promotion.py`, `test_report_trust.js`, `export_benchmark_config` | all passed, rc 0 |
+| `test_submission_syntax_gate.py` / `test_cost_model_lean.py` | 14 passed / 6 passed |
 
-Checks that were run: `lake build` of all of `TableGeneration` and of every module outside it (0 errors); the oracle under
-`--negation=scratch` reproduces `scripts/tests/companion-cost-model.scratch.tsv` (byte-identical to the 6d55ad9 transcript),
-the five published plans of `RECURSIVE_COST_MODEL.md` and the champion differential rows; under `oneQubit` the planner's
-published plans and the champion differential are unchanged (no accepted table the planner selects, and no champion, negates);
-`scripts/PTPAxiomCheck.lean` (41 theorems, only `propext`, `Classical.choice`, `Quot.sound`); `check_ptp_policy.py` on
-`policies/ref_ptp_2048.json` (accepted; `ptp_peak_qubits` scan 7497 / exact 6783, ForShor's kernel numerals);
-`test_cost_model_lean.py`, `test_policy_json_negation.py`, `test_ptp_peak_qubits.py`.
+| policy (`--widths exact`) | expected | verdict |
+|---|---|---|
+| `ref_ptp_2048.json` | accept | **accepted**. Both generated modules replayed through the trusted kernel (`PTPSubmitted`: 17 decls; `PTPSubmittedCert`: 24 decls, axioms within {propext, Classical.choice, Quot.sound}); 19 audited theorems matched their statement pins. Kernel exact ladder = Python ladder = 2048(k6)→375(k2)→189(k2)→96(k2)→50. Report stage 432 s |
+| `threshold_noshrink_ptp.json` | reject | **rejected** at `threshold` (band 3, k = 2, width 4). Report stage 426 s |
+| `threshold_degenerate_ptp.json` | reject | **rejected** at `threshold` (band 4, k = 6, width 4). Report stage 884 s |
+| `threshold_scanonly_ptp.json` | accept | **accepted** (both replays passed; the scan chain does not contract, recorded as advisory) |
+| `ref_pp_2048.json` | accept | **accepted**. PP exact ladder 2048(k6)→364→184→94→49→26 unchanged |
+| `faulty_width.json` (n = 20) | reject | **rejected** at `widths` |
 
-**Live-qubit peak of one PhaseTripleProduct, checked against Lean (2026-11-06; scratch term added 2026-11-07).** The site's Q for a
-PhaseTripleProduct is `3n +` the extra qubits of `evaluation/engine` `chain_peak_extra`, the shape of ForShor's `ptpPeakQubits = 3n + ptpWsTD +
-ptpCleanAncD` (`PhaseTripleProduct/Statement.lean`; ForShor proves it with the negation scratch since PR #79, `ptp_peak_qubits_exact`). ForShor
-states these over `Shor.PTP.PTPPolicy`, not over this mirror's policy type, so on 2026-11-06 `ptpWsTD` was evaluated as a transcription over the
-mirror's own policy and exact width rule (`lake env lean --run`): on the `baseline-k6` PhaseTripleProduct policy at n = 2048 it is 683, which the
-site's formula reproduced (6,827 in all, against the mirror's static `ptpQubits`, 18,794). That figure was before the clean scratch was added
-(`ptpCleanAncD` is 1 where a table negates or adds), so the board's Q is one higher on such rows. The six board PhaseTripleProduct policies now
-agree with ForShor's kernel-checked peaks exactly (6405, 7095, 6261, 6342, 6573, 6828); the guard is `evaluation/export_v2/pytests/test_ptp_q_equals_lean.py`. The PhaseProduct side is anchored by `peakReserveD` in
-`evaluation/engine/tests/test_live_peak.py`.
+**Not rerun on this change:** `check_ptp_policy.py --full-replay` (the trusted replay of every ForShor
+PhaseTripleProduct module from this fork; ForShor's own trusted replay of all 28 of them, 2,141
+declarations, was run on the ForShor side for PR #76); the trusted replay of the 31 planner seeds
+(`plan_from_site.py --replay`; the seeds were built, which kernel-checks them); the PP threshold-fault
+policies (`threshold_*_pp.json`) and `faulty_point_order.json`. The 31-seed site bridge
+`plan_from_site.py` was edited (paths and namespaces) but not run end to end.
+
+## Pin bump to ForShor `21e129a` (PR #80 merged; contains #79), 2026-11-07 (branch `port/forshor-21e129a`)
+
+ForShor `main` `21e129a` is the merge of PR #80 on top of the merge of PR #79 (`eb00c5a`). Between `52a2c9e` and `eb00c5a` ForShor
+**changed what a negation costs**: `Shor.negateResources` is `x = negateXGates w`, `cnot = negateCnotGates w`,
+`toffoli = negateToffoliGates w`, `cleanAnc = 1` (Toffoli `12 w - 28` / `10 w - 18`, CNOT `17 w - 22` / `17 w - 5`, X `5 w - 3` / `5 w + 1` for `w` even / odd,
+exact for `w >= 7`; the earlier "32 n" was the post's total of all gates, not of Toffolis), and the method is a policy field
+(`NegationMethod.oneQubit`, the default, or `scratch`, the pre-swap construction). PR #80 adds the board PhaseProduct policies and their
+kernel-checked peaks and changes no resource-model file; toolchain, Mathlib and the other packages are unchanged.
+
+**The mirror's port is not written here.** It is the one built for `forshor-submissions` (branch `submissions/swap002-integration`, commit `0ed8fbc` and
+its generators): the files below are that branch's versions, laid over this fork unchanged because the fork's copies were identical to that
+branch's base. The PhaseTripleProduct proofs are not ported: this fork imports ForShor's `Shor.PTP`, which already carries the corrected counts.
+
+* `TableGeneration/RecursiveCost/{CompanionCost,Model,Catalog,ChampionLowering,Correctness,Planner}.lean` and `BandedPolicy/{Bridge,Defs,Instances/FaultChallenge}.lean`:
+  the cost mirror under a negation method (`negateResourcesAtWidth w m`, `phaseArithmeticOpCostFor m`), `oneQubit` by default.
+* `scripts/policy_json_to_lean.py`: the optional `"negation"` key (`oneQubit` default, `scratch`); `scripts/test_policy_json_negation.py` and its golden.
+* `scripts/tests/companion-cost-model.tsv` (and the scratch variant), `RecursiveCostOracle.lean`, `ChampionGateCountDifferential.lean`, `test_cost_model_lean.py`, `RECURSIVE_COST_MODEL.md`.
+
+The PhaseTripleProduct generator and harness scripts (`ptp_policy_json_to_lean.py`, `check_ptp_policy.py`, `PTPPolicyReport.lean`, `ptp_exact_width.py`) differ in this fork (they were
+re-pointed at `Shor.PTP`), so W1's changes were applied to them as three-way patches (clean); in `PTPAxiomCheck.lean` the only conflict was W1's list of axiom checks for
+the local PhaseTripleProduct suite, which this fork does not have, so the fork's own file is kept. W1's change to the mirror's `BandedPolicy` (it gained a `negation` field) broke
+`PTPPolicyReport.lean` here until that patch was applied: every PhaseTripleProduct harness run failed at the report stage with "Insufficient number of fields" before it.
+`scripts/tests/policy_json_lean_golden.json`: the PhaseProduct digests are W1's; the four PhaseTripleProduct policies' digests were re-recorded from this fork's generator as it was
+before the key (`origin/main`), since its output differs from the integration branch's.
+
+| check | result |
+|---|---|
+| `lake build TableGeneration` | OK, 6673 jobs |
+| `lake build` of all 182 modules under `TableGeneration/` by name (the PhaseTripleProduct planner and its 31 seeds included) | OK, 8756 jobs |
+| `test_cost_model_lean.py` (with W1's negation tests) | 10 passed |
+| `test_policy_json_negation.py` | 8 passed (the PhaseTripleProduct golden digests re-recorded from this fork's generator before the key) |
+| `check_mathlib_confinement.py` / `check_ptp_single_source.py` | 190 files scanned, confined / ok |
+| `lake env lean scripts/PTPAxiomCheck.lean` | the planner's theorems and ForShor's, all within {propext, Quot.sound, Classical.choice} |
+
+**Policy harnesses at this pin (`--widths exact`, 2026-11-07/08).** Run on the 15 policies the results seed lists, from this tree (and an APFS clone for the two long PhaseTripleProduct
+policies), ForShor `21e129a`, Lean 4.36.0-rc1: 13 accepted, one timeout, one not finished. The 13: the five PhaseProduct baselines (k = 2 to 6), the PhaseProduct planner policies with first bands
+k = 6 (54 s) and k = 8 (`80132d41`, `ab119309`, `92d5b75d`: about 2.4 h each in the report stage, run with a 6 h stage limit), the three PhaseTripleProduct baselines k = 3, 4, 5 and the
+PhaseTripleProduct planner policy with one k = 4 band. Not accepted: the PhaseTripleProduct planner policy `48063efa` (first band k = 8): its report stage was killed at a 12 h limit; the PhaseTripleProduct k = 6
+baseline had not finished. The envelopes and their provenance are archived in `forshor-submissions` (`evaluation/export_v2/evidence-archive/494185cf666f9752/`, branch `export/v2-seed-m2-evidence`).
+Two false rejections on the way, both from this fork and now fixed: `PTP.Census` unbuilt (build the PhaseTripleProduct modules by name), and `PTPPolicyReport.lean` building a `BandedPolicy` without the new
+`negation` field.
+
+**Last two policies, 2026-11-08, `check_ptp_policy.py --fast`.** The default path's report stage (`lean --run scripts/PTPPolicyReport.lean`, the interpreter) never finished for the PhaseTripleProduct planner policy `48063efa` (bands k = 8 and k = 4; killed at 12 h) or the k = 6 baseline `c733baf3` (6 h and running when stopped). Profiling the k = 5 baseline showed the interpreter takes 99 s just for `ladderX`, while the certificate that follows recomputes the same ladder in the kernel in seconds (`ladder_exact := by decide +kernel`). The new `--fast` flag skips the report: the exact ladder comes from `ptp_exact_width` (Python, milliseconds) and the kernel proves it, so a wrong ladder fails the certificate. Both policies were **accepted** (data about 10 s, certificate 14 to 23 s, two kernel replays 10 to 27 s each; the same 19 audited headline theorems and axioms). On the k = 5 baseline, default and fast paths agree on every audited statement and on `ptp_peak_qubits` (39 s against about 820 s). Not produced in fast mode: the report's census and formula numbers (diagnostics) and the specific threshold-rejection reason. With these two, all 15 policies of the results seed have accepted evidence. Branch `harness/ptp-fast-report`.
+
+Not rerun on this pin: `ref_ptp_2048.json` / `ref_pp_2048.json`, the threshold fault policies and `faulty_width.json` through the harnesses, the verifier hardening / preflight / archive / deadline /
+promote tests, `test_submission_syntax_gate.py`, and the full-replay of every ForShor PhaseTripleProduct module from this fork.

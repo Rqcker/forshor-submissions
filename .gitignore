@@ -14,7 +14,7 @@ publish-input.json
 current-state.json
 # scratch modules written by the policy harnesses (check_banded_policy.py / check_ptp_policy.py)
 TableGeneration/RecursiveCost/BandedPolicy/Instances/Submitted*.lean
-TableGeneration/RecursiveCost/PTP/Instances/PTPSubmitted*.lean
+TableGeneration/RecursiveCost/PTPCheck/PTPSubmitted*.lean
 # The vendored engine's cache fingerprint hashes these directories' .json files; a clone without them would treat every
 # cached frontier as stale (hours to recompute). They are data, not build output.
 !evaluation/engine/paper_model/artifacts/

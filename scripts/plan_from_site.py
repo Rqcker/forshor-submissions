@@ -5,7 +5,7 @@
                       [--replay] [--out RESULTS.json] [--cap-gb 8] [--timeout 1800] [--planner-crosscheck]
     plan_from_site.py --all-seeds DIR ...      # every DIR/S*/site_policy.json (read only)
 
-Bridge (b) of the planner proof (`BandedPolicy/Plan.lean`, PTP suite `PTP/Plan.lean`):
+Bridge (b) of the planner proof (`BandedPolicy/Plan.lean`, PTP planner `PTPPlan/Plan.lean`, over ForShor's `Shor.PTP`):
 
 1. tables   the planner's candidate set: the distinct tables of the seed's own pre-re-plan policy
             (`site_policy.pre_exact.json` next to the site policy, or --tables), in the Python planner's
@@ -35,8 +35,8 @@ Bridge (b) of the planner proof (`BandedPolicy/Plan.lean`, PTP suite `PTP/Plan.l
 5. replay   --replay: kernel replay of the module (scripts/trusted/ReplayPrefix.lean), one process, axioms checked.
 
 Every lake/lean process waits while >= 2 `lean` processes run, runs under scripts/memcap.py (cap, timeout; memcap
-starts it in its own session and kills the group). PP modules are built in this project, PTP modules in the PTP suite
-(--ptp-root).
+starts it in its own session and kills the group). PP and PTP seed modules are both built in this project (the PTP
+seeds against ForShor's `Shor.PTP`; --ptp-root points at the project holding `PTPPlan/`).
 """
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 from policy_json_to_lean import PolicyError, op_lean, point_lean  # noqa: E402
 
-DEFAULT_PTP_ROOT = ROOT  # consolidated package: the PTP suite lives in this repository
+DEFAULT_PTP_ROOT = ROOT  # the PTP planner and its seeds live in this repository; the PTP proofs in ForShor
 DEFAULT_SITE_ENGINE = ROOT.parent / "sto_site" / "engine"
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 PP, PTP = "PhaseProduct", "PhaseTripleProduct"
@@ -138,8 +138,8 @@ def render(sid: str, mode: str, cands, site_doc: dict, oracle, n: int, fault: st
     ptp = mode == PTP
     mod = f"{sid}{tag}"
     if ptp:
-        ns_root, imp = "TableGeneration.PTP.PlanSeeds", "TableGeneration.RecursiveCost.PTP.Plan"
-        tyT, tyP, opens = "PTPTable", "PTPPolicy", "open TableGeneration TableGeneration.Operations TableGeneration.PTP TableGeneration.PTP.Planner TableGeneration.PlanCore"
+        ns_root, imp = "TableGeneration.PTPPlan.PlanSeeds", "TableGeneration.RecursiveCost.PTPPlan.Plan"
+        tyT, tyP, opens = "PTPTable", "PTPPolicy", "open _root_.Operations Shor.PTP TableGeneration.PTPPlan.Planner TableGeneration.PlanCore"
     else:
         ns_root, imp = "TableGeneration.PolicyMirror.PlanSeeds", "TableGeneration.RecursiveCost.BandedPolicy.Plan"
         tyT, tyP, opens = "PolicyTable", "BandedPolicy", "open TableGeneration TableGeneration.Operations TableGeneration.PolicyMirror TableGeneration.PolicyMirror.Planner TableGeneration.PlanCore"
@@ -273,7 +273,7 @@ def failed_theorems(src: str, out: str, fname: str) -> set:
 
 
 def lean_module_path(root: Path, mode: str, mod: str) -> tuple[Path, str]:
-    sub = ("TableGeneration/RecursiveCost/PTP/PlanSeeds" if mode == PTP
+    sub = ("TableGeneration/RecursiveCost/PTPPlan/PlanSeeds" if mode == PTP
            else "TableGeneration/RecursiveCost/BandedPolicy/PlanSeeds")
     dotted = sub.replace("/", ".") + "." + mod
     return root / sub / f"{mod}.lean", dotted

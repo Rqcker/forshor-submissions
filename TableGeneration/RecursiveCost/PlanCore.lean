@@ -4,8 +4,8 @@ import TableGeneration.RecursiveCost.BandedPolicy.Defs
 # A planner skeleton for banded policies, generic over the table type
 
 This file is shared verbatim by the STO policy mirror (`BandedPolicy/Plan.lean`,
-PhaseProduct / PhaseTripleProduct over `PolicyTable`) and the PTP suite
-(`PTP/Plan.lean`, over `PTPTable`). It is Mathlib-free.
+PhaseProduct / PhaseTripleProduct over `PolicyTable`) and the PTP planner
+(`PTPPlan/Plan.lean`, over ForShor's `Shor.PTP.PTPTable`). It is Mathlib-free.
 
 A planner in the sense of the site (`sto_site/engine/tcost/planner.py`,
 `optimal_policy` followed by `seed_policies.canonical`) does two things:

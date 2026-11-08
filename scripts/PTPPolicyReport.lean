@@ -1,9 +1,6 @@
-import TableGeneration.RecursiveCost.PTP.Instances.PTPSubmitted
-import TableGeneration.RecursiveCost.PTP.Census
-import TableGeneration.RecursiveCost.PTP.CensusFull
-import TableGeneration.RecursiveCost.PTP.Exact
-import TableGeneration.RecursiveCost.PTP.ExactBuild
-import TableGeneration.RecursiveCost.PTP.Threshold
+import TableGeneration.RecursiveCost.PTPCheck.PTPSubmitted
+import TableGeneration.RecursiveCost.BandedPolicy.Defs
+import TableGeneration.RecursiveCost.PTPCheck.ForShorPTP
 
 /-! Evaluation-tier report for check_ptp_policy.py (diagnostics, not a proof):
 PTP-derived ladder, the PP-borrowed ladder (mirror's `nextSignedWidth` scan) for
@@ -13,9 +10,23 @@ at the target width.
   lake env lean --run scripts/PTPPolicyReport.lean -- <target width>
 -/
 
-open TableGeneration TableGeneration.PTP
+open TableGeneration Shor.PTP
 
-def ppTable (T : PTPTable) : PolicyMirror.PolicyTable := ⟨T.k, T.pts, T.ops⟩
+/-- The fork's PhaseProduct mirror (`PolicyMirror`) is stated over the fork's own table language;
+ForShor's PTP tables are over ForShor's. This converts one into the other, constructor by
+constructor, for the PP-scan comparison column only. -/
+def convPoint : _root_.Operations.Point → TableGeneration.Operations.Point
+  | .int z => .int z
+  | .frac m => .frac m
+
+def convOp {k : Nat} : _root_.Operations.valid_ops k → TableGeneration.Operations.valid_ops k
+  | .shiftL i n => .shiftL i n
+  | .shiftR i n => .shiftR i n
+  | .negate i => .negate i
+  | .addScaled d s neg sh => .addScaled d s neg sh
+  | .phaseProduct i => .phaseProduct i
+
+def ppTable (T : PTPTable) : PolicyMirror.PolicyTable := ⟨T.k, T.pts.map convPoint, T.ops.map convOp⟩
 
 def ppLadder (P : PTPPolicy) (n : Nat) : List (Nat × Option Nat) :=
   (PolicyMirror.BandedPolicy.ladder
@@ -46,7 +57,7 @@ def thresholdFailure (P : PTPPolicy) (n : Nat) : String :=
 def main (args : List String) : IO UInt32 := do
   let args := match args with | "--" :: rest => rest | _ => args
   let n := (args.head? >>= String.toNat?).getD 2048
-  let P := Instances.PTPSubmitted.policy
+  let P := PTPCheck.PTPSubmitted.policy
   let bands := P.bands.map fun b =>
     "{\"threshold\":" ++ toString b.threshold ++ ",\"k\":" ++ toString b.table.k ++
       ",\"contract\":" ++ toString b.table.contract ++

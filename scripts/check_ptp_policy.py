@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Verify one PhaseTripleProduct banded policy against the PTP suite
-`TableGeneration.RecursiveCost.PTP`, end to end.
+"""Verify one PhaseTripleProduct banded policy against ForShor's PhaseTripleProduct
+(`Shor.PTP`, ForShor `Implementation/PhaseTripleProduct`; the proofs live in ForShor, this fork
+holds only this harness and the planner), end to end.
 
     python3 scripts/check_ptp_policy.py POLICY.json --target-width 2048 [--out RECORD.json]
         [--full-replay] [--cap-gb 8] [--timeout 3600] [--save-lean DIR]
@@ -8,15 +9,19 @@
 Stages (each timed; the first failure stops the run and is recorded):
 
   parse   JSON -> two generated Lean modules (literals + one-line proofs only):
-            TableGeneration/RecursiveCost/PTP/Instances/PTPSubmitted.lean
-            TableGeneration/RecursiveCost/PTP/Instances/PTPSubmittedCert.lean
+            TableGeneration/RecursiveCost/PTPCheck/PTPSubmitted.lean
+            TableGeneration/RecursiveCost/PTPCheck/PTPSubmittedCert.lean
   data    lake build ...PTPSubmitted
   report  lake env lean --run scripts/PTPPolicyReport.lean -- N
           (evaluation tier: PTP ladder, PP-scan ladder for comparison, per-band
-          contract and child widths, census and qubits; diagnostics only)
+          contract and child widths, census and qubits; diagnostics only).
+          This is the slow stage: Lean's interpreter takes minutes at k = 5 and hours at k >= 8, while the
+          kernel certificate below takes seconds. `--fast` skips it: Python's ladder (ptp_exact_width, an
+          untrusted oracle) supplies the literal and the kernel re-proves it (`ladder_exact`), so a wrong
+          ladder or a failed threshold rule makes the certificate not build.
   check   from the report: PTP check (rejection names the failing band)
   width   declared `child_width` fields (if any) must equal the PTP-derived ones
-  threshold (--widths exact) THRESHOLD RULE (PTP/Threshold.lean): every band chosen on the
+  threshold (--widths exact) THRESHOLD RULE (ForShor Proofs/Threshold.lean): every band chosen on the
           exact-width recursion from the target N strictly shrinks the width
           (ptpTightWidth T w < w) and is applied only at w >= k: `chainContractsTight N`; a policy
           failing it is rejected here, naming the band, the width and its exact child width. The
@@ -29,7 +34,7 @@ Stages (each timed; the first failure stops the run and is recorded):
           `exact_ladder_at_target`, `gate_recursion_exact_at_target`, all statement-pinned)
   replay  trusted kernel replay (scripts/trusted/ReplayPrefix.lean), one module per
           process under scripts/memcap.py (default 8 GB); with --full-replay also
-          every PTP library module
+          every ForShor PhaseTripleProduct module (Statement, Proofs/**, Main, Witness)
   audit   headline theorems: axioms within {propext, Classical.choice, Quot.sound},
           no sorryAx, statements of `correct` and `correct_wrapped` equal the pins
 
@@ -55,14 +60,23 @@ from policy_json_to_lean import PolicyError, negation_of  # noqa: E402
 from ptp_policy_json_to_lean import render  # noqa: E402
 import ptp_exact_width  # noqa: E402
 
-INST = Path("TableGeneration/RecursiveCost/PTP/Instances")
-DATA_MOD = "TableGeneration.RecursiveCost.PTP.Instances.PTPSubmitted"
-CERT_MOD = "TableGeneration.RecursiveCost.PTP.Instances.PTPSubmittedCert"
-NS = "TableGeneration.PTP.Instances.PTPSubmittedCert"
-P = "TableGeneration.RecursiveCost.PTP"
-LIBRARY = [f"{P}.Contract", f"{P}.Width", f"{P}.Semantics", f"{P}.Leaf", f"{P}.LeafSandwich", f"{P}.Node", f"{P}.Census", f"{P}.Exact", f"{P}.Recursion", f"{P}.Build", f"{P}.CensusFull", f"{P}.RecursionWitness",
-           f"{P}.Instances.FaultChallenge", f"{P}.ExactNode", f"{P}.ExactRecursion", f"{P}.ExactBuild",
-           f"{P}.Instances.ExactFault", f"{P}.Threshold"]
+INST = Path("TableGeneration/RecursiveCost/PTPCheck")
+DATA_MOD = "TableGeneration.RecursiveCost.PTPCheck.PTPSubmitted"
+CERT_MOD = "TableGeneration.RecursiveCost.PTPCheck.PTPSubmittedCert"
+NS = "TableGeneration.PTPCheck.PTPSubmittedCert"
+FORSHOR_PTP = "ForShor.ShorVerification.Implementation.PhaseTripleProduct"
+
+
+def library_modules():
+    """Every ForShor PhaseTripleProduct module of the pinned ForShor (read from the package, so the list
+    cannot go stale): replayed with --full-replay."""
+    root = ROOT / ".lake" / "packages" / "Fast_multiplication" / FORSHOR_PTP.replace(".", "/")
+    mods = [FORSHOR_PTP + "." + ".".join(p.relative_to(root).with_suffix("").parts) for p in sorted(root.rglob("*.lean"))]
+    if not mods:
+        raise Reject("replay", f"no ForShor PhaseTripleProduct modules under {root}")
+    return mods
+
+
 ALLOWED = {"propext", "Classical.choice", "Quot.sound"}
 HEADLINE = ("accepted", "correct", "correct_wrapped", "width_sound", "gate_node", "gate_recursion")
 HEADLINE_SCAN = ("chain_contracts",)
@@ -70,11 +84,11 @@ HEADLINE_EXACT = ("chain_contracts_exact", "ladder_exact", "correct_exact", "exa
                   "exact_floor", "gate_node_exact", "gate_recursion_exact",
                   "chain_contracts_tight", "thresholds_at_target", "correct_at_target", "exact_ladder_at_target",
                   "gate_recursion_exact_at_target")
-D = "TableGeneration.PTP.Instances.PTPSubmitted.policy"
+D = "TableGeneration.PTPCheck.PTPSubmitted.policy"
 PINS = {
     # pinned from runs_ptp/sandwich/round2/S1c115b37fd2c.record.json (2026-10-28); D-independent
-    "gate_recursion": "∀ (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (X : Fin 3 → Shor.ExtReg) (base : Nat),\n  TableGeneration.PTP.Good X n base →\n    Exists fun W =>\n      Exists fun G =>\n        And (TableGeneration.PTP.PolicyImpl TableGeneration.PTP.Instances.PTPSubmitted.policy X n W G)\n          (And (∀ (q : Nat), List.instMembership.mem W q → And (instLENat.le base q) (instLTNat.lt q (instHAdd.hAdd base (TableGeneration.PTP.ptpWorkspace TableGeneration.PTP.Instances.PTPSubmitted.policy n))))\n            (And (∀ (φ : Shor.Angle) (b : qs.Basis), (∀ (s : Fin 3), Shor.FitsSignedWidth n (Shor.extToInt (X s) b)) → (∀ (q : Nat), List.instMembership.mem W q → Eq (inst.bit q b) Bool.false) → Eq (inst_1.evalL (G φ) (qs.ket b)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal φ.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (Shor.extToInt (X 0) b).cast (Shor.extToInt (X 1) b).cast) (Shor.extToInt (X 2) b).cast))) (qs.ket b)))\n              (∀ (φ : Shor.Angle),\n                have R := Shor.LowGate.resources Shor.shorGateResourceModel (G φ);\n                And (Eq R.rz (TableGeneration.PTP.ptpResources TableGeneration.PTP.Instances.PTPSubmitted.policy n).rz) (And (Eq R.toffoli (TableGeneration.PTP.ptpResources TableGeneration.PTP.Instances.PTPSubmitted.policy n).toffoli) (And (Eq R.x (TableGeneration.PTP.ptpResources TableGeneration.PTP.Instances.PTPSubmitted.policy n).x) (And (Eq R.h (TableGeneration.PTP.ptpResources TableGeneration.PTP.Instances.PTPSubmitted.policy n).h) (And (Eq R.cnot (TableGeneration.PTP.ptpCnotFull TableGeneration.PTP.Instances.PTPSubmitted.policy n)) (And (Eq (TableGeneration.PTP.adjToffCount (G φ)) (TableGeneration.PTP.ptpAndDag TableGeneration.PTP.Instances.PTPSubmitted.policy n)) (instLENat.le (G φ).usedQubits.card (instHAdd.hAdd (instHMul.hMul 3 n) (TableGeneration.PTP.ptpWorkspace TableGeneration.PTP.Instances.PTPSubmitted.policy n)))))))))))",
-    "gate_node": "∀ (b : TableGeneration.PTP.PTPBand), List.instMembership.mem TableGeneration.PTP.Instances.PTPSubmitted.policy.bands b → ∀ (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth n (x s)) → ∀ (Lay : TableGeneration.PTP.NodeLayout b.table.k), instLENat.le (TableGeneration.PTP.childWidth n b.table.ops) Lay.width → ∀ (φ : Shor.Angle) (ta ua : Nat), TableGeneration.PTP.NodeAnc Lay ta ua → ∀ (bas : qs.Basis), TableGeneration.PTP.AncClean ta ua bas → (∀ (s : Fin 3) (i : Fin b.table.k), Eq (Shor.extToInt (Lay.slot s i) bas) (TableGeneration.PTP.limbsAt b.table.k (TableGeneration.PTP.limbWidth n b.table.k) (x s) i)) → Eq (inst_1.evalL (TableGeneration.PTP.ptpNode b.table Lay n φ ta ua) (qs.ket bas)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal φ.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (x 0).cast (x 1).cast) (x 2).cast))) (qs.ket bas))",
+    "gate_recursion": "∀ (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (X : Fin 3 → Shor.ExtReg) (base : Nat),\n  Shor.PTP.Good X n base →\n    Exists fun W =>\n      Exists fun G =>\n        And (Shor.PTP.PolicyImpl TableGeneration.PTPCheck.PTPSubmitted.policy X n W G)\n          (And (∀ (q : Nat), List.instMembership.mem W q → And (instLENat.le base q) (instLTNat.lt q (instHAdd.hAdd base (Shor.PTP.ptpWorkspace TableGeneration.PTPCheck.PTPSubmitted.policy n))))\n            (And (∀ (φ : Shor.Angle) (b : qs.Basis), (∀ (s : Fin 3), Shor.FitsSignedWidth n (Shor.extToInt (X s) b)) → (∀ (q : Nat), List.instMembership.mem W q → Eq (inst.bit q b) Bool.false) → Eq (inst_1.evalL (G φ) (qs.ket b)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal φ.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (Shor.extToInt (X 0) b).cast (Shor.extToInt (X 1) b).cast) (Shor.extToInt (X 2) b).cast))) (qs.ket b)))\n              (∀ (φ : Shor.Angle),\n                have R := Shor.LowGate.resources Shor.shorGateResourceModel (G φ);\n                And (Eq R.rz (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).rz) (And (Eq R.toffoli (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).toffoli) (And (Eq R.x (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).x) (And (Eq R.h (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).h) (And (Eq R.cnot (Shor.PTP.ptpCnotFull TableGeneration.PTPCheck.PTPSubmitted.policy n)) (And (Eq (Shor.PTP.adjToffCount (G φ)) (Shor.PTP.ptpAndDag TableGeneration.PTPCheck.PTPSubmitted.policy n)) (instLENat.le (G φ).usedQubits.card (instHAdd.hAdd (instHMul.hMul 3 n) (Shor.PTP.ptpWorkspace TableGeneration.PTPCheck.PTPSubmitted.policy n)))))))))))",
+    "gate_node": "∀ (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b → ∀ (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth n (x s)) → ∀ (Lay : Shor.PTP.NodeLayout b.table.k), instLENat.le (Shor.PTP.childWidth n b.table.ops) Lay.width → ∀ (φ : Shor.Angle) (ta ua : Nat), Shor.PTP.NodeAnc Lay ta ua → ∀ (bas : qs.Basis), Shor.PTP.AncClean ta ua bas → (∀ (s : Fin 3) (i : Fin b.table.k), Eq (Shor.extToInt (Lay.slot s i) bas) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth n b.table.k) (x s) i)) → Eq (inst_1.evalL (Shor.PTP.ptpNode b.table Lay n φ ta ua) (qs.ket bas)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal φ.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (x 0).cast (x 1).cast) (x 2).cast))) (qs.ket bas))",
     # O5 (2026-10-29): derived from the two pins above by the exact-board renaming; confirmed by runs_ptp/exactgate/S1c115b37fd2c.record.json (audit types matched)
     "gate_recursion_exact": None,
     "gate_node_exact": None,
@@ -89,16 +103,16 @@ PINS = {
 }
 
 PINS["gate_recursion_exact"] = (PINS["gate_recursion"]
-    .replace("TableGeneration.PTP.PolicyImpl ", "TableGeneration.PTP.PolicyImplX ")
-    .replace("TableGeneration.PTP.ptpWorkspace ", "TableGeneration.PTP.ptpWorkspaceX ")
-    .replace("TableGeneration.PTP.ptpResources ", "TableGeneration.PTP.ptpResourcesX ")
-    .replace("TableGeneration.PTP.ptpCnotFull ", "TableGeneration.PTP.ptpCnotFullX ")
-    .replace("TableGeneration.PTP.ptpAndDag ", "TableGeneration.PTP.ptpAndDagX "))
+    .replace("Shor.PTP.PolicyImpl ", "Shor.PTP.PolicyImplX ")
+    .replace("Shor.PTP.ptpWorkspace ", "Shor.PTP.ptpWorkspaceX ")
+    .replace("Shor.PTP.ptpResources ", "Shor.PTP.ptpResourcesX ")
+    .replace("Shor.PTP.ptpCnotFull ", "Shor.PTP.ptpCnotFullX ")
+    .replace("Shor.PTP.ptpAndDag ", "Shor.PTP.ptpAndDagX "))
 PINS["gate_node_exact"] = (PINS["gate_node"]
-    .replace("instLENat.le (TableGeneration.PTP.childWidth n b.table.ops) Lay.width",
-             "instLENat.le (TableGeneration.PTP.ptpTightWidth b.table n) Lay.width"))
+    .replace("instLENat.le (Shor.PTP.childWidth n b.table.ops) Lay.width",
+             "instLENat.le (Shor.PTP.ptpTightWidth b.table n) Lay.width"))
 assert PINS["gate_recursion_exact"] != PINS["gate_recursion"] and PINS["gate_node_exact"] != PINS["gate_node"]
-CERT = "TableGeneration.PTP.Instances.PTPSubmittedCert"
+CERT = "TableGeneration.PTPCheck.PTPSubmittedCert"
 
 
 def target_pins(N: int) -> dict:
@@ -109,9 +123,9 @@ def target_pins(N: int) -> dict:
     g = re.sub(r"(?<![\w.'])n(?![\w.'])", str(N), g)
     return {
         "chain_contracts_tight": f"Eq ({D}.chainContractsTight {N}) Bool.true",
-        "thresholds_at_target": (f"∀ (m : Nat) (T : TableGeneration.PTP.PTPTable), {D}.ExactReach {N} m → "
+        "thresholds_at_target": (f"∀ (m : Nat) (T : Shor.PTP.PTPTable), {D}.ExactReach {N} m → "
                                  f"Eq ({D}.choose m) (Option.some T) → "
-                                 "And (instLENat.le T.k m) (instLTNat.lt (TableGeneration.PTP.ptpTightWidth T m) m)"),
+                                 "And (instLENat.le T.k m) (instLTNat.lt (Shor.PTP.ptpTightWidth T m) m)"),
         "correct_at_target": (f"∀ (φ : Rat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth {N} (x s)) → "
                               f"Eq ({D}.evalPhaseTight {N} φ x) "
                               "(instHMul.hMul (instHMul.hMul (instHMul.hMul φ (x 0).cast) (x 1).cast) (x 2).cast)"),
@@ -203,6 +217,9 @@ def main(argv=None):
     ap.add_argument("--timeout", type=int, default=3600)
     ap.add_argument("--cap-gb", type=float, default=8.0)
     ap.add_argument("--save-lean")
+    ap.add_argument("--fast", action="store_true",
+                    help="skip the interpreted `lean --run` report stage (hours for an 8-way band): Python's ladder supplies the literal, "
+                         "and the kernel re-proves it in the certificate (`ladder_exact`, `decide +kernel`); census/formula numbers are not evaluated")
     ap.add_argument("--widths", default="scan", choices=["scan", "exact"],
                     help="exact: the PTP board's exact widths (ptpTightWidth); scan: the PTP scan (childWidth)")
     a = ap.parse_args(argv)
@@ -228,12 +245,26 @@ def main(argv=None):
         if p.returncode:
             raise Reject("data", "data module does not elaborate", (p.stdout + p.stderr)[-3000:])
 
-        p, s = capped(["lake", "env", "lean", "--run", "scripts/PTPPolicyReport.lean", "--", str(a.target_width)],
-                      a.cap_gb, a.timeout, Path(tempfile.mkstemp()[1]))
-        rec["seconds"]["report"] = s
-        if p.returncode:
-            raise Reject("report", "report failed", (p.stdout + p.stderr)[-3000:])
-        rep = json.loads(p.stdout.strip().splitlines()[-1])
+        if a.fast:
+            rec["seconds"]["report"] = 0.0
+            rec["fast"] = ("report stage skipped (--fast): the ladders are computed in Python (an untrusted oracle) and the certificate's "
+                           "`ladder_exact`, `chain_contracts_exact`, `chain_contracts_tight` and `accepted` are re-proved by the kernel, so a wrong "
+                           "ladder or a failed rule makes the certificate not build; census and formula numbers were not evaluated")
+            lad = lambda L: [{"width": w, "k": k} for w, k in L]
+            rep = {"fast": True, "target_width": a.target_width, "check": None, "chain_contracts": None, "chain_contracts_tight": None,
+                   "threshold_failure": None, "ladder": lad(ptp_exact_width.scan_ladder(doc, a.target_width)),
+                   "ladder_exact": lad(ptp_exact_width.exact_ladder(doc, a.target_width)),
+                   "bands": [{"contract": None,
+                              "exact_width_at_threshold": ptp_exact_width.ptp_tight_width(b["k"], b["operations"], b["threshold"]),
+                              "ptp_child_width_at_threshold": ptp_exact_width.ptp_scan_width(b["k"], b["operations"], b["threshold"])}
+                             for b in doc["bands"]]}
+        else:
+            p, s = capped(["lake", "env", "lean", "--run", "scripts/PTPPolicyReport.lean", "--", str(a.target_width)],
+                          a.cap_gb, a.timeout, Path(tempfile.mkstemp()[1]))
+            rec["seconds"]["report"] = s
+            if p.returncode:
+                raise Reject("report", "report failed", (p.stdout + p.stderr)[-3000:])
+            rep = json.loads(p.stdout.strip().splitlines()[-1])
         rec["report"] = rep
         rec["report_tiers"] = {
             "ladder, child widths, check": "evaluation tier; check and chain re-proved by the kernel in `cert`",
@@ -275,7 +306,7 @@ def main(argv=None):
                 "(ptp_exact_width.ptp_peak_qubits) and cross-checked against ForShor's kernel-evaluated numerals "
                 "(scripts/test_ptp_peak_qubits.py); the ForShor claims concern ForShor's own PTPPolicy on the same "
                 "tables, not this suite's TableGeneration.PTP object. Not kernel-reduced in this suite's certificate."}
-        if not rep["check"]:
+        if rep["check"] is False:
             bad = [i for i, b in enumerate(rep["bands"]) if not b["contract"]]
             raise Reject("check", "thresholds not strictly decreasing" if not bad
                          else f"band(s) {bad} fail the PTP table contract")
@@ -292,7 +323,7 @@ def main(argv=None):
                 raise Reject("crosscheck", "Python exact ladder differs from the Lean report", f"{py} vs {lean}")
             if "chain_contracts_tight" not in rep:
                 raise Reject("report", "report lacks chain_contracts_tight")
-            if rep["chain_contracts_tight"] is not True:
+            if not rep.get("fast") and rep["chain_contracts_tight"] is not True:
                 f = rep.get("threshold_failure")
                 raise Reject("threshold", threshold_reason(f, a.target_width) if f else
                              f"PTPPolicy.chainContractsTight {a.target_width} = false",
@@ -305,7 +336,7 @@ def main(argv=None):
                     "correct_wrapped) and the scan numbers (census, cnot_with_extension, qubits_bound_scan) remain true "
                     "but describe a recursion that falls back to the leaf where a chosen band does not shrink; the "
                     "exact-width theorems and *_exact numbers are the ones the threshold rule covers")
-        elif not rep["chain_contracts"]:
+        elif not rep.get("fast") and not rep["chain_contracts"]:
             raise Reject("cert", "chain does not contract from the target width")
         rec["ptp_peak_qubits"] = peak_record(doc, a.target_width, rep)
         cert_src = render(doc, "PTPSubmittedCert", a.target_width, "cert", "PTPSubmitted", a.widths,
@@ -323,7 +354,7 @@ def main(argv=None):
             raise Reject("cert", "certificate does not build", (p.stdout + p.stderr)[-3000:])
 
         thms = []
-        for mod in [DATA_MOD, CERT_MOD] + (LIBRARY if a.full_replay else []):
+        for mod in [DATA_MOD, CERT_MOD] + (library_modules() if a.full_replay else []):
             t0 = time.monotonic()
             thms += replay(mod, a, rec)
             rec["seconds"]["replay:" + mod.rsplit(".", 1)[-1]] = round(time.monotonic() - t0, 2)

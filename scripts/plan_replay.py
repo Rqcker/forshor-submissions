@@ -12,7 +12,7 @@ import plan_from_site as pf  # noqa: E402
 MODS = [(pf.ROOT, "TableGeneration.RecursiveCost.PlanCore"),
         (pf.ROOT, "TableGeneration.RecursiveCost.BandedPolicy.Plan"),
         (pf.DEFAULT_PTP_ROOT, "TableGeneration.RecursiveCost.PlanCore"),
-        (pf.DEFAULT_PTP_ROOT, "TableGeneration.RecursiveCost.PTP.Plan")]
+        (pf.DEFAULT_PTP_ROOT, "TableGeneration.RecursiveCost.PTPPlan.Plan")]
 HEADLINE = {"plan_check", "plan_check_of_all", "plan_correct", "plan_correct_reg", "plan_correct_w", "plan_correct_tight",
             "plan_ladder", "plan_choose_visit", "plan_sorted", "plan_bands_mem", "plan_ne_of_unsorted",
             "plan_ne_of_foreign", "planWith_check", "chooseL_merge", "merge_sorted", "walk_sorted", "ladder_walk",
