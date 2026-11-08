@@ -1,0 +1,19 @@
+{
+ "benchmark": {
+  "weights": {
+   "arithmetic_operation_count": 1,
+   "parallel_phase_product_layer_count": 5
+  }
+ },
+ "results": [
+  {
+   "mode": "PhaseProduct",
+   "k": 3,
+   "arithmetic_operation_count": 15,
+   "parallel_phase_product_layer_count": 2,
+   "phase_product_count": 5,
+   "total_operation_count": 20,
+   "weighted_cost": 25
+  }
+ ]
+}

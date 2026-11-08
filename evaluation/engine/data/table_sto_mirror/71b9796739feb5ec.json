@@ -1,0 +1,98 @@
+{
+ "tool": "check_banded_policy",
+ "started": "2026-10-28T12:38:34.383116+00:00",
+ "policy_sha256": "05ac4a7f4881db3c56db5d7181ec14eab53a30a3f7bbfab8b1213eea16d46bf6",
+ "target_width": 2048,
+ "seconds": {
+  "stage": 27.78,
+  "data": 24.0,
+  "report": 8.01,
+  "cert": 9.52,
+  "replay:Submitted": 16.61,
+  "replay:SubmittedCert": 13.77
+ },
+ "verdict": "accepted",
+ "mode": "PhaseTripleProduct",
+ "bands": [
+  {
+   "threshold": 2048,
+   "k": 2
+  }
+ ],
+ "workdir": "/Users/joshua/Desktop/github_packages/sto_site/.cache/sto_policy_work",
+ "lean_sha256": {
+  "Submitted.lean": "c20c183fe6226b6a175fc3833f37c7c8102ed1dffaa2400287b76001cd5463dd",
+  "SubmittedCert.lean": "b3400a80394ee30dac824e7c5097db16b94a75c66c023c3c8a17d551b798070a"
+ },
+ "report": {
+  "mode": "PhaseTripleProduct",
+  "target_width": 2048,
+  "ladder": [
+   {
+    "width": 2048,
+    "k": 2
+   },
+   {
+    "width": 1028,
+    "k": null
+   }
+  ],
+  "bands": [
+   {
+    "threshold": 2048,
+    "k": 2,
+    "child_width_at_threshold": 1028,
+    "check": true,
+    "ops": 10,
+    "points": 4
+   }
+  ],
+  "check": true,
+  "chain_contracts": true
+ },
+ "replay": {
+  "modules": [
+   {
+    "module": "TableGeneration.RecursiveCost.BandedPolicy.Instances.Submitted",
+    "verdict": "replayed",
+    "decls": 4,
+    "peak_gb": 5.95,
+    "seconds": 16.5
+   },
+   {
+    "module": "TableGeneration.RecursiveCost.BandedPolicy.Instances.SubmittedCert",
+    "verdict": "replayed",
+    "decls": 6,
+    "peak_gb": 5.77,
+    "seconds": 13.7
+   }
+  ],
+  "prefix": "per-module"
+ },
+ "audit": {
+  "accepted": {
+   "axioms": [
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq TableGeneration.PolicyMirror.Instances.Submitted.policy.check Bool.true"
+  },
+  "correct": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhase n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+  },
+  "chain_contracts": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.chainContracts 2048) Bool.true"
+  }
+ },
+ "finished": "2026-10-28T12:40:26.562836+00:00"
+}

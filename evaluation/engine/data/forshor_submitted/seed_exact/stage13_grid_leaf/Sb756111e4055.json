@@ -1,0 +1,341 @@
+{
+ "tool": "check_ptp_policy",
+ "policy": "/var/folders/9b/f1mkdfl16898l4bcj2pz6sxr0000gn/T/ptp_policy_vup1pc2t/policy.ptp.json",
+ "started": "2026-10-28T16:45:56.770811+00:00",
+ "policy_sha256": "50b663eb1c599f1750e0df4c8b137207978a54229067fbc760396477e14d72d9",
+ "target_width": 2048,
+ "widths": "exact",
+ "seconds": {
+  "data": 22.62,
+  "report": 183.14,
+  "cert": 15.81,
+  "replay:PTPSubmitted": 9.85,
+  "replay:PTPSubmittedCert": 18.7
+ },
+ "replay": [
+  {
+   "module": "TableGeneration.RecursiveCost.PTP.Instances.PTPSubmitted",
+   "verdict": "replayed",
+   "decls": 16,
+   "theorems": 12,
+   "axiom_union": [],
+   "sorry": false,
+   "peak_gb": 6.15,
+   "seconds": 9.7
+  },
+  {
+   "module": "TableGeneration.RecursiveCost.PTP.Instances.PTPSubmittedCert",
+   "verdict": "replayed",
+   "decls": 15,
+   "theorems": 15,
+   "axiom_union": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "sorry": false,
+   "peak_gb": 6.67,
+   "seconds": 18.6
+  }
+ ],
+ "verdict": "accepted",
+ "name": "seeded Sb756111e4055",
+ "mode": "PhaseTripleProduct",
+ "bands": [
+  {
+   "threshold": 2048,
+   "k": 6
+  },
+  {
+   "threshold": 374,
+   "k": 4
+  },
+  {
+   "threshold": 16,
+   "k": 2
+  }
+ ],
+ "report": {
+  "target_width": 2048,
+  "ladder": [
+   {
+    "width": 2048,
+    "k": 6
+   },
+   {
+    "width": 398,
+    "k": 4
+   },
+   {
+    "width": 122,
+    "k": 2
+   },
+   {
+    "width": 66,
+    "k": 2
+   },
+   {
+    "width": 38,
+    "k": 2
+   },
+   {
+    "width": 24,
+    "k": 2
+   },
+   {
+    "width": 17,
+    "k": 2
+   },
+   {
+    "width": 14,
+    "k": null
+   }
+  ],
+  "ladder_exact": [
+   {
+    "width": 2048,
+    "k": 6
+   },
+   {
+    "width": 374,
+    "k": 4
+   },
+   {
+    "width": 105,
+    "k": 2
+   },
+   {
+    "width": 54,
+    "k": 2
+   },
+   {
+    "width": 29,
+    "k": 2
+   },
+   {
+    "width": 16,
+    "k": 2
+   },
+   {
+    "width": 10,
+    "k": null
+   }
+  ],
+  "chain_contracts_exact": true,
+  "ladder_pp_scan": [
+   {
+    "width": 2048,
+    "k": 6
+   },
+   {
+    "width": 398,
+    "k": 4
+   },
+   {
+    "width": 122,
+    "k": 2
+   },
+   {
+    "width": 66,
+    "k": 2
+   },
+   {
+    "width": 38,
+    "k": 2
+   },
+   {
+    "width": 24,
+    "k": 2
+   },
+   {
+    "width": 17,
+    "k": 2
+   },
+   {
+    "width": 14,
+    "k": null
+   }
+  ],
+  "bands": [
+   {
+    "threshold": 2048,
+    "k": 6,
+    "contract": true,
+    "ptp_child_width_at_threshold": 398,
+    "exact_width_at_threshold": 374,
+    "pp_scan_child_width_at_threshold": 398,
+    "adds": 78,
+    "negates": 0,
+    "checkpoints": 16,
+    "ops": 110,
+    "points": 16
+   },
+   {
+    "threshold": 374,
+    "k": 4,
+    "contract": true,
+    "ptp_child_width_at_threshold": 116,
+    "exact_width_at_threshold": 105,
+    "pp_scan_child_width_at_threshold": 116,
+    "adds": 29,
+    "negates": 0,
+    "checkpoints": 10,
+    "ops": 49,
+    "points": 10
+   },
+   {
+    "threshold": 16,
+    "k": 2,
+    "contract": true,
+    "ptp_child_width_at_threshold": 13,
+    "exact_width_at_threshold": 10,
+    "pp_scan_child_width_at_threshold": 13,
+    "adds": 4,
+    "negates": 0,
+    "checkpoints": 4,
+    "ops": 8,
+    "points": 4
+   }
+  ],
+  "check": true,
+  "chain_contracts": true,
+  "census": {
+   "h": 0,
+   "x": 16839996,
+   "cnot": 946504678,
+   "toffoli": 917962954,
+   "rz": 2247884800,
+   "total": 4129192428
+  },
+  "reserve_need_per_operand": 8704,
+  "clean_ancilla_peak": 1,
+  "qubits": 32257
+ },
+ "report_tiers": {
+  "ladder, child widths, check": "evaluation tier; check and chain re-proved by the kernel in `cert`",
+  "census, reserve_need_per_operand, clean_ancilla_peak, qubits": "FORMULA: ForShor shorGateResourceModel composed down the ladder; proved equal to the gate-level lowering only for one node with leaf children (ptpNode_resources, ptpResources_depth_one); not proved past depth one; reserve/qubit recursion has no theorem",
+  "ladder_pp_scan": "comparison only (PP's nextSignedWidth), not used"
+ },
+ "python_exact_ladder": [
+  [
+   2048,
+   6
+  ],
+  [
+   374,
+   4
+  ],
+  [
+   105,
+   2
+  ],
+  [
+   54,
+   2
+  ],
+  [
+   29,
+   2
+  ],
+  [
+   16,
+   2
+  ],
+  [
+   10,
+   null
+  ]
+ ],
+ "lean_sha256": {
+  "PTPSubmitted.lean": "ef11c7fbd6d8c79c5267e936ae64b0ac660bf58e241f6b8e8f288708211a1819",
+  "PTPSubmittedCert.lean": "e9c12f038dfb3ae6c5b79617b0623a9ef6d9359914a322b1c352f728f8abe6a1"
+ },
+ "audit": {
+  "accepted": {
+   "axioms": [
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq TableGeneration.PTP.Instances.PTPSubmitted.policy.check Bool.true"
+  },
+  "chain_contracts": {
+   "axioms": [
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PTP.Instances.PTPSubmitted.policy.chainContracts 2048) Bool.true"
+  },
+  "correct": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (x : Fin 3 → Int), Eq (TableGeneration.PTP.Instances.PTPSubmitted.policy.evalPhase n φ x) (instHMul.hMul (instHMul.hMul (instHMul.hMul φ (x 0).cast) (x 1).cast) (x 2).cast)"
+  },
+  "correct_wrapped": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth n (x s)) → Eq (TableGeneration.PTP.Instances.PTPSubmitted.policy.evalPhaseW n φ x) (instHMul.hMul (instHMul.hMul (instHMul.hMul φ (x 0).cast) (x 1).cast) (x 2).cast)"
+  },
+  "width_sound": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (b : TableGeneration.PTP.PTPBand), List.instMembership.mem TableGeneration.PTP.Instances.PTPSubmitted.policy.bands b → ∀ (n : Fin 3 → Nat), (∀ (s : Fin 3), instLTNat.lt 0 (n s)) → ∀ (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth (n s) (x s)) → ∀ (s : Fin 3), And (TableGeneration.PTP.AllFits (TableGeneration.PTP.childWidth3 n b.table.ops) (TableGeneration.PTP.limbsAt b.table.k (TableGeneration.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops) (And (Eq (TableGeneration.PTP.runF id (TableGeneration.PTP.limbsAt b.table.k (TableGeneration.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops).fst (List.map (fun p => TableGeneration.PTP.regVal (TableGeneration.expectedRow p) (TableGeneration.PTP.limbsAt b.table.k (TableGeneration.PTP.limbWidth3 n b.table.k) (x s))) b.table.pts)) (And (∀ (v : Int), List.instMembership.mem (TableGeneration.PTP.runF id (TableGeneration.PTP.limbsAt b.table.k (TableGeneration.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops).fst v → Shor.FitsSignedWidth (TableGeneration.PTP.childWidth3 n b.table.ops) v) (And (Eq (TableGeneration.PTP.runF (Shor.tcWrapInt (TableGeneration.PTP.childWidth3 n b.table.ops)) (TableGeneration.PTP.limbsAt b.table.k (TableGeneration.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops) (TableGeneration.PTP.runF id (TableGeneration.PTP.limbsAt b.table.k (TableGeneration.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops)) (Eq (TableGeneration.PTP.runF id (TableGeneration.PTP.limbsAt b.table.k (TableGeneration.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops).snd (TableGeneration.PTP.limbsAt b.table.k (TableGeneration.PTP.limbWidth3 n b.table.k) (x s))))))"
+  },
+  "gate_node": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (b : TableGeneration.PTP.PTPBand), List.instMembership.mem TableGeneration.PTP.Instances.PTPSubmitted.policy.bands b → ∀ (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth n (x s)) → ∀ (Lay : TableGeneration.PTP.NodeLayout b.table.k), instLENat.le (TableGeneration.PTP.childWidth n b.table.ops) Lay.width → ∀ (φ : Shor.Angle) (bas : qs.Basis), (∀ (s : Fin 3) (i : Fin b.table.k), Eq (Shor.extToInt (Lay.slot s i) bas) (TableGeneration.PTP.limbsAt b.table.k (TableGeneration.PTP.limbWidth n b.table.k) (x s) i)) → Eq (inst_1.evalL (TableGeneration.PTP.ptpNode b.table Lay n φ) (qs.ket bas)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal φ.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (x 0).cast (x 1).cast) (x 2).cast))) (qs.ket bas))"
+  },
+  "chain_contracts_exact": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PTP.Instances.PTPSubmitted.policy.chainContractsX 2048) Bool.true"
+  },
+  "ladder_exact": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PTP.Instances.PTPSubmitted.policy.ladderX 2048) (List.cons { fst := 2048, snd := Option.some 6 } (List.cons { fst := 374, snd := Option.some 4 } (List.cons { fst := 105, snd := Option.some 2 } (List.cons { fst := 54, snd := Option.some 2 } (List.cons { fst := 29, snd := Option.some 2 } (List.cons { fst := 16, snd := Option.some 2 } (List.cons { fst := 10, snd := Option.none } List.nil)))))))"
+  },
+  "correct_exact": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (x : Fin 3 → Int), (∀ (s : Fin 3), Shor.FitsSignedWidth n (x s)) → Eq (TableGeneration.PTP.Instances.PTPSubmitted.policy.evalPhaseTight n φ x) (instHMul.hMul (instHMul.hMul (instHMul.hMul φ (x 0).cast) (x 1).cast) (x 2).cast)"
+  },
+  "exact_minimal": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (b : TableGeneration.PTP.PTPBand), List.instMembership.mem TableGeneration.PTP.Instances.PTPSubmitted.policy.bands b → ∀ (n : Nat), instLTNat.lt 0 n → Exists fun x => And (Shor.FitsSignedWidth n x) (Exists fun v => And (List.instMembership.mem (TableGeneration.PTP.opTrace b.table n x) v) (Not (Shor.FitsSignedWidth (instHSub.hSub (TableGeneration.PTP.ptpTightWidth b.table n) 1) v)))"
+  },
+  "exact_le_scan": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (b : TableGeneration.PTP.PTPBand), List.instMembership.mem TableGeneration.PTP.Instances.PTPSubmitted.policy.bands b → ∀ (n : Nat), instLTNat.lt 0 n → instLENat.le (TableGeneration.PTP.ptpTightWidth b.table n) (TableGeneration.PTP.childWidth n b.table.ops)"
+  }
+ },
+ "finished": "2026-10-28T16:50:06.943581+00:00"
+}

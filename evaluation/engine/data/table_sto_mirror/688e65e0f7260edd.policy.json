@@ -1,0 +1,102 @@
+{
+ "name": "table 688e65e0f7260edd7248ffc3b6634975120b7c2636600d170f5a0101515fc501",
+ "mode": "PhaseProduct",
+ "bands": [
+  {
+   "threshold": 2048,
+   "k": 3,
+   "point_order": [
+    "0",
+    "inf",
+    "-1",
+    "1",
+    "1/2"
+   ],
+   "operations": [
+    [
+     "phaseProduct",
+     0
+    ],
+    [
+     "phaseProduct",
+     2
+    ],
+    [
+     "addScaled",
+     0,
+     1,
+     -1,
+     0
+    ],
+    [
+     "addScaled",
+     2,
+     0,
+     1,
+     0
+    ],
+    [
+     "phaseProduct",
+     2
+    ],
+    [
+     "addScaled",
+     0,
+     1,
+     1,
+     0
+    ],
+    [
+     "addScaled",
+     2,
+     1,
+     1,
+     1
+    ],
+    [
+     "phaseProduct",
+     2
+    ],
+    [
+     "addScaled",
+     1,
+     0,
+     1,
+     1
+    ],
+    [
+     "addScaled",
+     2,
+     0,
+     1,
+     0
+    ],
+    [
+     "addScaled",
+     2,
+     1,
+     1,
+     0
+    ],
+    [
+     "phaseProduct",
+     2
+    ],
+    [
+     "addScaled",
+     2,
+     1,
+     -1,
+     1
+    ],
+    [
+     "addScaled",
+     1,
+     0,
+     -1,
+     1
+    ]
+   ]
+  }
+ ]
+}

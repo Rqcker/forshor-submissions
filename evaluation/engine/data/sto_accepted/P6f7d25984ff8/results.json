@@ -1,0 +1,280 @@
+{
+ "benchmark": {
+  "weights": {
+   "arithmetic_operation_count": 1,
+   "parallel_phase_product_layer_count": 5
+  }
+ },
+ "results": [
+  {
+   "mode": "PhaseProduct",
+   "k": 2,
+   "arithmetic_operation_count": 2,
+   "parallel_phase_product_layer_count": 2,
+   "phase_product_count": 3,
+   "total_operation_count": 5,
+   "weighted_cost": 12
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 3,
+   "arithmetic_operation_count": 12,
+   "parallel_phase_product_layer_count": 2,
+   "phase_product_count": 5,
+   "total_operation_count": 17,
+   "weighted_cost": 22
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 4,
+   "arithmetic_operation_count": 28,
+   "parallel_phase_product_layer_count": 3,
+   "phase_product_count": 7,
+   "total_operation_count": 35,
+   "weighted_cost": 43
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 5,
+   "arithmetic_operation_count": 48,
+   "parallel_phase_product_layer_count": 4,
+   "phase_product_count": 9,
+   "total_operation_count": 57,
+   "weighted_cost": 68
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 6,
+   "arithmetic_operation_count": 72,
+   "parallel_phase_product_layer_count": 5,
+   "phase_product_count": 11,
+   "total_operation_count": 83,
+   "weighted_cost": 97
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 7,
+   "arithmetic_operation_count": 100,
+   "parallel_phase_product_layer_count": 6,
+   "phase_product_count": 13,
+   "total_operation_count": 113,
+   "weighted_cost": 130
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 8,
+   "arithmetic_operation_count": 132,
+   "parallel_phase_product_layer_count": 7,
+   "phase_product_count": 15,
+   "total_operation_count": 147,
+   "weighted_cost": 167
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 9,
+   "arithmetic_operation_count": 168,
+   "parallel_phase_product_layer_count": 8,
+   "phase_product_count": 17,
+   "total_operation_count": 185,
+   "weighted_cost": 208
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 10,
+   "arithmetic_operation_count": 208,
+   "parallel_phase_product_layer_count": 9,
+   "phase_product_count": 19,
+   "total_operation_count": 227,
+   "weighted_cost": 253
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 11,
+   "arithmetic_operation_count": 252,
+   "parallel_phase_product_layer_count": 10,
+   "phase_product_count": 21,
+   "total_operation_count": 273,
+   "weighted_cost": 302
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 12,
+   "arithmetic_operation_count": 300,
+   "parallel_phase_product_layer_count": 11,
+   "phase_product_count": 23,
+   "total_operation_count": 323,
+   "weighted_cost": 355
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 13,
+   "arithmetic_operation_count": 352,
+   "parallel_phase_product_layer_count": 12,
+   "phase_product_count": 25,
+   "total_operation_count": 377,
+   "weighted_cost": 412
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 14,
+   "arithmetic_operation_count": 408,
+   "parallel_phase_product_layer_count": 13,
+   "phase_product_count": 27,
+   "total_operation_count": 435,
+   "weighted_cost": 473
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 15,
+   "arithmetic_operation_count": 468,
+   "parallel_phase_product_layer_count": 14,
+   "phase_product_count": 29,
+   "total_operation_count": 497,
+   "weighted_cost": 538
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 16,
+   "arithmetic_operation_count": 532,
+   "parallel_phase_product_layer_count": 15,
+   "phase_product_count": 31,
+   "total_operation_count": 563,
+   "weighted_cost": 607
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 2,
+   "arithmetic_operation_count": 8,
+   "parallel_phase_product_layer_count": 2,
+   "phase_product_count": 4,
+   "total_operation_count": 12,
+   "weighted_cost": 18
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 3,
+   "arithmetic_operation_count": 16,
+   "parallel_phase_product_layer_count": 3,
+   "phase_product_count": 7,
+   "total_operation_count": 23,
+   "weighted_cost": 31
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 4,
+   "arithmetic_operation_count": 46,
+   "parallel_phase_product_layer_count": 4,
+   "phase_product_count": 10,
+   "total_operation_count": 56,
+   "weighted_cost": 66
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 5,
+   "arithmetic_operation_count": 76,
+   "parallel_phase_product_layer_count": 6,
+   "phase_product_count": 13,
+   "total_operation_count": 89,
+   "weighted_cost": 106
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 6,
+   "arithmetic_operation_count": 110,
+   "parallel_phase_product_layer_count": 7,
+   "phase_product_count": 16,
+   "total_operation_count": 126,
+   "weighted_cost": 145
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 7,
+   "arithmetic_operation_count": 154,
+   "parallel_phase_product_layer_count": 9,
+   "phase_product_count": 19,
+   "total_operation_count": 173,
+   "weighted_cost": 199
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 8,
+   "arithmetic_operation_count": 198,
+   "parallel_phase_product_layer_count": 10,
+   "phase_product_count": 22,
+   "total_operation_count": 220,
+   "weighted_cost": 248
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 9,
+   "arithmetic_operation_count": 256,
+   "parallel_phase_product_layer_count": 12,
+   "phase_product_count": 25,
+   "total_operation_count": 281,
+   "weighted_cost": 316
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 10,
+   "arithmetic_operation_count": 310,
+   "parallel_phase_product_layer_count": 13,
+   "phase_product_count": 28,
+   "total_operation_count": 338,
+   "weighted_cost": 375
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 11,
+   "arithmetic_operation_count": 382,
+   "parallel_phase_product_layer_count": 15,
+   "phase_product_count": 31,
+   "total_operation_count": 413,
+   "weighted_cost": 457
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 12,
+   "arithmetic_operation_count": 446,
+   "parallel_phase_product_layer_count": 16,
+   "phase_product_count": 34,
+   "total_operation_count": 480,
+   "weighted_cost": 526
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 13,
+   "arithmetic_operation_count": 532,
+   "parallel_phase_product_layer_count": 18,
+   "phase_product_count": 37,
+   "total_operation_count": 569,
+   "weighted_cost": 622
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 14,
+   "arithmetic_operation_count": 606,
+   "parallel_phase_product_layer_count": 19,
+   "phase_product_count": 40,
+   "total_operation_count": 646,
+   "weighted_cost": 701
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 15,
+   "arithmetic_operation_count": 706,
+   "parallel_phase_product_layer_count": 21,
+   "phase_product_count": 43,
+   "total_operation_count": 749,
+   "weighted_cost": 811
+  },
+  {
+   "mode": "PhaseTripleProduct",
+   "k": 16,
+   "arithmetic_operation_count": 790,
+   "parallel_phase_product_layer_count": 22,
+   "phase_product_count": 46,
+   "total_operation_count": 836,
+   "weighted_cost": 900
+  }
+ ]
+}

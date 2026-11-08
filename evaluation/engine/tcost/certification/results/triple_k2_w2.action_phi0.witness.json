@@ -1,0 +1,479 @@
+{
+ "claim": "tcost.bloqs:make_chain_bloq({\"chain\": [{\"k\": 2, \"mode\": \"PhaseTripleProduct\", \"operations\": [[\"addScaled\", 1, 0, 1, 0], [\"phaseProduct\", 1], [\"phaseProduct\", 0], [\"addScaled\", 1, 0, -1, 0], [\"addScaled\", 0, 1, -1, 0], [\"phaseProduct\", 0], [\"phaseProduct\", 1], [\"addScaled\", 0, 1, 1, 0]], \"point_order\": [\"1\", \"0\", \"-1\", \"inf\"]}], \"mode\": \"PhaseTripleProduct\", \"phi\": \"0\", \"w\": 2}) decomposes flat; action/cost seams ok on 64 domain cases",
+ "script": "PYTHONPATH=. AUTORESEARCHER_LANE=qualtran-vendored-0.8.0.dev0 python <ResearchSkills>/_tools/bloq_gate.py --spec tcost/certification/specs/triple_k2_w2.action_phi0.json --out tcost/certification/results/triple_k2_w2.action_phi0.witness.json --profile tcost/certification/results/triple_k2_w2.action_phi0.profile.json --schema-dir <ResearchSkills>/_templates",
+ "config": {
+  "factory": "tcost.bloqs:make_chain_bloq",
+  "params": {
+   "mode": "PhaseTripleProduct",
+   "chain": [
+    {
+     "mode": "PhaseTripleProduct",
+     "k": 2,
+     "point_order": [
+      "1",
+      "0",
+      "-1",
+      "inf"
+     ],
+     "operations": [
+      [
+       "addScaled",
+       1,
+       0,
+       1,
+       0
+      ],
+      [
+       "phaseProduct",
+       1
+      ],
+      [
+       "phaseProduct",
+       0
+      ],
+      [
+       "addScaled",
+       1,
+       0,
+       -1,
+       0
+      ],
+      [
+       "addScaled",
+       0,
+       1,
+       -1,
+       0
+      ],
+      [
+       "phaseProduct",
+       0
+      ],
+      [
+       "phaseProduct",
+       1
+      ],
+      [
+       "addScaled",
+       0,
+       1,
+       1,
+       0
+      ]
+     ]
+    }
+   ],
+   "w": 2,
+   "phi": "0"
+  },
+  "domain": {
+   "mode": "list",
+   "cases": [
+    {
+     "x": -2,
+     "y": -2,
+     "z": -2
+    },
+    {
+     "x": -2,
+     "y": -2,
+     "z": -1
+    },
+    {
+     "x": -2,
+     "y": -2,
+     "z": 0
+    },
+    {
+     "x": -2,
+     "y": -2,
+     "z": 1
+    },
+    {
+     "x": -2,
+     "y": -1,
+     "z": -2
+    },
+    {
+     "x": -2,
+     "y": -1,
+     "z": -1
+    },
+    {
+     "x": -2,
+     "y": -1,
+     "z": 0
+    },
+    {
+     "x": -2,
+     "y": -1,
+     "z": 1
+    },
+    {
+     "x": -2,
+     "y": 0,
+     "z": -2
+    },
+    {
+     "x": -2,
+     "y": 0,
+     "z": -1
+    },
+    {
+     "x": -2,
+     "y": 0,
+     "z": 0
+    },
+    {
+     "x": -2,
+     "y": 0,
+     "z": 1
+    },
+    {
+     "x": -2,
+     "y": 1,
+     "z": -2
+    },
+    {
+     "x": -2,
+     "y": 1,
+     "z": -1
+    },
+    {
+     "x": -2,
+     "y": 1,
+     "z": 0
+    },
+    {
+     "x": -2,
+     "y": 1,
+     "z": 1
+    },
+    {
+     "x": -1,
+     "y": -2,
+     "z": -2
+    },
+    {
+     "x": -1,
+     "y": -2,
+     "z": -1
+    },
+    {
+     "x": -1,
+     "y": -2,
+     "z": 0
+    },
+    {
+     "x": -1,
+     "y": -2,
+     "z": 1
+    },
+    {
+     "x": -1,
+     "y": -1,
+     "z": -2
+    },
+    {
+     "x": -1,
+     "y": -1,
+     "z": -1
+    },
+    {
+     "x": -1,
+     "y": -1,
+     "z": 0
+    },
+    {
+     "x": -1,
+     "y": -1,
+     "z": 1
+    },
+    {
+     "x": -1,
+     "y": 0,
+     "z": -2
+    },
+    {
+     "x": -1,
+     "y": 0,
+     "z": -1
+    },
+    {
+     "x": -1,
+     "y": 0,
+     "z": 0
+    },
+    {
+     "x": -1,
+     "y": 0,
+     "z": 1
+    },
+    {
+     "x": -1,
+     "y": 1,
+     "z": -2
+    },
+    {
+     "x": -1,
+     "y": 1,
+     "z": -1
+    },
+    {
+     "x": -1,
+     "y": 1,
+     "z": 0
+    },
+    {
+     "x": -1,
+     "y": 1,
+     "z": 1
+    },
+    {
+     "x": 0,
+     "y": -2,
+     "z": -2
+    },
+    {
+     "x": 0,
+     "y": -2,
+     "z": -1
+    },
+    {
+     "x": 0,
+     "y": -2,
+     "z": 0
+    },
+    {
+     "x": 0,
+     "y": -2,
+     "z": 1
+    },
+    {
+     "x": 0,
+     "y": -1,
+     "z": -2
+    },
+    {
+     "x": 0,
+     "y": -1,
+     "z": -1
+    },
+    {
+     "x": 0,
+     "y": -1,
+     "z": 0
+    },
+    {
+     "x": 0,
+     "y": -1,
+     "z": 1
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "z": -2
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "z": -1
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "z": 0
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "z": 1
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "z": -2
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "z": -1
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "z": 0
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "z": 1
+    },
+    {
+     "x": 1,
+     "y": -2,
+     "z": -2
+    },
+    {
+     "x": 1,
+     "y": -2,
+     "z": -1
+    },
+    {
+     "x": 1,
+     "y": -2,
+     "z": 0
+    },
+    {
+     "x": 1,
+     "y": -2,
+     "z": 1
+    },
+    {
+     "x": 1,
+     "y": -1,
+     "z": -2
+    },
+    {
+     "x": 1,
+     "y": -1,
+     "z": -1
+    },
+    {
+     "x": 1,
+     "y": -1,
+     "z": 0
+    },
+    {
+     "x": 1,
+     "y": -1,
+     "z": 1
+    },
+    {
+     "x": 1,
+     "y": 0,
+     "z": -2
+    },
+    {
+     "x": 1,
+     "y": 0,
+     "z": -1
+    },
+    {
+     "x": 1,
+     "y": 0,
+     "z": 0
+    },
+    {
+     "x": 1,
+     "y": 0,
+     "z": 1
+    },
+    {
+     "x": 1,
+     "y": 1,
+     "z": -2
+    },
+    {
+     "x": 1,
+     "y": 1,
+     "z": -1
+    },
+    {
+     "x": 1,
+     "y": 1,
+     "z": 0
+    },
+    {
+     "x": 1,
+     "y": 1,
+     "z": 1
+    }
+   ],
+   "note": "exhaustive signed QInt inputs. phi = 0: every leaf cell is skipped, so this seam checks the arithmetic/extension scaffold and clean ancillas only -- the phase action is tcost.certify T1/T1d/T2."
+  },
+  "depth": false,
+  "profile": {
+   "name": "ChainPhaseProduct(triple_k2_w2,action_phi0)",
+   "rotation_eps": null
+  },
+  "lane": "qualtran-vendored-0.8.0.dev0",
+  "regenerate": "PYTHONPATH=. AUTORESEARCHER_LANE=qualtran-vendored-0.8.0.dev0 python <ResearchSkills>/_tools/bloq_gate.py --spec tcost/certification/specs/triple_k2_w2.action_phi0.json --out tcost/certification/results/triple_k2_w2.action_phi0.witness.json --profile tcost/certification/results/triple_k2_w2.action_phi0.profile.json --schema-dir <ResearchSkills>/_templates"
+ },
+ "config_hash": "7e8b310009b59737975b8906171bca19e954f1614bac84712414af959f8d69ae",
+ "seed": null,
+ "gates": [
+  {
+   "name": "decomposes_flat",
+   "threshold": "==",
+   "measured": 0,
+   "pass": true,
+   "justification": "decompose_bloq().flatten()"
+  },
+  {
+   "name": "action_seam",
+   "threshold": "==",
+   "measured": 0,
+   "pass": true,
+   "justification": "64 domain cases"
+  },
+  {
+   "name": "cost_seam",
+   "threshold": "==",
+   "measured": 0,
+   "pass": true,
+   "justification": "toffoli/and/measurement/rotation compared"
+  }
+ ],
+ "verdict": "PASS",
+ "date": "2026-10-12",
+ "lane": "qualtran-vendored-0.8.0.dev0",
+ "environment": {
+  "qualtran": "0.7.0",
+  "python": "3.11.15"
+ },
+ "seams": {
+  "decomposes_flat": {
+   "ok": true,
+   "leaves": 1296
+  },
+  "action_seam": {
+   "cases": 64,
+   "bad": 0,
+   "first_bad": [],
+   "ok": true
+  },
+  "cost_seam": {
+   "attested": {
+    "toffoli": 0,
+    "and": 120,
+    "cswap": 0,
+    "measurement": 120,
+    "clifford": 894,
+    "t": 0,
+    "rotation": 0
+   },
+   "decomposition": {
+    "toffoli": 0,
+    "and": 120,
+    "cswap": 0,
+    "measurement": 120,
+    "clifford": 894,
+    "t": 0,
+    "rotation": 0
+   },
+   "diff": {},
+   "ok": true
+  },
+  "depth_seam": {
+   "skipped": "depth disabled in spec",
+   "dag": {
+    "toffoli_layers": 35,
+    "meas_rounds": 35,
+    "reaction_layers": 70
+   },
+   "ok": true
+  }
+ },
+ "profile_selfcheck": "ok"
+}

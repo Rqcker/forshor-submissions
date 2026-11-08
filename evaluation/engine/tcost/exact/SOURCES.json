@@ -1,0 +1,18 @@
+{
+ "note": "Vendored verbatim (no edits) on 2026-10-28. The PhaseProduct and PhaseTripleProduct boards price at these exact widths (PLAN_v2 Stage 13). tests/test_stage13.py checks the sha256 below.",
+ "files": {
+  "exact_width.py": {
+   "source": "ShorTableOptimization-policy-mirror/scripts/exact_width.py",
+   "sha256": "2eafe8e7ecc299018e69a8a8fb18404d109e6e7025970a821972b92ef3c27305",
+   "lean": "TableGeneration/RecursiveCost/BandedPolicy/Tight.lean (PolicyTable.tightWidth, BandedPolicy.ladderTight)",
+   "used_for": "PhaseProduct, engine 1 (tcost)"
+  },
+  "ptp_exact_width.py": {
+   "source": "ShorTableOptimization-ptp-suite/scripts/ptp_exact_width.py",
+   "sha256": "75152f028695cf1d1152ebde2334f883f3ffdb132b124275e5fb4f71d16b9c83",
+   "lean": "TableGeneration/RecursiveCost/PTP/Exact.lean (ptpTightWidth, ladderX)",
+   "used_for": "PhaseTripleProduct, engine 1 (tcost)"
+  }
+ },
+ "python_equals_lean": "cross-checked, not proved: equal on 34 policies at their ladders (ShorTableOptimization-policy-mirror/runs/exact_crosscheck_2048.json) and on every seed Lean run of Stage 13 (engine/data/forshor_submitted/seed_exact_runs.json)"
+}

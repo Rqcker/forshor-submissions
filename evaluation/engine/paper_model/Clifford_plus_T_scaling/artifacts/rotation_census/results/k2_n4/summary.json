@@ -1,0 +1,112 @@
+{
+ "mode": "full",
+ "k": 2,
+ "n": 4,
+ "series": "k2",
+ "N": "15",
+ "N_bits": 4,
+ "L": 8,
+ "m": 24,
+ "delta": 0.01,
+ "eps": "4415162440114/12452082629853513221",
+ "eps_float": 3.545722086302876e-07,
+ "R": 28203,
+ "D": 234,
+ "W": 116,
+ "D_by_kind": {
+  "identity": 1,
+  "dyadic": 216,
+  "modn": 12,
+  "exact": 5
+ },
+ "sites_by_kind": {
+  "identity": 2999,
+  "dyadic": 19577,
+  "modn": 432,
+  "exact": 5195
+ },
+ "T_by_kind": {
+  "identity": 0,
+  "dyadic": 1317330,
+  "modn": 28620,
+  "exact": 946
+ },
+ "T_rot": 1346896,
+ "mean_T_per_site": 47.757188951529976,
+ "sd_T_over_sites": 30.605374975837588,
+ "se_mean": 0.0,
+ "sum_T_distinct_words": 7692,
+ "mean_T_per_word": 66.3103448275862,
+ "sd_T_over_words": 9.29072005774788,
+ "T_min": 0,
+ "T_max": 82,
+ "T_hist_sites": {
+  "0": 7272,
+  "1": 946,
+  "62": 1056,
+  "64": 920,
+  "66": 5083,
+  "68": 10126,
+  "70": 2472,
+  "72": 192,
+  "76": 40,
+  "78": 40,
+  "80": 32,
+  "82": 24
+ },
+ "T_model_per_word": 66.74930789609135,
+ "worst_cert_opnorm": 1.76762506905e-07,
+ "attribution": {
+  "per_tag_T": {
+   "U1_IQFT_work": 625552,
+   "U2_QFT_data": 1656,
+   "U2_PP": 62672,
+   "U2_IQFT_data": 1640,
+   "U5_QFT_work": 625616,
+   "TOP_IQFT": 1140,
+   "U1_CPP": 12720,
+   "U5_CPP": 15900
+  },
+  "per_tag_sites": {
+   "U1_IQFT_work": 12520,
+   "U2_QFT_data": 208,
+   "U2_PP": 960,
+   "U2_IQFT_data": 208,
+   "U5_QFT_work": 12520,
+   "TOP_IQFT": 59,
+   "U1_CPP": 768,
+   "U5_CPP": 960
+  },
+  "per_tag_mean_T": {
+   "U1_IQFT_work": 49.96421725239617,
+   "U2_QFT_data": 7.961538461538462,
+   "U2_PP": 65.28333333333333,
+   "U2_IQFT_data": 7.884615384615385,
+   "U5_QFT_work": 49.96932907348243,
+   "TOP_IQFT": 19.322033898305083,
+   "U1_CPP": 16.5625,
+   "U5_CPP": 16.5625
+  },
+  "per_step_T": [
+   179006,
+   178898,
+   164642,
+   164642,
+   164642,
+   164642,
+   164642,
+   164642
+  ],
+  "top_iqft_T": 1140
+ },
+ "workers": 4,
+ "seconds": 5.1,
+ "engine_fingerprint": "9c29ed0fbcbe2559dba0109e9a558147915c44a8b7b09a52e52c9242c783c293",
+ "synth_cfg": "{\"adapter\": \"ctbp.synth/1\", \"dloop\": 10, \"dps\": null, \"engine\": \"9c29ed0fbcbe2559dba0109e9a558147915c44a8b7b09a52e52c9242c783c293\", \"floop\": 10, \"seed\": 0, \"up_to_phase\": false}",
+ "host": "JOZ-LAPTOP",
+ "python": "3.12.4",
+ "rules_digest": "e9c5d9ad65ead6b9",
+ "signature": "f2ee035bfecf356f",
+ "generated_utc": "2026-09-16T01:29:00Z",
+ "certificate": "mpmath operator norm at >= 2 log10(1/eps) + 20 digits per word (numerical evidence, not an interval proof)"
+}

@@ -1,0 +1,238 @@
+{
+ "tool": "check_banded_policy",
+ "started": "2026-10-28T16:21:12.711967+00:00",
+ "policy_sha256": "3e8dc810f000d6f2574dcb117fb34d4df6a48d2c9b5d74b5b1a7464920392a7f",
+ "target_width": 2048,
+ "seconds": {
+  "stage": 35.76,
+  "data": 24.86,
+  "report": 12.31,
+  "cert": 17.13,
+  "replay:Submitted": 13.4,
+  "replay:SubmittedCert": 16.17
+ },
+ "verdict": "accepted",
+ "widths_rule": "exact",
+ "mode": "PhaseProduct",
+ "bands": [
+  {
+   "threshold": 2048,
+   "k": 6
+  },
+  {
+   "threshold": 125,
+   "k": 3
+  }
+ ],
+ "declared_ladder": null,
+ "workdir": "/Users/joshua/Desktop/github_packages/sto_site/.cache/sto_policy_work",
+ "report": {
+  "mode": "PhaseProduct",
+  "target_width": 2048,
+  "ladder": [
+   {
+    "width": 2048,
+    "k": 6
+   },
+   {
+    "width": 382,
+    "k": 3
+   },
+   {
+    "width": 138,
+    "k": 3
+   },
+   {
+    "width": 57,
+    "k": null
+   }
+  ],
+  "tight_ladder": [
+   {
+    "width": 2048,
+    "k": 6
+   },
+   {
+    "width": 364,
+    "k": 3
+   },
+   {
+    "width": 125,
+    "k": 3
+   },
+   {
+    "width": 46,
+    "k": null
+   }
+  ],
+  "bands": [
+   {
+    "threshold": 2048,
+    "k": 6,
+    "child_width_at_threshold": 382,
+    "tight_width_at_threshold": 364,
+    "check": true,
+    "ops": 75,
+    "points": 11
+   },
+   {
+    "threshold": 125,
+    "k": 3,
+    "child_width_at_threshold": 53,
+    "tight_width_at_threshold": 46,
+    "check": true,
+    "ops": 16,
+    "points": 5
+   }
+  ],
+  "check": true,
+  "chain_contracts": true,
+  "bands_contract": true,
+  "declared_ok": null,
+  "declared_tight_ok": null
+ },
+ "exact_ladder": [
+  {
+   "width": 2048,
+   "k": 6
+  },
+  {
+   "width": 364,
+   "k": 3
+  },
+  {
+   "width": 125,
+   "k": 3
+  },
+  {
+   "width": 46,
+   "k": null
+  }
+ ],
+ "scan_ladder": [
+  {
+   "width": 2048,
+   "k": 6
+  },
+  {
+   "width": 382,
+   "k": 3
+  },
+  {
+   "width": 138,
+   "k": 3
+  },
+  {
+   "width": 57,
+   "k": null
+  }
+ ],
+ "advisory": {
+  "bands_contract": true
+ },
+ "lean_sha256": {
+  "Submitted.lean": "07c367dc75f4b160ef1529162f98349cdb647f27ba46ce02aa3a46108fc72a95",
+  "SubmittedCert.lean": "2e96a50e5feecf69afa5639c65bd020a01a76b5bd91a886b7feca635d65a5e95"
+ },
+ "replay": {
+  "modules": [
+   {
+    "module": "TableGeneration.RecursiveCost.BandedPolicy.Instances.Submitted",
+    "verdict": "replayed",
+    "decls": 13,
+    "peak_gb": 5.54,
+    "seconds": 13.3
+   },
+   {
+    "module": "TableGeneration.RecursiveCost.BandedPolicy.Instances.SubmittedCert",
+    "verdict": "replayed",
+    "decls": 19,
+    "peak_gb": 6.48,
+    "seconds": 16.1
+   }
+  ],
+  "prefix": "per-module"
+ },
+ "audit": {
+  "accepted": {
+   "axioms": [
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq TableGeneration.PolicyMirror.Instances.Submitted.policy.check Bool.true"
+  },
+  "correct": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhase n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+  },
+  "correct_reg": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), (∀ (s : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity), TableGeneration.PolicyMirror.Fits n (xs s)) → Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhaseReg n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+  },
+  "capacity": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), (∀ (s : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity), TableGeneration.PolicyMirror.Fits n (xs s)) → TableGeneration.PolicyMirror.Instances.Submitted.policy.CapacityOK n xs"
+  },
+  "chain_contracts": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.chainContracts 2048) Bool.true"
+  },
+  "bands_contract": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq TableGeneration.PolicyMirror.Instances.Submitted.policy.bandsContract Bool.true"
+  },
+  "correct_tight": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), (∀ (s : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity), TableGeneration.PolicyMirror.Fits n (xs s)) → Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhaseRegTight n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+  },
+  "exact_ladder": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.ladderTight 2048) TableGeneration.PolicyMirror.Instances.SubmittedCert.exactLadder"
+  },
+  "declared_tight_widths": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.declOKTight TableGeneration.PolicyMirror.Instances.SubmittedCert.exactLadder) Bool.true"
+  },
+  "declared_tight_correct": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), (∀ (s : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity), TableGeneration.PolicyMirror.Fits n (xs s)) → Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhaseRegW (TableGeneration.PolicyMirror.ladderWidthTight TableGeneration.PolicyMirror.Instances.SubmittedCert.exactLadder) n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+  }
+ },
+ "finished": "2026-10-28T16:23:20.130829+00:00"
+}

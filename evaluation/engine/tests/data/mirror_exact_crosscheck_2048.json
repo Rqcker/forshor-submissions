@@ -1,0 +1,3128 @@
+{
+ "tool": "crosscheck_tight_width",
+ "target_width": 2048,
+ "sto_site_files": [
+  "/Users/joshua/Desktop/github_packages/sto_site/engine/paper_model/forshor_qualtran/tight_width.py",
+  "/Users/joshua/Desktop/github_packages/sto_site/engine/paper_model/forshor_qualtran/width_scan.py"
+ ],
+ "results": [
+  {
+   "policy": "policies/ref_pp_2048.json",
+   "sha256": "52874f4889ce028da6291892561e4628008878821b15557e02f912b976bb85e9",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     364,
+     184,
+     94,
+     49,
+     26
+    ],
+    "site_floor": [
+     2048,
+     364,
+     184,
+     94,
+     49,
+     26
+    ],
+    "site_padded": [
+     2048,
+     363,
+     184,
+     94,
+     49,
+     27
+    ],
+    "scan": [
+     2048,
+     385,
+     140,
+     73,
+     40,
+     23
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 2
+    },
+    {
+     "width": 184,
+     "k": 2
+    },
+    {
+     "width": 94,
+     "k": 2
+    },
+    {
+     "width": 49,
+     "k": 2
+    },
+    {
+     "width": 26,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 364,
+     "site_floor": 364,
+     "site_padded": 363,
+     "scan": 385
+    },
+    {
+     "width": 364,
+     "k": 2,
+     "mirror_exact": 184,
+     "site_floor": 184,
+     "site_padded": 184,
+     "scan": 185
+    },
+    {
+     "width": 184,
+     "k": 2,
+     "mirror_exact": 94,
+     "site_floor": 94,
+     "site_padded": 94,
+     "scan": 95
+    },
+    {
+     "width": 94,
+     "k": 2,
+     "mirror_exact": 49,
+     "site_floor": 49,
+     "site_padded": 49,
+     "scan": 50
+    },
+    {
+     "width": 49,
+     "k": 2,
+     "mirror_exact": 26,
+     "site_floor": 26,
+     "site_padded": 27,
+     "scan": 28
+    },
+    {
+     "width": 26,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "policies/ref_ptp_2048.json",
+   "sha256": "0872e81a3b975f377d9e401af1246113f8e3547c9934aa0cbcb924e5e054eb03",
+   "mode": "PhaseTripleProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     375,
+     189,
+     96,
+     50
+    ],
+    "site_floor": [
+     2048,
+     375,
+     189,
+     96,
+     50
+    ],
+    "site_padded": [
+     2048,
+     374,
+     189,
+     97,
+     51
+    ],
+    "scan": [
+     2048,
+     398,
+     122,
+     66,
+     38
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 375,
+     "k": 2
+    },
+    {
+     "width": 189,
+     "k": 2
+    },
+    {
+     "width": 96,
+     "k": 2
+    },
+    {
+     "width": 50,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 375,
+     "site_floor": 375,
+     "site_padded": 374,
+     "scan": 398
+    },
+    {
+     "width": 375,
+     "k": 2,
+     "mirror_exact": 189,
+     "site_floor": 189,
+     "site_padded": 190,
+     "scan": 193
+    },
+    {
+     "width": 189,
+     "k": 2,
+     "mirror_exact": 96,
+     "site_floor": 96,
+     "site_padded": 97,
+     "scan": 100
+    },
+    {
+     "width": 96,
+     "k": 2,
+     "mirror_exact": 50,
+     "site_floor": 50,
+     "site_padded": 50,
+     "scan": 53
+    },
+    {
+     "width": 50,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "policies/k5_sixband_2048.json",
+   "sha256": "65715d0551fc8a34043d9241eb207a99de0790a6fb880a6e1e41e91c3fe33f38",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     425,
+     147,
+     53,
+     28,
+     16
+    ],
+    "site_floor": [
+     2048,
+     425,
+     147,
+     53,
+     28,
+     16
+    ],
+    "site_padded": [
+     2048,
+     423,
+     145,
+     53,
+     29,
+     17,
+     11
+    ],
+    "scan": [
+     2048,
+     440,
+     121,
+     49,
+     28,
+     17,
+     12
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 5
+    },
+    {
+     "width": 425,
+     "k": 3
+    },
+    {
+     "width": 147,
+     "k": 3
+    },
+    {
+     "width": 53,
+     "k": 2
+    },
+    {
+     "width": 28,
+     "k": 2
+    },
+    {
+     "width": 16,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 5,
+     "mirror_exact": 425,
+     "site_floor": 425,
+     "site_padded": 423,
+     "scan": 440
+    },
+    {
+     "width": 425,
+     "k": 3,
+     "mirror_exact": 147,
+     "site_floor": 147,
+     "site_padded": 146,
+     "scan": 151
+    },
+    {
+     "width": 147,
+     "k": 3,
+     "mirror_exact": 53,
+     "site_floor": 53,
+     "site_padded": 53,
+     "scan": 58
+    },
+    {
+     "width": 53,
+     "k": 2,
+     "mirror_exact": 28,
+     "site_floor": 28,
+     "site_padded": 29,
+     "scan": 30
+    },
+    {
+     "width": 28,
+     "k": 2,
+     "mirror_exact": 16,
+     "site_floor": 16,
+     "site_padded": 16,
+     "scan": 17
+    },
+    {
+     "width": 16,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S00c49eff1f98/site_policy.json",
+   "sha256": "1697b37603cd2f035e60a26bf15ea10a63ad262ff03b6094e13a27b079a01f38",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_floor": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_padded": [
+     2048,
+     354,
+     179,
+     92
+    ],
+    "scan": [
+     2048,
+     364,
+     102,
+     54
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 2
+    },
+    {
+     "width": 179,
+     "k": 2
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 354,
+     "site_floor": 354,
+     "site_padded": 354,
+     "scan": 364
+    },
+    {
+     "width": 354,
+     "k": 2,
+     "mirror_exact": 179,
+     "site_floor": 179,
+     "site_padded": 179,
+     "scan": 180
+    },
+    {
+     "width": 179,
+     "k": 2,
+     "mirror_exact": 91,
+     "site_floor": 91,
+     "site_padded": 92,
+     "scan": 93
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S02d2663a56ae/site_policy.json",
+   "sha256": "b5e7086ecf19efd781aec71cd1f25b18924f7782c892e1bd036f9579e38fba7d",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     354,
+     179,
+     91,
+     47
+    ],
+    "site_floor": [
+     2048,
+     354,
+     179,
+     91,
+     47
+    ],
+    "site_padded": [
+     2048,
+     354,
+     179,
+     92,
+     48
+    ],
+    "scan": [
+     2048,
+     364,
+     130,
+     68,
+     37
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 2
+    },
+    {
+     "width": 179,
+     "k": 2
+    },
+    {
+     "width": 91,
+     "k": 2
+    },
+    {
+     "width": 47,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 354,
+     "site_floor": 354,
+     "site_padded": 354,
+     "scan": 364
+    },
+    {
+     "width": 354,
+     "k": 2,
+     "mirror_exact": 179,
+     "site_floor": 179,
+     "site_padded": 179,
+     "scan": 180
+    },
+    {
+     "width": 179,
+     "k": 2,
+     "mirror_exact": 91,
+     "site_floor": 91,
+     "site_padded": 92,
+     "scan": 93
+    },
+    {
+     "width": 91,
+     "k": 2,
+     "mirror_exact": 47,
+     "site_floor": 47,
+     "site_padded": 48,
+     "scan": 49
+    },
+    {
+     "width": 47,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S0d4cae7cc43f/site_policy.json",
+   "sha256": "5c771db740aa8214923ba77c0c7b20909ecd92e409182a7258d2983c0c8f7c3c",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_floor": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_padded": [
+     2048,
+     354,
+     179,
+     92
+    ],
+    "scan": [
+     2048,
+     363,
+     130,
+     68
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 2
+    },
+    {
+     "width": 179,
+     "k": 2
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 354,
+     "site_floor": 354,
+     "site_padded": 354,
+     "scan": 363
+    },
+    {
+     "width": 354,
+     "k": 2,
+     "mirror_exact": 179,
+     "site_floor": 179,
+     "site_padded": 179,
+     "scan": 180
+    },
+    {
+     "width": 179,
+     "k": 2,
+     "mirror_exact": 91,
+     "site_floor": 91,
+     "site_padded": 92,
+     "scan": 93
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S1c115b37fd2c/site_policy.json",
+   "sha256": "2c6f6dae71d8e9c71479eb2589748a4e2fd20c8ccc80bab26c8e61cd0035d034",
+   "mode": "PhaseTripleProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     375,
+     189,
+     96,
+     50,
+     27
+    ],
+    "site_floor": [
+     2048,
+     375,
+     189,
+     96,
+     50,
+     27
+    ],
+    "site_padded": [
+     2048,
+     374,
+     189,
+     97,
+     51,
+     28
+    ],
+    "scan": [
+     2048,
+     398,
+     120,
+     64,
+     36,
+     22
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 375,
+     "k": 2
+    },
+    {
+     "width": 189,
+     "k": 2
+    },
+    {
+     "width": 96,
+     "k": 2
+    },
+    {
+     "width": 50,
+     "k": 2
+    },
+    {
+     "width": 27,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 375,
+     "site_floor": 375,
+     "site_padded": 374,
+     "scan": 398
+    },
+    {
+     "width": 375,
+     "k": 2,
+     "mirror_exact": 189,
+     "site_floor": 189,
+     "site_padded": 190,
+     "scan": 192
+    },
+    {
+     "width": 189,
+     "k": 2,
+     "mirror_exact": 96,
+     "site_floor": 96,
+     "site_padded": 97,
+     "scan": 99
+    },
+    {
+     "width": 96,
+     "k": 2,
+     "mirror_exact": 50,
+     "site_floor": 50,
+     "site_padded": 50,
+     "scan": 52
+    },
+    {
+     "width": 50,
+     "k": 2,
+     "mirror_exact": 27,
+     "site_floor": 27,
+     "site_padded": 27,
+     "scan": 29
+    },
+    {
+     "width": 27,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S22d0026b1c85/site_policy.json",
+   "sha256": "9faa5b5380ec2ab3cd93e8b139fd7f778babde52ffa59fc433b90e3a79efe081",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     354,
+     179,
+     91,
+     47
+    ],
+    "site_floor": [
+     2048,
+     354,
+     179,
+     91,
+     47
+    ],
+    "site_padded": [
+     2048,
+     354,
+     179,
+     92,
+     48
+    ],
+    "scan": [
+     2048,
+     363,
+     130,
+     68,
+     37
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 2
+    },
+    {
+     "width": 179,
+     "k": 2
+    },
+    {
+     "width": 91,
+     "k": 2
+    },
+    {
+     "width": 47,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 354,
+     "site_floor": 354,
+     "site_padded": 354,
+     "scan": 363
+    },
+    {
+     "width": 354,
+     "k": 2,
+     "mirror_exact": 179,
+     "site_floor": 179,
+     "site_padded": 179,
+     "scan": 180
+    },
+    {
+     "width": 179,
+     "k": 2,
+     "mirror_exact": 91,
+     "site_floor": 91,
+     "site_padded": 92,
+     "scan": 93
+    },
+    {
+     "width": 91,
+     "k": 2,
+     "mirror_exact": 47,
+     "site_floor": 47,
+     "site_padded": 48,
+     "scan": 49
+    },
+    {
+     "width": 47,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S2331e66e1a2e/site_policy.json",
+   "sha256": "1247aa1a899ee414e8797124abd942d894b6b5df7aa0517feef63fb17e554658",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     425,
+     214,
+     109
+    ],
+    "site_floor": [
+     2048,
+     425,
+     214,
+     109
+    ],
+    "site_padded": [
+     2048,
+     423,
+     214,
+     109
+    ],
+    "scan": [
+     2048,
+     440,
+     130,
+     68
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 5
+    },
+    {
+     "width": 425,
+     "k": 2
+    },
+    {
+     "width": 214,
+     "k": 2
+    },
+    {
+     "width": 109,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 5,
+     "mirror_exact": 425,
+     "site_floor": 425,
+     "site_padded": 423,
+     "scan": 440
+    },
+    {
+     "width": 425,
+     "k": 2,
+     "mirror_exact": 214,
+     "site_floor": 214,
+     "site_padded": 215,
+     "scan": 216
+    },
+    {
+     "width": 214,
+     "k": 2,
+     "mirror_exact": 109,
+     "site_floor": 109,
+     "site_padded": 109,
+     "scan": 110
+    },
+    {
+     "width": 109,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S23d2ab130b88/site_policy.json",
+   "sha256": "b65f4bee4c6c51484f5f8a6fda49a7cdffaf5f4be075b5d6134582d5a397dc67",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     360,
+     182,
+     93
+    ],
+    "site_floor": [
+     2048,
+     360,
+     182,
+     93
+    ],
+    "site_padded": [
+     2048,
+     359,
+     182,
+     93
+    ],
+    "scan": [
+     2048,
+     380,
+     138,
+     72
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 360,
+     "k": 2
+    },
+    {
+     "width": 182,
+     "k": 2
+    },
+    {
+     "width": 93,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 360,
+     "site_floor": 360,
+     "site_padded": 359,
+     "scan": 380
+    },
+    {
+     "width": 360,
+     "k": 2,
+     "mirror_exact": 182,
+     "site_floor": 182,
+     "site_padded": 182,
+     "scan": 183
+    },
+    {
+     "width": 182,
+     "k": 2,
+     "mirror_exact": 93,
+     "site_floor": 93,
+     "site_padded": 93,
+     "scan": 94
+    },
+    {
+     "width": 93,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S29d5189f0a0b/site_policy.json",
+   "sha256": "449d591748d39fe307ac712155be92bea070e567036b11284087338f9aae3c83",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     517,
+     260,
+     132,
+     68
+    ],
+    "site_floor": [
+     2048,
+     517,
+     260,
+     132,
+     68
+    ],
+    "site_padded": [
+     2048,
+     517,
+     261,
+     133,
+     69
+    ],
+    "scan": [
+     2048,
+     532,
+     189,
+     98,
+     52
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 517,
+     "k": 2
+    },
+    {
+     "width": 260,
+     "k": 2
+    },
+    {
+     "width": 132,
+     "k": 2
+    },
+    {
+     "width": 68,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 4,
+     "mirror_exact": 517,
+     "site_floor": 517,
+     "site_padded": 517,
+     "scan": 532
+    },
+    {
+     "width": 517,
+     "k": 2,
+     "mirror_exact": 260,
+     "site_floor": 260,
+     "site_padded": 261,
+     "scan": 262
+    },
+    {
+     "width": 260,
+     "k": 2,
+     "mirror_exact": 132,
+     "site_floor": 132,
+     "site_padded": 132,
+     "scan": 133
+    },
+    {
+     "width": 132,
+     "k": 2,
+     "mirror_exact": 68,
+     "site_floor": 68,
+     "site_padded": 68,
+     "scan": 69
+    },
+    {
+     "width": 68,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S3fcc1b15f876/site_policy.json",
+   "sha256": "c39f2d19fa9f3bbe0e02ec75d3f788355a3217eb96ee8f98bb548a3ee4d2b89e",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     354,
+     179,
+     91,
+     47
+    ],
+    "site_floor": [
+     2048,
+     354,
+     179,
+     91,
+     47
+    ],
+    "site_padded": [
+     2048,
+     354,
+     179,
+     92,
+     48
+    ],
+    "scan": [
+     2048,
+     369,
+     134,
+     70,
+     38
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 2
+    },
+    {
+     "width": 179,
+     "k": 2
+    },
+    {
+     "width": 91,
+     "k": 2
+    },
+    {
+     "width": 47,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 354,
+     "site_floor": 354,
+     "site_padded": 354,
+     "scan": 369
+    },
+    {
+     "width": 354,
+     "k": 2,
+     "mirror_exact": 179,
+     "site_floor": 179,
+     "site_padded": 179,
+     "scan": 180
+    },
+    {
+     "width": 179,
+     "k": 2,
+     "mirror_exact": 91,
+     "site_floor": 91,
+     "site_padded": 92,
+     "scan": 93
+    },
+    {
+     "width": 91,
+     "k": 2,
+     "mirror_exact": 47,
+     "site_floor": 47,
+     "site_padded": 48,
+     "scan": 49
+    },
+    {
+     "width": 47,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S4b083d660964/site_policy.json",
+   "sha256": "0a2309e22136d0212f38d19c225288e0c163cf0b663b4423a9750bc4ddef8295",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_floor": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_padded": [
+     2048,
+     354,
+     179,
+     92
+    ],
+    "scan": [
+     2048,
+     364,
+     102,
+     54
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 2
+    },
+    {
+     "width": 179,
+     "k": 2
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 354,
+     "site_floor": 354,
+     "site_padded": 354,
+     "scan": 364
+    },
+    {
+     "width": 354,
+     "k": 2,
+     "mirror_exact": 179,
+     "site_floor": 179,
+     "site_padded": 179,
+     "scan": 180
+    },
+    {
+     "width": 179,
+     "k": 2,
+     "mirror_exact": 91,
+     "site_floor": 91,
+     "site_padded": 92,
+     "scan": 93
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S6794489f14f1/site_policy.json",
+   "sha256": "4d76f604070607e4c8e15d16aab9f432a529dd1e1b8c168efa54d8349ba6acf7",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     425,
+     214,
+     109,
+     56
+    ],
+    "site_floor": [
+     2048,
+     425,
+     214,
+     109,
+     56
+    ],
+    "site_padded": [
+     2048,
+     423,
+     214,
+     109,
+     57
+    ],
+    "scan": [
+     2048,
+     438,
+     157,
+     82,
+     44
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 5
+    },
+    {
+     "width": 425,
+     "k": 2
+    },
+    {
+     "width": 214,
+     "k": 2
+    },
+    {
+     "width": 109,
+     "k": 2
+    },
+    {
+     "width": 56,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 5,
+     "mirror_exact": 425,
+     "site_floor": 425,
+     "site_padded": 423,
+     "scan": 438
+    },
+    {
+     "width": 425,
+     "k": 2,
+     "mirror_exact": 214,
+     "site_floor": 214,
+     "site_padded": 215,
+     "scan": 216
+    },
+    {
+     "width": 214,
+     "k": 2,
+     "mirror_exact": 109,
+     "site_floor": 109,
+     "site_padded": 109,
+     "scan": 110
+    },
+    {
+     "width": 109,
+     "k": 2,
+     "mirror_exact": 56,
+     "site_floor": 56,
+     "site_padded": 57,
+     "scan": 58
+    },
+    {
+     "width": 56,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S6b1cc169fad2/site_policy.json",
+   "sha256": "05b3f102e967ec96345f251562f9cd46293b47ebb1e312f04f2589fd633eab3c",
+   "mode": "PhaseTripleProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     522,
+     178,
+     63
+    ],
+    "site_floor": [
+     2048,
+     522,
+     178,
+     63
+    ],
+    "site_padded": [
+     2048,
+     522,
+     178,
+     64
+    ],
+    "scan": [
+     2048,
+     533,
+     155,
+     66,
+     38
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 522,
+     "k": 3
+    },
+    {
+     "width": 178,
+     "k": 3
+    },
+    {
+     "width": 63,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 4,
+     "mirror_exact": 522,
+     "site_floor": 522,
+     "site_padded": 522,
+     "scan": 533
+    },
+    {
+     "width": 522,
+     "k": 3,
+     "mirror_exact": 178,
+     "site_floor": 178,
+     "site_padded": 178,
+     "scan": 189
+    },
+    {
+     "width": 178,
+     "k": 3,
+     "mirror_exact": 63,
+     "site_floor": 63,
+     "site_padded": 64,
+     "scan": 74
+    },
+    {
+     "width": 63,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S707dd51bf951/site_policy.json",
+   "sha256": "3adca8aca696186314100528f4cb0b3d3a8fba5feb424f48ce94be401e357d6a",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     687,
+     232
+    ],
+    "site_floor": [
+     2048,
+     687,
+     232
+    ],
+    "site_padded": [
+     2048,
+     686,
+     232
+    ],
+    "scan": [
+     2048,
+     698,
+     248,
+     98
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 3
+    },
+    {
+     "width": 687,
+     "k": 3
+    },
+    {
+     "width": 232,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 3,
+     "mirror_exact": 687,
+     "site_floor": 687,
+     "site_padded": 686,
+     "scan": 698
+    },
+    {
+     "width": 687,
+     "k": 3,
+     "mirror_exact": 232,
+     "site_floor": 232,
+     "site_padded": 232,
+     "scan": 243
+    },
+    {
+     "width": 232,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S7bf14f66796e/site_policy.json",
+   "sha256": "ef1dfc7cc3e397b3fee11d10d45237f1b206fb1ab95324aa56be675cbce04194",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     425,
+     214,
+     109,
+     56
+    ],
+    "site_floor": [
+     2048,
+     425,
+     214,
+     109,
+     56
+    ],
+    "site_padded": [
+     2048,
+     423,
+     214,
+     109,
+     57
+    ],
+    "scan": [
+     2048,
+     440,
+     130,
+     68,
+     37
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 5
+    },
+    {
+     "width": 425,
+     "k": 2
+    },
+    {
+     "width": 214,
+     "k": 2
+    },
+    {
+     "width": 109,
+     "k": 2
+    },
+    {
+     "width": 56,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 5,
+     "mirror_exact": 425,
+     "site_floor": 425,
+     "site_padded": 423,
+     "scan": 440
+    },
+    {
+     "width": 425,
+     "k": 2,
+     "mirror_exact": 214,
+     "site_floor": 214,
+     "site_padded": 215,
+     "scan": 216
+    },
+    {
+     "width": 214,
+     "k": 2,
+     "mirror_exact": 109,
+     "site_floor": 109,
+     "site_padded": 109,
+     "scan": 110
+    },
+    {
+     "width": 109,
+     "k": 2,
+     "mirror_exact": 56,
+     "site_floor": 56,
+     "site_padded": 57,
+     "scan": 58
+    },
+    {
+     "width": 56,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S7cb2f58aff1a/site_policy.json",
+   "sha256": "f6d650ea0f0cf18b4773bf92b8dd0ff469b86241ae80487593a0ebedc426e658",
+   "mode": "PhaseTripleProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     375,
+     189,
+     96,
+     50
+    ],
+    "site_floor": [
+     2048,
+     375,
+     189,
+     96,
+     50
+    ],
+    "site_padded": [
+     2048,
+     374,
+     189,
+     97,
+     51
+    ],
+    "scan": [
+     2048,
+     398,
+     122,
+     66,
+     38
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 375,
+     "k": 2
+    },
+    {
+     "width": 189,
+     "k": 2
+    },
+    {
+     "width": 96,
+     "k": 2
+    },
+    {
+     "width": 50,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 375,
+     "site_floor": 375,
+     "site_padded": 374,
+     "scan": 398
+    },
+    {
+     "width": 375,
+     "k": 2,
+     "mirror_exact": 189,
+     "site_floor": 189,
+     "site_padded": 190,
+     "scan": 193
+    },
+    {
+     "width": 189,
+     "k": 2,
+     "mirror_exact": 96,
+     "site_floor": 96,
+     "site_padded": 97,
+     "scan": 100
+    },
+    {
+     "width": 96,
+     "k": 2,
+     "mirror_exact": 50,
+     "site_floor": 50,
+     "site_padded": 50,
+     "scan": 53
+    },
+    {
+     "width": 50,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S7da0ff5445b5/site_policy.json",
+   "sha256": "5a82f4af70c9a2dca8028492d7371c0bc6971e885a8e156017408be7cd86e55a",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     517,
+     260,
+     132,
+     68
+    ],
+    "site_floor": [
+     2048,
+     517,
+     260,
+     132,
+     68
+    ],
+    "site_padded": [
+     2048,
+     517,
+     261,
+     133,
+     69
+    ],
+    "scan": [
+     2048,
+     532,
+     153,
+     80,
+     43
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 517,
+     "k": 2
+    },
+    {
+     "width": 260,
+     "k": 2
+    },
+    {
+     "width": 132,
+     "k": 2
+    },
+    {
+     "width": 68,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 4,
+     "mirror_exact": 517,
+     "site_floor": 517,
+     "site_padded": 517,
+     "scan": 532
+    },
+    {
+     "width": 517,
+     "k": 2,
+     "mirror_exact": 260,
+     "site_floor": 260,
+     "site_padded": 261,
+     "scan": 262
+    },
+    {
+     "width": 260,
+     "k": 2,
+     "mirror_exact": 132,
+     "site_floor": 132,
+     "site_padded": 132,
+     "scan": 133
+    },
+    {
+     "width": 132,
+     "k": 2,
+     "mirror_exact": 68,
+     "site_floor": 68,
+     "site_padded": 68,
+     "scan": 69
+    },
+    {
+     "width": 68,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S80e6a121410d/site_policy.json",
+   "sha256": "764fca7143fa2649a9df1185819cc8dbb3e47559c8cec675e1efb2fa8cccc81a",
+   "mode": "PhaseTripleProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     522,
+     142
+    ],
+    "site_floor": [
+     2048,
+     522,
+     142
+    ],
+    "site_padded": [
+     2048,
+     522,
+     141
+    ],
+    "scan": [
+     2048,
+     533,
+     155,
+     62
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 522,
+     "k": 4
+    },
+    {
+     "width": 142,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 4,
+     "mirror_exact": 522,
+     "site_floor": 522,
+     "site_padded": 522,
+     "scan": 533
+    },
+    {
+     "width": 522,
+     "k": 4,
+     "mirror_exact": 142,
+     "site_floor": 142,
+     "site_padded": 141,
+     "scan": 153
+    },
+    {
+     "width": 142,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S84f8c61016e6/site_policy.json",
+   "sha256": "a328d11e69817ac9bb63bac056d6395a4d0c9c571a2ea83c44a784d496ddcf22",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     354,
+     122
+    ],
+    "site_floor": [
+     2048,
+     354,
+     122
+    ],
+    "site_padded": [
+     2048,
+     354,
+     122
+    ],
+    "scan": [
+     2048,
+     369,
+     130,
+     50
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 3
+    },
+    {
+     "width": 122,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 354,
+     "site_floor": 354,
+     "site_padded": 354,
+     "scan": 369
+    },
+    {
+     "width": 354,
+     "k": 3,
+     "mirror_exact": 122,
+     "site_floor": 122,
+     "site_padded": 122,
+     "scan": 125
+    },
+    {
+     "width": 122,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S98b2f5fb4e06/site_policy.json",
+   "sha256": "a6281cb6a0fc84a249ade2e90c04fcb00f75c961ab85ac35b996b98f01c59a2d",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_floor": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_padded": [
+     2048,
+     354,
+     179,
+     92
+    ],
+    "scan": [
+     2048,
+     364,
+     130,
+     68
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 2
+    },
+    {
+     "width": 179,
+     "k": 2
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 354,
+     "site_floor": 354,
+     "site_padded": 354,
+     "scan": 364
+    },
+    {
+     "width": 354,
+     "k": 2,
+     "mirror_exact": 179,
+     "site_floor": 179,
+     "site_padded": 179,
+     "scan": 180
+    },
+    {
+     "width": 179,
+     "k": 2,
+     "mirror_exact": 91,
+     "site_floor": 91,
+     "site_padded": 92,
+     "scan": 93
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/S9a1e71f80320/site_policy.json",
+   "sha256": "81872809db4752708c54a69222ec5fcf9a026351a58b351834e1c5104b7355ad",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_floor": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_padded": [
+     2048,
+     354,
+     179,
+     92
+    ],
+    "scan": [
+     2048,
+     369,
+     134,
+     70
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 2
+    },
+    {
+     "width": 179,
+     "k": 2
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 354,
+     "site_floor": 354,
+     "site_padded": 354,
+     "scan": 369
+    },
+    {
+     "width": 354,
+     "k": 2,
+     "mirror_exact": 179,
+     "site_floor": 179,
+     "site_padded": 179,
+     "scan": 180
+    },
+    {
+     "width": 179,
+     "k": 2,
+     "mirror_exact": 91,
+     "site_floor": 91,
+     "site_padded": 92,
+     "scan": 93
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Sa009cfa3c147/site_policy.json",
+   "sha256": "ba8d6b435e58b68c6dc47e6e184d48510907166aea7d16032460a3cbef07d783",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     517,
+     260,
+     132,
+     68
+    ],
+    "site_floor": [
+     2048,
+     517,
+     260,
+     132,
+     68
+    ],
+    "site_padded": [
+     2048,
+     517,
+     261,
+     133,
+     69
+    ],
+    "scan": [
+     2048,
+     532,
+     190,
+     98,
+     52
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 517,
+     "k": 2
+    },
+    {
+     "width": 260,
+     "k": 2
+    },
+    {
+     "width": 132,
+     "k": 2
+    },
+    {
+     "width": 68,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 4,
+     "mirror_exact": 517,
+     "site_floor": 517,
+     "site_padded": 517,
+     "scan": 532
+    },
+    {
+     "width": 517,
+     "k": 2,
+     "mirror_exact": 260,
+     "site_floor": 260,
+     "site_padded": 261,
+     "scan": 262
+    },
+    {
+     "width": 260,
+     "k": 2,
+     "mirror_exact": 132,
+     "site_floor": 132,
+     "site_padded": 132,
+     "scan": 133
+    },
+    {
+     "width": 132,
+     "k": 2,
+     "mirror_exact": 68,
+     "site_floor": 68,
+     "site_padded": 68,
+     "scan": 69
+    },
+    {
+     "width": 68,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Sa1cea9a98a33/site_policy.json",
+   "sha256": "bde1053b23ca13e7334bfdad739daea893a94c69c67dc1ffed75c1b14c678d76",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     364,
+     184,
+     94
+    ],
+    "site_floor": [
+     2048,
+     364,
+     184,
+     94
+    ],
+    "site_padded": [
+     2048,
+     363,
+     184,
+     94
+    ],
+    "scan": [
+     2048,
+     385,
+     140,
+     73
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 2
+    },
+    {
+     "width": 184,
+     "k": 2
+    },
+    {
+     "width": 94,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 364,
+     "site_floor": 364,
+     "site_padded": 363,
+     "scan": 385
+    },
+    {
+     "width": 364,
+     "k": 2,
+     "mirror_exact": 184,
+     "site_floor": 184,
+     "site_padded": 184,
+     "scan": 185
+    },
+    {
+     "width": 184,
+     "k": 2,
+     "mirror_exact": 94,
+     "site_floor": 94,
+     "site_padded": 94,
+     "scan": 95
+    },
+    {
+     "width": 94,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Sa2ac31c65f2c/site_policy.json",
+   "sha256": "306bb67055a9a30f7935338f89564b958c808dead4d1eb50fa0c2b5478e61d23",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     364,
+     184,
+     94
+    ],
+    "site_floor": [
+     2048,
+     364,
+     184,
+     94
+    ],
+    "site_padded": [
+     2048,
+     363,
+     184,
+     94
+    ],
+    "scan": [
+     2048,
+     382,
+     138,
+     72
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 2
+    },
+    {
+     "width": 184,
+     "k": 2
+    },
+    {
+     "width": 94,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 364,
+     "site_floor": 364,
+     "site_padded": 363,
+     "scan": 382
+    },
+    {
+     "width": 364,
+     "k": 2,
+     "mirror_exact": 184,
+     "site_floor": 184,
+     "site_padded": 184,
+     "scan": 185
+    },
+    {
+     "width": 184,
+     "k": 2,
+     "mirror_exact": 94,
+     "site_floor": 94,
+     "site_padded": 94,
+     "scan": 95
+    },
+    {
+     "width": 94,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Sa529d517e43d/site_policy.json",
+   "sha256": "2c8c948aaec4de0b3c9b457e1e84920f3a31e6eec3ec1882e5b9ec48cda0d763",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     360,
+     182,
+     93,
+     48
+    ],
+    "site_floor": [
+     2048,
+     360,
+     182,
+     93,
+     48
+    ],
+    "site_padded": [
+     2048,
+     359,
+     182,
+     93,
+     49
+    ],
+    "scan": [
+     2048,
+     380,
+     138,
+     72,
+     39
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 360,
+     "k": 2
+    },
+    {
+     "width": 182,
+     "k": 2
+    },
+    {
+     "width": 93,
+     "k": 2
+    },
+    {
+     "width": 48,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 360,
+     "site_floor": 360,
+     "site_padded": 359,
+     "scan": 380
+    },
+    {
+     "width": 360,
+     "k": 2,
+     "mirror_exact": 182,
+     "site_floor": 182,
+     "site_padded": 182,
+     "scan": 183
+    },
+    {
+     "width": 182,
+     "k": 2,
+     "mirror_exact": 93,
+     "site_floor": 93,
+     "site_padded": 93,
+     "scan": 94
+    },
+    {
+     "width": 93,
+     "k": 2,
+     "mirror_exact": 48,
+     "site_floor": 48,
+     "site_padded": 49,
+     "scan": 50
+    },
+    {
+     "width": 48,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Sb16118309fe5/site_policy.json",
+   "sha256": "ed313ef84ebe9482b0c045a8196e6e50788cbdac92f01d413d365a811ae51ad3",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     364,
+     184,
+     94,
+     49
+    ],
+    "site_floor": [
+     2048,
+     364,
+     184,
+     94,
+     49
+    ],
+    "site_padded": [
+     2048,
+     363,
+     184,
+     94,
+     49
+    ],
+    "scan": [
+     2048,
+     382,
+     138,
+     72,
+     39
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 364,
+     "k": 2
+    },
+    {
+     "width": 184,
+     "k": 2
+    },
+    {
+     "width": 94,
+     "k": 2
+    },
+    {
+     "width": 49,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 364,
+     "site_floor": 364,
+     "site_padded": 363,
+     "scan": 382
+    },
+    {
+     "width": 364,
+     "k": 2,
+     "mirror_exact": 184,
+     "site_floor": 184,
+     "site_padded": 184,
+     "scan": 185
+    },
+    {
+     "width": 184,
+     "k": 2,
+     "mirror_exact": 94,
+     "site_floor": 94,
+     "site_padded": 94,
+     "scan": 95
+    },
+    {
+     "width": 94,
+     "k": 2,
+     "mirror_exact": 49,
+     "site_floor": 49,
+     "site_padded": 49,
+     "scan": 50
+    },
+    {
+     "width": 49,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Sb354b13c54ab/site_policy.json",
+   "sha256": "3234ffabafc160eb2c55c1c952e101d5c876a6919303ca9745865de65ad967ec",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_floor": [
+     2048,
+     354,
+     179,
+     91
+    ],
+    "site_padded": [
+     2048,
+     354,
+     179,
+     92
+    ],
+    "scan": [
+     2048,
+     369,
+     132,
+     69
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 354,
+     "k": 2
+    },
+    {
+     "width": 179,
+     "k": 2
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 354,
+     "site_floor": 354,
+     "site_padded": 354,
+     "scan": 369
+    },
+    {
+     "width": 354,
+     "k": 2,
+     "mirror_exact": 179,
+     "site_floor": 179,
+     "site_padded": 179,
+     "scan": 180
+    },
+    {
+     "width": 179,
+     "k": 2,
+     "mirror_exact": 91,
+     "site_floor": 91,
+     "site_padded": 92,
+     "scan": 93
+    },
+    {
+     "width": 91,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Sb756111e4055/site_policy.json",
+   "sha256": "5afb6122eb1ffe0fbe107d1a1487c2ea1335229284f55f190a9022a5674d2a60",
+   "mode": "PhaseTripleProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     374,
+     189,
+     96,
+     50
+    ],
+    "site_floor": [
+     2048,
+     374,
+     189,
+     96,
+     50
+    ],
+    "site_padded": [
+     2048,
+     373,
+     189,
+     97,
+     51
+    ],
+    "scan": [
+     2048,
+     398,
+     122,
+     66,
+     38
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 374,
+     "k": 2
+    },
+    {
+     "width": 189,
+     "k": 2
+    },
+    {
+     "width": 96,
+     "k": 2
+    },
+    {
+     "width": 50,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 374,
+     "site_floor": 374,
+     "site_padded": 373,
+     "scan": 398
+    },
+    {
+     "width": 374,
+     "k": 2,
+     "mirror_exact": 189,
+     "site_floor": 189,
+     "site_padded": 189,
+     "scan": 192
+    },
+    {
+     "width": 189,
+     "k": 2,
+     "mirror_exact": 96,
+     "site_floor": 96,
+     "site_padded": 97,
+     "scan": 100
+    },
+    {
+     "width": 96,
+     "k": 2,
+     "mirror_exact": 50,
+     "site_floor": 50,
+     "site_padded": 50,
+     "scan": 53
+    },
+    {
+     "width": 50,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Sba5f50010bd4/site_policy.json",
+   "sha256": "20395ea67d4da2510557abf201efb07d99811e03ccb07c771799d54b7d5c5024",
+   "mode": "PhaseTripleProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     375,
+     189,
+     96,
+     50
+    ],
+    "site_floor": [
+     2048,
+     375,
+     189,
+     96,
+     50
+    ],
+    "site_padded": [
+     2048,
+     374,
+     189,
+     97,
+     51
+    ],
+    "scan": [
+     2048,
+     398,
+     122,
+     66,
+     38
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 6
+    },
+    {
+     "width": 375,
+     "k": 2
+    },
+    {
+     "width": 189,
+     "k": 2
+    },
+    {
+     "width": 96,
+     "k": 2
+    },
+    {
+     "width": 50,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 6,
+     "mirror_exact": 375,
+     "site_floor": 375,
+     "site_padded": 374,
+     "scan": 398
+    },
+    {
+     "width": 375,
+     "k": 2,
+     "mirror_exact": 189,
+     "site_floor": 189,
+     "site_padded": 190,
+     "scan": 193
+    },
+    {
+     "width": 189,
+     "k": 2,
+     "mirror_exact": 96,
+     "site_floor": 96,
+     "site_padded": 97,
+     "scan": 100
+    },
+    {
+     "width": 96,
+     "k": 2,
+     "mirror_exact": 50,
+     "site_floor": 50,
+     "site_padded": 50,
+     "scan": 53
+    },
+    {
+     "width": 50,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Scc866e679f67/site_policy.json",
+   "sha256": "17b7271d7fb34a83ccbf551396bc3a9da366cf8c268b4a91fe62df9424819286",
+   "mode": "PhaseProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     421,
+     212,
+     108,
+     56
+    ],
+    "site_floor": [
+     2048,
+     421,
+     212,
+     108,
+     56
+    ],
+    "site_padded": [
+     2048,
+     419,
+     212,
+     108,
+     56
+    ],
+    "scan": [
+     2048,
+     449,
+     162,
+     84,
+     45
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 5
+    },
+    {
+     "width": 421,
+     "k": 2
+    },
+    {
+     "width": 212,
+     "k": 2
+    },
+    {
+     "width": 108,
+     "k": 2
+    },
+    {
+     "width": 56,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 5,
+     "mirror_exact": 421,
+     "site_floor": 421,
+     "site_padded": 419,
+     "scan": 449
+    },
+    {
+     "width": 421,
+     "k": 2,
+     "mirror_exact": 212,
+     "site_floor": 212,
+     "site_padded": 213,
+     "scan": 214
+    },
+    {
+     "width": 212,
+     "k": 2,
+     "mirror_exact": 108,
+     "site_floor": 108,
+     "site_padded": 108,
+     "scan": 109
+    },
+    {
+     "width": 108,
+     "k": 2,
+     "mirror_exact": 56,
+     "site_floor": 56,
+     "site_padded": 56,
+     "scan": 57
+    },
+    {
+     "width": 56,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Se1cc13af8310/site_policy.json",
+   "sha256": "6869daee0411466d9dc95cd715f17d927c1dd779b093df4beb90c73fa63007fe",
+   "mode": "PhaseTripleProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     522,
+     178,
+     63
+    ],
+    "site_floor": [
+     2048,
+     522,
+     178,
+     63
+    ],
+    "site_padded": [
+     2048,
+     522,
+     178,
+     64
+    ],
+    "scan": [
+     2048,
+     533,
+     155,
+     66,
+     39
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 522,
+     "k": 3
+    },
+    {
+     "width": 178,
+     "k": 3
+    },
+    {
+     "width": 63,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 4,
+     "mirror_exact": 522,
+     "site_floor": 522,
+     "site_padded": 522,
+     "scan": 533
+    },
+    {
+     "width": 522,
+     "k": 3,
+     "mirror_exact": 178,
+     "site_floor": 178,
+     "site_padded": 178,
+     "scan": 189
+    },
+    {
+     "width": 178,
+     "k": 3,
+     "mirror_exact": 63,
+     "site_floor": 63,
+     "site_padded": 64,
+     "scan": 74
+    },
+    {
+     "width": 63,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  },
+  {
+   "policy": "/Users/joshua/Desktop/github_packages/sto_site/engine/data/forshor_submitted/Sfb4e5db96f73/site_policy.json",
+   "sha256": "d6ce6eddb0604e1fff9d5b7d55edeeccc7473c9f17dc4780616f2cccce6f2f92",
+   "mode": "PhaseTripleProduct",
+   "ladders": {
+    "mirror_exact": [
+     2048,
+     520,
+     179,
+     65
+    ],
+    "site_floor": [
+     2048,
+     520,
+     179,
+     65
+    ],
+    "site_padded": [
+     2048,
+     520,
+     179,
+     65
+    ],
+    "scan": [
+     2048,
+     549,
+     174,
+     78
+    ]
+   },
+   "exact_ladder": [
+    {
+     "width": 2048,
+     "k": 4
+    },
+    {
+     "width": 520,
+     "k": 3
+    },
+    {
+     "width": 179,
+     "k": 3
+    },
+    {
+     "width": 65,
+     "k": null
+    }
+   ],
+   "pointwise_on_exact_chain": [
+    {
+     "width": 2048,
+     "k": 4,
+     "mirror_exact": 520,
+     "site_floor": 520,
+     "site_padded": 520,
+     "scan": 549
+    },
+    {
+     "width": 520,
+     "k": 3,
+     "mirror_exact": 179,
+     "site_floor": 179,
+     "site_padded": 179,
+     "scan": 193
+    },
+    {
+     "width": 179,
+     "k": 3,
+     "mirror_exact": 65,
+     "site_floor": 65,
+     "site_padded": 65,
+     "scan": 80
+    },
+    {
+     "width": 65,
+     "k": null
+    }
+   ],
+   "mirror_eq_site_floor": true,
+   "lean_tight_eq_mirror": true,
+   "lean_scan_eq_site_scan": true,
+   "ok": true
+  }
+ ],
+ "all_ok": true
+}

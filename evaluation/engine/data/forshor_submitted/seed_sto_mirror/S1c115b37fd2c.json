@@ -1,0 +1,138 @@
+{
+ "tool": "check_banded_policy",
+ "started": "2026-10-28T00:19:54.984170+00:00",
+ "policy_sha256": "f3f0d97de614553b276c148a6f21f7b5b2b842889add287da033d371ad85ecab",
+ "target_width": 2048,
+ "seconds": {
+  "stage": 18.19,
+  "data": 17.72,
+  "report": 17.61,
+  "cert": 8.59,
+  "replay:Submitted": 8.07,
+  "replay:SubmittedCert": 9.45
+ },
+ "verdict": "accepted",
+ "mode": "PhaseTripleProduct",
+ "bands": [
+  {
+   "threshold": 2048,
+   "k": 6
+  },
+  {
+   "threshold": 398,
+   "k": 4
+  },
+  {
+   "threshold": 36,
+   "k": 2
+  }
+ ],
+ "workdir": "/Users/joshua/Desktop/github_packages/sto_site/.cache/sto_policy_work",
+ "lean_sha256": {
+  "Submitted.lean": "c13ffee4f071129febe1f9bb560bf27c5f46c2aa688d6188f54abc515207eec9",
+  "SubmittedCert.lean": "fb5e9e3b9883fb8c95484f575aa01ccd188b328736d442295ddfd87bdde0d307"
+ },
+ "report": {
+  "mode": "PhaseTripleProduct",
+  "target_width": 2048,
+  "ladder": [
+   {
+    "width": 2048,
+    "k": 6
+   },
+   {
+    "width": 398,
+    "k": 4
+   },
+   {
+    "width": 120,
+    "k": 2
+   },
+   {
+    "width": 64,
+    "k": 2
+   },
+   {
+    "width": 36,
+    "k": 2
+   },
+   {
+    "width": 22,
+    "k": null
+   }
+  ],
+  "bands": [
+   {
+    "threshold": 2048,
+    "k": 6,
+    "child_width_at_threshold": 398,
+    "check": true,
+    "ops": 109,
+    "points": 16
+   },
+   {
+    "threshold": 398,
+    "k": 4,
+    "child_width_at_threshold": 120,
+    "check": true,
+    "ops": 47,
+    "points": 10
+   },
+   {
+    "threshold": 36,
+    "k": 2,
+    "child_width_at_threshold": 22,
+    "check": true,
+    "ops": 7,
+    "points": 4
+   }
+  ],
+  "check": true,
+  "chain_contracts": true
+ },
+ "replay": {
+  "modules": [
+   {
+    "module": "TableGeneration.RecursiveCost.BandedPolicy.Instances.Submitted",
+    "verdict": "replayed",
+    "decls": 16,
+    "peak_gb": 5.87,
+    "seconds": 8.0
+   },
+   {
+    "module": "TableGeneration.RecursiveCost.BandedPolicy.Instances.SubmittedCert",
+    "verdict": "replayed",
+    "decls": 6,
+    "peak_gb": 6.24,
+    "seconds": 9.4
+   }
+  ],
+  "prefix": "per-module"
+ },
+ "audit": {
+  "accepted": {
+   "axioms": [
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq TableGeneration.PolicyMirror.Instances.Submitted.policy.check Bool.true"
+  },
+  "correct": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "∀ (n : Nat) (φ : Rat) (xs : Fin TableGeneration.PolicyMirror.Instances.Submitted.policy.mode.arity → Int), Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.evalPhase n φ xs) (instHMul.hMul φ (Finset.univ.prod fun s => (xs s).cast))"
+  },
+  "chain_contracts": {
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ],
+   "type": "Eq (TableGeneration.PolicyMirror.Instances.Submitted.policy.chainContracts 2048) Bool.true"
+  }
+ },
+ "finished": "2026-10-28T00:21:18.834280+00:00"
+}

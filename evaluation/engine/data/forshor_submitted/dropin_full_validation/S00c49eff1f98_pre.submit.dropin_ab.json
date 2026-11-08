@@ -1,0 +1,112 @@
+{
+ "policy": "engine/data/forshor_submitted/S00c49eff1f98/site_policy.pre_exact.json",
+ "mode": "PhaseProduct",
+ "delta": 0.01,
+ "board": {
+  "T": 14802303.821122795,
+  "ladder": [
+   {
+    "width": 2048,
+    "k": 6,
+    "table": "293d51de2c05",
+    "digest": "1da7752d1e85"
+   },
+   {
+    "width": 354,
+    "k": 2,
+    "table": "6f7d25984ff8",
+    "digest": "af60631769e8"
+   },
+   {
+    "width": 179,
+    "k": 2,
+    "table": "6f7d25984ff8",
+    "digest": "af60631769e8"
+   },
+   {
+    "width": 91,
+    "k": null,
+    "table": "leaf",
+    "digest": null
+   }
+  ],
+  "widths_notice": null
+ },
+ "sto": {
+  "verdict": "accepted",
+  "stage": null,
+  "reason": null,
+  "exact_ladder": [
+   {
+    "width": 2048,
+    "k": 6
+   },
+   {
+    "width": 354,
+    "k": 2
+   },
+   {
+    "width": 179,
+    "k": 2
+   },
+   {
+    "width": 91,
+    "k": null
+   }
+  ],
+  "exact_ladder_kernel_proved": true,
+  "seconds": 205.9,
+  "peak_gb": 6.59,
+  "wall_s": 205.9
+ },
+ "forshor": {
+  "verdict": "verified",
+  "tree": "/Users/joshua/Desktop/github_packages/sto_site/.cache/forshor_dropin_ab",
+  "commit": "10fe620",
+  "seconds": {
+   "stage": 27.0,
+   "waited_for_lean_slot": 0.0,
+   "lean": 358.6,
+   "python": 0.1,
+   "price": 0.4
+  },
+  "wall_s": 394.5,
+  "full_run_T": 3680272741533.747,
+  "T_document": 3680272741533.747,
+  "T_converted_policy": 3680272741533.747
+ },
+ "agreement": {
+  "bands": true,
+  "price": true,
+  "submitted_bands": [
+   [
+    2048,
+    6
+   ],
+   [
+    364,
+    4
+   ],
+   [
+    102,
+    2
+   ]
+  ],
+  "forshor_bands": [
+   [
+    2048,
+    6
+   ],
+   [
+    364,
+    4
+   ],
+   [
+    102,
+    2
+   ]
+  ]
+ },
+ "verdict": "accepted",
+ "wall_s": 609.9
+}

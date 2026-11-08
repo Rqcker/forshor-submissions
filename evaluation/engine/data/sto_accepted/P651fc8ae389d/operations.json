@@ -1,0 +1,109 @@
+{
+ "policy_id": "P651fc8ae389d",
+ "source": "Lean (TableGeneration.Policies.Accepted.P651fc8ae389d)",
+ "targets": [
+  {
+   "mode": "PhaseProduct",
+   "k": 3,
+   "generated_points": [
+    "0",
+    "inf",
+    "-1",
+    "1",
+    "1/2"
+   ],
+   "point_order": [
+    "0",
+    "inf",
+    "-1",
+    "1",
+    "1/2"
+   ],
+   "operations": [
+    [
+     "phaseProduct",
+     0
+    ],
+    [
+     "phaseProduct",
+     2
+    ],
+    [
+     "addScaled",
+     0,
+     1,
+     -1,
+     0
+    ],
+    [
+     "addScaled",
+     2,
+     0,
+     1,
+     0
+    ],
+    [
+     "phaseProduct",
+     2
+    ],
+    [
+     "addScaled",
+     0,
+     1,
+     1,
+     0
+    ],
+    [
+     "addScaled",
+     2,
+     1,
+     1,
+     1
+    ],
+    [
+     "phaseProduct",
+     2
+    ],
+    [
+     "addScaled",
+     1,
+     0,
+     1,
+     1
+    ],
+    [
+     "addScaled",
+     2,
+     0,
+     1,
+     0
+    ],
+    [
+     "addScaled",
+     2,
+     1,
+     1,
+     0
+    ],
+    [
+     "phaseProduct",
+     2
+    ],
+    [
+     "addScaled",
+     2,
+     1,
+     -1,
+     1
+    ],
+    [
+     "addScaled",
+     1,
+     0,
+     -1,
+     1
+    ]
+   ]
+  }
+ ]
+}

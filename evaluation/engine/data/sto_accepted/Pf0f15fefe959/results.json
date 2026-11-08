@@ -1,0 +1,28 @@
+{
+ "benchmark": {
+  "weights": {
+   "arithmetic_operation_count": 1,
+   "parallel_phase_product_layer_count": 5
+  }
+ },
+ "results": [
+  {
+   "mode": "PhaseProduct",
+   "k": 3,
+   "arithmetic_operation_count": 11,
+   "parallel_phase_product_layer_count": 2,
+   "phase_product_count": 5,
+   "total_operation_count": 16,
+   "weighted_cost": 21
+  },
+  {
+   "mode": "PhaseProduct",
+   "k": 5,
+   "arithmetic_operation_count": 43,
+   "parallel_phase_product_layer_count": 4,
+   "phase_product_count": 9,
+   "total_operation_count": 52,
+   "weighted_cost": 63
+  }
+ ]
+}
