@@ -38,8 +38,8 @@ abbrev faultyTable : PolicyTable := ⟨2, [Point.int 0, Point.frac 0, Point.int 
 /-- Declares `0, 1, ∞`: the order `ops` consumes. -/
 abbrev fixedTable : PolicyTable := ⟨2, [Point.int 0, Point.int 1, Point.frac 0], ops⟩
 
-def faulty : BandedPolicy := ⟨.PhaseProduct, [⟨20, faultyTable⟩]⟩
-def fixed : BandedPolicy := ⟨.PhaseProduct, [⟨20, fixedTable⟩]⟩
+def faulty : BandedPolicy := { mode := .PhaseProduct, bands := [⟨20, faultyTable⟩] }
+def fixed : BandedPolicy := { mode := .PhaseProduct, bands := [⟨20, fixedTable⟩] }
 -- Lean v4.36 port: `faultyTable` and `fixedTable` are `abbrev` (were `def`, same values) so that
 -- tactics, which now check goals at reducible/instances transparency, see `….k = 2` (the
 -- literals in this file are `Register 2`).

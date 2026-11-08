@@ -63,6 +63,9 @@ structure Band where
 structure BandedPolicy where
   mode : ProductMode
   bands : List Band
+  /-- How a negation is built and charged (ForShor `Shor.NegationMethod`); one qubit unless asked.
+  `toShorPolicySubmission` copies it. -/
+  negation : Shor.NegationMethod := .oneQubit
 
 namespace PolicyTable
 

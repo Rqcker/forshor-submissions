@@ -31,6 +31,25 @@ for **table** submissions. It also defines top-level packages named `tcost` and 
 code*, so the two must never be imported in one process. Nothing here is wired into a workflow yet; the old path is
 untouched and its golden tests still apply to it. Cutover to this engine comes with policy intake.
 
+## Negation method (ForShor swap 002)
+
+A ForShor policy carries `negation` = `oneQubit` (default) or `scratch`. Stage 5 of `harness/forshor_verify.py` prices with the
+method of the document Lean printed (`fullalg/l2q_full` through `site_engine/fullalg.py`: `oneQubit` -> `gidney_circuit`, `scratch`
+-> `legacy`, `cost_conventions.NEGATION_IMPL`), and `check_negation` rejects a printed method that differs from the `negation`
+key of the submitted policy JSON (no key = `oneQubit`). `paper_model/` and `forshor_qualtran/` do not price stage 5 and are
+unchanged. `DEFAULT_NEGATE` is `gidney_circuit` (= `oneQubit`, as in ForShor eb00c5a, the export branch and the L2Q package) and
+`forshor_verify.REQUIRE_PRINTED_NEGATION` is true: since the pin is eb00c5a every printed document carries `negation`, so a document
+without it comes from an older tree (6d55ad9 / 10fe620, Cuccaro charge = `scratch`) and is an error. The default is consulted only for
+a submitted policy JSON without the key (= `oneQubit`). The harness's `.cache/forshor_latest_build` is a ForShor tree at 21e129a (the merge commit of ForShor PR #80, containing #79's eb00c5a) with
+`forshor_policy_submission` built; the 10fe620 tree it replaced is refused by `forshor_verify` (kept aside as `forshor_latest_build_10fe620_stale`).
+`$FORSHOR_BUILD` or `--forshor` points the harness at another tree.
+
+What did **not** move, on purpose: `paper_model/` reproduces the paper's printed 2.31e12 T (the Cuccaro-era negation is part of that
+number), `../estimator/` is the pinned `forshor-resource-estimation` copy the table pipeline runs ("no estimator equations changed", see
+`UPSTREAM.json`), and `tcost/` (here and in `../estimator/`) prices a table's `negate` op as Qualtran's `Negate`, the headline tier, with ForShor's
+Lean charge as the cross-check in `fullalg/`. None of them prices stage 5, and the seed's PhaseProduct and PhaseTripleProduct boards do not
+move because no listed table negates. Porting any of them would change a published number or a pinned upstream, so it is a decision of its own.
+
 ## Run
 
 ```sh

@@ -57,7 +57,7 @@ LEAVES = ("grid", "merged_cphase", "product")
 ADDERS = ("qualtran", "cuccaro")
 NEGSRC = ("subtract", "negate_add_negate")
 #: The negation subroutine's cost convention.
-#:   `gidney_circuit` (the DEFAULT): complement plus Gidney's one-clean-ancilla increment gate, priced by the counts of the explicit
+#:   `gidney_circuit` (ForShor `oneQubit`; the default, see DEFAULT_NEGATE): complement plus Gidney's one-clean-ancilla increment gate, priced by the counts of the explicit
 #:     circuit built and simulated in `bloqs/gidney_increment.py` (Toffoli 12w-28 even / 10w-18 odd, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1,
 #:     one clean qubit): exactly what ForShor's `negateResources` charges (the `oneQubit` NegationMethod, `negateChargeAt`).
 #:   `legacy`: a `w`-bit constant-one register plus a Cuccaro adder (`2w-3` Toffoli, `w+1` clean qubits): ForShor's `scratch` method.
@@ -67,7 +67,28 @@ NEGSRC = ("subtract", "negate_add_negate")
 #: Do not confuse this name with the EPOCH model's `negation: "incrementer"` (export_v2): that label means ForShor's `oneQubit`, i.e.
 #: `gidney_circuit` here (see `export_v2/epoch.py::NEGATION_OF`).
 NEGATE_IMPLS = ("legacy", "incrementer", "gidney_circuit")
+#: The default is `gidney_circuit` (= ForShor `oneQubit`, the default `NegationMethod` of ForShor eb00c5a and later, and the default of
+#: the export branch's engine and of the L2Q package). It is consulted only where a policy names no method: a submitted policy JSON
+#: without a `negation` key (= "oneQubit"), or a bare `negate_impl()` call. It is NEVER the price of a printed document without the
+#: key: such a document comes from a ForShor tree older than eb00c5a (6d55ad9 / 10fe620, whose `negateResources` was the Cuccaro
+#: charge = `scratch`), and `forshor_verify.REQUIRE_PRINTED_NEGATION` makes that a verification failure rather than a guess.
 DEFAULT_NEGATE = "gidney_circuit"
+#: ForShor's policy-level negation method (swap 002: `ShorLoweringPolicy.negation`, key `negation` of `forshor.policy-submission/v1`)
+#: -> the `ConventionSpec.negate` implementation that prices it. `oneQubit` = complement + one-clean-ancilla Gidney increment;
+#: `scratch` = the pre-swap Cuccaro negation against a register of ones.
+NEGATION_IMPL = {"oneQubit": "gidney_circuit", "scratch": "legacy"}
+
+
+def negate_impl(negation=None) -> str:
+    """`ConventionSpec.negate` for a policy's `negation` ("oneQubit" | "scratch"). `None` = the key is absent (a submitted policy
+    JSON: oneQubit, the default): `DEFAULT_NEGATE` (see there). Anything else is refused."""
+    if negation is None:
+        return DEFAULT_NEGATE
+    if not isinstance(negation, str) or negation not in NEGATION_IMPL:
+        raise ValueError(f"negation {negation!r} not in {tuple(NEGATION_IMPL)}")
+    return NEGATION_IMPL[negation]
+
+
 #: The impls whose negation borrows one clean qubit (everything except `legacy`).
 ONE_QUBIT_NEGATE = ("incrementer", "gidney_circuit")
 SYNTHESISERS = ("ross_selinger", "fallback", "mixed_fallback")
@@ -210,7 +231,7 @@ def cuccaro_resources(w: int) -> Dict[str, int]:
 def negate_resources(w: int, impl: str = DEFAULT_NEGATE) -> Dict[str, int]:
     """`negateResources` on a `w`-bit register (ForShor `ResourceModel.lean`).
 
-    ``gidney_circuit`` (the default; what Lean charges): the counts of the explicit circuit of
+    ``gidney_circuit`` (ForShor `oneQubit`; what Lean charges since NegationMethod): the counts of the explicit circuit of
     `bloqs/gidney_increment.py` (Toffoli 12w-28 even / 10w-18 odd, CNOT 17w-22 / 17w-5, X 5w-3 / 5w+1; Lean's
     truncating subtraction, exact for w >= 7, an upper bound below).
     ``legacy``: the Cuccaro adder plus `w + 2` X (ForShor's `scratch` method).
@@ -275,7 +296,7 @@ def _wrap_tc(v: int, w: int) -> int:
 class IncrementerNegate(Bloq):
     """`r <- -r (mod 2^w)` as ForShor's `negateResources` charges it (ForShor `oneQubit`): the complement then Gidney's
     increment gate with ONE clean ancilla, with the counts of `negate_resources(w, impl)`: for `impl = "gidney_circuit"`
-    (the default) the explicit circuit's counts, for `impl = "incrementer"` the SUPERSEDED flat `32 w` Toffoli.
+    the explicit circuit's counts, for `impl = "incrementer"` the SUPERSEDED flat `32 w` Toffoli.
     Classical action declared."""
     w: int
     impl: str = DEFAULT_NEGATE

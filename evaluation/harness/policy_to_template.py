@@ -20,11 +20,17 @@ What a ForShor policy can and cannot say, so the converter refuses rather than a
   * PhaseProduct only (the order-finding circuit has no triple product);
   * 1 < k <= 6 (the template's contract);
   * thresholds strictly decreasing (tcost enforces it too);
+  * `"negation"` (optional, on the policy object): `"oneQubit"` (ForShor's default) or `"scratch"` (`Shor.NegationMethod`, a
+    qubit against T-count choice, swap-002). Absent or `"oneQubit"` writes exactly the template it wrote before the key existed
+    (ForShor's `ShorPolicySubmission.negation` defaults to `.oneQubit`, so no line is needed); `"scratch"` adds one
+    line, `negation := .scratch`, to the `policy` record. Any other value is an error (exit code 2). Needs a ForShor
+    checkout that has `NegationMethod` (PR #79, eb00c5a); UNTESTED against Lean here.
   * a policy re-optimised per width (a decision map: a different table at each width, per phase-product site) cannot be
     written as bands, so it is not a ForShor submission.
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -40,6 +46,35 @@ MAX_K = 6
 
 class TemplateError(ValueError):
     pass
+
+
+class NegationError(TemplateError):
+    """The policy's optional `"negation"` key is not `"oneQubit"` or `"scratch"` (the command line exits with 2)."""
+
+
+#: ForShor `Shor.NegationMethod` (Framework/NegationMethod.lean); `oneQubit` is the `ShorPolicySubmission` default.
+NEGATIONS = ("oneQubit", "scratch")
+
+
+def negation_of(policy: dict) -> "str | None":
+    """The optional `"negation"` key of a policy dict: None when it is absent or names the default (`oneQubit`, which the
+    template leaves to the record's default value), `"scratch"` otherwise. Anything else, null included, is an error."""
+    if "negation" not in policy:
+        return None
+    v = policy["negation"]
+    if not isinstance(v, str) or v not in NEGATIONS:
+        raise NegationError(f'bad negation {v!r}: expected "oneQubit" (the default) or "scratch"')
+    return None if v == "oneQubit" else v
+
+
+def requested_negation(policy: dict) -> str:
+    """The negation method the policy JSON asks for, as ForShor spells it: `"oneQubit"` when the key is absent (the default)."""
+    return negation_of(policy) or "oneQubit"
+
+
+def requested_negation_from_file(path: Path, index: int = 0) -> str:
+    """`requested_negation` of policy `index` of the policy file `path` (the same object `template_from_file` reads)."""
+    return requested_negation(tt.policy_docs(json.loads(Path(path).read_text()))[index])
 
 
 #: ForShor's Lean library name: `FastMultiplication` on `main`, `ForShor` on `qubitCount` (bb2aae0 and later).
@@ -139,7 +174,9 @@ def t{j} : ShorLoweringSetup where
 """
 
 
-def template_text(P: tt.Policy, lib: str = DEFAULT_LIB) -> str:
+def template_text(P: tt.Policy, lib: str = DEFAULT_LIB, negation: "str | None" = None) -> str:
+    """`negation`: None or `"oneQubit"` (the default; no line is written) or `"scratch"` (`negation := .scratch`)."""
+    negation = None if negation is None else negation_of({"negation": negation})
     if P.mode != tt.PAIR:
         raise TemplateError("a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)")
     if not P.bands:
@@ -162,16 +199,24 @@ def template_text(P: tt.Policy, lib: str = DEFAULT_LIB) -> str:
     out = [header(lib)]
     out += [_table_block(j, T) for j, T in enumerate(tables)]
     pairs = ", ".join(f"({t}, t{j})" for t, j in bands)
+    neg_line = "  negation := .scratch\n" if negation else ""
     out.append(f"""
 /-! ===== the policy ===== -/
 
 def policy : ShorPolicySubmission where
   bands := [{pairs}]
   sorted := by decide
-
+{neg_line}
 end PolicySubmission
 """)
     return "".join(out)
+
+
+def template_from_file(path: Path, index: int = 0, lib: str = DEFAULT_LIB) -> str:
+    """The template of policy `index` of the policy file `path`, with that policy object's own `"negation"` key honoured."""
+    docs = tt.policy_docs(json.loads(Path(path).read_text()))
+    pols = tt.checked_policies(docs)
+    return template_text(pols[index], lib, negation_of(docs[index]))
 
 
 def main(argv=None) -> int:
@@ -183,13 +228,16 @@ def main(argv=None) -> int:
     g.add_argument("--lib", choices=LIBS, help=f"ForShor's library name (default {DEFAULT_LIB}, ForShor main)")
     g.add_argument("--forshor", type=Path, help="a ForShor checkout; its library name is read off the tree")
     a = ap.parse_args(argv)
-    pols = tt.load_policies(a.policy)
     try:
         lib = library_of(a.forshor) if a.forshor else (a.lib or DEFAULT_LIB)
-        sys.stdout.write(template_text(pols[a.index], lib))
+        text = template_from_file(a.policy, a.index, lib)
+    except NegationError as e:
+        print(f"cannot write a ForShor policy: {e}", file=sys.stderr)
+        return 2
     except TemplateError as e:
         print(f"cannot write a ForShor policy: {e}", file=sys.stderr)
         return 1
+    sys.stdout.write(text)
     return 0
 
 

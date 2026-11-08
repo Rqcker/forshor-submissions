@@ -100,28 +100,58 @@ This planner charges the exact figure instead (`Model.lean`), and
 exact-below-bound inequality carries over. -/
 
 /-- The companion's recurrence-level arithmetic cost, for one of this
-repository's operations. -/
+repository's operations (the `oneQubit` charge). -/
 def phaseArithmeticOpCost {k : Nat} (W : Nat)
     (op : TableGeneration.Operations.valid_ops k) : Nat :=
   Shor.phaseArithmeticOpCost W (toCompanionOp op)
 
+/-- The same, under a negation method: the companion's `Shor.phaseArithmeticOpCostFor`. -/
+def phaseArithmeticOpCostFor (m : Shor.NegationMethod) {k : Nat} (W : Nat)
+    (op : TableGeneration.Operations.valid_ops k) : Nat :=
+  Shor.phaseArithmeticOpCostFor m W (toCompanionOp op)
+
 /-! ## Gate costs at a bare width -/
 
-/-- `Shor.negateResources` with the register replaced by its width.
+/-- `Shor.negateResourcesFor m` with the register replaced by its width.
 
-This is the companion's body with `ExtReg.width r` substituted by `w`;
-`negateResources_eq_atWidth` below is `rfl`. It exists because the planner is
-indexed by a bare `Nat` and must not pay an `O(w)` register construction per
-cost query. -/
-def negateResourcesAtWidth (w : Nat) : Shor.GateResources :=
-  { x := w
-    toffoli := 32 * w
-    cleanAnc := 1 }
+`m = .oneQubit` (the default) is the companion's `Shor.negateResources` (swap 001: complement plus a
+one-clean-ancilla increment, Gidney 2015) with `ExtReg.width r` substituted by `w`;
+`m = .scratch` is the companion's `Shor.negateResourcesPreSwap` (complement, a clean constant-one
+register and a Cuccaro modulo adder), i.e. the pre-swap charge. `negateResourcesFor_eq_atWidth` is
+`rfl` for both. It exists because the planner is indexed by a bare `Nat` and must not pay an `O(w)`
+register construction per cost query. -/
+def negateResourcesAtWidth (w : Nat) (m : Shor.NegationMethod := .oneQubit) : Shor.GateResources :=
+  match m with
+  | .oneQubit =>
+      { x := Shor.negateXGates w
+        cnot := Shor.negateCnotGates w
+        toffoli := Shor.negateToffoliGates w
+        cleanAnc := 1 }
+  | .scratch =>
+      let a := Shor.cuccaroModAddResources w
+      { h := a.h
+        x := w + a.x + 2
+        cnot := a.cnot
+        toffoli := a.toffoli
+        rz := a.rz
+        cleanAnc := w + a.cleanAnc }
+
+theorem negateResourcesFor_eq_atWidth (m : Shor.NegationMethod) (r : Shor.ExtReg) :
+    Shor.negateResourcesFor m r = negateResourcesAtWidth (Shor.ExtReg.width r) m := by
+  cases m <;> rfl
 
 theorem negateResources_eq_atWidth (r : Shor.ExtReg) :
     Shor.negateResources r = negateResourcesAtWidth (Shor.ExtReg.width r) := rfl
 
-/-- The operative model's `negate` field is a function of width alone. -/
+theorem negateResourcesPreSwap_eq_atWidth (r : Shor.ExtReg) :
+    Shor.negateResourcesPreSwap r = negateResourcesAtWidth (Shor.ExtReg.width r) .scratch := rfl
+
+/-- The operative model's `negate` field, under any method, is a function of width alone. -/
+theorem shorGateResourceModelFor_negate_atWidth (m : Shor.NegationMethod) (r : Shor.ExtReg) :
+    ((Shor.shorGateResourceModelFor m).negate r).totalGates
+      = (negateResourcesAtWidth (Shor.ExtReg.width r) m).totalGates :=
+  congrArg Shor.GateResources.totalGates (negateResourcesFor_eq_atWidth m r)
+
 theorem shorGateCostModel_negate_atWidth (r : Shor.ExtReg) :
     (Shor.negateResources r).totalGates
       = (negateResourcesAtWidth (Shor.ExtReg.width r)).totalGates := rfl
@@ -134,31 +164,45 @@ their own, so quoting them cannot drift from what the companion actually
 charges.
 
 Truncated `Nat` subtraction below `w = 3` is deliberate and matches the
-companion: its definitions are over `Nat` too, and the published Cuccaro formula
-is only claimed for `w >= 3`. -/
+companion: its definitions are over `Nat` too, and the published closed forms are
+only claimed for `w >= 3` (Cuccaro) and `w >= 7` (the one-qubit increment's exact
+counts; below that the companion's closed forms are valid upper bounds). -/
 
 theorem cuccaroModAddResources_totalGates (w : Nat) (hw : 3 <= w) :
     (Shor.cuccaroModAddResources w).totalGates = 9 * w - 16 := by
   show 0 + (2 * w - 6) + (5 * w - 7) + (2 * w - 3) + 0 = 9 * w - 16
   omega
 
-/-- Complement plus the one-clean-ancilla incrementer (modular swap 001):
-`w` NOTs and `32 w` Toffolis, whatever the width. -/
-theorem negateResourcesAtWidth_totalGates (w : Nat) :
-    (negateResourcesAtWidth w).totalGates = 33 * w := by
-  show 0 + w + 0 + 32 * w + 0 = 33 * w
+/-- The pre-swap (`scratch`) negation: `10 w - 14` gates for `w >= 3`. -/
+theorem negateResourcesAtWidth_scratch_totalGates (w : Nat) (hw : 3 <= w) :
+    (negateResourcesAtWidth w .scratch).totalGates = 10 * w - 14 := by
+  show 0 + (w + (2 * w - 6) + 2) + (5 * w - 7) + (2 * w - 3) + 0 = 10 * w - 14
   omega
 
-theorem negateResources_totalGates (r : Shor.ExtReg) :
-    (Shor.negateResources r).totalGates = 33 * Shor.ExtReg.width r := by
-  show 0 + Shor.ExtReg.width r + 0 + 32 * Shor.ExtReg.width r + 0 = 33 * Shor.ExtReg.width r
-  omega
+/-- The one-qubit negation: `34 w - 53` gates for even `w >= 4`, `32 w - 22` for odd `w >= 3`
+(the sum of the companion's X, CNOT and Toffoli closed forms; no truncation occurs from `w = 3`). -/
+theorem negateResourcesAtWidth_oneQubit_totalGates (w : Nat) (hw : 3 <= w) :
+    (negateResourcesAtWidth w .oneQubit).totalGates
+      = if w % 2 = 0 then 34 * w - 53 else 32 * w - 22 := by
+  show 0 + Shor.negateXGates w + Shor.negateCnotGates w + Shor.negateToffoliGates w + 0 = _
+  unfold Shor.negateXGates Shor.negateCnotGates Shor.negateToffoliGates
+  split_ifs <;> omega
+
+theorem negateResources_totalGates (r : Shor.ExtReg) (hw : 3 <= Shor.ExtReg.width r) :
+    (Shor.negateResources r).totalGates
+      = if Shor.ExtReg.width r % 2 = 0 then 34 * Shor.ExtReg.width r - 53
+        else 32 * Shor.ExtReg.width r - 22 :=
+  negateResourcesAtWidth_oneQubit_totalGates _ hw
+
+theorem negateResourcesPreSwap_totalGates (r : Shor.ExtReg) (hw : 3 <= Shor.ExtReg.width r) :
+    (Shor.negateResourcesPreSwap r).totalGates = 10 * Shor.ExtReg.width r - 14 :=
+  negateResourcesAtWidth_scratch_totalGates _ hw
 
 /-! ## The companion's exact-below-bound facts
 
 Reproductions of the companion's
 `cuccaroModAddResources_totalGates_le_rippleAdderGateBound` and
-`negateResources_totalGates_le_negateGateBound`. They are what makes the two
+`negateResourcesFor_totalGates_le`. They are what makes the two
 cost layers coherent: the operative model never charges more than the recurrence
 layer assumes. -/
 
@@ -167,10 +211,13 @@ theorem cuccaroModAddResources_totalGates_le_rippleAdderGateBound (w : Nat) :
   show 0 + (2 * w - 6) + (5 * w - 7) + (2 * w - 3) + 0 <= 9 * w + 2
   omega
 
-theorem negateResourcesAtWidth_totalGates_le_negateGateBound (w : Nat) :
-    (negateResourcesAtWidth w).totalGates <= w + 32 * w := by
-  show 0 + w + 0 + 32 * w + 0 <= w + 32 * w
-  omega
+/-- A negation, under either method, never costs more than the companion's recurrence-level bound
+`Shor.negateWidthBoundFor m w` (`34 w + 1` for `oneQubit`, `w + rippleAdderGateBound w` for `scratch`). -/
+theorem negateResourcesAtWidth_totalGates_le_negateWidthBound (w : Nat) (m : Shor.NegationMethod) :
+    (negateResourcesAtWidth w m).totalGates <= Shor.negateWidthBoundFor m w := by
+  have h := Shor.negateResourcesFor_totalGates_le m (canonicalExtReg w)
+  rw [Shor.negateGateBoundFor_eq, negateResourcesFor_eq_atWidth, canonicalExtReg_width] at h
+  exact h
 
 /-- Sign extension by `n` bits costs `n` CNOTs, and zero extension is free.
 This is the primitive behind the planner's per-node allocation charge. -/

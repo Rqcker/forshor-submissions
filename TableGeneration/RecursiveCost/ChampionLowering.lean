@@ -59,13 +59,13 @@ base case. This is the quantity comparable to `championLoweredGateCount`.
 
 `fuel` bounds the descent; any `fuel` at least the width is enough, because each
 step strictly contracts. -/
-def forcedPlanGateCount {k : Nat} (ops : Prog k) : Nat → Nat → Nat
+def forcedPlanGateCount (m : Shor.NegationMethod) {k : Nat} (ops : Prog k) : Nat → Nat → Nat
   | 0, width => directSignedPhaseProductGateCount width width
   | fuel + 1, width =>
-      let analysis := analyzeBalancedProgram width ops
+      let analysis := analyzeBalancedProgram width ops m
       if analysis.childWidth < width then
         analysis.arithmeticGateCount +
-          analysis.recursiveCallCount * forcedPlanGateCount ops fuel analysis.childWidth
+          analysis.recursiveCallCount * forcedPlanGateCount m ops fuel analysis.childWidth
       else
         directSignedPhaseProductGateCount width width
 
@@ -73,15 +73,15 @@ def forcedPlanGateCount {k : Nat} (ops : Prog k) : Nat → Nat → Nat
 base case whenever recursing is dearer. This is `chooseAtWidth` restricted to a
 single candidate, and it is what `bestKnownPlan` would report if this champion
 were the only one in the catalog. -/
-def minPlanGateCount {k : Nat} (ops : Prog k) : Nat → Nat → Nat
+def minPlanGateCount (m : Shor.NegationMethod) {k : Nat} (ops : Prog k) : Nat → Nat → Nat
   | 0, width => directSignedPhaseProductGateCount width width
   | fuel + 1, width =>
       let base := directSignedPhaseProductGateCount width width
-      let analysis := analyzeBalancedProgram width ops
+      let analysis := analyzeBalancedProgram width ops m
       if analysis.childWidth < width then
         let recursed :=
           analysis.arithmeticGateCount +
-            analysis.recursiveCallCount * minPlanGateCount ops fuel analysis.childWidth
+            analysis.recursiveCallCount * minPlanGateCount m ops fuel analysis.childWidth
         if recursed < base then recursed else base
       else
         base
@@ -105,7 +105,8 @@ The `phi` argument is the rotation angle. It is carried through into the emitted
 `Phase` gates and does not change how many gates there are, so the differential
 fixes it at `1` (that is, `π`), which is what `forshor_emit pp k n 1` uses. -/
 def loweredPhaseProductGateCount (k : Nat) (hk : k >= 2)
-    (ops : Prog k) (pts : List Operations.Point) (n : Nat) (phi : Shor.Angle) :
+    (ops : Prog k) (pts : List Operations.Point) (n : Nat) (phi : Shor.Angle)
+    (m : Shor.NegationMethod := .oneQubit) :
     Except String Nat :=
   let companionOps := toCompanionProg ops
   let companionPts := toCompanionPoints pts
@@ -114,7 +115,7 @@ def loweredPhaseProductGateCount (k : Nat) (hk : k >= 2)
     | .error message => .error message
     | .ok (x, z, _ctrl) =>
         if hworkspace : Shor.SignedRecursiveWorkspaceOK companionOps x z then
-          .ok (Shor.LowGate.gateCount Shor.shorGateCostModel
+          .ok (Shor.LowGate.gateCount (Shor.shorGateCostModelFor m)
             (Shor.lowerGate k hk companionOps companionPts hpts
               (Shor.Gate.SignedPhaseProd phi x z) hworkspace))
         else
@@ -131,20 +132,22 @@ and deliberately **not** the companion's `standardLoweringSetup`. The two are
 different tables with different width scans, so a measurement on the standard
 table says nothing about a champion. -/
 def championLoweredGateCount (k : Nat) (hk : k >= 2) (n : Nat)
-    (phi : Shor.Angle := 1) : Except String Nat :=
+    (phi : Shor.Angle := 1) (m : Shor.NegationMethod := .oneQubit) : Except String Nat :=
   loweredPhaseProductGateCount k hk
     (bestKnownGenerate .PhaseProduct k hk)
-    (bestKnownGeneratedPoints .PhaseProduct k) n phi
+    (bestKnownGeneratedPoints .PhaseProduct k) n phi m
 
 /-- The champion's closed-form cost under the companion's stopping rule, at
 balanced width `n`. Comparable, digit for digit, to
 `championLoweredGateCount`. -/
-def championForcedPlanGateCount (k : Nat) (hk : k >= 2) (n : Nat) : Nat :=
-  forcedPlanGateCount (bestKnownGenerate .PhaseProduct k hk) (n + 1) n
+def championForcedPlanGateCount (k : Nat) (hk : k >= 2) (n : Nat)
+    (m : Shor.NegationMethod := .oneQubit) : Nat :=
+  forcedPlanGateCount m (bestKnownGenerate .PhaseProduct k hk) (n + 1) n
 
 /-- The champion's closed-form cost under the planner's own stopping rule. -/
-def championMinPlanGateCount (k : Nat) (hk : k >= 2) (n : Nat) : Nat :=
-  minPlanGateCount (bestKnownGenerate .PhaseProduct k hk) (n + 1) n
+def championMinPlanGateCount (k : Nat) (hk : k >= 2) (n : Nat)
+    (m : Shor.NegationMethod := .oneQubit) : Nat :=
+  minPlanGateCount m (bestKnownGenerate .PhaseProduct k hk) (n + 1) n
 
 /-- The width the champion's table contracts a balanced `n`-bit node to. Below
 the width at which this is `< n`, the companion emits the naive leaf and both
