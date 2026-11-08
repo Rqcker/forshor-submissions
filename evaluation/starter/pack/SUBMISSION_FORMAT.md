@@ -108,7 +108,7 @@ are in the repository's instructions, not here.
 ## 6. Sending it
 
 This pack prices a policy and prepares it for the Lean checks; **it does not submit anything**. **What you submit is one Lean file, `TableGeneration/Submission/Policy.lean`, holding your policy** (section 2; the
-format is `templates/Policy.lean`, and `starter.py template` writes it for a PhaseProduct policy). A pull request may change that file and nothing else; the verifier refuses any other changed file. The submission repository is
+format is `templates/Policy.lean`, and `starter.py template` writes it for a PhaseProduct policy). A pull request may change that file and nothing else. The submission repository is
 `zapatacomputing/forshor-submissions` (private during the sprint; the challenge page's **Participate** dialog has the commands), and its own instructions win over this file. The boards check the Lean file in Lean and price the policy it
 contains with the same engine as `starter.py price`. Whatever you send, quote the `starter.py price` output you got for the same policy as JSON (and, for a full-run policy, the `forshor-doc` output), and name the pack's build date
 (`MANIFEST.json`). The boards' numbers are the ones that count.
