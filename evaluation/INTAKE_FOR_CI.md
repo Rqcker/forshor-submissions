@@ -26,8 +26,8 @@ The epoch's pins are the ones in this repo's `lake-manifest.json` / `lean-toolch
 
 ## What it does, and what comes back
 
-Order: reserved handle and epoch check (before any compute) → normalise the policy → STO mirror at exact widths → ForShor's build and printed document (a PhaseProduct policy whose k are all at most 6, when
-a ForShor tree is given) → price once → publish through the recovery client (a 409 or a transport error re-reads the live state and refreshes only what depends on it).
+Order: reserved handle and epoch check (before any compute) → normalise the policy → STO mirror at exact widths → ForShor's build and printed document (a PhaseProduct policy whose k are all at most 8, when
+a ForShor tree is given; always for a Lean submission) → price once → publish through the recovery client (a 409 or a transport error re-reads the live state and refreshes only what depends on it).
 
 | exit | meaning | `result.json` |
 |---|---|---|
