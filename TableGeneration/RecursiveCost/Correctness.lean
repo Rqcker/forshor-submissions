@@ -35,26 +35,27 @@ specific to this language needs restating. -/
     Companion.updateWidthState state (.phaseProduct index) = state := by
   rfl
 
-@[simp] theorem phaseProgramOverhead_nil {k : Nat} (workingWidth : Nat) :
-    phaseProgramOverhead (k := k) workingWidth [] = 0 := by
+@[simp] theorem phaseProgramOverhead_nil {k : Nat} (workingWidth : Nat)
+    (m : Shor.NegationMethod) :
+    phaseProgramOverhead (k := k) workingWidth [] m = 0 := by
   rfl
 
 @[simp] theorem phaseProgramOverhead_cons {k : Nat}
-    (workingWidth : Nat) (op : valid_ops k) (ops : Prog k) :
-    phaseProgramOverhead workingWidth (op :: ops) =
-      phaseArithmeticOpCost workingWidth op +
-        phaseProgramOverhead workingWidth ops := by
+    (workingWidth : Nat) (op : valid_ops k) (ops : Prog k) (m : Shor.NegationMethod) :
+    phaseProgramOverhead workingWidth (op :: ops) m =
+      phaseArithmeticOpCost workingWidth op m +
+        phaseProgramOverhead workingWidth ops m := by
   rfl
 
 @[simp] theorem analyzeProgram_childWidth {k : Nat}
-    (xWidth zWidth : Nat) (ops : Prog k) :
-    (analyzeProgram xWidth zWidth ops).childWidth =
+    (xWidth zWidth : Nat) (ops : Prog k) (m : Shor.NegationMethod) :
+    (analyzeProgram xWidth zWidth ops m).childWidth =
       nextSignedWidth xWidth zWidth ops := by
   rfl
 
 theorem analyzeProgram_childWidth_pos {k : Nat}
-    (xWidth zWidth : Nat) (ops : Prog k) :
-    0 < (analyzeProgram xWidth zWidth ops).childWidth := by
+    (xWidth zWidth : Nat) (ops : Prog k) (m : Shor.NegationMethod) :
+    0 < (analyzeProgram xWidth zWidth ops m).childWidth := by
   exact nextSignedWidth_pos xWidth zWidth ops
 
 @[simp] theorem PlanResult.base_gateCount (width : Nat) :

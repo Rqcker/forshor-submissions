@@ -8,6 +8,10 @@ Input: the sto_site band shape (one policy), mode must be PhaseTripleProduct:
      "bands": [{"threshold": 2048, "k": 6, "point_order": [...],
                 "operations": [...], "child_width": 398 (optional)}, ...]}
 
+Optional top-level `"negation": "oneQubit" | "scratch"` (see policy_json_to_lean.py): `"scratch"` adds
+`negation := .scratch` to `def policy : PTPPolicy` (data part; the policy prices its census, peak and clean
+ancillas under it); absent or `"oneQubit"` changes nothing.
+
 `child_width` (optional, per band) is a width the caller (e.g. the site's
 pricing) assumes for that band at its own threshold; when present the
 certificate proves it equals the PTP-derived child width, by `decide +kernel`.
@@ -33,7 +37,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from policy_json_to_lean import IDENT, PolicyError, nat, op_lean, point_lean  # noqa: E402
+from policy_json_to_lean import IDENT, PolicyError, nat, negation_of, op_lean, point_lean  # noqa: E402
 
 NS = "TableGeneration.PTP.Instances"
 
@@ -44,6 +48,10 @@ def render(policy: dict, module: str, target: int | None, part: str, data_module
         raise PolicyError("module name must be a Lean identifier starting upper-case")
     if policy.get("mode") != "PhaseTripleProduct":
         raise PolicyError(f"mode must be PhaseTripleProduct, got {policy.get('mode')!r}")
+    negation = negation_of(policy)
+    # The census statements are about the circuit's resources in the policy's own model. The default model is
+    # written out as before (so default policies generate the same bytes); `policy.resourceModel` is defeq to it.
+    model = "shorGateResourceModel" if negation is None else "policy.resourceModel"
     bands = policy.get("bands")
     if not isinstance(bands, list) or not bands:
         raise PolicyError("bands must be a nonempty list")
@@ -82,7 +90,10 @@ def render(policy: dict, module: str, target: int | None, part: str, data_module
     if part != "cert":
         out.append("/-- The PTP policy: bands widest first. -/")
         out.append("def policy : PTPPolicy where")
-        out.append("  bands := [" + ", ".join(f"⟨{nat(b['threshold'])}, band{i}⟩" for i, b in enumerate(bands)) + "]\n")
+        out.append("  bands := [" + ", ".join(f"⟨{nat(b['threshold'])}, band{i}⟩" for i, b in enumerate(bands)) + "]")
+        if negation is not None:
+            out.append("  negation := .scratch")
+        out.append("")
         out.append(f"end {NS}.{module}\n")
         return "\n".join(out)
     out.append(f"open {NS}.{data_module} Shor\n")
@@ -138,7 +149,7 @@ def render(policy: dict, module: str, target: int | None, part: str, data_module
                 out.append("          Complex.exp (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *")
                 out.append("            (((extToInt (X 0) b : ℤ) : ℂ) * ((extToInt (X 1) b : ℤ) : ℂ) *")
                 out.append("              ((extToInt (X 2) b : ℤ) : ℂ))) • qs.ket b) ∧")
-                out.append("      (∀ φ : Angle, let R := LowGate.resources shorGateResourceModel (G φ)")
+                out.append(f"      (∀ φ : Angle, let R := LowGate.resources {model} (G φ)")
                 out.append(f"        R.rz = (ptpResourcesX policy {N}).rz ∧ R.toffoli = (ptpResourcesX policy {N}).toffoli ∧")
                 out.append(f"          R.x = (ptpResourcesX policy {N}).x ∧ R.h = (ptpResourcesX policy {N}).h ∧")
                 out.append(f"          R.cnot = ptpCnotFullX policy {N} ∧ adjToffCount (G φ) = ptpAndDagX policy {N} ∧")
@@ -181,7 +192,7 @@ def render(policy: dict, module: str, target: int | None, part: str, data_module
         out.append("          Complex.exp (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *")
         out.append("            (((extToInt (X 0) b : ℤ) : ℂ) * ((extToInt (X 1) b : ℤ) : ℂ) *")
         out.append("              ((extToInt (X 2) b : ℤ) : ℂ))) • qs.ket b) ∧")
-        out.append("      (∀ φ : Angle, let R := LowGate.resources shorGateResourceModel (G φ)")
+        out.append(f"      (∀ φ : Angle, let R := LowGate.resources {model} (G φ)")
         out.append("        R.rz = (ptpResourcesX policy n).rz ∧ R.toffoli = (ptpResourcesX policy n).toffoli ∧")
         out.append("          R.x = (ptpResourcesX policy n).x ∧ R.h = (ptpResourcesX policy n).h ∧")
         out.append("          R.cnot = ptpCnotFullX policy n ∧ adjToffCount (G φ) = ptpAndDagX policy n ∧")
@@ -230,7 +241,7 @@ def render(policy: dict, module: str, target: int | None, part: str, data_module
     out.append("          Complex.exp (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *")
     out.append("            (((extToInt (X 0) b : ℤ) : ℂ) * ((extToInt (X 1) b : ℤ) : ℂ) *")
     out.append("              ((extToInt (X 2) b : ℤ) : ℂ))) • qs.ket b) ∧")
-    out.append("      (∀ φ : Angle, let R := LowGate.resources shorGateResourceModel (G φ)")
+    out.append(f"      (∀ φ : Angle, let R := LowGate.resources {model} (G φ)")
     out.append("        R.rz = (ptpResources policy n).rz ∧ R.toffoli = (ptpResources policy n).toffoli ∧")
     out.append("          R.x = (ptpResources policy n).x ∧ R.h = (ptpResources policy n).h ∧")
     out.append("          R.cnot = ptpCnotFull policy n ∧ adjToffCount (G φ) = ptpAndDag policy n ∧")

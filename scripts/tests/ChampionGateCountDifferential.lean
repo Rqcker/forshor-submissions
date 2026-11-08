@@ -8,7 +8,7 @@ comparison with no tolerance, against the number the companion's compiler
 actually produces:
 
 ```
-Shor.LowGate.gateCount Shor.shorGateCostModel
+Shor.LowGate.gateCount (Shor.shorGateCostModelFor m)
   (Shor.lowerGate k hk ops pts hpts (Shor.Gate.SignedPhaseProd phi x z) hws)
 ```
 
@@ -89,11 +89,11 @@ def header : String :=
   " k  width  child      closed-form   planner-min   lowered-real"
 
 /-- Price one champion at one width both ways and insist the two agree. -/
-def checkAt (k : Nat) (hk : k >= 2) (width : Nat) : IO Row := do
-  let forced := championForcedPlanGateCount k hk width
-  let planner := championMinPlanGateCount k hk width
+def checkAt (m : Shor.NegationMethod) (k : Nat) (hk : k >= 2) (width : Nat) : IO Row := do
+  let forced := championForcedPlanGateCount k hk width m
+  let planner := championMinPlanGateCount k hk width m
   let childWidth := championChildWidth k hk width
-  match championLoweredGateCount k hk width with
+  match championLoweredGateCount k hk width 1 m with
   | .error message =>
       throw (IO.userError
         s!"could not lower the k={k} champion at width {width}: {message}")
@@ -117,10 +117,10 @@ def parseNat (raw : String) : IO Nat :=
   | none => throw (IO.userError s!"not a width: {raw}")
 
 /-- `--k <k> <width>...`, or nothing for the default sweep. -/
-def run (k : Nat) (hk : k >= 2) (widths : List Nat) : IO Nat := do
+def run (m : Shor.NegationMethod) (k : Nat) (hk : k >= 2) (widths : List Nat) : IO Nat := do
   let mut checked := 0
   for width in widths do
-    let row ← checkAt k hk width
+    let row ← checkAt m k hk width
     IO.println row.render
     checked := checked + 1
   pure checked
@@ -129,7 +129,20 @@ end TableGeneration.RecursiveCost.ChampionDifferential
 
 open TableGeneration.RecursiveCost.ChampionDifferential
 
+/-- `--negation=oneQubit|scratch` anywhere in the arguments (default `oneQubit`; `scratch` reproduces the
+pre-swap numbers of ForShor 6d55ad9, the regression oracle). -/
+def takeNegation (args : List String) : IO (Shor.NegationMethod × List String) := do
+  match args.find? (fun a => a.startsWith "--negation=") with
+  | none => pure (.oneQubit, args)
+  | some a =>
+      let rest := args.filter (fun x => x != a)
+      match (a.drop "--negation=".length).toString with
+      | "oneQubit" => pure (.oneQubit, rest)
+      | "scratch" => pure (.scratch, rest)
+      | other => throw (IO.userError s!"--negation={other}: expected oneQubit or scratch")
+
 def main (args : List String) : IO Unit := do
+  let (m, args) ← takeNegation args
   IO.println header
   let checked ←
     match args with
@@ -138,14 +151,14 @@ def main (args : List String) : IO Unit := do
         let widths ← rawWidths.mapM parseNat
         let widths := if widths.isEmpty then defaultWidths k else widths
         match k with
-        | 2 => run 2 (by decide) widths
-        | 3 => run 3 (by decide) widths
+        | 2 => run m 2 (by decide) widths
+        | 3 => run m 3 (by decide) widths
         | _ =>
             throw (IO.userError
               s!"k={k} is out of reach: the lowered term does not finish above k=3")
     | [] => do
-        let atTwo ← run 2 (by decide) (defaultWidths 2)
-        let atThree ← run 3 (by decide) (defaultWidths 3)
+        let atTwo ← run m 2 (by decide) (defaultWidths 2)
+        let atThree ← run m 3 (by decide) (defaultWidths 3)
         pure (atTwo + atThree)
     | _ =>
         throw (IO.userError

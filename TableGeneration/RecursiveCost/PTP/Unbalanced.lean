@@ -201,10 +201,11 @@ theorem evalL_pad_ptp_ket (h : PadOK X d) {n : ℕ} (hn : ∀ s, (X s).width + d
 
 end PadCorrect
 
-theorem resources_padGate (d : Fin 3 → ℕ) (X : Fin 3 → ExtReg) :
-    let R := LowGate.resources shorGateResourceModel (padGate X d)
+theorem resources_padGate (P : PTPPolicy) (d : Fin 3 → ℕ) (X : Fin 3 → ExtReg) :
+    let R := LowGate.resources P.resourceModel (padGate X d)
     R.rz = 0 ∧ R.toffoli = 0 ∧ R.x = 0 ∧ R.h = 0 ∧ R.cnot = d 0 + d 1 + d 2 := by
-  simp [padGate, LowGate.resources, GateResources.seq, shorGateResourceModel]
+  simp [padGate, LowGate.resources, GateResources.seq, PTPPolicy.resourceModel,
+    shorGateResourceModelFor, shorGateResourceModel]
   omega
 
 
@@ -214,7 +215,7 @@ theorem resources_padGate (d : Fin 3 → ℕ) (X : Fin 3 → ExtReg) :
 the extensions (`2 (d₀ + d₁ + d₂)`: extend and undo); `usedQubits` at most `3n + workspace` (the
 framework's `cleanAnc` scratch is not included). Vacuous if some operand has width `0`. -/
 def PTPPadExactCensus (P : PTPPolicy) (n : ℕ) (d : Fin 3 → ℕ) (G : LowGate) : Prop :=
-  let R := LowGate.resources shorGateResourceModel G
+  let R := LowGate.resources P.resourceModel G
   R.rz = (ptpResourcesX P n).rz ∧ R.toffoli = (ptpResourcesX P n).toffoli ∧
     R.x = (ptpResourcesX P n).x ∧ R.h = (ptpResourcesX P n).h ∧
     R.cnot = ptpCnotFullX P n + 2 * (d 0 + d 1 + d 2) ∧ adjToffCount G = ptpAndDagX P n ∧
@@ -260,11 +261,11 @@ theorem ptp_pad_lowerExact_correct {qs : QSemantics} [RegEncoding qs.Basis] [Low
           b hb) hψ
   · intro φ
     obtain ⟨hr1, hr2, hr3, hr4, hr5, hr6, hr7⟩ := hR φ
-    obtain ⟨p1, p2, p3, p4, p5⟩ := resources_padGate d X
-    have hRc : LowGate.resources shorGateResourceModel (padCtl X d (G φ)) =
-        GateResources.seq (LowGate.resources shorGateResourceModel (padGate X d))
-          (GateResources.seq (LowGate.resources shorGateResourceModel (G φ))
-            (LowGate.resources shorGateResourceModel (padGate X d))) := by
+    obtain ⟨p1, p2, p3, p4, p5⟩ := resources_padGate P d X
+    have hRc : LowGate.resources P.resourceModel (padCtl X d (G φ)) =
+        GateResources.seq (LowGate.resources P.resourceModel (padGate X d))
+          (GateResources.seq (LowGate.resources P.resourceModel (G φ))
+            (LowGate.resources P.resourceModel (padGate X d))) := by
       simp only [padCtl, LowGate.resources]
     have hAc : adjToffCount (padCtl X d (G φ)) = adjToffCount (G φ) := by
       simp [padCtl, padGate, adjToffCount]
