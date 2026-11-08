@@ -210,3 +210,15 @@ def test_the_harness_stage_timeout_is_passed_only_when_asked_for(tmp_path):
     long_ = evidence.run_mirror(PP_POLICY, "pp", tree, tmp_path / "b", stage_timeout=14400)
     argv = long_["record"]["argv"]
     assert argv[argv.index("--timeout") + 1] == "14400"
+
+
+ARGV_STUB = STUB.replace('rec = {"tool": "stub",', 'rec = {"tool": "stub", "argv": args,')
+
+
+def test_fast_is_passed_to_the_ptp_harness_only(tmp_path):
+    ptp = evidence.run_mirror(PTP_POLICY, "ptp", make_tree(tmp_path / "a", stub=ARGV_STUB), tmp_path / "oa", fast=True)
+    assert "--fast" in ptp["record"]["argv"]
+    pp = evidence.run_mirror(PP_POLICY, "pp", make_tree(tmp_path / "b", stub=ARGV_STUB), tmp_path / "ob", fast=True)
+    assert "--fast" not in pp["record"]["argv"], "the PhaseProduct harness has no such option"
+    slow = evidence.run_mirror(PTP_POLICY, "ptp", make_tree(tmp_path / "c", stub=ARGV_STUB), tmp_path / "oc")
+    assert "--fast" not in slow["record"]["argv"], "off by default"

@@ -46,6 +46,7 @@ def main(argv=None) -> int:
     r.add_argument("--timeout", type=int, default=7200, help="seconds before one harness run is killed (default 7200)")
     r.add_argument("--stage-timeout", type=int, default=None, help="the harness's own per-stage limit in seconds (its default is 3600)")
     r.add_argument("--only-digest", action="append", default=[], help="run only the policy with this digest prefix (repeatable)")
+    r.add_argument("--fast", action="store_true", help="PhaseTripleProduct only: skip the interpreted report stage; the kernel certificate proves the ladder")
     e = sub.add_parser("epoch-input"); e.add_argument("out"); e.add_argument("--publisher-commit", required=True)
     e.add_argument("--evidence-dir"); e.add_argument("--archive-commit"); e.add_argument("--updated-at"); e.add_argument("--report")
     q = sub.add_parser("request"); q.add_argument("out"); q.add_argument("--policy", required=True); q.add_argument("--evidence-dir", required=True)
@@ -77,7 +78,7 @@ def main(argv=None) -> int:
                 if a.only_digest and not any(d.startswith(x) for x in a.only_digest):
                     continue
                 _log(f"harness on {d[:16]} ({b}) ...")
-                env = run_mirror(pj, b, Path(a.tree), out, timeout=a.timeout, stage_timeout=a.stage_timeout)
+                env = run_mirror(pj, b, Path(a.tree), out, timeout=a.timeout, stage_timeout=a.stage_timeout, fast=a.fast)
                 _log(f"  verdict: {env['record'].get('verdict')}")
         return 0
     if a.command == "epoch-input":
