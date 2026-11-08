@@ -7,6 +7,8 @@ import site_engine  # noqa: E402,F401  (binds the vendored Qualtran before anyth
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "lean: runs a real submission through the Lean verifier (slow; needs a built STO tree)")
+    config.addinivalue_line("markers", "legacy_negation: pins numbers priced before modular swap 001 (negation = a w-bit constant-one register "
+                                       "plus a Cuccaro adder); the test runs with that negation, which must reproduce them bit for bit")
 
 
 #: Tests of the demo's own page, backend and run.sh. Those are not vendored here (the public page lives in forshor-site),
@@ -42,3 +44,31 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if item.nodeid in NEEDS_DEMO_PAGE:
             item.add_marker(skip)
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _legacy_negation(request):
+    """Run a `legacy_negation` test with the pre-swap negation, and leave nothing behind. `fullalg._price` is cached on its arguments but
+    reads the conventions from module globals, so the cache is cleared on both sides of the change (clearing only before would let a
+    legacy price leak into the next test, and clearing only after would let an earlier price leak into this one)."""
+    if request.node.get_closest_marker("legacy_negation") is None:
+        yield
+        return
+    from site_engine import fullalg as fa
+    names = ("HEADLINE", "GRID_LEAF", "LITERAL_LEAN")
+    saved = {n: getattr(fa, n) for n in names}
+    saved_default = fa.cc.DEFAULT_NEGATE
+    for n in names:
+        setattr(fa, n, saved[n].with_(negate="legacy"))
+    fa.cc.DEFAULT_NEGATE = "legacy"        # swap 002: a price call names its method (`negate_impl(None)` reads this default at call time)
+    fa._price.cache_clear()
+    try:
+        yield
+    finally:
+        for n in names:
+            setattr(fa, n, saved[n])
+        fa.cc.DEFAULT_NEGATE = saved_default
+        fa._price.cache_clear()

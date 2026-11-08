@@ -176,13 +176,23 @@ def distinct(outputs) -> Dict[str, Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------------------------- files
-def template(P: tt.Policy) -> Optional[str]:
+def template(P: tt.Policy, negation: Optional[str] = None) -> Optional[str]:
+    """The ForShor template of P. ``negation``: the policy JSON's `negation` key ("oneQubit"/None: default, "scratch"; swap 002).
+    A `tt.Policy` carries no such key: callers that hold the policy file read it (`_file_negation`); the seeds have none."""
     if P.mode != tt.PAIR:
         return None
     if str(HARNESS) not in sys.path:
         sys.path.insert(0, str(HARNESS))
     from policy_to_template import template_text
-    return template_text(P)
+    return template_text(P, negation=negation)
+
+
+def _file_negation(path: Path) -> str:
+    """The `negation` key of the first policy object of a site policy file (absent: "oneQubit")."""
+    if str(HARNESS) not in sys.path:
+        sys.path.insert(0, str(HARNESS))
+    from policy_to_template import requested_negation_from_file
+    return requested_negation_from_file(path)
 
 
 def _origin(digest: str) -> Dict[str, Any]:
@@ -523,7 +533,8 @@ def verify_one(sid: str, budget: str, limit: int = RUN_LIMIT_S, variant: str = "
     out_root = RUN_ROOT / f"{sid}-{variant}-{budget}"
     forshor = Path(os.environ.get("FORSHOR_BUILD", fv.DEFAULT_FORSHOR))
     mine = tt.load_policies(src)[0]
-    tpl = template(mine).encode()
+    negation = _file_negation(src)                      # the site policy's own key, as `fv.run(from_policy=True)` reads it
+    tpl = template(mine, negation).encode()
     t0 = time.time()
     res: Dict[str, Any] = {"id": sid, "variant": variant, "budget": budget, "max_heartbeats": hb or fv.STOCK_HEARTBEATS,
                            "limit_s": limit, "mem_cap_gb": fv.MEM_CAP_BYTES / (1 << 30),
@@ -548,14 +559,16 @@ def verify_one(sid: str, budget: str, limit: int = RUN_LIMIT_S, variant: str = "
                     "forshor_tree_sha256": fv._tree_digest(forshor), "lean_version": fv._version(["lean", "--version"], forshor),
                     "reference_document": r["forshor"].get("reference_document"),
                     "printed_trial_count": (pdoc.get("benchmark") or {}).get("trial_count"),
-                    "run": {**r["stats"], "seconds": r["seconds"]}, "printed_policy_matches": same})
+                    "run": {**r["stats"], "seconds": r["seconds"]}, "printed_policy_matches": same,
+                    "negation": r.get("negation")})
         # stage 5's conversion check (the printed document and the converted policy price alike), and the full-run price
         # the site shows for this policy (fullalg on the site policy as the board loads it)
         try:
             t5 = time.time()
             pr = fv.price(pdoc, P, 0.01)
             # Stage 18: the site's price on the printed document's own IR and width rule (a stock-tree document: scan)
-            site_T = float(fa.price_full(mine, fa.HERO_N, 0.01, detail=False, rule=fa.doc_width_rule(pdoc))["T"])
+            site_T = float(fa.price_full(mine, fa.HERO_N, 0.01, detail=False, rule=fa.doc_width_rule(pdoc),
+                                         negation=pdoc.get("negation"))["T"])
             res["conversion_agrees"] = bool(pr["native"]["conversion_agrees"])
             res["price"] = {"T_document": pr["native"]["T_document"], "T_converted_policy": pr["native"]["T_converted_policy"],
                             "site_full_run_T": site_T, "agrees_with_site": pr["native"]["T_document"] == site_T,

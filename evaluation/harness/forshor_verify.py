@@ -26,6 +26,10 @@ Stages (each fails closed and names itself):
                the document the trusted tree's own built `forshor_policy_submission` emits (Stage 15: read from the build, never
                a fixed number; the tree's checked-in `policy.json` only when no binary is built), thresholds strictly decreasing, each band's table replayed (`tcost`) and its
                Toom-Cook identity checked (the same checks as an STO table).
+  4b negation  (swap 002) With `--from-policy`: the `negation` key of the policy JSON ("oneQubit", the default, or "scratch") must equal
+               the `negation` of the document Lean printed, else REJECTED. The price (stage 5) uses the printed method; the record
+               carries `negation` {requested, printed, priced_as}. A printed document without the key means a build tree older than
+               ForShor eb00c5a (no NegationMethod): REJECTED (`REQUIRE_PRINTED_NEGATION`).
   5 price      The policy as a fixed banded policy in the paper model (the headline: single-run T of the full order-finding
                run at n = 2048), and, as a conversion check, the submitted document priced by ForShor's native pricer: the
                document and the converted policy must give the same number.
@@ -37,8 +41,10 @@ is generic in the policy). The IR that the price reads is checked against the co
 width (ForShor says so). The price is Qualtran's count in Python, not Lean. Running this executes the submitter's Lean on this
 machine after the lexical gate: use a disposable VM or container for code you do not trust.
 
-Build tree (Stage 15, 2026-10-28): `.cache/forshor_latest_build`, ForShor 10fe620 (Lean v4.36.0-rc1, Mathlib 4dc43842), a
-copy-on-write copy of a clean worktree; `$FORSHOR_BUILD` or `--forshor` overrides it. `.cache/forshor_main_build`
+Build tree: `.cache/forshor_latest_build`, ForShor 21e129a (the merge commit of PR #80, containing #79's eb00c5a; Lean v4.36.0-rc1, Mathlib
+4dc43842), a copy-on-write copy of a warm clone with `forshor_policy_submission` built (Stage 15 made it at 10fe620; swap 002 re-made it). A tree
+older than eb00c5a prints no `negation` and is refused at stage 4b (`REQUIRE_PRINTED_NEGATION`); `$FORSHOR_BUILD` or `--forshor` overrides it.
+`.cache/forshor_main_build`
 (ForShor-main, Lean v4.28.0) is kept as a fallback. Every record names the ForShor commit and toolchain (`forshor`).
 Resources: before Lean starts the harness waits while three or more `lean` processes run (the limit was 2 until the coordinator raised it on 2026-10-28); each stage runs in its own process
 group (killed with its descendants on a timeout or at the memory cap, orphans swept after it returns,
@@ -83,7 +89,7 @@ LEAN_SLOT_LIMIT = 3                                # wait while this many `lean`
 MEM_POLL_S = 2.0
 DEFAULT_OUT = ROOT / ".cache" / "harness_runs"
 INSTALL_DIR = ENGINE / "data" / "forshor_submitted"
-TEMPLATE_REL = "FastMultiplication/ShorVerification/Submission/PolicyTemplate.lean"
+TEMPLATE_REL = "FastMultiplication/ShorVerification/Submission/PolicyTemplate.lean"   # ForShor main before the rename; see `Layout`
 LEXICAL_REL = "scripts/check_template_lexical.sh"
 #: Tokens the site refuses in a template (outside comments), over and above ForShor's lexical gate. A template is three
 #: definitions per band and one record; none of these is needed to write one.
@@ -103,6 +109,32 @@ SITE_BANNED = (
 ALLOWED_IMPORTS = ("FastMultiplication.ShorVerification.Framework.ToomCookTable",
                    "FastMultiplication.ShorVerification.Framework.Policy",
                    "FastMultiplication.ShorVerification.Submission.Decide")
+
+
+class Layout:
+    """Where the submission surface sits in a ForShor tree. ForShor's Lean library is `FastMultiplication` on `main` up to 10fe620 and
+    `ForShor` since the qubitCount merge (6d55ad9 and later, so the pin 21e129a): the paths and the three allowed imports follow
+    the tree's own library (`policy_to_template.library_of`). The module constants above are the `FastMultiplication` layout."""
+
+    def __init__(self, lib: str):
+        self.lib = lib
+        base = f"{lib}/ShorVerification/Submission"
+        self.template_rel = f"{base}/PolicyTemplate.lean"
+        self.check_rel = f"{base}/PolicyCheck.lean"
+        self.tree_files = tuple(f"{base}/{f}.lean" for f in ("PolicyCheck", "PolicyMain", "Audit", "PolicyDecide"))
+        self.allowed_imports = tuple(f"{lib}.ShorVerification.{m}" for m in
+                                     ("Framework.ToomCookTable", "Framework.Policy", "Submission.Decide"))
+
+    @classmethod
+    def of(cls, forshor: Path) -> "Layout":
+        from policy_to_template import TemplateError, library_of
+        try:
+            return cls(library_of(forshor))
+        except TemplateError as e:
+            raise HarnessError("stage", f"{forshor} is not a ForShor checkout ({e})")
+
+
+DEFAULT_LAYOUT = Layout("FastMultiplication")
 MAX_BYTES = 1_000_000
 LEXICAL_TIMEOUT = 60
 BUILD_TIMEOUT = 3600
@@ -113,7 +145,8 @@ RECORD_SCHEMA = "sto-site-forshor-record/1"
 
 
 # ---------------------------------------------------------------------------------------------- stage 0
-def collect_template(src: Path) -> bytes:
+def collect_template(src: Path, lay: "Layout" = None) -> bytes:
+    lay = lay or DEFAULT_LAYOUT
     src = Path(src)
     if not src.exists():
         raise HarnessError("intake", f"{src} does not exist")
@@ -125,7 +158,7 @@ def collect_template(src: Path) -> bytes:
             if p.is_symlink():
                 raise HarnessError("intake", f"{p.relative_to(src)} is a symbolic link")
         rels = [p.relative_to(src).as_posix() for p in files]
-        stray = [r for r in rels if r != TEMPLATE_REL and r != "PolicyTemplate.lean"]
+        stray = [r for r in rels if r != lay.template_rel and r != "PolicyTemplate.lean"]
         if stray:
             raise HarnessError("intake", f"only PolicyTemplate.lean may be submitted (the diff rule); found {', '.join(stray[:5])}")
         if len(rels) != 1:
@@ -142,7 +175,7 @@ def collect_template(src: Path) -> bytes:
         text = data.decode("utf-8")
     except UnicodeDecodeError:
         raise HarnessError("intake", "the template is not valid UTF-8")
-    check_imports(text)
+    check_imports(text, lay)
     site_scan(text)
     return data
 
@@ -188,19 +221,20 @@ def site_scan(text: str) -> None:
                 raise HarnessError("scan", f"line {lineno}: `{m.group(0).strip()}`: {why}")
 
 
-def check_imports(text: str) -> None:
+def check_imports(text: str, lay: "Layout" = None) -> None:
+    allowed = (lay or DEFAULT_LAYOUT).allowed_imports
     """The shipped template imports three modules and nothing else; so does a submission (the site's rule: the
     lexical gate does not cover `import`, and the template needs no more)."""
     imports = re.findall(r"^import[ \t]+(\S+)", text, flags=re.M)
     if not imports:
         raise HarnessError("intake", "the template has no imports")
-    extra = [m for m in imports if m not in ALLOWED_IMPORTS]
+    extra = [m for m in imports if m not in allowed]
     if extra:
         raise HarnessError("intake", f"imports outside the allowed three: {', '.join(extra)}")
 
 
-def content_id(data: bytes) -> str:
-    return hashlib.sha256(f"{TEMPLATE_REL}\t{hashlib.sha256(data).hexdigest()}\n".encode()).hexdigest()
+def content_id(data: bytes, lay: "Layout" = None) -> str:
+    return hashlib.sha256(f"{(lay or DEFAULT_LAYOUT).template_rel}\t{hashlib.sha256(data).hexdigest()}\n".encode()).hexdigest()
 
 
 # ---------------------------------------------------------------------------------------------- running
@@ -390,12 +424,13 @@ def reference_document(forshor: Path) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------------------------- stages 1 and 2
-def lexical_gate(forshor: Path, work: Path) -> None:
+def lexical_gate(forshor: Path, work: Path, lay: "Layout" = None) -> None:
+    lay = lay or DEFAULT_LAYOUT
     script = Path(forshor) / LEXICAL_REL
     if not script.is_file():
         raise HarnessError("lexical", f"{LEXICAL_REL} is missing from the trusted tree")
     try:
-        r = pg.run_in_group(["bash", str(script), str(work / TEMPLATE_REL)], capture_output=True, text=True, env=_env(),
+        r = pg.run_in_group(["bash", str(script), str(work / lay.template_rel)], capture_output=True, text=True, env=_env(),
                             timeout=LEXICAL_TIMEOUT)
     except subprocess.TimeoutExpired:
         raise HarnessError("lexical", f"ForShor's lexical gate did not finish in {LEXICAL_TIMEOUT} s")
@@ -408,13 +443,13 @@ STOCK_HEARTBEATS = 4000000          # the one `set_option maxHeartbeats` in ForS
 MAX_HEARTBEATS_LIMIT = 1000 * STOCK_HEARTBEATS
 
 
-def override_heartbeats(work: Path, n: int) -> None:
+def override_heartbeats(work: Path, n: int, lay: "Layout" = None) -> None:
     """Site override: raise the one heartbeat cap in the CLONED trusted PolicyCheck.lean (never the submitter's file).
     Recorded in the provenance of every run that uses it. PLAN_v2 3.2: the stock cap refuses any k >= 5 band and any
     three-band policy; the work is deterministic, so the cap is a resource limit, not a soundness condition."""
     if not isinstance(n, int) or isinstance(n, bool) or not STOCK_HEARTBEATS <= n <= MAX_HEARTBEATS_LIMIT:
         raise HarnessError("stage", f"max heartbeats must be an integer in [{STOCK_HEARTBEATS}, {MAX_HEARTBEATS_LIMIT}]")
-    f = work / CHECK_REL
+    f = work / (lay or DEFAULT_LAYOUT).check_rel
     text = f.read_text()
     line = f"set_option maxHeartbeats {STOCK_HEARTBEATS} in\nextract_policy_ir_doc"
     if text.count(line) != 1:
@@ -423,16 +458,17 @@ def override_heartbeats(work: Path, n: int) -> None:
     f.write_text(text.replace(line, f"set_option maxHeartbeats {n} in\nextract_policy_ir_doc"))
 
 
-def stage(forshor: Path, data: bytes, work: Path, max_heartbeats: Optional[int] = None) -> Path:
-    if not (Path(forshor) / TEMPLATE_REL).is_file():
-        raise HarnessError("stage", f"{forshor} is not a ForShor checkout ({TEMPLATE_REL} missing)")
+def stage(forshor: Path, data: bytes, work: Path, max_heartbeats: Optional[int] = None, lay: "Layout" = None) -> Path:
+    lay = lay or Layout.of(forshor)
+    if not (Path(forshor) / lay.template_rel).is_file():
+        raise HarnessError("stage", f"{forshor} is not a ForShor checkout ({lay.template_rel} missing)")
     if work.exists():
         shutil.rmtree(work)
     work.parent.mkdir(parents=True, exist_ok=True)
     _clone(Path(forshor), work)
-    (work / TEMPLATE_REL).write_bytes(data)
+    (work / lay.template_rel).write_bytes(data)
     if max_heartbeats is not None and max_heartbeats != STOCK_HEARTBEATS:
-        override_heartbeats(work, max_heartbeats)
+        override_heartbeats(work, max_heartbeats, lay)
     return work
 
 
@@ -466,6 +502,40 @@ def lean_build(work: Path, out: Path, args: Optional[List[str]] = None) -> Tuple
 
 
 # ---------------------------------------------------------------------------------------------- stage 4
+#: ForShor's `Shor.NegationMethod` (swap 002). A ForShor tree at eb00c5a or later (the pin) prints `"negation"` in every
+#: `forshor_policy_submission` document. An older tree (6d55ad9, 10fe620) has no such key and its `negateResources` is the Cuccaro
+#: charge (`scratch`): that is a tree this harness no longer accepts. The price follows the printed document.
+NEGATIONS = ("oneQubit", "scratch")
+#: True since the pin is eb00c5a: a printed document without the key comes from a tree that is too old, which is a verification
+#: failure (not a guess at the method).
+REQUIRE_PRINTED_NEGATION = True
+
+
+def check_negation(doc: Dict[str, Any], requested: Optional[str] = None) -> Dict[str, Any]:
+    """The policy's negation method: what Lean printed against what was submitted. Returns the record entry.
+
+    ``doc`` is the printed policy.json (data, not trusted); ``requested`` is the `negation` key of the submitted policy JSON
+    (absent = "oneQubit"), or None when the submission is a template file (nothing to compare: the template is the source
+    and the printed document says what it built). A printed value that is not a method, or that differs from the requested
+    one, is a verification failure: otherwise Lean would build one method and Python price another."""
+    printed = doc.get("negation")
+    if "negation" in doc and (not isinstance(printed, str) or printed not in NEGATIONS):
+        raise HarnessError("python", f"policy.json negation {printed!r} is not one of {NEGATIONS}")
+    if printed is None:
+        if requested == "scratch":
+            raise HarnessError("python", "the submitted policy asks for negation 'scratch' but the policy.json Lean printed has no "
+                                         "`negation` key: the build tree predates ForShor's NegationMethod (eb00c5a)")
+        if REQUIRE_PRINTED_NEGATION:
+            raise HarnessError("python", "policy.json has no `negation` key: the build tree is older than ForShor eb00c5a "
+                                         "(NegationMethod), whose `forshor_policy_submission` always prints it; refusing to guess the method")
+    elif requested is not None and printed != requested:
+        raise HarnessError("python", f"negation mismatch: the submitted policy JSON says {requested!r} (no key = 'oneQubit') but "
+                                     f"the policy ForShor built and printed says {printed!r}")
+    from site_engine import fullalg as fa
+    return {"requested": requested, "printed": printed, "priced_as": fa.cc.negate_impl(printed),
+            **({"note": "no `negation` key (REQUIRE_PRINTED_NEGATION is off): priced as the default"} if printed is None else {})}
+
+
 def _pt(p: Dict[str, Any]) -> str:
     """ForShor point dict -> tcost spelling. frac 0 is infinity; frac m is the point 1/m."""
     if p["kind"] == "int":
@@ -524,13 +594,15 @@ def price(doc: Dict[str, Any], P: tt.Policy, delta: float, n: int = HERO_N) -> D
     # scanned widths (fullalg.REFERENCE_SCAN), the board's labelled cross-check. Comparing a scan document with the
     # exact board price would fail the conversion check for a faithful conversion.
     rule = fa.doc_width_rule(doc)
-    r = fa.price_full(P, n, delta, detail=False, rule=rule)
+    negation = doc.get("negation")        # the printed document's own method (swap 002); absent: the repo default (legacy)
+    r = fa.price_full(P, n, delta, detail=False, rule=rule, negation=negation)
     out = {"model": r["model"], "tier": r["tier"], "width_rule": rule, "n": n, "delta": delta, "single_run_T": float(r["T"]),
            "qubits": int(r["qubits"]),
            "rotations": int(r["rotations"]), "toffoli": r.get("toffoli"), "cnot": r.get("cnot"), "ladder_str": r.get("ladder_str"),
            "lean_grid_leaf_T": r["lean_grid_leaf_T"]}
     t_doc = float(fa.price_document(doc, n, delta)["T"])
     t_conv = float(r["T"])
+    out["negation"] = {"printed": negation, "priced_as": fa.cc.negate_impl(negation)}
     out["native"] = {"tier": r["tier"], "width_rule": rule, "T_document": t_doc, "T_converted_policy": t_conv,
                      "conversion_agrees": t_doc == t_conv}
     if t_doc != t_conv:
@@ -548,19 +620,16 @@ def _version(cmd: List[str], cwd: Path) -> str:
 
 
 def _tree_digest(forshor: Path) -> str:
+    lay = Layout.of(forshor)
     h = hashlib.sha256()
-    for rel in ("lake-manifest.json", "lean-toolchain", "policy.json", LEXICAL_REL,
-                "FastMultiplication/ShorVerification/Submission/PolicyCheck.lean",
-                "FastMultiplication/ShorVerification/Submission/PolicyMain.lean",
-                "FastMultiplication/ShorVerification/Submission/Audit.lean",
-                "FastMultiplication/ShorVerification/Submission/PolicyDecide.lean"):
+    for rel in ("lake-manifest.json", "lean-toolchain", "policy.json", LEXICAL_REL, *lay.tree_files):
         h.update(rel.encode() + (Path(forshor) / rel).read_bytes())
     return h.hexdigest()
 
 
 def record(out: Path, data: bytes, cid: str, forshor: Path, doc: Dict[str, Any], P: tt.Policy, checks: List[Dict[str, Any]],
            priced: Dict[str, Any], stats: Dict[str, Any], seconds: Dict[str, float],
-           max_heartbeats: Optional[int] = None) -> Path:
+           max_heartbeats: Optional[int] = None, negation: Optional[Dict[str, Any]] = None) -> Path:
     rid = f"F{cid[:12]}"
     d = out / rid
     d.mkdir(parents=True, exist_ok=True)
@@ -570,6 +639,7 @@ def record(out: Path, data: bytes, cid: str, forshor: Path, doc: Dict[str, Any],
         "schema": RECORD_SCHEMA, "id": rid, "content_sha256": cid, "created_at": now, "lean_verified": True,
         "bands": [{"threshold": b.threshold, "k": b.table.k, "digest": b.table.digest, "shrinks": c["shrinks"],
                    "table": b.table.to_json()} for b, c in zip(P.bands, checks)],
+        "negation": negation,       # {"requested", "printed", "priced_as"[, "note"]}: Lean's printed method and how it was priced
         "single_run_T": priced["single_run_T"], "qubits": priced["qubits"], "rotations": priced["rotations"],
         "n": priced["n"], "delta": priced["delta"], "model": priced["model"], "native": priced["native"],
         "benchmark": doc["benchmark"], "precision": {k: doc["precision"][k] for k in ("eta", "m")},
@@ -611,26 +681,31 @@ def run(submission: Path, forshor: Path = DEFAULT_FORSHOR, out_root: Path = DEFA
         max_heartbeats: Optional[int] = None, wait_slot: bool = True) -> Dict[str, Any]:
     t0 = time.time()
     secs: Dict[str, float] = {}
+    try:
+        lay = Layout.of(forshor)         # the tree's own library name (FastMultiplication before the rename, ForShor after)
+    except HarnessError:
+        lay = DEFAULT_LAYOUT             # not a checkout: intake runs on the default layout and `stage` reports the tree
+    requested: Optional[str] = None      # the submitted policy JSON's `negation` (absent = "oneQubit"); None for a template file
     if from_policy:
-        from policy_to_template import TemplateError, template_text
-        pols = tt.load_policies(submission)
+        from policy_to_template import TemplateError, requested_negation_from_file, template_from_file
         try:
-            data = template_text(pols[0]).encode()
+            requested = requested_negation_from_file(submission)
+            data = template_from_file(submission, lib=lay.lib).encode()
         except TemplateError as e:
             raise HarnessError("intake", f"cannot write a ForShor policy from this policy: {e}")
-        check_imports(data.decode())
+        check_imports(data.decode(), lay)
         site_scan(data.decode())
     else:
-        data = collect_template(submission)
-    cid = content_id(data)
+        data = collect_template(submission, lay)
+    cid = content_id(data, lay)
     out = out_root / f"forshor-run-{cid[:12]}"
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
     work = out_root / f"forshor-work-{cid[:12]}"
     try:
-        stage(forshor, data, work, max_heartbeats)
-        lexical_gate(forshor, work)
+        stage(forshor, data, work, max_heartbeats, lay)
+        lexical_gate(forshor, work, lay)
         secs["stage"] = round(time.time() - t0, 1)
         secs["waited_for_lean_slot"] = wait_lean_slot() if wait_slot else 0.0
         t = time.time()
@@ -638,17 +713,18 @@ def run(submission: Path, forshor: Path = DEFAULT_FORSHOR, out_root: Path = DEFA
         stats["exe_args"] = exe_args(forshor)
         secs["lean"] = round(time.time() - t, 1)
         t = time.time()
+        neg = check_negation(doc, requested)
         P, checks = python_stage(doc, forshor, f"forshor-{cid[:8]}")
         secs["python"] = round(time.time() - t, 1)
         if lean_only:
-            return {"id": f"F{cid[:12]}", "status": "lean-ok", "bands": [(b.threshold, b.table.k) for b in P.bands], "stats": stats,
+            return {"id": f"F{cid[:12]}", "status": "lean-ok", "negation": neg, "bands": [(b.threshold, b.table.k) for b in P.bands], "stats": stats,
                     "seconds": secs, "policy_json": str(out / "policy.json"),
                     "forshor": {**forshor_provenance(forshor), "reference_document": reference_document(forshor)[1]}}
         t = time.time()
         priced = price(doc, P, delta)
         secs["price"] = round(time.time() - t, 1)
-        d = record(out, data, cid, forshor, doc, P, checks, priced, stats, secs, max_heartbeats)
-        return {"id": d.name, "status": "verified", "dir": str(d), "bands": [(b.threshold, b.table.k) for b in P.bands],
+        d = record(out, data, cid, forshor, doc, P, checks, priced, stats, secs, max_heartbeats, neg)
+        return {"id": d.name, "status": "verified", "dir": str(d), "negation": neg, "bands": [(b.threshold, b.table.k) for b in P.bands],
                 "single_run_T": priced["single_run_T"], "native": priced["native"], "stats": stats, "seconds": secs,
                 "forshor": {k: v for k, v in forshor_provenance(forshor).items() if k in ("commit", "lean_toolchain", "mathlib", "tree")}}
     finally:

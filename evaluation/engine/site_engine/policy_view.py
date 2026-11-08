@@ -147,13 +147,11 @@ def view(P: tt.Policy, n: int = fr.HERO_N, delta: float = DEFAULT_DELTA, title: 
             "depth": s["recursion_depth"], "leaf_width": s["leaf_width"], "leaf_calls": s["leaf_calls"],
             "gate_counts": s["gate_counts"], "t_breakdown": s["t_breakdown"],
             "widths": P.widths, "width_rule": WIDTH_RULE_TEXT if P.widths == "exact" else fr.QUBITS_RULE_PP_SCAN,
-            "qubits": fr.lean_static_qubits(P, n) if P.mode == tt.PAIR else fr.qubits(P, n),
-            "qubits_label": (fr.QUBITS_LABEL_PP if P.widths == "exact" else "Lean static")
-            if P.mode == tt.PAIR else "Qualtran peak",
+            "qubits": fr.live_peak_qubits(P, n),
+            "qubits_label": fr.QUBITS_LABEL_PEAK,
             "qubits_static": fr.static_reserve(P, n) if P.mode == tt.PAIR else None,
             "qubits_qualtran_peak": fr.qubits(P, n),
-            "qubits_rule": (fr.QUBITS_RULE_PP if P.widths == "exact" else fr.QUBITS_RULE_PP_SCAN)
-            if P.mode == tt.PAIR else fr.QUBITS_RULE_PTP,
+            "qubits_rule": fr.QUBITS_RULE_PEAK_PP if P.mode == tt.PAIR else fr.QUBITS_RULE_PEAK_PTP,
             "qubits_lean_static": _lean_static(P, n),
             "scan_cross_check": scan_cross_check(P, n, delta) if P.widths == "exact" else None,
             "leaf_share": lv["leaf_share"],

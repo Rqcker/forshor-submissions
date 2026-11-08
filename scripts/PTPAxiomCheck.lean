@@ -70,3 +70,12 @@ open Shor.Audit
 #assert_axioms TableGeneration.PTP.ptp_qubits_tight
 #assert_axioms TableGeneration.PTP.ptp_qubits_tight_exact
 #assert_axioms TableGeneration.PTP.ptp_qubits_le_ptpQubits
+
+-- Negation method (ForShor modular swap 002): the method-indexed mirror and the per-method census.
+#assert_axioms TableGeneration.RecursiveCost.Companion.negateResourcesFor_eq_atWidth
+#assert_axioms TableGeneration.RecursiveCost.negateGateCount_eq_modelFor
+#assert_axioms TableGeneration.RecursiveCost.phaseArithmeticOpCost_le_for
+#assert_axioms TableGeneration.PTP.negateResourcesFor_eq
+#assert_axioms TableGeneration.PTP.ptpNode_resourcesFor
+#assert_axioms TableGeneration.PTP.body_cleanAnc_leFor
+#assert_axioms TableGeneration.PTP.PolicyImplD.cleanAnc_le

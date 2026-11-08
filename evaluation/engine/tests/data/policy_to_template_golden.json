@@ -1,0 +1,147 @@
+{
+ "evaluation/engine/data/forshor_submitted/S00c49eff1f98/site_policy.json#0#FastMultiplication": "8b43cafcb29932f92a29f1a9c3a59b2e5483be0b62f0ff8ced25d55053b24582",
+ "evaluation/engine/data/forshor_submitted/S00c49eff1f98/site_policy.json#0#ForShor": "9f89745cff48a9f074051e870bf2c1c3c1d50e0e53771d9955176fd78a4f11a4",
+ "evaluation/engine/data/forshor_submitted/S02d2663a56ae/site_policy.json#0#FastMultiplication": "8b43cafcb29932f92a29f1a9c3a59b2e5483be0b62f0ff8ced25d55053b24582",
+ "evaluation/engine/data/forshor_submitted/S02d2663a56ae/site_policy.json#0#ForShor": "9f89745cff48a9f074051e870bf2c1c3c1d50e0e53771d9955176fd78a4f11a4",
+ "evaluation/engine/data/forshor_submitted/S0d4cae7cc43f/site_policy.json#0#FastMultiplication": "12ed5a444aa3b611a11dde62cf64719e2af844882000a1cbe11c0427ff31590d",
+ "evaluation/engine/data/forshor_submitted/S0d4cae7cc43f/site_policy.json#0#ForShor": "05a35ab4beb9b44d690d2bdcd249aa5485ad18b0733d10dafe4ef1dfb04d7b8f",
+ "evaluation/engine/data/forshor_submitted/S1c115b37fd2c/site_policy.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/S1c115b37fd2c/site_policy.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/S22d0026b1c85/site_policy.json#0#FastMultiplication": "12ed5a444aa3b611a11dde62cf64719e2af844882000a1cbe11c0427ff31590d",
+ "evaluation/engine/data/forshor_submitted/S22d0026b1c85/site_policy.json#0#ForShor": "05a35ab4beb9b44d690d2bdcd249aa5485ad18b0733d10dafe4ef1dfb04d7b8f",
+ "evaluation/engine/data/forshor_submitted/S2331e66e1a2e/site_policy.json#0#FastMultiplication": "91d85783e0634447bfd7687a9158daf239bb293897429a5a92fe6b96651fe123",
+ "evaluation/engine/data/forshor_submitted/S2331e66e1a2e/site_policy.json#0#ForShor": "89413d16b8e0db90c08b18d9fed3555ad26eaf04118a9df420fbe4088f497e58",
+ "evaluation/engine/data/forshor_submitted/S23d2ab130b88/site_policy.json#0#FastMultiplication": "83d0c7d20e8b26d0ee7940d1792ed924c174bc6b38fd281af641221123125da4",
+ "evaluation/engine/data/forshor_submitted/S23d2ab130b88/site_policy.json#0#ForShor": "19a7c7b7c1f8d74931b3b62eff18477ea037fb4863a03a1cfaef61ab1c18c06f",
+ "evaluation/engine/data/forshor_submitted/S29d5189f0a0b/site_policy.json#0#FastMultiplication": "91d85783e0634447bfd7687a9158daf239bb293897429a5a92fe6b96651fe123",
+ "evaluation/engine/data/forshor_submitted/S29d5189f0a0b/site_policy.json#0#ForShor": "89413d16b8e0db90c08b18d9fed3555ad26eaf04118a9df420fbe4088f497e58",
+ "evaluation/engine/data/forshor_submitted/S3fcc1b15f876/site_policy.json#0#FastMultiplication": "2d9eba31b65c209bc2888cbda7a9e437d86e5b3c27537ddcca89bef30a3ddb1a",
+ "evaluation/engine/data/forshor_submitted/S3fcc1b15f876/site_policy.json#0#ForShor": "93667ff8a1059cfaee3527772c399ef85c9d7e05ff82a3e1810b83384dccccea",
+ "evaluation/engine/data/forshor_submitted/S4b083d660964/site_policy.json#0#FastMultiplication": "3e37aefef8413d7b8d26f7e38b5a6f798d11eac4c98c23a3412c213959b00c22",
+ "evaluation/engine/data/forshor_submitted/S4b083d660964/site_policy.json#0#ForShor": "8b0969bdff90019a57ae4b5007d1bfe64122cd07f0fa82e411d14fa611fb7bb3",
+ "evaluation/engine/data/forshor_submitted/S6794489f14f1/site_policy.json#0#FastMultiplication": "6fbe227b35949f8197a565c215cb46fcae6da4fcedebe8c993cf93760ddc7d37",
+ "evaluation/engine/data/forshor_submitted/S6794489f14f1/site_policy.json#0#ForShor": "dada768a68f183fb5f31aaebe4b191909ddd93eecc59d3d74f469c1ac16f8cad",
+ "evaluation/engine/data/forshor_submitted/S6b1cc169fad2/site_policy.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/S6b1cc169fad2/site_policy.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/S707dd51bf951/site_policy.json#0#FastMultiplication": "a215ea2d8521a1ee78b07801442777c73c0ba754b7ebccf06afa4eb895393688",
+ "evaluation/engine/data/forshor_submitted/S707dd51bf951/site_policy.json#0#ForShor": "0da30a5c235089535ca2c879732cdf1e9f4b5752f8e1428295e4f04b431d5b57",
+ "evaluation/engine/data/forshor_submitted/S7bf14f66796e/site_policy.json#0#FastMultiplication": "91d85783e0634447bfd7687a9158daf239bb293897429a5a92fe6b96651fe123",
+ "evaluation/engine/data/forshor_submitted/S7bf14f66796e/site_policy.json#0#ForShor": "89413d16b8e0db90c08b18d9fed3555ad26eaf04118a9df420fbe4088f497e58",
+ "evaluation/engine/data/forshor_submitted/S7cb2f58aff1a/site_policy.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/S7cb2f58aff1a/site_policy.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/S7da0ff5445b5/site_policy.json#0#FastMultiplication": "91d85783e0634447bfd7687a9158daf239bb293897429a5a92fe6b96651fe123",
+ "evaluation/engine/data/forshor_submitted/S7da0ff5445b5/site_policy.json#0#ForShor": "89413d16b8e0db90c08b18d9fed3555ad26eaf04118a9df420fbe4088f497e58",
+ "evaluation/engine/data/forshor_submitted/S80e6a121410d/site_policy.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/S80e6a121410d/site_policy.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/S84f8c61016e6/site_policy.json#0#FastMultiplication": "57d59e956d44d760eb582dad8392f9a6b433e676d1005d6b20c083f0bf0eb0e8",
+ "evaluation/engine/data/forshor_submitted/S84f8c61016e6/site_policy.json#0#ForShor": "dba0044138fcc50ef840adf450619014ec2196ebc7a4c5adb66304159d813fe9",
+ "evaluation/engine/data/forshor_submitted/S98b2f5fb4e06/site_policy.json#0#FastMultiplication": "8b43cafcb29932f92a29f1a9c3a59b2e5483be0b62f0ff8ced25d55053b24582",
+ "evaluation/engine/data/forshor_submitted/S98b2f5fb4e06/site_policy.json#0#ForShor": "9f89745cff48a9f074051e870bf2c1c3c1d50e0e53771d9955176fd78a4f11a4",
+ "evaluation/engine/data/forshor_submitted/S9a1e71f80320/site_policy.json#0#FastMultiplication": "2d9eba31b65c209bc2888cbda7a9e437d86e5b3c27537ddcca89bef30a3ddb1a",
+ "evaluation/engine/data/forshor_submitted/S9a1e71f80320/site_policy.json#0#ForShor": "93667ff8a1059cfaee3527772c399ef85c9d7e05ff82a3e1810b83384dccccea",
+ "evaluation/engine/data/forshor_submitted/Sa009cfa3c147/site_policy.json#0#FastMultiplication": "91d85783e0634447bfd7687a9158daf239bb293897429a5a92fe6b96651fe123",
+ "evaluation/engine/data/forshor_submitted/Sa009cfa3c147/site_policy.json#0#ForShor": "89413d16b8e0db90c08b18d9fed3555ad26eaf04118a9df420fbe4088f497e58",
+ "evaluation/engine/data/forshor_submitted/Sa1cea9a98a33/site_policy.json#0#FastMultiplication": "7227ee73579f1b1c6fb8f27ef6c40b8c7c659a1c9c2c73b05e46b52964121c27",
+ "evaluation/engine/data/forshor_submitted/Sa1cea9a98a33/site_policy.json#0#ForShor": "79065e016b96e3b79c2a595f7b14d5050e3e1c5aed64ff1e72224b002a699004",
+ "evaluation/engine/data/forshor_submitted/Sa2ac31c65f2c/site_policy.json#0#FastMultiplication": "ca9c76f2e1bb14a34c01678417e9e26f0fd34c53fbcde03dbc66811819d24094",
+ "evaluation/engine/data/forshor_submitted/Sa2ac31c65f2c/site_policy.json#0#ForShor": "80bd61d28a9c32c323a4137db3bcd1f53a9020883baab416fe5dd3d7782833d8",
+ "evaluation/engine/data/forshor_submitted/Sa529d517e43d/site_policy.json#0#FastMultiplication": "83d0c7d20e8b26d0ee7940d1792ed924c174bc6b38fd281af641221123125da4",
+ "evaluation/engine/data/forshor_submitted/Sa529d517e43d/site_policy.json#0#ForShor": "19a7c7b7c1f8d74931b3b62eff18477ea037fb4863a03a1cfaef61ab1c18c06f",
+ "evaluation/engine/data/forshor_submitted/Sb16118309fe5/site_policy.json#0#FastMultiplication": "ca9c76f2e1bb14a34c01678417e9e26f0fd34c53fbcde03dbc66811819d24094",
+ "evaluation/engine/data/forshor_submitted/Sb16118309fe5/site_policy.json#0#ForShor": "80bd61d28a9c32c323a4137db3bcd1f53a9020883baab416fe5dd3d7782833d8",
+ "evaluation/engine/data/forshor_submitted/Sb354b13c54ab/site_policy.json#0#FastMultiplication": "2d9eba31b65c209bc2888cbda7a9e437d86e5b3c27537ddcca89bef30a3ddb1a",
+ "evaluation/engine/data/forshor_submitted/Sb354b13c54ab/site_policy.json#0#ForShor": "93667ff8a1059cfaee3527772c399ef85c9d7e05ff82a3e1810b83384dccccea",
+ "evaluation/engine/data/forshor_submitted/Sb756111e4055/site_policy.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/Sb756111e4055/site_policy.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/Sba5f50010bd4/site_policy.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/Sba5f50010bd4/site_policy.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/Scc866e679f67/site_policy.json#0#FastMultiplication": "c9170a00f2d3f22acfe34b15f49e2f49ed447589b9ee681fed780a68457f736a",
+ "evaluation/engine/data/forshor_submitted/Scc866e679f67/site_policy.json#0#ForShor": "a2f060795ea19da59706f6cd9f1a9f3a29533c01e5e52607fe11e150c0274704",
+ "evaluation/engine/data/forshor_submitted/Se1cc13af8310/site_policy.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/Se1cc13af8310/site_policy.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/Sfb4e5db96f73/site_policy.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/forshor_submitted/Sfb4e5db96f73/site_policy.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/reference_policies.json#0#FastMultiplication": "6015841b4a3ce5b3067852020faa55fd17754da8e40c7e8188ef37b4260bc9b8",
+ "evaluation/engine/data/reference_policies.json#0#ForShor": "19c3b94346e187844571c615c91894a7666355a8855db92e9adadb3c94d79133",
+ "evaluation/engine/data/reference_policies.json#1#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/reference_policies.json#1#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "evaluation/engine/data/sto_accepted/P0c074ebe3b35/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P293d51de2c05/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P2a0c1db7342f/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P348de30a1f93/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P52ec6fce9b57/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P546fea33a7a4/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P54f51b9656d0/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P58147b7627fb/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P5e83e2c00c17/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P651fc8ae389d/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P6c185db801f9/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P6f7d25984ff8/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P7ec7497794d4/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/P9d8a1554c43b/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/Pe5ba65062178/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/Pf0f15fefe959/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/Pf4aff955f16b/operations.json": {
+  "load_error": "TableError"
+ },
+ "evaluation/engine/data/sto_accepted/Pfd41c2aa4b3e/operations.json": {
+  "load_error": "TableError"
+ },
+ "policies/faulty_point_order.json": {
+  "load_error": "TableError"
+ },
+ "policies/faulty_width.json#0#FastMultiplication": "83ffc65d8ee532c30050d77ea5184a484f33d34998497be9f649756fbe1925d8",
+ "policies/faulty_width.json#0#ForShor": "c19861aaa4b11ee48912ffe8fafbb459a566d100f64db264bdb7b6e0515b03d2",
+ "policies/k5_sixband_2048.json#0#FastMultiplication": "13de5cf5c4b5875d84955f24e69e49aff5964f155e764f24f41c56c99173b7b7",
+ "policies/k5_sixband_2048.json#0#ForShor": "65af98456bbd3fa991f4c797f5fb01097fded949061a9c7ca39004370ee747be",
+ "policies/ref_pp_2048.json#0#FastMultiplication": "6015841b4a3ce5b3067852020faa55fd17754da8e40c7e8188ef37b4260bc9b8",
+ "policies/ref_pp_2048.json#0#ForShor": "19c3b94346e187844571c615c91894a7666355a8855db92e9adadb3c94d79133",
+ "policies/ref_ptp_2048.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "policies/ref_ptp_2048.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "policies/threshold_declared_pp.json#0#FastMultiplication": "d91d0e363ef267b83cee09801e9f4c88439678437499eff45c5cf88efe924175",
+ "policies/threshold_declared_pp.json#0#ForShor": "efaf2f50da03ae70b694ff1c1e3a398254fa4955f9fa5f4d5cb426b57c30aca4",
+ "policies/threshold_degenerate_pp.json#0#FastMultiplication": "9061025328ddbc020d876eba58c576c791f5d312bb08a96a7ea8070c1cd7a0a7",
+ "policies/threshold_degenerate_pp.json#0#ForShor": "54df7e505ba74396f5a7fffef1a180dffcfd693c47ee90b5eae26f8cf2122ce2",
+ "policies/threshold_degenerate_ptp.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "policies/threshold_degenerate_ptp.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "policies/threshold_noshrink_pp.json#0#FastMultiplication": "ad26db01a260522b62ed456079a351c8f92b2d932c2176698c22e1ed3f255154",
+ "policies/threshold_noshrink_pp.json#0#ForShor": "04885cf7bfb30752c41f13f6744ed1fed37c9e9993c9e735b71ede1592023bdc",
+ "policies/threshold_noshrink_ptp.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "policies/threshold_noshrink_ptp.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "policies/threshold_scanonly_pp.json#0#FastMultiplication": "1ec794800f2a7e25a21dc2a7b4ef96a1262c7c60ddec0ae8134482a144a21112",
+ "policies/threshold_scanonly_pp.json#0#ForShor": "c88d6d222a8f50571c6e9c4e3046000884673209de8e1076c33ac18d231c336d",
+ "policies/threshold_scanonly_ptp.json#0#FastMultiplication": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)",
+ "policies/threshold_scanonly_ptp.json#0#ForShor": "TemplateError: a ForShor policy submission is PhaseProduct only (the order-finding circuit has no triple product)"
+}

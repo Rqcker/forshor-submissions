@@ -1,0 +1,46 @@
+{
+ "schema": "forshor.mirror-evidence/v1",
+ "policyDigest": "48063efa0f7cbd4b539f16e49a12225a35a3ae4b8d1aeabc777a6626d787899e",
+ "policyFile": {
+  "name": "48063efa0f7cbd4b.policy.json",
+  "sha256": "df82966f9916cd58ce5b436c8edef3e07eac0f51013b29e26fa1feca4b17af39"
+ },
+ "harness": "check_ptp_policy",
+ "record": {
+  "tool": "check_ptp_policy",
+  "policy": "/private/tmp/claude-501/-Users-joshua-Desktop/cec70136-0d39-4db1-a1da-40472d4d74c7/scratchpad/evidence4/48063efa0f7cbd4b.policy.json",
+  "started": "2026-11-08T01:54:21.045552+00:00",
+  "policy_sha256": "df82966f9916cd58ce5b436c8edef3e07eac0f51013b29e26fa1feca4b17af39",
+  "target_width": 2048,
+  "widths": "exact",
+  "seconds": {
+   "data": 17.0,
+   "report": 43200.89
+  },
+  "replay": [],
+  "verdict": "rejected",
+  "name": "archive-optimal",
+  "mode": "PhaseTripleProduct",
+  "bands": [
+   {
+    "threshold": 2048,
+    "k": 8
+   },
+   {
+    "threshold": 292,
+    "k": 4
+   }
+  ],
+  "rejection": {
+   "stage": "report",
+   "reason": "report failed",
+   "detail": "{\"cmd\": [\"lake\", \"env\", \"lean\", \"--run\", \"scripts/PTPPolicyReport.lean\", \"--\", \"2048\"], \"exit\": 137, \"outcome\": \"killed: timeout 43200.0 s\", \"peak_gb\": 0.54, \"seconds\": 43200.8, \"cap_gb\": 10.0}\n"
+  },
+  "finished": "2026-11-08T13:54:39.179183+00:00"
+ },
+ "tree": {
+  "lean": "leanprover/lean4:v4.36.0-rc1",
+  "forshorPin": "21e129aeefc0fd1bbb8fa63402f5799af2490788",
+  "stoBase": "361e81e"
+ }
+}

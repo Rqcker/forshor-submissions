@@ -126,10 +126,12 @@ def test_analytic_peak_equals_qualtran_qubitcount_of_the_tcost_bloq():
 
 
 def test_kmy_qualtran_peak_exceeds_the_lean_static_layout():
-    # KMY-PP3 has a negate: Qualtran Negate(QInt(698)) needs 2*698 - 1 ancillas; Lean's 2w + R has no room for them
-    # (Lean's own literal lowering needs cleanAnc = w + 1 = 699 for the negate, also outside 2w + R).
+    # KMY-PP3 has a negate: Qualtran Negate(QInt(698)) needs 2*698 - 1 ancillas; Lean's 2w + R has no room for them.
+    # Lean's own literal lowering needed cleanAnc = w + 1 = 699 for the negate (5,292 + 699 = 5,991, the pin before modular
+    # swap 001), and needs 1 since (5,292 + 1 = 5,293): the incrementer negation borrows one clean ancilla, not a w-bit register.
     r = qc.pp_compare(fr.planned("kmy", tt.PAIR, 2048, 0.01, "scan")[0], 2048)     # Stage 12's comparison: scanned widths
-    assert (r["lean_static"], r["qualtran_tcost"], r["lean_qubit_count"]) == (5292, 5583, 5991)
+    assert (r["lean_static"], r["qualtran_tcost"], r["lean_qubit_count"]) == (5292, 5583, 5293)
+    assert r["lean_qubit_count"] - r["lean_static"] == 1 and 5991 - 5292 == 698 + 1
 
 
 def test_full_run_qubits_compared():
@@ -170,6 +172,7 @@ def test_pricing_rule_wording():
 
 
 # ------------------------------------------------------------------------------------------------ D: the paper's policy
+@pytest.mark.legacy_negation
 def test_paper_policies_on_the_board_ir():
     # Stage 18: the paper follows the board, i.e. the ForShor drop-in IR (exact widths + balanced split)
     assert pp.price("k5532")["T"] == pytest.approx(1_934_872e6, rel=1e-6) and pp.price("k5532")["qubits"] == 35_282
@@ -182,6 +185,7 @@ def test_paper_policies_on_the_board_ir():
     assert best["widths_rule"].startswith("exact")
 
 
+@pytest.mark.legacy_negation
 def test_paper_policies_repriced():
     # Stage 12 figures, kept on upstream ForShor's IR at scanned widths (Stage 18: rule="scan")
     a, b = pp.price("k5532", rule="scan"), pp.price("k5322", rule="scan")

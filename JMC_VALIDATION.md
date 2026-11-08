@@ -139,3 +139,39 @@ Single-run T priced on the printed documents (site pricer) is identical to `main
 three: 3,240,663,026,770 / 1,933,981,965,831 / 1,650,011,804,372. The documents for the shipped template
 and `Scc866e679f67` are identical in every top-level field to the `bb2aae0` ones, for both executables.
 Not rerun: full per-module kernel replay, 31 planner seeds.
+
+## Pin bump to ForShor `21e129aeefc0fd1bbb8fa63402f5799af2490788` (PR #79, negation method)
+
+Built and run on 2026-11-07 against ForShor `21e129aeefc0fd1bbb8fa63402f5799af2490788` (the PR #79 head; the merge
+commit has the same tree), toolchain and Mathlib unchanged. Details and numbers: `ForShor_modular_swaps/swap-002_policy_negation_option/shards/B2.md`.
+
+What changed at the pin (ForShor `Framework/Gatecount/ResourceModel.lean`, `Framework/NegationMethod.lean`):
+`Shor.negateResources` (so `shorGateResourceModel`, `shorGateCostModel`) is the `oneQubit` negation (complement plus
+Gidney's single-ancilla increment: Toffoli `12 w - 28` / `10 w - 18`, CNOT `17 w - 22` / `17 w - 5`, X `5 w - 3` / `5 w + 1`
+for `w` even / odd, one clean qubit). The construction this repository used to mirror (complement + constant-one register
++ Cuccaro adder, `10 w - 14` gates, `w + 1` clean qubits) is the `scratch` method (`negateResourcesPreSwap`).
+
+Port (this repository): the mirror is method-indexed with default `oneQubit`. `Companion.negateResourcesAtWidth w m`,
+`negateGateCount w m`, `phaseArithmeticOpCost`/`phaseProgramOverhead`/`analyze*Program` (trailing `m := .oneQubit`),
+`Candidate.negation`, the champion lowering, `PTPPolicy.negation` / `BandedPolicy.negation` (copied by
+`toShorPolicySubmission`), the PTP closed forms `negateXGatesFor ...`, `nodeCensusFor`, `nodeCleanAncFor`, and every PTP
+census/recursion theorem (taken from ForShor's S3 versions) are stated for an arbitrary method. `modelVersion` is
+`forshor-phase-product-gates-v4` (`oneQubit`); `modelVersionFor .scratch` is the old `v3`.
+
+Checks that were run: `lake build` of all of `TableGeneration` and of every module outside it (0 errors); the oracle under
+`--negation=scratch` reproduces `scripts/tests/companion-cost-model.scratch.tsv` (byte-identical to the 6d55ad9 transcript),
+the five published plans of `RECURSIVE_COST_MODEL.md` and the champion differential rows; under `oneQubit` the planner's
+published plans and the champion differential are unchanged (no accepted table the planner selects, and no champion, negates);
+`scripts/PTPAxiomCheck.lean` (41 theorems, only `propext`, `Classical.choice`, `Quot.sound`); `check_ptp_policy.py` on
+`policies/ref_ptp_2048.json` (accepted; `ptp_peak_qubits` scan 7497 / exact 6783, ForShor's kernel numerals);
+`test_cost_model_lean.py`, `test_policy_json_negation.py`, `test_ptp_peak_qubits.py`.
+
+**Live-qubit peak of one PhaseTripleProduct, checked against Lean (2026-11-06; scratch term added 2026-11-07).** The site's Q for a
+PhaseTripleProduct is `3n +` the extra qubits of `evaluation/engine` `chain_peak_extra`, the shape of ForShor's `ptpPeakQubits = 3n + ptpWsTD +
+ptpCleanAncD` (`PhaseTripleProduct/Statement.lean`; ForShor proves it with the negation scratch since PR #79, `ptp_peak_qubits_exact`). ForShor
+states these over `Shor.PTP.PTPPolicy`, not over this mirror's policy type, so on 2026-11-06 `ptpWsTD` was evaluated as a transcription over the
+mirror's own policy and exact width rule (`lake env lean --run`): on the `baseline-k6` PhaseTripleProduct policy at n = 2048 it is 683, which the
+site's formula reproduced (6,827 in all, against the mirror's static `ptpQubits`, 18,794). That figure was before the clean scratch was added
+(`ptpCleanAncD` is 1 where a table negates or adds), so the board's Q is one higher on such rows. The six board PhaseTripleProduct policies now
+agree with ForShor's kernel-checked peaks exactly (6405, 7095, 6261, 6342, 6573, 6828); the guard is `evaluation/export_v2/pytests/test_ptp_q_equals_lean.py`. The PhaseProduct side is anchored by `peakReserveD` in
+`evaluation/engine/tests/test_live_peak.py`.

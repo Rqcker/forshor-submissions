@@ -1,0 +1,34 @@
+{
+ "tool": "check_banded_policy",
+ "started": "2026-11-05T20:14:45.607239+00:00",
+ "policy_sha256": "d2bd72e2e72b08b94524374d2b2987e26d075445ed235b29b0ce126820830fd9",
+ "target_width": 2048,
+ "seconds": {
+  "stage": 22.44,
+  "data": 22.8
+ },
+ "verdict": "rejected",
+ "widths_rule": "exact",
+ "mode": "PhaseProduct",
+ "bands": [
+  {
+   "threshold": 2048,
+   "k": 8
+  },
+  {
+   "threshold": 279,
+   "k": 4
+  },
+  {
+   "threshold": 76,
+   "k": 3
+  }
+ ],
+ "declared_ladder": null,
+ "workdir": "<scratch>/banded_policy_ty_tn1w0",
+ "rejection": {
+  "stage": "timeout",
+  "reason": "Command '['lake', 'env', 'lean', '--run', 'scripts/BandedPolicyReport.lean', '--', '2048']' timed out after 3600 seconds"
+ },
+ "finished": "2026-11-05T21:15:30.920898+00:00"
+}

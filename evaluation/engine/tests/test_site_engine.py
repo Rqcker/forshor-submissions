@@ -287,6 +287,9 @@ def test_full_seam_phase_product_equals_tcost(key, w, widths):
     """Seam between the two packages: under the digital-product leaf, Qualtran adders, negated source = one Subtract
     (the site's conventions), the l2q_full PolicyPhaseProduct at (w, w) has tcost's T-without-rotations and rotation
     count for the same policy, at the same width rule.
+    Modular swap 001: `tcost` (the PP/PTP engine) still prices a negation the old way (Qualtran `Negate`, the owner's STO conventions), so
+    the seam is stated under `negate="legacy"`; with the real negation (the default, `gidney_circuit`) a table that negates no longer matches it
+    (test_full_seam_diverges_from_tcost_for_a_negating_table_under_the_new_negation). No table on the site negates.
     Stage 18 (rewritten): the full run prices at the ForShor drop-in's exact widths (`forshor_exact_width`, max(tight,
     floor)), and the PP board at STO's exact widths (`tcost/exact`, tightWidth); the seam is checked at exact widths
     (the board's) and, as before, at scanned widths (the cross-check). The two exact rules differ only where ForShor's
@@ -296,12 +299,41 @@ def test_full_seam_phase_product_equals_tcost(key, w, widths):
     from l2q_full import cost_conventions as cc
     from l2q_full.bloqs.policy_phase_product import PolicyPhaseProduct
     P = (lib.sto_reference_policies()[PP] if key == "reference" else _opt(key, PP, widths=widths)).with_widths(widths)
-    spec = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract")
+    spec = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract", negate="legacy")
     LP = fa.to_l2q_full(P)
     assert {b.table.width_rule for b in LP.bands} == {widths}
     c = cc.split(PolicyPhaseProduct(LP, w, w, convention=spec))
     s = ts.score_policy(P, w, 0.01)
     assert (c.base, c.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
+
+
+def test_full_seam_diverges_from_tcost_for_a_negating_table_under_the_new_negation():
+    """The other half of the seam test: KMY's table negates, `tcost` prices that negation the old way, and the full run now prices it as
+    complement + the one-clean-ancilla increment with Lean's counts (Toffoli 12w-28 even / 10w-18 odd, 4 T each), so the two disagree on T
+    by exactly the negations' price difference, recomputed below from the call graph's negation sites, and agree on the rotation count.
+    If they ever agree again the swap has been undone, or `tcost` has been changed to follow it."""
+    from site_engine import fullalg as fa
+    from l2q_full import cost_conventions as cc
+    from l2q_full.bloqs.policy_phase_product import PolicyPhaseProduct
+    P = _opt("kmy", PP, widths="exact").with_widths("exact")
+    LP = fa.to_l2q_full(P)
+    s = ts.score_policy(P, 300, 0.01)
+    base = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract")
+    old = cc.split(PolicyPhaseProduct(LP, 300, 300, convention=base.with_(negate="legacy")))
+    assert base.negate == "gidney_circuit"                                    # the default is the real circuit
+    node = PolicyPhaseProduct(LP, 300, 300, convention=base)
+    new = cc.split(node)
+    assert (old.base, old.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
+    assert new.rot == old.rot
+    # first principles: the negation sites (width -> count) read off the call graph, 4 T per Toffoli, the legacy negation = Qualtran
+    # `Negate(QInt(w))` = one w-bit Gidney adder = 4 (w - 1) T, the real one 4 x (12w - 28 even w, 10w - 18 odd w, truncated at 0)
+    from qualtran.resource_counting import get_bloq_call_graph
+    _, sigma = get_bloq_call_graph(node, keep=lambda b: isinstance(b, cc.IncrementerNegate))
+    sites = {b.w: k for b, k in sigma.items() if isinstance(b, cc.IncrementerNegate)}
+    assert sites and all(b.impl == "gidney_circuit" for b in sigma if isinstance(b, cc.IncrementerNegate))
+    toff = lambda w: max(0, 12 * w - 28) if w % 2 == 0 else max(0, 10 * w - 18)
+    assert new.base - old.base == sum(k * (4 * toff(w) - 4 * (w - 1)) for w, k in sites.items())
+    assert new.base > old.base
 
 
 def test_forshor_exact_width_is_sto_tight_width_or_the_floor():
@@ -379,6 +411,7 @@ def test_full_cache_board_and_reference():
     assert c["paper"]["r2_T_2048"] == pytest.approx(2309763671532.619, rel=1e-12) and "not comparable" in c["paper"]["note"]
 
 
+@pytest.mark.legacy_negation
 def test_full_step4_is_in_the_run():
     """Step 4 (cmpLtNW, Steps.lean:50): per modular multiplication two phase products on (work+1) x (scratch+1) and four
     QFTs on the scratch register; it is the largest part of the reference run.
@@ -443,6 +476,7 @@ def test_full_uses_the_product_leaf_of_the_phase_product_board():
         assert (c.base, c.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
 
 
+@pytest.mark.legacy_negation
 def test_full_headline_and_grid_leaf_cross_check():
     """Pins (n = 2048, delta = 0.01) and the audit's figures within the work-width correction. The grid-leaf tier is a
     cross-check (the W x W grid leaf of NaiveLeaf.lean:53, Qualtran adders), never the score."""
@@ -491,13 +525,29 @@ def test_full_work_width_is_leans_and_the_residual_is_small():
     # Stage 18: on the drop-in IR the five bits move T by 1.10 % (exact widths are not smooth in w: the scratch QFT at
     # 4393 vs 4398 bits descends differently, -2.2 %); at scanned widths (the cross-check) still under 0.2 %. The static
     # qubit count is unchanged under both.
+    # That 1.10 % was measured under the SUPERSEDED 32 w negation draft. Under the real negation (the default) every negation is cheaper, the
+    # whole run is cheaper, and the same absolute difference is a slightly larger share. So: the draft bounds are kept as the draft's, and the
+    # real value is asserted equal to what the draft values imply once each run's own negation sites (counted in its call graph, at 4 x 32 w
+    # versus 4 x (12 w - 28 or 10 w - 18) T) are repriced.
+    from negation_arith import delta_t, negation, sites_of, t_draft, t_new
     for rule, native, lo, hi in ((None, fa.native(), 0.0109, 0.0111), ("scan", fa.native_scan(), 0, 2e-3)):
         LP = fa.to_l2q_full(_ref(), rule)
-        c = pr.PolicyShorCore.from_native(native, N, sy.Convention.for_modulus(1 << (N - 1), m_frac), fa.HEADLINE)
-        t_frac = fa._t_of(attrs.evolve(c, policy=LP), fa.HEADLINE, 0.01)["T"]
-        r = fa.price_full(_ref(), N, 0.01, rule=rule)
-        assert lo < (r["T"] - t_frac) / r["T"] < hi
-        assert pr.layout_qubits(LP, dict(c.widths)) == r["qubits"]
+        conv_frac = sy.Convention.for_modulus(1 << (N - 1), m_frac)
+        got = {}
+        for impl in ("incrementer", "gidney_circuit"):
+            with negation(impl):
+                c = pr.PolicyShorCore.from_native(native, N, conv_frac, fa.HEADLINE)
+                c = attrs.evolve(c, policy=LP)
+                t_frac = fa._t_of(c, fa.HEADLINE, 0.01)["T"]
+                r = fa.price_full(_ref(), N, 0.01, rule=rule)
+                assert pr.layout_qubits(LP, dict(c.widths)) == r["qubits"]
+                main = attrs.evolve((fa.core if rule is None else fa.core_scan)(N), policy=fa.to_l2q_full(_ref(), rule), convention=fa.HEADLINE)
+                got[impl] = (t_frac, r["T"], sites_of(c), sites_of(main))
+        (frac_d, main_d, s_frac, s_main), (frac_n, main_n, _, _) = got["incrementer"], got["gidney_circuit"]
+        assert lo < (main_d - frac_d) / main_d < hi                                     # the Stage 18 claim, as measured under the draft
+        assert frac_n == pytest.approx(frac_d - delta_t(s_frac, t_new, t_draft), rel=1e-12)
+        assert main_n == pytest.approx(main_d - delta_t(s_main, t_new, t_draft), rel=1e-12)
+        assert 0 <= (main_n - frac_n) / main_n < 1.3 * hi                                # still about one percent on the drop-in IR, under 0.2 % at scan
 
 
 def _lean_reserve(P, w, widths="scan"):
@@ -539,7 +589,8 @@ def test_qubits_phase_product_lean_static_allocation():
     assert 12_350 + 2 * fa.pp_lean_static_qubits(ref_scan, 2107)["reserve_x"] == 15_048
     from site_engine import policy_view as pv
     assert pv.view(_ref(), N, 0.01)["qubits_lean_static"]["qubits"] == 6624     # Lean static at scanned widths (cross-check)
-    assert pv.view(_ref(), N, 0.01)["qubits"] == 4992                            # Stage 13 headline: the formula at exact widths
+    assert pv.view(_ref(), N, 0.01)["qubits_static"]["qubits"] == 4992           # the static-layout formula at exact widths, kept as a cross-check
+    assert pv.view(_ref(), N, 0.01)["qubits"] == 4399                            # the board's Q is now the live-qubit peak (test_live_peak_products.py)
 
 
 def test_qubits_full_run_lean_reference_layout():

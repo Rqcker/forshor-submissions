@@ -1,0 +1,44 @@
+{
+ "name": "baseline-k2",
+ "mode": "PhaseProduct",
+ "bands": [
+  {
+   "threshold": 67,
+   "mode": "PhaseProduct",
+   "k": 2,
+   "point_order": [
+    "0",
+    "inf",
+    "1"
+   ],
+   "operations": [
+    [
+     "phaseProduct",
+     0
+    ],
+    [
+     "phaseProduct",
+     1
+    ],
+    [
+     "addScaled",
+     0,
+     1,
+     1,
+     0
+    ],
+    [
+     "phaseProduct",
+     0
+    ],
+    [
+     "addScaled",
+     0,
+     1,
+     -1,
+     0
+    ]
+   ]
+  }
+ ]
+}

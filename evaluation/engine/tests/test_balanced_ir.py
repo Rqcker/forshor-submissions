@@ -24,6 +24,7 @@ def _core(doc):
     return pr.PolicyShorCore.from_native(pi.load_native(doc), 2048, conv, F.HEADLINE)
 
 
+@pytest.mark.legacy_negation
 @pytest.mark.parametrize("name, T", [("sto_reference", 2.567853e12), ("shipped", 5.380873e14)])
 def test_balanced_ir_prices_through_the_dictionary(name, T):
     assert F.price_document(_doc(name), 2048)["T"] == pytest.approx(T, rel=1e-6)
