@@ -18,6 +18,6 @@ pack and compares T and Q with the boards' rows). All runs use n = 2048 and δ =
 Each `expected/*.json` has, for a policy: the board's T and exact ladder, Q (the live-qubit peak) and the score Q × T, the engines' agreement, the scanned-width cross-check and, for a
 PhaseProduct policy, the full run (T, Q, score, main ladder, trial count and the labelled cross-checks, which are not the score).
 
-Lean status: the pack does not run Lean. These example policies have **not** been run through the Lean harnesses at the pinned ForShor commit; the 15 policies the results seed lists were (13
-accepted; `harness/LEAN_CHECKS.md` says what the runs took). `starter.py price` prices a policy as written, at the thresholds in the file, as the site's intake does. The table names in the
+Lean status: the pack does not run Lean. These example policies have **not** been run through the Lean harnesses at the pinned ForShor commit; all 15 policies the results seed lists were, and all 15 were
+accepted (13 by the harness's default path, two PhaseTripleProduct policies with its `--fast` mode; `harness/LEAN_CHECKS.md` says what the runs took). `starter.py price` prices a policy as written, at the thresholds in the file, as the site's intake does. The table names in the
 ladders (STO archive id, DP id, KMY id, or "pasted") come from the library snapshot in `engine/data`.

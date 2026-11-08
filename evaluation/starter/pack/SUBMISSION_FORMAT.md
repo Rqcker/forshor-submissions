@@ -102,7 +102,7 @@ n = 2048.
 
 The Lean checks are heavy and the pack contains none of the Lean build trees. Measured on the 15 policies the results seed lists (ForShor `21e129a`, one machine): most policies pass
 the STO mirror in seconds to a few minutes; a PhaseProduct policy whose first band has k = 8 took about 2.4 hours in the mirror's report stage (three of them passed); the PhaseTripleProduct
-policy with a k = 8 first band did not finish in 12 hours. Expect hours for large first bands, and keep a first attempt small (k up to 6, few bands). The organisers' own limits for a submission
+policy with a k = 8 first band did not finish that stage in 12 hours (with the PhaseTripleProduct harness's `--fast` mode, see `harness/LEAN_CHECKS.md`, it takes about a minute). Expect hours for large PhaseProduct first bands, and keep a first attempt small (k up to 6, few bands). The organisers' own limits for a submission
 are in the repository's instructions, not here.
 
 ## 6. Sending it

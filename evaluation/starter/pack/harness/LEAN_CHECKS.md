@@ -12,7 +12,9 @@ are the ones in the submission repository.
 
 Use a machine with at least 16 GB of memory. Run one or two Lean checks at a time and keep every run under a memory cap (each tree's `scripts/memcap.py`). Measured on the policies of the
 results seed: most checks take seconds to a few minutes; a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the mirror's report stage, and the PhaseTripleProduct policy with a k = 8
-first band did not finish in 12 hours. Give a long run a stage limit (`--timeout`), and set `TMPDIR` to a directory you control: a run that long lost a file in the system temporary directory once.
+first band did not finish that stage in 12 hours. For PhaseTripleProduct, `check_ptp_policy.py --fast` (branch `harness/ptp-fast-report` of the same fork) skips that interpreted stage: the ladder comes from Python
+and the kernel certificate re-proves it, so a wrong ladder makes the certificate fail. With it that k = 8 policy and a k = 6 baseline were accepted in about a minute each, with the same audited theorems; the census and formula numbers of the report are not
+evaluated (they are diagnostics). The PhaseProduct harness has no such option. Give a long run a stage limit (`--timeout`), and set `TMPDIR` to a directory you control: a run that long lost a file in the system temporary directory once.
 A `rejected` record whose reason is a missing object file, a constructor-field error or a missing file in a temporary directory is an infrastructure failure, not a verdict on the policy: fix it and run again.
 
 ## 1. PhaseProduct: the STO policy mirror
