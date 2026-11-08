@@ -55,7 +55,7 @@ valid evidence is **still exported** (decision D9, which superseded D8) with `st
 that does have evidence is exported at every delta, priced there, even where the planner picked another policy (`rowsAdded`): evidence is
 about the policy, and only the rotation-synthesis price depends on delta.
 
-## What the real data says (2026-11-05)
+## What the real data says (2026-11-05; historical, at ForShor 6d55ad9, superseded by the next section)
 
 * The engine's frontier rows (17 PhaseProduct, 9 PhaseTripleProduct, at four deltas) are **104 row-policies but only 6 distinct
   policies** (4 PhaseProduct, 2 PhaseTripleProduct). The 31 seed records are earlier planner outputs, and no existing record satisfies
@@ -83,6 +83,38 @@ about the policy, and only the rotation-synthesis price depends on delta.
   The real records are now test fixtures (`pytests/data/real`). (2) After the harness reported its timeout, the `lean --run` process it
   had started kept running at full CPU with no parent; the harness's timeout kills the wrapper but not the interpreter. It also blocked
   the next check, because the harness waits while two or more Lean processes run. It had to be killed by hand.
+
+## STO mirror evidence at ForShor 21e129a (2026-11-08)
+
+All 15 distinct listed policies were run through the interim STO fork's harnesses (`check_banded_policy.py`, `check_ptp_policy.py`, `--widths exact`) at the epoch's pins: Lean
+4.36.0-rc1, ForShor `21e129a` (the merge of PR #80, on top of PR #79), STO base `361e81e`. The fork is `courtneyjzapata/ShorTableOptimization_temp`, branch `port/forshor-21e129a`
+(`349017d`, not pushed). The envelopes (policy, record, evidence; no logs) are archived in `evidence-archive/494185cf666f9752/`.
+
+| Policy | Ladder (threshold, k) | Result | Report stage |
+| --- | --- | --- | --- |
+| PhaseProduct baselines k = 2 to 6 (`6f036362`, `ea01254c`, `7df40770`, `a3972b96`, `c7f81cb4`) | one band | all **accepted** | 5 to 95 s |
+| PhaseProduct planner `1bc92ac6` | 6, 4, 3 | **accepted** | 54 s |
+| PhaseProduct planner `80132d41` | 8, 4, 3 | **accepted** | 8,768 s |
+| PhaseProduct planner `ab119309` | 8, 3 | **accepted** | 8,574 s |
+| PhaseProduct planner `92d5b75d` | 8, 3 | **accepted** (second attempt, see below) | 8,624 s |
+| PhaseTripleProduct baselines k = 3, 4, 5 (`85fbe129`, `265a0f53`, `2ed7dc90`) | one band | all **accepted** | 7 s, 23 s, 773 s |
+| PhaseTripleProduct planner `627bb6e3` | 4 | **accepted** | 11 s |
+| PhaseTripleProduct planner `48063efa` | 8, 4 | **not accepted: report stage killed at its 12 h limit** (a resource limit, not a rejection) | 43,201 s |
+| PhaseTripleProduct baseline k = 6 (`c733baf3`) | one band | **no outcome** (it was still running when the seed was made; the archive holds no record for it) | |
+
+13 of 15 policies have evidence, which covers 80 of the 88 board rows of the seed. The earlier guess in the section below that the k = 8 policies would "likely repeat" a timeout was wrong
+for PhaseProduct: all three were accepted once the stage limit was raised (6 h), taking about 2.4 h each in the report stage. What took 2.4 h at the older pins also took 2.4 h here, so
+expect long checks for large first bands; the PhaseTripleProduct k = 8 policy did not finish in 12 h.
+
+Findings from these runs (each one produced a false `rejected` that is not a verdict on the policy; treat any `rejected` whose detail is not a threshold, contract or timeout message as an
+infrastructure failure and re-run it):
+
+* `PTP.Census.olean does not exist`: `lake build TableGeneration` does not build the PhaseTripleProduct modules; build them by name before running the PhaseTripleProduct harness.
+* `Insufficient number of fields for ⟨...⟩ constructor ... BandedPolicy.mk`: the mirror's `BandedPolicy` gained a `negation` field in the port to ForShor's negation method; a harness script that
+  builds one with two fields fails at its report stage.
+* `certificate does not build ... no such file or directory` in a temporary directory under `/var/folders`: a source file in the harness's temporary workdir disappeared during a 2.4 h run
+  (not reproduced; the re-run with `TMPDIR` on a path outside the system temp area passed). Set `TMPDIR` for runs of this length.
+* The harness's concurrency rule (do not start Lean while two or more are running) made a run wait for stale processes from earlier runs; the harness gives up waiting after an hour and starts anyway.
 
 ## Tests
 
