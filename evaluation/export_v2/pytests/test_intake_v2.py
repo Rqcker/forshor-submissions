@@ -33,12 +33,14 @@ def policy_doc():
 
 def fake_publisher(model, calls, number=1):
     state = {"epoch": "e", "model": model, "baseGeneration": "1", "nextNumbers": {"tester": number}, "completedEvaluations": {}, "submissionIds": ["f" * 40],
-             "publication": {"updatedAt": "2026-11-08T00:00:00Z", "archiveCommit": "a" * 40, "snapshotId": "s" * 64}}
+             "publication": {"updatedAt": "2026-11-08T00:00:00Z", "snapshotId": "s" * 64}}   # the real /v2/state has no archiveCommit
 
     def request_json(url, token, payload=None):
         calls.append((url, payload))
         if url.endswith("/v2/state"):
             return state
+        if url.endswith("/results/v2/dashboard.json"):
+            return {"publication": {"archiveCommit": "a" * 40}}
         return {"snapshotId": "n" * 64, "published": True}
     return request_json
 
@@ -85,6 +87,21 @@ def test_in_production_the_accepted_ids_and_archive_commit_are_the_archive_branc
     req = [p for u, p in calls if u.endswith("/v2/publish")][0]
     assert req["archive"]["acceptedIds"] == ["1" * 40, "2" * 40] and req["evaluation"]["archiveCommit"] == "c" * 40
     assert len(seen) >= 2, "read before pricing and again by the recovery loop"
+
+
+def test_the_archive_commit_is_read_from_the_published_dashboard_or_must_be_given(monkeypatch, tmp_path, model, policy_doc):
+    calls = []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
+    intake_v2.run_intake(policy_doc, login="tester", pull=2, url="http://x", token="t", tree=tmp_path, workdir=tmp_path / "w1",
+                         run_mirror_fn=archived_mirror(calls), log=lambda s: None)
+    assert [p for u, p in calls if u.endswith("/v2/publish")][0]["evaluation"]["archiveCommit"] == "a" * 40
+    fake = fake_publisher(model, calls)
+    monkeypatch.setattr(intake_v2, "request_json", lambda u, t, p=None: (_ for _ in ()).throw(intake_v2.RetryPublication("down")) if "dashboard" in u else fake(u, t, p))
+    with pytest.raises(RuntimeError, match="--archive-commit"):
+        intake_v2.run_intake(policy_doc, login="tester", pull=3, url="http://x", token="t", tree=tmp_path, workdir=tmp_path / "w2",
+                             run_mirror_fn=archived_mirror(calls), log=lambda s: None)
+    intake_v2.run_intake(policy_doc, login="tester", pull=4, url="http://x", token="t", tree=tmp_path, workdir=tmp_path / "w3",
+                         run_mirror_fn=archived_mirror(calls), archive_commit="d" * 40, log=lambda s: None)
 
 
 def test_the_reserved_handle_and_a_foreign_epoch_are_refused_before_the_lean_run(monkeypatch, tmp_path, model, policy_doc):

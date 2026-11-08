@@ -123,6 +123,16 @@ def forshor_check(eng, P, forshor_tree: Path, workdir: Path, pin: str, timeout: 
     return forshor_record(eng, P, json.loads(printed.stdout), pin)
 
 
+def _published_archive_commit(url: str, token: str) -> str:
+    """The archive commit the live snapshot records, read from the published dashboard (`/results/v2/dashboard.json`, which a local publisher serves and
+    staging serves from the bucket mount). `/v2/state` does not carry it. Without it, pass `archive_commit` (or `--archive`)."""
+    try:
+        return request_json(url.rstrip("/") + "/results/v2/dashboard.json", token)["publication"]["archiveCommit"]
+    except (RetryPublication, RuntimeError, KeyError) as e:
+        raise RuntimeError("the archive commit is not in /v2/state: pass --archive-commit (or --archive); "
+                           f"reading it from the published dashboard failed ({type(e).__name__})") from None
+
+
 def _now() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -178,7 +188,7 @@ def run_intake(policy_doc: Any, *, login: str, pull: int, url: str, token: str, 
 
     # Production: the accepted ids and the archive commit are the `submission-results` branch's (`archive_view`, as publish_v2 reads it). A local
     # rehearsal has no such branch: the accepted ids are the publisher's own ledger plus this submission.
-    archive = archive_commit or (archive_view()[1] if archive_view else state["publication"]["archiveCommit"])
+    archive = archive_commit or (archive_view()[1] if archive_view else _published_archive_commit(url, token))
     accepted_now = archive_view or (lambda: (sorted(set(state_of().get("submissionIds", [])) | {head_sha}), archive))
 
     def price() -> Dict[str, Any]:
@@ -204,6 +214,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--publisher-url", default=os.environ.get("PUBLISHER_URL"))
     ap.add_argument("--workdir", type=Path, default=Path("intake-work"))
     ap.add_argument("--archive", type=Path, help="a checkout of the `submission-results` branch (as publish_v2.py reads it; needs GH_TOKEN); omit for a local rehearsal")
+    ap.add_argument("--archive-commit", help="the submission-results commit to record (default: the live snapshot's, read from the published dashboard)")
     ap.add_argument("--stage-timeout", type=int)
     ap.add_argument("--mirror-timeout", type=int, default=7200)
     ap.add_argument("--out", type=Path, help="write the result JSON here")
@@ -214,6 +225,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         result = run_intake(json.loads(a.policy.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=os.environ.get("PUBLISHER_TOKEN", "local"),
                             tree=a.tree, workdir=a.workdir, head_sha=a.head_sha, run_id=a.run_id, forshor_tree=a.forshor_tree,
                             stage_timeout=a.stage_timeout, mirror_timeout=a.mirror_timeout,
+                            archive_commit=a.archive_commit,
                             archive_view=(lambda: __import__("publish_v2")._archive_view(a.archive)) if a.archive else None)
         code = 0
     except (Refused, ReservedHandle, ModelMismatch) as e:
