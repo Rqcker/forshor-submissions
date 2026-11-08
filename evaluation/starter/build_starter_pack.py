@@ -76,9 +76,13 @@ def main() -> int:
     ap.add_argument("--seed", type=Path, required=True, help="the exporter's epoch input the results seed was made from")
     ap.add_argument("--out", type=Path, default=REPO / "dist-starter", help="output directory (default: dist-starter/ at the repo root)")
     ap.add_argument("--no-zip", action="store_true")
+    ap.add_argument("--allow-dirty", action="store_true", help="build from uncommitted source (a trial; the manifest's commit will not describe it)")
     ap.add_argument("--python", default=sys.executable, help="python with the pack's requirements, to pin the example outputs")
     a = ap.parse_args()
 
+    dirty = git("status", "--porcelain", "--", "evaluation/starter", "evaluation/engine")
+    if dirty and not a.allow_dirty:
+        raise SystemExit("the pack's source is not committed, so its manifest could not name the commit it was built from:\n" + dirty + "\n(commit it, or pass --allow-dirty for a trial build)")
     pack = a.out / "forshor-challenge-starter"
     if pack.exists():
         shutil.rmtree(pack)

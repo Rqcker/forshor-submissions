@@ -18,7 +18,8 @@ open TableGeneration TableGeneration.PTP
 def ppTable (T : PTPTable) : PolicyMirror.PolicyTable := ⟨T.k, T.pts, T.ops⟩
 
 def ppLadder (P : PTPPolicy) (n : Nat) : List (Nat × Option Nat) :=
-  (PolicyMirror.BandedPolicy.ladder ⟨.PhaseTripleProduct, P.bands.map fun b => ⟨b.threshold, ppTable b.table⟩⟩ n)
+  (PolicyMirror.BandedPolicy.ladder
+    { mode := .PhaseTripleProduct, bands := P.bands.map fun b => ⟨b.threshold, ppTable b.table⟩ } n)
 
 def rungs (l : List (Nat × Option Nat)) : String :=
   ",".intercalate (l.map fun (w, k) =>

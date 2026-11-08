@@ -16,6 +16,13 @@ for f in sorted(pack.rglob("*")):
     for w in STALE:
         if w in text and w not in ALLOWED.get(rel, []):
             bad.append(f"{rel}: {w!r}")
+for f in sorted(pack.rglob("*.md")):
+    rel = str(f.relative_to(pack))
+    if rel.startswith("engine/"):
+        continue
+    for n, line in enumerate(f.read_text().splitlines(), 1):
+        if line.endswith("|") and not line.startswith("|") and not line.startswith(("`", " ", ">", "-", "*")):
+            bad.append(f"{rel}:{n}: a table row that does not start with '|' (an orphan fragment): {line[:60]!r}")
 print(f"{len(bad)} stale references")
 for b in bad:
     print("  ", b)

@@ -191,6 +191,10 @@ def price_policy(P: tt.Policy, n: int, delta: float, full: bool) -> Dict[str, An
         if full:
             rec["full_run"] = full_price(P, n, delta)
             rec["full_run"]["rank_on_board"] = rank_on_board("full", rec["full_run"]["score"], n, delta)
+            kmax = max((b.table.k for b in P.bands), default=0)
+            rec["full_run"]["forshor_check"] = (
+                {"possible": True, "note": "every band has k <= 6: `starter.py template` writes ForShor's PolicyTemplate for it"} if kmax <= 6 else
+                {"possible": False, "note": f"a band has k = {kmax}: ForShor's check takes 1 < k <= 6, so this policy is priced on the full board without the ForShor tag and has no template"})
     return rec
 
 
@@ -342,6 +346,8 @@ def _show_full(f: Dict[str, Any]) -> None:
     print(f"  full order finding       single run {_f(f['T'])} T, Q {_f(f['qubits'])} qubits ({f.get('qubits_label', QUBITS_LABEL)}; "
           f"static layout {_f(f.get('qubits_static_layout'))}), score Q x T = {f['score']:.6e}, work width {f.get('work_width')}")
     _show_rank(f.get("rank_on_board"), "the full order-finding board")
+    if f.get("forshor_check") and not f["forshor_check"]["possible"]:
+        print("                           NOTE " + f["forshor_check"]["note"])
     print(f"                           main ladder {f['ladder_str']} ({f.get('ir', '')})")
     if "end_to_end" in f:
         print(f"                           trials {f['trial_count']} -> end to end {f['end_to_end']:.6e} T")

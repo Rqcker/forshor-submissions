@@ -102,6 +102,8 @@ def score(sub: Union[Dict[str, Any], str, Path], *, delta: Optional[float] = Non
     nat, bits, trial = chk["native"], chk["bits"], chk["trial_count"]
     head_spec = cc.QUALTRAN if delta is None else cc.QUALTRAN.with_(delta=delta)
     cross_spec = cc.LEAN_FAITHFUL if delta is None else cc.LEAN_FAITHFUL.with_(delta=delta)
+    # the policy's own negation method ("oneQubit" -> gidney_circuit; "scratch" -> legacy; key absent -> the repo default), both tiers
+    head_spec, cross_spec = head_spec.with_(negate=nat.negate_impl), cross_spec.with_(negate=nat.negate_impl)
     N = 1 << (bits - 1)
     conv = sy.Convention.for_modulus(N, chk["m"])
     core = pr.PolicyShorCore.from_native(nat, bits, conv, head_spec)
@@ -117,7 +119,7 @@ def score(sub: Union[Dict[str, Any], str, Path], *, delta: Optional[float] = Non
         "policy": [{"index": i, "threshold": b.threshold, "k": b.table.k, "table_sha256": pol.table_sha256(b.table)}
                    for i, b in enumerate(nat.policy.bands)],
         "checks": {"schema": "ok", "version": "ok", "binding": chk["binding"]},
-        "instance": {"bits": bits, "modulus": f"2^{bits - 1}", "m": str(chk["m"]),
+        "instance": {**({"negation": nat.negation} if nat.negation is not None else {}), "bits": bits, "modulus": f"2^{bits - 1}", "m": str(chk["m"]),
                      "extra_bits": conv.extra_bits, "popcount": conv.popcount,
                      "widths": dict(core.widths), "layout_qubits": core.layout_qubits()},
         "single_run": {

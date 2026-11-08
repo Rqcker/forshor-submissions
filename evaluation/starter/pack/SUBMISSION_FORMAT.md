@@ -20,7 +20,7 @@ One JSON object (UTF-8, at most 2,000,000 bytes):
 | `mode` | `PhaseProduct` (PP board) or `PhaseTripleProduct` (PTP board). |
 | `bands` | At least one band, widest first. Thresholds are non-negative integers and strictly decrease. A band serves every width w ≥ its threshold that is below the previous band's threshold. Below the last threshold, the leaf is used. |
 | one table per k | Two bands with the same k must use the same table. |
-| `k` | 2 ≤ k. A PP table evaluates at 2k − 1 points, a PTP table at 3k − 2. For a policy that also goes to the full run (ForShor), 2 ≤ k ≤ 6. |
+| `k` | 2 ≤ k. A PP table evaluates at 2k − 1 points, a PTP table at 3k − 2. The full-run board prices a PP policy of any k; ForShor's own check, and so the `ForShor` tag and `starter.py template`, take 2 ≤ k ≤ 6 only (section 2). |
 | `point_order` | The order in which the program consumes the points: `"z"` (an integer), `"1/m"` or `"-1/m"`, `"inf"`. Distinct and unisolvent. |
 | `operations` | `["addScaled", dst, src, sign, shift]` (sign +1 or −1, dst ≠ src), `["negate", i]`, `["shiftL", i, n]`, `["shiftR", i, n]` (exact division only), `["phaseProduct", i]`, on registers 0 to k − 1. The program consumes the points in order, restores the registers, and satisfies the exact Toom-Cook identity. |
 | widths | **Do not declare widths.** The board derives the exact widths and prices at them. Any `declared_ladder`, `ladder`, `widths`, `child_width` (and similar) is ignored, with a notice. It is never passed to Lean (`starter.py lean-input` drops it). |
@@ -31,7 +31,7 @@ The site also reads `{"policy": {...}}` and `{"policies": [...]}` (at most 8 pol
 
 ## 2. Full order finding (ForShor `PolicyTemplate.lean`)
 
-The full run takes a PP policy (section 1) with 2 ≤ k ≤ 6. The site writes it as ForShor's `PolicyTemplate.lean`
+The full order-finding board prices every PP policy (section 1), whatever its k: a policy with a band of k above 6 is on the board without ForShor's check. ForShor's check takes 2 ≤ k ≤ 6: the site writes such a policy as ForShor's `PolicyTemplate.lean`
 (`starter.py template` does the same) and builds it on ForShor at the pinned commit `21e129aeefc0fd1bbb8fa63402f5799af2490788`
 (VerifiedQC/ForShor `main`, the merge of PR #80, which contains PR #79). Its Lean library is `ForShor`. If you write the template by hand, these rules apply:
 

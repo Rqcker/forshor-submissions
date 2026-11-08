@@ -51,7 +51,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from policy_json_to_lean import PolicyError  # noqa: E402
+from policy_json_to_lean import PolicyError, negation_of  # noqa: E402
 from ptp_policy_json_to_lean import render  # noqa: E402
 import ptp_exact_width  # noqa: E402
 
@@ -119,6 +119,20 @@ def target_pins(N: int) -> dict:
                                    f"(Eq ({D}.chainContractsTight {N}) Bool.true)"),
         "gate_recursion_exact_at_target": g,
     }
+
+
+def peak_record(doc: dict, n: int, rep: dict) -> dict:
+    """`ptpPeakQubits` (ForShor `ptp_peak_qubits*`) per width rule, for the policy's negation method. A rule is
+    reported only when Python's ladder equals the Lean report's, so the number is about the same recursion."""
+    method = negation_of(doc) or "oneQubit"
+    out = {"negation": method, "tier": "see report_tiers.ptp_peak_qubits"}
+    for rule, key, ladder in (("scan", "ladder", ptp_exact_width.scan_ladder),
+                              ("exact", "ladder_exact", ptp_exact_width.exact_ladder)):
+        if [list(x) for x in ladder(doc, n)] != [[r["width"], r["k"]] for r in rep[key]]:
+            out[rule] = {"unavailable": "Python ladder differs from the Lean report"}
+            continue
+        out[rule] = ptp_exact_width.ptp_peak_qubits(doc, n, rule, method)
+    return out
 
 
 def threshold_reason(f: dict, N: int) -> str:
@@ -229,9 +243,13 @@ def main(argv=None):
                 "sign-extension fan-out — the circuit's CNOT is `cnot_with_extension` (ptpCnotFull); "
                 "`toffoli_uncompute` = And† (ptpAndDag), compute Toffoli (And) = toffoli - toffoli_uncompute",
             "reserve_need_per_operand, clean_ancilla_peak, qubits":
-                "FORMULA (ForShor reserveNeed shape, private workspace per child); no theorem. The constructed "
-                "circuit of `gate_recursion` has a different, proved bound: qubits <= 3n + ptpWorkspace (per level "
-                "3k·C' reserve, children share one pool, 2 leaf ancillas)",
+                "FORMULA (ForShor reserveNeed shape, private workspace per child). `qubits` (= ptpQubits) is proved only "
+                "as a bound on the qubits the circuit NAMES (`LowGate.usedQubits`, `ptp_qubits_le_ptpQubits`); it is not a "
+                "bound on the framework's qubitCount (named qubits + the model's clean scratch), for which see "
+                "`ptp_peak_qubits` below. The constructed circuit of `gate_recursion` has a different, proved bound on "
+                "the named qubits: <= 3n + ptpWorkspace (per level 3k·C' reserve, children share one pool, 2 leaf "
+                "ancillas). `clean_ancilla_peak` is this suite's formula under its own cost convention; the method-aware "
+                "scratch bound (ForShor `ptpCleanAnc`, `ptpCleanAncD`) is proved inside `ptp_peak_qubits`",
             "census_ccphase_leaf, qubits_ccphase_leaf":
                 "FORMULA, documented alternative: the same with the CCPhase leaf (5 Rz per cell; "
                 "ptpNodeCCPhase_resources, ptpResourcesCCPhase_depth_one)",
@@ -243,7 +261,20 @@ def main(argv=None):
                 "census_exact.cnot excludes it), And† = ptpAndDagX, qubits <= 3n + ptpWorkspaceX; the NUMBERS at the target "
                 "width are compiled evaluation (lean --run) of those formulas, not kernel-reduced; ptpResourcesD recurses "
                 "exactly as ladderX (choose, ptpTightWidth < n), agreement by construction, not a theorem (HG7 F1/F2)",
-            "qubits_bound_scan": "PROVED bound for the scan-ladder circuit of `gate_recursion` (3n + ptpWorkspace)"}
+            "qubits_bound_scan": "PROVED bound for the scan-ladder circuit of `gate_recursion` (3n + ptpWorkspace), on "
+                                 "the named qubits only (no clean scratch)",
+            "ptp_peak_qubits":
+                "Lean-proved UPPER BOUND on the framework's qubitCount (named qubits + clean scratch), "
+                "`ptpPeakQubits = 3n + ptpWsTD + ptpCleanAncD`: ForShor `ptp_peak_qubits` (any width rule), "
+                "`ptp_peak_qubits_exact` (exact rule, the board's) and `ptp_peak_qubits_scan` (scan rule), "
+                "Implementation/PhaseTripleProduct/Statement.lean (PTPPeakQubits*) at ForShor 21e129aeefc0fd1bbb8fa63402f5799af2490788. "
+                "EXISTENTIAL, like PTPQubitsTight: some circuit following the policy has qubitCount <= the number; "
+                "not an equality in general. ptpWsTD is the workspace the construction touches (base 2 + 3(k C' - w) "
+                "per node), ptpCleanAncD the largest clean scratch of one node under the policy's `negation` (1 for "
+                "`oneQubit`, C' + 1 for `scratch`). The number is evaluated here in Python "
+                "(ptp_exact_width.ptp_peak_qubits) and cross-checked against ForShor's kernel-evaluated numerals "
+                "(scripts/test_ptp_peak_qubits.py); the ForShor claims concern ForShor's own PTPPolicy on the same "
+                "tables, not this suite's TableGeneration.PTP object. Not kernel-reduced in this suite's certificate."}
         if not rep["check"]:
             bad = [i for i, b in enumerate(rep["bands"]) if not b["contract"]]
             raise Reject("check", "thresholds not strictly decreasing" if not bad
@@ -276,6 +307,7 @@ def main(argv=None):
                     "exact-width theorems and *_exact numbers are the ones the threshold rule covers")
         elif not rep["chain_contracts"]:
             raise Reject("cert", "chain does not contract from the target width")
+        rec["ptp_peak_qubits"] = peak_record(doc, a.target_width, rep)
         cert_src = render(doc, "PTPSubmittedCert", a.target_width, "cert", "PTPSubmitted", a.widths,
                           [(r["width"], r["k"]) for r in rep["ladder_exact"]])
         (ROOT / INST / "PTPSubmittedCert.lean").write_text(cert_src)
@@ -305,6 +337,9 @@ def main(argv=None):
                 raise Reject("audit", f"{h}: axioms {t['axioms']}")
             audit[h] = {"axioms": sorted(t["axioms"]), "type": t["type"]}
         pins = dict(PINS, **(target_pins(a.target_width) if a.widths == "exact" else {}))
+        if negation_of(doc) is not None:  # non-default method: the resources are those of `policy.resourceModel`
+            pins = {k: v.replace("Shor.LowGate.resources Shor.shorGateResourceModel (G φ)",
+                                 f"Shor.LowGate.resources {D}.resourceModel (G φ)") for k, v in pins.items()}
         for h, pin in pins.items():
             if h not in audit:
                 continue
