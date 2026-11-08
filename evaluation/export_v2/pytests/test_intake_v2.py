@@ -169,3 +169,14 @@ def test_the_command_line_maps_outcomes_to_exit_codes(monkeypatch, tmp_path, pol
     assert intake_v2.main(base) == 1
     monkeypatch.setattr(intake_v2, "run_intake", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("the harness wrote no record")))
     assert intake_v2.main(base) == 2
+
+
+def test_weighted_cost_is_computed_for_a_table_the_archive_has_no_value_for_and_reproduces_every_archived_value():
+    from export_v2 import engine, mapping
+    engine.load()
+    from site_engine import library as lib
+    known = [(T, s.weighted[(T.mode, T.k)]) for s in lib.submissions() for T in s.tables.values() if (T.mode, T.k) in s.weighted]
+    assert len(known) >= 98
+    wrong = [(T.digest[:10], mapping.weighted_cost_of(T.to_json()["operations"]), w) for T, w in known if mapping.weighted_cost_of(T.to_json()["operations"]) != w]
+    assert not wrong, wrong[:5]
+    assert mapping.weighted_cost_of([["addScaled", 0, 1, 1, 0], ["shiftL", 1, 1], ["phaseProduct", 0], ["phaseProduct", 1], ["negate", 2], ["phaseProduct", 2]]) == 3 + 5 * 2

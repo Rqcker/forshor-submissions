@@ -142,6 +142,22 @@ def full_run_of(view: Raw, lean_peak: Any = False) -> Raw:
     }
 
 
+def weighted_cost_of(operations) -> int:
+    """STO's weighted cost of a table, `arithmetic_operation_count + 5 * parallel_phase_product_layer_count` (ShorTableOptimization BENCHMARK.md), from its operations:
+    every operation that is not a phaseProduct is arithmetic (addScaled, negate, shiftL, shiftR), and a layer is a maximal run of consecutive phaseProduct operations.
+    The engine reads the value from the STO archive's verification results, which exist only for archived tables; a table a participant wrote has none, and the
+    contract requires a number. This reproduces the archived value for all 98 archived tables that have one (a test checks it), so a table without one gets the same
+    measure computed here, not a made-up number."""
+    arithmetic = layers = 0
+    in_run = False
+    for op in operations:
+        is_phase = op[0] == "phaseProduct"
+        arithmetic += not is_phase
+        layers += is_phase and not in_run
+        in_run = is_phase
+    return arithmetic + 5 * layers
+
+
 def panel_of(view: Raw, *, epoch: str, row_id: str, board: str, delta: str, verification: Raw, lean_peak: Any = False) -> Raw:
     """One `forshor.policy/v2` document from an engine `policy_view` (plus `full`, `usage`, `tables_used` for the full board).
     `lean_peak`: Lean's kernel has evaluated this policy's qubit peak (per row; False until a manifest says so); only the qubit label and
@@ -169,7 +185,7 @@ def panel_of(view: Raw, *, epoch: str, row_id: str, board: str, delta: str, veri
                   for b in view["bands"]],
         "tables": [{
             "k": t["k"], "digest": t["digest"], "points": t["points"], "operations": t["operations"], "pointCount": t["point_count"],
-            "census": t["census"], "weightedCost": t["weighted_cost"],
+            "census": t["census"], "weightedCost": t["weighted_cost"] if t["weighted_cost"] is not None else weighted_cost_of(t["operations"]),
             "source": {"id": t["source"]["id"], "kind": t["source"]["kind"], "status": t["source"]["status"],
                        "pr": t["source"].get("pr"), "createdAt": t["source"].get("created_at")},
             "checkLevel": t["level"], "checkers": t["checkers"], "checkedBy": t["checked_by"],
