@@ -20,7 +20,7 @@ One JSON object (UTF-8, at most 2,000,000 bytes):
 | `mode` | `PhaseProduct` (PP board) or `PhaseTripleProduct` (PTP board). |
 | `bands` | At least one band, widest first. Thresholds are non-negative integers and strictly decrease. A band serves every width w ≥ its threshold that is below the previous band's threshold. Below the last threshold, the leaf is used. |
 | one table per k | Two bands with the same k must use the same table. |
-| `k` | 2 ≤ k. A PP table evaluates at 2k − 1 points, a PTP table at 3k − 2. The full-run board prices a PP policy of any k; ForShor's own check, and so the `ForShor` tag and `starter.py template`, take 2 ≤ k ≤ 6 only (section 2). |
+| `k` | 2 ≤ k ≤ 8 for a submission. A PP table evaluates at 2k − 1 points, a PTP table at 3k − 2. The boards price a policy of any k, but a submission takes 2 ≤ k ≤ 8 for both PP and PTP (section 2). |
 | `point_order` | The order in which the program consumes the points: `"z"` (an integer), `"1/m"` or `"-1/m"`, `"inf"`. Distinct and unisolvent. |
 | `operations` | `["addScaled", dst, src, sign, shift]` (sign +1 or −1, dst ≠ src), `["negate", i]`, `["shiftL", i, n]`, `["shiftR", i, n]` (exact division only), `["phaseProduct", i]`, on registers 0 to k − 1. The program consumes the points in order, restores the registers, and satisfies the exact Toom-Cook identity. |
 | widths | **Do not declare widths.** The board derives the exact widths and prices at them. Any `declared_ladder`, `ladder`, `widths`, `child_width` (and similar) is ignored, with a notice. It is never passed to Lean (`starter.py lean-input` drops it). |
@@ -29,17 +29,17 @@ One JSON object (UTF-8, at most 2,000,000 bytes):
 
 The site also reads `{"policy": {...}}` and `{"policies": [...]}` (at most 8 policies per file).
 
-## 2. Full order finding (ForShor `PolicyTemplate.lean`)
+## 2. The submission file `Policy.lean` (and the full order-finding board)
 
-The full order-finding board prices every PP policy (section 1), whatever its k: a policy with a band of k above 6 is on the board without ForShor's check. ForShor's check takes 2 ≤ k ≤ 6: the site writes such a policy as ForShor's `PolicyTemplate.lean`
-(`starter.py template` does the same) and builds it on ForShor at the pinned commit `21e129aeefc0fd1bbb8fa63402f5799af2490788`
-(VerifiedQC/ForShor `main`, the merge of PR #80, which contains PR #79). Its Lean library is `ForShor`. If you write the template by hand, these rules apply:
+A submission is this one Lean file, `Policy.lean`, holding the policy: for PhaseProduct a ForShor `ShorPolicySubmission` (bands with 2 ≤ k ≤ 8), for PhaseTripleProduct the same file with a `PTPPolicy` (bands with 2 ≤ k ≤ 8; this pack has no template for it yet).
+The full order-finding board prices every PP policy (section 1). ForShor builds the PhaseProduct file (`starter.py template` writes it from site policy JSON) at the pinned commit `21e129aeefc0fd1bbb8fa63402f5799af2490788`
+(VerifiedQC/ForShor `main`, the merge of PR #80, which contains PR #79). Its Lean library is `ForShor`. If you write the file by hand, these rules apply:
 
-* One file: `ForShor/ShorVerification/Submission/PolicyTemplate.lean`, at most 1,000,000 bytes. Nothing
-  else in the ForShor tree may change.
+* **One file: `TableGeneration/Submission/Policy.lean`, the only file a pull request may change**, at most 1,000,000 bytes. For ForShor's build it is
+  copied to `ForShor/ShorVerification/Submission/PolicyTemplate.lean` (ForShor's name for the file); nothing else in the ForShor tree changes.
 * Imports: only the three modules the shipped template imports (`ForShor.ShorVerification.Framework.ToomCookTable`,
   `ForShor.ShorVerification.Framework.Policy`, `ForShor.ShorVerification.Submission.Decide`).
-* Per band, as in `templates/PolicyTemplate.lean`: `k` (1 < k ≤ 6), the points in consumption order, the program, and
+* Per band, as in `templates/Policy.lean`: `k` (1 < k ≤ 8), the points in consumption order, the program, and
   the `ShorLoweringSetup` record with C1 to C4 proved (`decide +kernel`). Then
   `def policy : ShorPolicySubmission where bands := [(threshold, setup), ...]`, widest first, with
   `sorted := by decide`. PhaseProduct only.
@@ -48,10 +48,10 @@ The full order-finding board prices every PP policy (section 1), whatever its k:
   `extern`, `csimp`, `initialize`, macros, `syntax` and `notation`, `set_option`, `import Lean` and `import Mathlib`,
   and `IO.`/`System.`. On top of this, ForShor's lexical gate (`scripts/check_template_lexical.sh`) applies.
 * ForShor's check proves C1 to C4 by `decide +kernel` and extracts the IR at run time in the compiled exe, so k = 5
-  or 6 tables and three or more bands pass.
+  to 8 tables and three or more bands pass.
 * The document is printed by `lake exe forshor_policy_submission --balanced`: exact register widths
   (`ir.width_rule`) and the balanced IR templates. At the pinned commit the document also prints the policy's `negation` and the per-method
-  `negate_charge`. A per-submission rebuild touches only `PolicyTemplate`,
+  `negate_charge`. A per-submission rebuild touches only ForShor's `PolicyTemplate` module,
   `PolicyCheck` and `PolicyMain`.
 * The printed `policy.json` must carry the organisers' fixed values: `benchmark.bits` 2048, `benchmark.trial_count`
   386, `precision.eta` 2^-150, `precision.m` = 2^150 − 3. `starter.py forshor-doc` says whether it does.
@@ -107,11 +107,11 @@ are in the repository's instructions, not here.
 
 ## 6. Sending it
 
-This pack prices a policy and prepares it for the Lean checks; **it does not submit anything**. The submission repository is `zapatacomputing/forshor-submissions` (private during the sprint; the
-challenge page's **Participate** dialog has the commands), and its own instructions win over this file. Its CLI (`./forshor setup`, `./forshor check`, `./forshor submit`) takes a Lean
-`GeneratorPolicy` in `TableGeneration/Submission/Policy.lean`. The policy JSON this pack works with is the format of the boards' rows and of the pack's examples; the route that publishes a
-policy JSON to the boards is not part of this pack, and the repository's instructions are the place to confirm it. Whatever you send, quote the `starter.py price` output you got (and, for
-a full-run policy, the `forshor-doc` output), and name the pack's build date (`MANIFEST.json`). The boards' numbers are the ones that count: the site prices the policy again with the same engine.
+This pack prices a policy and prepares it for the Lean checks; **it does not submit anything**. **What you submit is one Lean file, `TableGeneration/Submission/Policy.lean`, holding your policy** (section 2; the
+format is `templates/Policy.lean`, and `starter.py template` writes it for a PhaseProduct policy). A pull request may change that file and nothing else; the verifier refuses any other changed file. The submission repository is
+`zapatacomputing/forshor-submissions` (private during the sprint; the challenge page's **Participate** dialog has the commands), and its own instructions win over this file. The boards check the Lean file in Lean and price the policy it
+contains with the same engine as `starter.py price`. Whatever you send, quote the `starter.py price` output you got for the same policy as JSON (and, for a full-run policy, the `forshor-doc` output), and name the pack's build date
+(`MANIFEST.json`). The boards' numbers are the ones that count.
 
 A policy that is accepted appears on the boards under your GitHub handle as `<handle>_sub<N>`, N counting your own submissions from 1; the handle `forshor` is reserved. The boards also list the
 planner's own policies and nine deliberately weak single-arity baselines (all named `forshor_sub<N>`), ranked with yours by Q × T, and mark each row "STO mirror" if the policy has been checked in Lean.

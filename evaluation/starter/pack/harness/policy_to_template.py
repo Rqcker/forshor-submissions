@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""A site policy as a ForShor `PolicyTemplate.lean`: put a library-optimized policy through Lean (PLAN_v2 L1).
+"""A site policy as a submission file, `TableGeneration/Submission/Policy.lean` (ForShor's `PolicyTemplate` format): put a library-optimized policy through Lean (PLAN_v2 L1).
 
-    python harness/policy_to_template.py policy.json > PolicyTemplate.lean
-    python harness/policy_to_template.py policy.json --forshor /path/to/ForShor > PolicyTemplate.lean
-    python harness/policy_to_template.py policy.json --lib ForShor > PolicyTemplate.lean
+    python harness/policy_to_template.py policy.json > Policy.lean
+    python harness/policy_to_template.py policy.json --forshor /path/to/ForShor > Policy.lean
+    python harness/policy_to_template.py policy.json --lib ForShor > Policy.lean
 
 ForShor's Lean library is `ForShor` (it was `FastMultiplication` before ForShor bb2aae0; at the pinned commit `21e129a` there is only
 `ForShor`). `--forshor` checks the name against a ForShor checkout (`library_of`). The file goes to
@@ -16,7 +16,7 @@ policy). The output follows the shipped template exactly: per distinct table an 
 
 What a ForShor policy can and cannot say, so the converter refuses rather than approximates:
   * PhaseProduct only (the order-finding circuit has no triple product);
-  * 1 < k <= 6 (the template's contract);
+  * 1 < k <= 8 (the submission's contract);
   * thresholds strictly decreasing (tcost enforces it too);
   * `"negation"` (optional, on the policy object): `"oneQubit"` (ForShor's default) or `"scratch"` (`Shor.NegationMethod`, a
     qubit against T-count choice, swap-002). Absent or `"oneQubit"` writes exactly the template it wrote before the key existed
@@ -39,7 +39,7 @@ sys.path.insert(0, str(HERE.parent / "engine"))
 import site_engine  # noqa: E402,F401
 from tcost import tables as tt  # noqa: E402
 
-MAX_K = 6
+MAX_K = 8
 
 
 class TemplateError(ValueError):

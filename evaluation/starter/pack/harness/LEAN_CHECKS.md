@@ -8,7 +8,7 @@ are the ones in the submission repository.
 |---|---|---|---|
 | PhaseProduct (PP) banded policy, site policy JSON | STO policy mirror, `scripts/check_banded_policy.py --widths exact` | the interim STO fork | `courtneyjzapata/ShorTableOptimization_temp`, branch `port/forshor-21e129a` (ForShor pinned at `21e129a`, Lean `v4.36.0-rc1`): `lake exe cache get`, then `lake build TableGeneration` |
 | PhaseTripleProduct (PTP) banded policy, site policy JSON | `scripts/check_ptp_policy.py --widths exact`, against ForShor's `Shor.PTP` | the same fork | The same tree. `lake build TableGeneration` does **not** build the PhaseTripleProduct modules: build them by name first (`lake build TableGeneration.RecursiveCost.PTP.Census` and the other modules under `TableGeneration/RecursiveCost/PTP/`) or the harness fails at its report stage |
-| Full order finding, ForShor `PolicyTemplate.lean` | ForShor's own build at `21e129a`: `lake build PolicySubmission forshor_policy_submission`, then `lake exe forshor_policy_submission --balanced` | a ForShor checkout | `VerifiedQC/ForShor`, commit `21e129aeefc0fd1bbb8fa63402f5799af2490788` |
+| Full order finding, the submission file `Policy.lean` (ForShor's `PolicyTemplate` format) | ForShor's own build at `21e129a`: `lake build PolicySubmission forshor_policy_submission`, then `lake exe forshor_policy_submission --balanced` | a ForShor checkout | `VerifiedQC/ForShor`, commit `21e129aeefc0fd1bbb8fa63402f5799af2490788` |
 
 Use a machine with at least 16 GB of memory. Run one or two Lean checks at a time and keep every run under a memory cap (each tree's `scripts/memcap.py`). Measured on the policies of the
 results seed: most checks take seconds to a few minutes; a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the mirror's report stage, and the PhaseTripleProduct policy with a k = 8
@@ -71,8 +71,8 @@ mirror. It covers equal-width operands only. The qubit formula and the T count a
 
 ```bash
 F=/path/to/ForShor                       # VerifiedQC/ForShor at 21e129aeefc0fd1bbb8fa63402f5799af2490788; first time: lake exe cache get
-python starter.py template my_pp_policy.json --out PolicyTemplate.lean --forshor $F   # or by hand (templates/)
-cp PolicyTemplate.lean $F/ForShor/ShorVerification/Submission/PolicyTemplate.lean
+python starter.py template my_pp_policy.json --out Policy.lean --forshor $F   # or by hand (templates/Policy.lean)
+cp Policy.lean $F/ForShor/ShorVerification/Submission/PolicyTemplate.lean   # ForShor's name for the file
 cd $F
 bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PolicyTemplate.lean   # lexical gate
 lake build PolicySubmission forshor_policy_submission       # rebuilds only PolicyTemplate, PolicyCheck, PolicyMain
@@ -80,7 +80,7 @@ lake exe forshor_policy_submission --balanced > policy.json
 cd - && python starter.py forshor-doc $F/policy.json         # price the printed document (exact-width IR)
 ```
 
-`PolicyTemplate.lean` is the only file you edit. ForShor's kernel checks C1 to C4 for each band and the sorted
+`Policy.lean` (ForShor's `PolicyTemplate.lean`) is the only file you edit. ForShor's kernel checks C1 to C4 for each band and the sorted
 thresholds. `policy_submission_correct` covers the compiled circuit, and at the exact widths the allocated register
 widths are the exact widths (`allocated_widths_sound`, re-proved from the exact width). `--balanced` also runs the
 balanced tier and prints the balanced IR templates (`balanced_phase_product`, `balanced_cphase_product`). The IR and every kernel-checked part

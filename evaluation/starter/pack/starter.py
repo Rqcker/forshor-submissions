@@ -12,8 +12,8 @@
         ForShor's printed policy document (`lake exe forshor_policy_submission --balanced > policy.json`): the full run priced from the document's own IR and from the converted policy; the two must
         agree (the site's harness stage 5). An exact-width document ("exact" width rule) is checked on the board's IR, an
         upstream (scanned-width) document on upstream's IR, the board's cross-check.
-    python starter.py template POLICY.json [--out PolicyTemplate.lean] [--forshor FORSHOR_DIR | --lib ForShor]
-        a PP site policy written as ForShor's PolicyTemplate.lean (the full-run submission file). The imports name
+    python starter.py template POLICY.json [--out Policy.lean] [--forshor FORSHOR_DIR | --lib ForShor]
+        a PP site policy written as the submission file, TableGeneration/Submission/Policy.lean (ForShor's PolicyTemplate format). The imports name
         ForShor's Lean library, `ForShor`. `--forshor` checks it against your ForShor checkout.
     python starter.py lean-input POLICY.json [--out policy.lean-input.json]
         the input document of the STO policy mirror (PP) / the PhaseTripleProduct harness (PTP) Lean checkers.
@@ -193,8 +193,8 @@ def price_policy(P: tt.Policy, n: int, delta: float, full: bool) -> Dict[str, An
             rec["full_run"]["rank_on_board"] = rank_on_board("full", rec["full_run"]["score"], n, delta)
             kmax = max((b.table.k for b in P.bands), default=0)
             rec["full_run"]["forshor_check"] = (
-                {"possible": True, "note": "every band has k <= 6: `starter.py template` writes ForShor's PolicyTemplate for it"} if kmax <= 6 else
-                {"possible": False, "note": f"a band has k = {kmax}: ForShor's check takes 1 < k <= 6, so this policy is priced on the full board without the ForShor tag and has no template"})
+                {"possible": True, "note": "every band has k <= 8: `starter.py template` writes the submission file Policy.lean for it"} if kmax <= 8 else
+                {"possible": False, "note": f"a band has k = {kmax}: submissions take 1 < k <= 8, so this policy is priced on the full board but cannot be submitted as a Lean file"})
     return rec
 
 
@@ -263,8 +263,8 @@ def forshor_doc(path: Path, delta: float = DEFAULT_DELTA) -> Dict[str, Any]:
              if doc.get(s, {}).get(f) != ref[s][f]]
     P = policy_from_doc(doc, Path(path).stem)
     for b in P.bands:
-        if not 2 <= b.table.k <= 6:
-            raise StarterError(f"band k = {b.table.k}: ForShor policies take 1 < k <= 6")
+        if not 2 <= b.table.k <= 8:
+            raise StarterError(f"band k = {b.table.k}: submissions take 1 < k <= 8")
     xc.to_l2q(P)
     r = full_price(P, N, delta, rule=rule)
     if rule != "scan":
@@ -434,7 +434,7 @@ def main(argv=None) -> int:
     a2.add_argument("doc", type=Path)
     a2.add_argument("--delta", type=float, default=DEFAULT_DELTA)
     a2.add_argument("--json")
-    a3 = sub.add_parser("template", help="a PP policy as ForShor's PolicyTemplate.lean")
+    a3 = sub.add_parser("template", help="a PP policy as the submission file Policy.lean (ForShor's PolicyTemplate format)")
     a3.add_argument("policy", type=Path)
     a3.add_argument("--out")
     g3 = a3.add_mutually_exclusive_group()
