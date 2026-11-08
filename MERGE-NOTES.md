@@ -1,6 +1,6 @@
 # MERGE-NOTES: swap-002 integration (forshor-submissions)
 
-Branch `submissions/swap002-integration` (local, not pushed). ForShor pin: M = `eb00c5adc72832469a5f223fbec6c8b75745d2dd`
+Branch `submissions/swap002-integration` (local, not pushed). ForShor pin: M = `21e129aeefc0fd1bbb8fa63402f5799af2490788`
 (merge commit of PR #79, tree identical to the PR head 2b7aaf7 the Lean mirror was built against).
 
 ## Branches merged (all `--no-ff`, no rebase, no squash)

@@ -267,7 +267,7 @@ def main(argv=None):
                 "Lean-proved UPPER BOUND on the framework's qubitCount (named qubits + clean scratch), "
                 "`ptpPeakQubits = 3n + ptpWsTD + ptpCleanAncD`: ForShor `ptp_peak_qubits` (any width rule), "
                 "`ptp_peak_qubits_exact` (exact rule, the board's) and `ptp_peak_qubits_scan` (scan rule), "
-                "Implementation/PhaseTripleProduct/Statement.lean (PTPPeakQubits*) at ForShor eb00c5adc72832469a5f223fbec6c8b75745d2dd. "
+                "Implementation/PhaseTripleProduct/Statement.lean (PTPPeakQubits*) at ForShor 21e129aeefc0fd1bbb8fa63402f5799af2490788. "
                 "EXISTENTIAL, like PTPQubitsTight: some circuit following the policy has qubitCount <= the number; "
                 "not an equality in general. ptpWsTD is the workspace the construction touches (base 2 + 3(k C' - w) "
                 "per node), ptpCleanAncD the largest clean scratch of one node under the policy's `negation` (1 for "

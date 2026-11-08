@@ -33,15 +33,17 @@ the name from the manifest, not from the remote lakefile. Renaming is cosmetic a
 costs the build cache (D3).
 
 Pinned to an exact commit rather than `main`: a ForShor rename or module move then
-cannot break this build until the pin is bumped on purpose. eb00c5a is the merge commit of
-ForShor PR #79 (head 2b7aaf7, identical tree; this mirror was built against the head) (`swap/negation-incrementer`: negation as complement plus a one-clean-ancilla
-incrementer, `NegationMethod` with `.oneQubit` default and `.scratch` = the pre-swap Cuccaro
-charge, which equals 6d55ad9 behaviour; 6d55ad9 was the `qubitCount` branch tip of 2026-11-04).
-PIN-PLACES (change to the PR merge commit M with one sed): this line, lake-manifest.json `rev` and `inputRev`
-of package Fast_multiplication, and the `eb00c5adc72832469a5f223fbec6c8b75745d2dd` strings listed in shards/B2.md.
+cannot break this build until the pin is bumped on purpose. 21e129a is the merge commit of
+ForShor PR #80 (board PhaseProduct policies as Lean, their kernel-checked peaks, the PhaseTripleProduct page text),
+which contains eb00c5a, the merge commit of PR #79 (`swap/negation-incrementer`: negation as complement plus a
+one-clean-ancilla incrementer, `NegationMethod` with `.oneQubit` default and `.scratch` = the pre-swap Cuccaro charge,
+which equals 6d55ad9 behaviour; 6d55ad9 was the `qubitCount` branch tip of 2026-11-04). The Lean mirror here was built
+against 2b7aaf7, the head of #79, and is unchanged by #80 (new files, docstrings, `negation_default` theorems).
+PIN-PLACES (to bump the pin: one sed over this file, lake-manifest.json `rev` and `inputRev` of package
+Fast_multiplication, and the SHA strings in the notes listed in MERGE-NOTES.md).
 -/
 require «Fast_multiplication» from git
-  "https://github.com/VerifiedQC/ForShor.git" @ "eb00c5adc72832469a5f223fbec6c8b75745d2dd"
+  "https://github.com/VerifiedQC/ForShor.git" @ "21e129aeefc0fd1bbb8fa63402f5799af2490788"
 
 @[default_target]
 lean_lib TableGeneration where

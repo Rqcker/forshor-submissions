@@ -17,7 +17,7 @@ points (STO `generatePointsInOrder`), which is what the table check needs.
 Optional top-level `"negation": "oneQubit" | "scratch"` (ForShor `Shor.NegationMethod`; swap-002). Absent or
 `"oneQubit"` (the default) generates exactly the Lean it did before the key existed. `"scratch"` adds
 `negation := .scratch` to `def policy : BandedPolicy` (data part); `toShorPolicySubmission` copies it, so
-`forshorSubmission` carries it too. Needs a ForShor pin that has `NegationMethod` (`eb00c5adc72832469a5f223fbec6c8b75745d2dd`).
+`forshorSubmission` carries it too. Needs a ForShor pin that has `NegationMethod` (`21e129aeefc0fd1bbb8fa63402f5799af2490788`).
 Any other value is an error.
 
 Usage:
