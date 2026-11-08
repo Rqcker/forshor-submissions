@@ -47,9 +47,9 @@ first band of k = 8 took about 2.4 hours in the report stage, so set the limits 
 ## ForShor tree for the submission check
 
 Both boards are checked by ForShor, with the same lexical gate. The PhaseProduct files are in ForShor `21e129a`. The PhaseTripleProduct files (`PTPPolicyTemplate.lean`, `PTPPolicyCheck.lean`,
-`PTPPolicyMain.lean`, two lakefile entries) are in the ForShor branch `ptp/submission-template`, which is `21e129a` plus those files and changes nothing else. `--forshor-tree` must therefore be a build of that
-branch (a superset of `21e129a`); the epoch's pin stays `21e129a`, because the added files change no theorem or definition the pricing or the evidence depends on. The STO tree must contain the fork's branch
-`harness/ptp-fast-report`, because `intake_v2.py` runs the mirror with `--fast`.
+`PTPPolicyMain.lean`, two lakefile entries) are in ForShor `main` from `349849e` (PR #83), which is the pin `21e129a` plus documentation changes and those files and nothing else. `--forshor-tree` must therefore be a build
+of ForShor `main` at `349849e` or later; the epoch's pin stays `21e129a`, because the added files change no theorem or definition the pricing or the evidence depends on. The STO tree must be the fork's `main` at `2558595`
+or later (`ShorTableOptimization_temp`, which contains `--fast`, PR #5), because `intake_v2.py` runs the mirror with `--fast`.
 
 Measured: a PhaseTripleProduct file with bands k = 8 and k = 4 went from the Lean file to a published row in 2.5 minutes (gate, ForShor build and kernel check about 25 s, mirror with `--fast` about a minute);
 a PhaseProduct k = 3 file in 4 minutes; a PhaseProduct k = 8, 4, 3 file builds in ForShor in 40 s and prints in about 5.5 minutes.
