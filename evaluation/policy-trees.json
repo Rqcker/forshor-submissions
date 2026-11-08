@@ -1,0 +1,8 @@
+{
+  "comment": "The Lean trees a policy submission is checked in. `./forshor setup` and `./forshor check` clone and build them under .git/forshor, and the policy verifier (scripts/policy_verifier.py) is given them as FORSHOR_TREE and STO_TREE. The epoch's pins are unchanged by these refs: the ForShor ref is the pinned 21e129a plus documentation and the PhaseTripleProduct submission files (PR #83); the STO ref is the canonical fork with the harness's --fast (PR #5).",
+  "forshor": {"repo": "https://github.com/VerifiedQC/ForShor", "ref": "349849e091fc05a4e80c99ae3511985faf3b8843"},
+  "sto": {"repo": "https://github.com/courtneyjzapata/ShorTableOptimization_temp", "ref": "2558595470a5fb88cb8d02f6114b7f3c230d5f24"},
+  "sto_build": ["TableGeneration.RecursiveCost.BandedPolicy", "TableGeneration.RecursiveCost.BandedPolicy.BridgeClosure", "TableGeneration.RecursiveCost.BandedPolicy.Plan", "TableGeneration.RecursiveCost.BandedPolicy.Instances.RefPP", "TableGeneration.RecursiveCost.PTPPlan.Plan", "TableGeneration.RecursiveCost.PTPCheck.AxiomAudit"],
+  "forshor_build": ["PolicySubmission", "PTPPolicySubmission", "forshor_policy_submission", "forshor_ptp_policy_submission"],
+  "engine_requirements": "evaluation/engine/requirements.txt"
+}

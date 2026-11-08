@@ -22,6 +22,8 @@ REPO = 'zapatacomputing/forshor-submissions'
 DASHBOARD = 'https://forshor-staging-769861884059.us-central1.run.app'
 POLICY = 'TableGeneration/Submission/Policy.lean'
 HELPERS = 'TableGeneration/Submission/Policy/'
+POLICY_NAMESPACE = re.compile(r'^\s*namespace\s+(PTPPolicySubmission|PolicySubmission)\b', re.M)
+TREES = 'evaluation/policy-trees.json'
 VERIFIER = '.github/workflows/table-generation-submission.yml'
 PUBLISHER = '.github/workflows/publish-results.yml'
 ELAN_REF = '55dc2814ca42ace25f05ba4dd7a43a8c701a0549'
@@ -117,15 +119,26 @@ def allowed(path):
     return path == POLICY or (path.startswith(HELPERS) and path.endswith('.lean'))
 
 
+def policy_format(root):
+    """True when the submission file is a ForShor policy (`namespace PolicySubmission` or `PTPPolicySubmission`): the policy format, in which that one file is the whole submission."""
+    path = Path(root) / POLICY
+    return path.is_file() and not path.is_symlink() and bool(POLICY_NAMESPACE.search(path.read_text(errors='replace')))
+
+
 def validate_changes(root, base):
     # Check committed and staged/unstaged/untracked changes, including deletions.
     committed = git(root, 'diff', '--no-renames', '--name-only', '-z', f'{base}...HEAD').split('\0')
     raw = run(['git', 'status', '--porcelain=v1', '-z', '--untracked-files=all', '--no-renames'], cwd=root).stdout
     working = [entry[3:] for entry in raw.split('\0') if entry]
     paths = set(filter(None, committed + working))
-    bad = sorted(path for path in paths if not allowed(path))
-    if bad:
-        raise UserError('Only the submission file and its Lean helpers may change. Restore or move: ' + ', '.join(bad))
+    if policy_format(root):
+        bad = sorted(path for path in paths if path != POLICY)
+        if bad:
+            raise UserError(f'Only {POLICY} may change in a policy submission. Restore or move: ' + ', '.join(bad))
+    else:
+        bad = sorted(path for path in paths if not allowed(path))
+        if bad:
+            raise UserError('Only the submission file and its Lean helpers may change. Restore or move: ' + ', '.join(bad))
     for path in paths:
         if (root / path).is_symlink():
             raise UserError(f'Submission symlinks are not supported: {path}')
@@ -135,6 +148,8 @@ def validate_changes(root, base):
 
 
 def source_files(root):
+    if policy_format(root):
+        return [root / POLICY]
     files = [root / POLICY]
     helper = root / HELPERS
     if helper.exists():
@@ -226,6 +241,32 @@ def prepare(root, base, env):
     return cache
 
 
+def prepare_policy(root, base, cache, env):
+    """The trusted environment of a policy submission: the STO fork's tree (the mirror's), ForShor's tree (the gate and the build) and the engine's Python, each built once
+    under .git/forshor and named in `evaluation/policy-trees.json` of the base commit. Returns what `scripts/policy_verifier.py` reads as environment."""
+    config = json.loads((cache / TREES).read_text())
+    forshor = storage(root) / ('forshor-' + config['forshor']['ref'][:12])
+    sto = storage(root) / ('sto-' + config['sto']['ref'][:12])
+    venv = storage(root) / 'engine-venv'
+    ready = storage(root) / 'prepared-policy.json'
+    wanted = {'forshor': config['forshor'], 'sto': config['sto'], 'base': base}
+    if not (ready.exists() and json.loads(ready.read_text()) == wanted):
+        print('Preparing the policy checkers (ForShor, the STO mirror, the engine). The first time takes a while.', flush=True)
+        # ForShor and the STO fork each pin their own toolchain; do not force the repository's onto them.
+        tree_env = {key: value for key, value in env.items() if key != 'ELAN_TOOLCHAIN'}
+        for name, path, spec, build in (('ForShor', forshor, config['forshor'], config['forshor_build']), ('STO mirror', sto, config['sto'], config['sto_build'])):
+            if not path.exists():
+                network_git(root, 'clone', '--no-checkout', spec['repo'], str(path))
+            git(path, 'checkout', '--detach', '--force', spec['ref'])
+            logged(root, f'Fetch {name} dependencies', ['lake', 'exe', 'cache', 'get'], path, tree_env)
+            logged(root, f'Build {name}', ['lake', 'build', *build], path, tree_env)
+        if not venv.exists():
+            run([sys.executable, '-m', 'venv', str(venv)])
+        logged(root, 'Install the engine environment', [venv / 'bin' / 'pip', 'install', '-r', str(cache / config['engine_requirements'])], cache, env)
+        ready.write_text(json.dumps(wanted))
+    return {'FORSHOR_TREE': str(forshor), 'STO_TREE': str(sto), 'ENGINE_PYTHON': str(venv / 'bin' / 'python')}
+
+
 def setup(args):
     authenticate()
     if args.directory:
@@ -239,7 +280,9 @@ def setup(args):
         base = refresh_base(root)
         validate_changes(root, base)
         env = lean_environment(root, base)
-        prepare(root, base, env)
+        cache = prepare(root, base, env)
+        if (cache / TREES).is_file():
+            prepare_policy(root, base, cache, env)
     print(f'Ready. Edit {POLICY}, then run ./forshor check.')
     if args.directory:
         print(f'Checkout: {root}\nRun subsequent commands inside that directory.')
@@ -262,9 +305,11 @@ def check(root=None, base=None):
          'commit', '--allow-empty', '-m', 'Local submission verification'], cwd=cache)
     env.update(TABLE_GEN_BASE_SHA=base, TABLE_GEN_HEAD_SHA=git(cache, 'rev-parse', 'HEAD'),
                TABLE_GEN_BASE_REPOSITORY=REPO)
+    if policy_format(root):
+        env.update(prepare_policy(root, base, cache, env), TABLE_GEN_LOGIN=gh_json('api', 'user')['login'])
     artifacts = root / 'artifacts' / 'forshor' / 'verification'
     # The script, config, adapters and model come from the fetched main commit.
-    logged(root, 'Checking table and Lean proofs', [sys.executable, 'scripts/verifier.py',
+    logged(root, 'Checking the submission in Lean', [sys.executable, 'scripts/verifier.py',
            '--out-dir', str(artifacts)], cache, env)
     result = json.loads((artifacts / 'table-generation-submission-result.json').read_text())
     if result.get('status') != 'success' or result.get('phase') != 'full':
@@ -274,7 +319,7 @@ def check(root=None, base=None):
     state = read_state(root)
     state['checked'] = {'base': base, 'digest': digest}
     write_state(root, state)
-    print('Local Lean verification passed. Run ./forshor submit when ready.')
+    print('Local verification passed. Run ./forshor submit when ready.')
     return base, digest
 
 
@@ -392,7 +437,7 @@ def submit(args):
     if not paths:
         if state.get('submission'):
             return watch(root, args)
-        raise UserError('No table changes to submit. Edit Policy.lean first.')
+        raise UserError('No changes to submit. Edit Policy.lean first.')
     branch = git(root, 'branch', '--show-current')
     prs = []
     new_branch = not branch or branch in ('main', 'submission-results')
@@ -429,7 +474,7 @@ def submit(args):
         pr = next(pr for pr in prs if pr['state'] == 'OPEN')
         number, url = pr['number'], pr['url']
     else:
-        body = 'Submit the table generator and Lean proofs through the ForShor CLI. Hosted verification and resource estimation determine acceptance and publication.'
+        body = 'Submit a policy through the ForShor CLI. Hosted verification, resource estimation and publication determine acceptance.'
         with tempfile.TemporaryDirectory(prefix='forshor-pr-') as directory:
             bodyfile = Path(directory) / 'body.md'
             bodyfile.write_text(body + '\n')

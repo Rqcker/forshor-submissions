@@ -41,7 +41,7 @@ def request_for(policy_json, model, store, **over):
     from export_v2 import request
     args = dict(model=model, store=store, head_sha="a" * 40, pull_number=77, github_login="fixture-user", run_id="7700",
                 submitted_at="2026-11-05T17:00:00Z", evaluated_at="2026-11-05T18:00:00Z", archive_commit="b" * 40,
-                accepted_ids=["a" * 40], evaluation_key="e" * 64, base_generation="1")
+                accepted_ids=["a" * 40], evaluation_key="e" * 64, base_generation="1", number=1)
     args.update(over)
     return request.build_request(policy_json, **args)
 
@@ -53,7 +53,7 @@ def test_a_policy_without_valid_evidence_is_not_publishable(seed_policy, model):
 
 def test_a_request_for_a_real_policy_is_complete_consistent_and_accepted_by_the_typescript_validator(tmp_path, seed_policy, model):
     ev = tmp_path / "ev"
-    evidence.run_mirror(seed_policy, "pp", make_tree(tmp_path / "t"), ev)
+    evidence.run_mirror(seed_policy, "pp", make_tree(tmp_path / "t", pin=model["forshor"]["pin"], lean=model["lean"]), ev)   # the live epoch's pins, not the golden file's
     req = request_for(seed_policy, model, evidence.EvidenceStore(ev))
     assert [(p["board"], p["delta"]) for p in req["priced"]] == [(b, d) for d in mapping.DELTA_KEYS for b in ("pp", "full")]
     assert req["submission"]["boards"] == ["pp", "full"]
