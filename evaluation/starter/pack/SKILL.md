@@ -147,8 +147,8 @@ python starter.py forshor-doc /path/to/ForShor/policy.json
 
 The build trees are not in the pack; `harness/LEAN_CHECKS.md` says where they come from and gives the exact commands. In short:
 
-- **PP:** the STO policy mirror, `check_banded_policy.py --widths exact --target-width 2048` (the interim STO fork, branch `port/forshor-21e129a`).
-- **PTP:** `check_ptp_policy.py --widths exact --target-width 2048` of the same fork, against ForShor's `Shor.PTP`. Build the PhaseTripleProduct modules by name first.
+- **PP:** the STO policy mirror, `check_banded_policy.py --widths exact --target-width 2048` (in the `forshor-submissions` repository, `main`: github.com/zapatacomputing/forshor-submissions; `./forshor check` in a clone of it runs the whole check).
+- **PTP:** `check_ptp_policy.py --widths exact --target-width 2048` of the same repository, against ForShor's `Shor.PTP`. Build the PhaseTripleProduct modules by name first.
 - **Full run:** ForShor at `21e129a` (VerifiedQC/ForShor). Put your `Policy.lean` at `ForShor/ShorVerification/Submission/PolicyTemplate.lean` (ForShor's name for the file). Then:
 
   ```bash

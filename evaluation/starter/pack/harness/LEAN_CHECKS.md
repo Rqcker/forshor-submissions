@@ -6,13 +6,13 @@ are the ones in the submission repository.
 
 | Submission | Checker | Build tree | Where it comes from |
 |---|---|---|---|
-| PhaseProduct (PP) banded policy, site policy JSON | STO policy mirror, `scripts/check_banded_policy.py --widths exact` | the interim STO fork | `courtneyjzapata/ShorTableOptimization_temp`, branch `port/forshor-21e129a` (ForShor pinned at `21e129a`, Lean `v4.36.0-rc1`): `lake exe cache get`, then `lake build TableGeneration` |
-| PhaseTripleProduct (PTP) banded policy, site policy JSON | `scripts/check_ptp_policy.py --widths exact`, against ForShor's `Shor.PTP` | the same fork | The same tree. `lake build TableGeneration` does **not** build the PhaseTripleProduct modules: build them by name first (`lake build TableGeneration.RecursiveCost.PTP.Census` and the other modules under `TableGeneration/RecursiveCost/PTP/`) or the harness fails at its report stage |
+| PhaseProduct (PP) banded policy, site policy JSON | STO policy mirror, `scripts/check_banded_policy.py --widths exact` | the `forshor-submissions` repository | github.com/zapatacomputing/forshor-submissions, `main` (ForShor pinned at `21e129a`, Lean `v4.36.0-rc1`; its `TableGeneration/` and `scripts/` are the mirror's tree, and `evaluation/policy-trees.json` lists the build targets): `lake exe cache get`, then `lake build TableGeneration` |
+| PhaseTripleProduct (PTP) banded policy, site policy JSON | `scripts/check_ptp_policy.py --widths exact`, against ForShor's `Shor.PTP` | the same repository | The same tree. `lake build TableGeneration` does **not** build the PhaseTripleProduct modules: build them by name first (`lake build TableGeneration.RecursiveCost.PTP.Census` and the other modules under `TableGeneration/RecursiveCost/PTP/`) or the harness fails at its report stage |
 | Full order finding, the submission file `Policy.lean` (ForShor's `PolicyTemplate` format) | ForShor's own build at `21e129a`: `lake build PolicySubmission forshor_policy_submission`, then `lake exe forshor_policy_submission --balanced` | a ForShor checkout | `VerifiedQC/ForShor`, commit `21e129aeefc0fd1bbb8fa63402f5799af2490788` |
 
 Use a machine with at least 16 GB of memory. Run one or two Lean checks at a time and keep every run under a memory cap (each tree's `scripts/memcap.py`). Measured on the policies of the
 results seed: most checks take seconds to a few minutes; a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the mirror's report stage, and the PhaseTripleProduct policy with a k = 8
-first band did not finish that stage in 12 hours. For PhaseTripleProduct, `check_ptp_policy.py --fast` (branch `harness/ptp-fast-report` of the same fork) skips that interpreted stage: the ladder comes from Python
+first band did not finish that stage in 12 hours. For PhaseTripleProduct, `check_ptp_policy.py --fast` (in the same repository) skips that interpreted stage: the ladder comes from Python
 and the kernel certificate re-proves it, so a wrong ladder makes the certificate fail. With it that k = 8 policy and a k = 6 baseline were accepted in about a minute each, with the same audited theorems; the census and formula numbers of the report are not
 evaluated (they are diagnostics). The PhaseProduct harness has no such option. Give a long run a stage limit (`--timeout`), and set `TMPDIR` to a directory you control: a run that long lost a file in the system temporary directory once.
 A `rejected` record whose reason is a missing object file, a constructor-field error or a missing file in a temporary directory is an infrastructure failure, not a verdict on the policy: fix it and run again.
@@ -21,7 +21,7 @@ A `rejected` record whose reason is a missing object file, a constructor-field e
 
 ```bash
 python starter.py lean-input my_pp_policy.json --out my_pp_policy.lean-input.json   # the checker's input (no widths)
-cd /path/to/ShorTableOptimization_temp            # branch port/forshor-21e129a
+cd /path/to/forshor-submissions                   # a clone of `main`, built
 python3 scripts/memcap.py --cap-gb 8 --timeout 3600 -- \
   python3 scripts/check_banded_policy.py /abs/path/my_pp_policy.lean-input.json --target-width 2048 \
     --widths exact --cap-gb 8 --workdir /tmp/sto_policy_work --out /tmp/my_pp_record.json
@@ -47,7 +47,7 @@ Quot.sound}, and the statements are pinned.
 
 ```bash
 python starter.py lean-input my_ptp_policy.json --out my_ptp_policy.lean-input.json
-cp -cR /path/to/ShorTableOptimization_temp /tmp/ptp_work          # the checker writes into its tree: use a copy (built, PTP modules included)
+cp -cR /path/to/forshor-submissions /tmp/ptp_work          # the checker writes into its tree: use a copy (built, PTP modules included)
 cd /tmp/ptp_work
 python3 scripts/memcap.py --cap-gb 8 --timeout 3600 -- \
   python3 scripts/check_ptp_policy.py /abs/path/my_ptp_policy.lean-input.json --target-width 2048 \
