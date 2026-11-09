@@ -57,7 +57,7 @@ def copy_engine(dest: Path) -> None:
 # Absolute paths of the machine that produced the engine's pinned run records, replaced in the PACK's copy only (the repository's `evaluation/engine/` is untouched:
 # its records are inside the engine's cache fingerprint, and a commit there changes the epoch). Nothing in the pack reads these as paths.
 PATH_SCRUBS = [(re.compile(r"/Users/[A-Za-z0-9._-]+/Desktop/github_packages"), "$TREES"), (re.compile(r"~/Desktop/github_packages"), "$TREES"),
-               (re.compile(r"/Users/[A-Za-z0-9._-]+/Desktop"), "$TREES"), (re.compile(r"/Users/[A-Za-z0-9._-]+"), "$HOME")]
+               (re.compile(r"~/Desktop"), "$TREES"), (re.compile(r"/Users/[A-Za-z0-9._-]+/Desktop"), "$TREES"), (re.compile(r"/Users/[A-Za-z0-9._-]+"), "$HOME")]
 TEXT_SUFFIXES = {".json", ".md", ".py", ".txt", ".lean", ".yaml", ".yml", ".toml", ".cfg", ".lock", ".csv", ".sh", ""}
 
 
