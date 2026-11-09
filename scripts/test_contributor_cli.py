@@ -246,6 +246,14 @@ class PublicationIdentity(unittest.TestCase):
         with self.assertRaisesRegex(cli.UserError, 'without a publication receipt'):
             cli.publication_result(self.publisher, self.source, None, self.submission, self.verifier)
 
+    def test_a_failed_hosted_verification_does_not_blame_the_submission(self):
+        message = cli.hosted_failure({'conclusion': 'failure', 'html_url': self.verifier['html_url']})
+        self.assertIn(self.verifier['html_url'], message)
+        self.assertIn('did not pass (failure)', message)
+        self.assertIn('hosted environment', message)
+        self.assertIn('./forshor check', message)
+        self.assertNotIn('Fix the submission', message)
+
     def test_failed_publication_directs_recovery_to_publisher_not_lean(self):
         self.publisher['conclusion'] = 'failure'
         with self.assertRaisesRegex(cli.UserError, 'rerun its failed job'):
