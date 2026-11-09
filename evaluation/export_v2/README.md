@@ -55,35 +55,6 @@ valid evidence is **still exported** (decision D9, which superseded D8) with `st
 that does have evidence is exported at every delta, priced there, even where the planner picked another policy (`rowsAdded`): evidence is
 about the policy, and only the rotation-synthesis price depends on delta.
 
-## What the real data says (2026-11-05; historical, at ForShor 6d55ad9, superseded by the next section)
-
-* The engine's frontier rows (17 PhaseProduct, 9 PhaseTripleProduct, at four deltas) are **104 row-policies but only 6 distinct
-  policies** (4 PhaseProduct, 2 PhaseTripleProduct). The 31 seed records are earlier planner outputs, and no existing record satisfies
-  the toolchain rule (the demo's mirror records name Lean 4.28.0 and a tree hash; the ForShor-verified seeds ran on 10fe620, not the pin).
-* **The interim STO fork was built** at its pins (Lean 4.36.0-rc1, ForShor 6d55ad9; `lake build` of the documented targets, 8406 jobs,
-  about 8.5 minutes with the Mathlib cache) and its harnesses were run on the planner policies:
-
-  | Policy | Ladder | Result | Time |
-  | --- | --- | --- | --- |
-  | PhaseProduct `1bc92ac6` | k = 6, 4, 3 | **accepted** (all stages, both kernel replays) | 138 s |
-  | PhaseTripleProduct `627bb6e3` | one band, k = 4 | **accepted** | 103 s |
-  | PhaseProduct `80132d41` | k = 8, 4, 3 | **rejected at stage `timeout`**: the evaluation-tier report ran past the harness's 60-minute budget | 3645 s |
-  | PhaseProduct `92d5b75d`, `ab119309`; PhaseTripleProduct `48063efa` | all start with k = 8 | **not run** | |
-
-  A timeout is a resource limit, not a mathematical rejection: it says nothing about whether the policy is correct, and it yields no
-  evidence. The three not run share the 8-way top band that timed out, and no record in the demo's data has an 8-way first band
-  (all accepted ones start at k = 6), so they were not given another hour each on a likely repeat. No root cause is established for the
-  slow stage (`scripts/BandedPolicyReport.lean`, run by the interpreter as `lake env lean --run`); that is untested.
-* **Consequence:** the policies that verified are the oldest, simplest rows (the earliest PhaseTripleProduct row at all four deltas, and
-  the earliest PhaseProduct row at two non-default deltas). The strong current frontier policies are the k = 8 ones, which are the ones
-  the harness could not verify. With evidence for 2 of 6 policies, 6 of 104 planner rows have evidence (one PhaseTripleProduct row at
-  every delta, one PhaseProduct row at 1e-4 and 1e-6), so the checked policies alone are far weaker than the true frontier. D9 lists the unchecked ones too, marked as such.
-* **Two bugs the real runs found:** (1) the harnesses name the width-rule field differently (`widths_rule` in check_banded_policy,
-  `widths` in check_ptp_policy); the first converter read only the first and refused a genuinely accepted PhaseTripleProduct record.
-  The real records are now test fixtures (`pytests/data/real`). (2) After the harness reported its timeout, the `lean --run` process it
-  had started kept running at full CPU with no parent; the harness's timeout kills the wrapper but not the interpreter. It also blocked
-  the next check, because the harness waits while two or more Lean processes run. It had to be killed by hand.
-
 ## STO mirror evidence at ForShor 21e129a (2026-11-08)
 
 All 15 distinct listed policies were run through the interim STO fork's harnesses (`check_banded_policy.py`, `check_ptp_policy.py`, `--widths exact`) at the epoch's pins: Lean
