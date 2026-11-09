@@ -96,6 +96,13 @@ class WorkingFiles(unittest.TestCase):
         (self.root / cli.POLICY).symlink_to(self.root / 'protected.lean')
         self.assertFalse(cli.policy_format(self.root))
 
+    def test_the_trusted_toolchain_may_be_a_pinned_release_or_release_candidate_and_nothing_else(self):
+        for good in ('leanprover/lean4:v4.28.0', 'leanprover/lean4:v4.36.0-rc1'):
+            self.assertTrue(cli.supported_toolchain(good), good)
+        for bad in ('leanprover/lean4:stable', 'leanprover/lean4:nightly-2026-01-01', 'leanprover/lean4:v4.36.0-rc', 'leanprover/lean4:v4.36.0-rc1\nx',
+                    'leanprover/lean4:v4.36', 'other/lean4:v4.36.0', 'leanprover/lean4:v4.36.0-beta1'):
+            self.assertFalse(cli.supported_toolchain(bad), bad)
+
     def test_checker_cache_cannot_replace_an_unrecognized_directory(self):
         cache = cli.storage(self.root) / 'checker'
         cache.mkdir()
@@ -248,6 +255,23 @@ class PublicationIdentity(unittest.TestCase):
         result = cli.publication_result(self.publisher, self.source, {'alreadyPublished': True}, self.submission, self.verifier)
         self.assertEqual(result['stage'], 'published')
         self.assertTrue(result['alreadyPublished'])
+
+    def test_a_policy_publication_names_its_row_and_boards_and_is_matched_the_same_way(self):
+        receipt = {'schema': 'forshor.publication/v2', 'kind': 'policy', 'snapshotId': 'd' * 64, 'name': 'tester_sub3', 'boards': ['full', 'pp']}
+        result = cli.publication_result(self.publisher, self.source, receipt, self.submission, self.verifier)
+        self.assertEqual((result['stage'], result['kind'], result['name'], result['boards']), ('published', 'policy', 'tester_sub3', ['full', 'pp']))
+        self.assertEqual(result['snapshotId'], 'd' * 64)
+        self.assertTrue(result['submission'].endswith('/#results'), 'a policy is looked at on the page, not in the archive branch')
+        self.source['pr']['number'] = 88
+        self.assertIsNone(cli.publication_result(self.publisher, self.source, receipt, self.submission, self.verifier), 'another PR\'s receipt is not ours')
+        self.source['pr']['number'] = 12
+        with self.assertRaisesRegex(cli.UserError, 'without a publication receipt'):
+            cli.publication_result(self.publisher, self.source, dict(receipt, snapshotId='nope'), self.submission, self.verifier)
+
+    def test_an_older_receipt_still_reads_as_before(self):
+        result = cli.publication_result(self.publisher, self.source, {'snapshotId': 'c' * 64}, self.submission, self.verifier)
+        self.assertNotIn('kind', result)
+        self.assertIn('submission-results/results/policies/', result['submission'])
 
     def test_pr_moved_to_another_head_is_superseded(self):
         with self.assertRaisesRegex(cli.UserError, 'another commit'):

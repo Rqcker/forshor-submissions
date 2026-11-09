@@ -63,6 +63,7 @@ def test_a_policy_is_published_with_the_mirror_evidence_and_the_next_name(monkey
     result = intake_v2.run_intake(policy_doc, login="tester", pull=7, url="http://x", token="t", tree=tmp_path, workdir=tmp_path / "w",
                                   run_mirror_fn=archived_mirror(calls), log=lambda s: None)
     assert result["published"] and result["policy"]["stoMirror"] and not result["policy"]["forshorPolicy"]
+    assert (result["schema"], result["kind"], result["name"], result["boards"]) == ("forshor.publication/v2", "policy", "tester_sub3", ["full", "pp"]), "the record `forshor status` reads"
     sent = [p for u, p in calls if u.endswith("/v2/publish")]
     assert len(sent) == 1
     req = sent[0]

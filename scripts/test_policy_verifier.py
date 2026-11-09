@@ -95,6 +95,15 @@ class PolicyVerifier(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(result["checks"][-1]["name"], "trees")
 
+    def test_the_older_syntax_gate_steps_aside_for_a_policy_file_and_only_for_that(self):
+        """CI runs the older syntax-gate script before the verifier, in the submission's directory; it must not fail a policy submission."""
+        import subprocess
+        script = Path(__file__).parent / "test_submission_syntax_gate.py"
+        self.write(PP)
+        done = subprocess.run([sys.executable, str(script)], cwd=self.repo, capture_output=True, text=True, timeout=120)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("not applicable to a policy submission", done.stdout)
+
     def test_the_preflight_checks_the_files_and_runs_no_lean(self):
         self.write(PP)
         code, result = self.run_pv(env={}, preflight=True)

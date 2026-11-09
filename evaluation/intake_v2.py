@@ -208,6 +208,7 @@ def _now() -> str:
 
 
 VERIFICATION_SCHEMA = "forshor.policy-verification/v1"
+PUBLICATION_SCHEMA = "forshor.publication/v2"
 
 
 def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str, url: Optional[str] = None, token: str = "local", tree: Path, workdir: Path,
@@ -330,9 +331,19 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
                                      submitted_at=submitted_at, evaluated_at=submitted_at, archive_commit=archive, accepted_ids=[head_sha], number=0,
                                      evaluation_key=evaluation_key, base_generation="", forshor=forshor, log=log)
 
-    result = publish_v2_with_recovery(metadata, model, state_of, price, accepted_now, lambda payload: request_json(url.rstrip("/") + "/v2/publish", token, payload))
+    sent: Dict[str, Any] = {}
+
+    def send(payload: Dict[str, Any]) -> Dict[str, Any]:
+        sent["payload"] = payload                              # the last attempt is the one that was accepted
+        return request_json(url.rstrip("/") + "/v2/publish", token, payload)
+
+    result = publish_v2_with_recovery(metadata, model, state_of, price, accepted_now, send)
     result["policy"] = {"digest": digest, "headSha": head_sha, "login": login, "pull": pull, "mode": policy_json["mode"],
                         "stoMirror": True, "forshorPolicy": bool(forshor)}
+    # The publication record the trusted publish job uploads as `publication-result.json` (`./forshor status` and `watch` read it): which snapshot, which row, which boards.
+    priced = (sent.get("payload") or {}).get("priced") or []
+    result.update({"schema": PUBLICATION_SCHEMA, "kind": "policy", "name": (priced[0]["row"]["name"] if priced else None),
+                   "boards": sorted({p["board"] for p in priced})})
     return result
 
 

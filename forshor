@@ -26,6 +26,7 @@ POLICY_NAMESPACE = re.compile(r'^\s*namespace\s+(PTPPolicySubmission|PolicySubmi
 TREES = 'evaluation/policy-trees.json'
 VERIFIER = '.github/workflows/table-generation-submission.yml'
 PUBLISHER = '.github/workflows/publish-results.yml'
+PUBLICATION_V2 = 'forshor.publication/v2'
 ELAN_REF = '55dc2814ca42ace25f05ba4dd7a43a8c701a0549'
 
 
@@ -187,11 +188,16 @@ def logged(root, label, args, cwd, env=None):
         raise UserError(f'{label} failed. Details: {logfile}')
 
 
+def supported_toolchain(text):
+    """A pinned Lean release, or a pinned release candidate (`v4.36.0-rc1`: the repository's toolchain moved to one)."""
+    return bool(re.fullmatch(r'leanprover/lean4:v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?', text))
+
+
 def lean_environment(root, base):
     env = dict(os.environ)
     env['PATH'] = str(Path.home() / '.elan/bin') + os.pathsep + env.get('PATH', '')
     toolchain = git(root, 'show', f'{base}:lean-toolchain').strip()
-    if not re.fullmatch(r'leanprover/lean4:v[0-9]+\.[0-9]+\.[0-9]+', toolchain):
+    if not supported_toolchain(toolchain):
         raise UserError('The trusted Lean toolchain is not a supported pinned release.')
     if not shutil.which('elan', path=env['PATH']):
         print('Installing the Lean toolchain manager…', flush=True)
@@ -262,7 +268,9 @@ def prepare_policy(root, base, cache, env):
             logged(root, f'Fetch {name} dependencies', ['lake', 'exe', 'cache', 'get'], path, tree_env)
             logged(root, f'Build {name}', ['lake', 'build', *build], path, tree_env)
         if not venv.exists():
-            run([sys.executable, '-m', 'venv', str(venv)])
+            # the engine's requirements are pinned for Python 3.12
+            python = shutil.which('python3.12') or sys.executable
+            run([python, '-m', 'venv', str(venv)])
         logged(root, 'Install the engine environment', [venv / 'bin' / 'pip', 'install', '-r', str(cache / config['engine_requirements'])], cache, env)
         ready.write_text(json.dumps(wanted))
     return {'FORSHOR_TREE': str(forshor), 'STO_TREE': str(sto), 'ENGINE_PYTHON': str(venv / 'bin' / 'python')}
@@ -349,11 +357,16 @@ def publication_result(run_record, source, result, submission, verification):
         raise UserError(f'Publication failed. Open {run_record["html_url"]}; rerun its failed job, then ./forshor status --watch.')
     if not result or (not result.get('alreadyPublished') and not re.fullmatch(r'[a-f0-9]{64}', str(result.get('snapshotId', '')))):
         raise UserError('The matching workflow finished without a publication receipt. Inspect its diagnostics.')
-    return {'stage': 'published', 'pr': submission['url'], 'commit': submission['head'],
-            'verification': verification['html_url'], 'publication': run_record['html_url'],
-            'snapshotId': result.get('snapshotId'), 'alreadyPublished': bool(result.get('alreadyPublished')),
-            'submission': f'https://github.com/{REPO}/tree/submission-results/results/policies/{submission["head"]}',
-            'dashboard': DASHBOARD}
+    outcome = {'stage': 'published', 'pr': submission['url'], 'commit': submission['head'],
+               'verification': verification['html_url'], 'publication': run_record['html_url'],
+               'snapshotId': result.get('snapshotId'), 'alreadyPublished': bool(result.get('alreadyPublished')),
+               'submission': f'https://github.com/{REPO}/tree/submission-results/results/policies/{submission["head"]}',
+               'dashboard': DASHBOARD}
+    if result.get('schema') == PUBLICATION_V2:
+        # A policy: the receipt names the row and the boards it is on; the page is the place to look at it.
+        outcome.update({'kind': 'policy', 'name': result.get('name'), 'boards': result.get('boards') or [],
+                        'submission': f'{DASHBOARD}/#results'})
+    return outcome
 
 
 def inspect_status(submission, inspected):
@@ -367,7 +380,7 @@ def inspect_status(submission, inspected):
     if verification['status'] != 'completed':
         return {'stage': 'Lean verification ' + verification['status'], 'verification': verification['html_url']}
     if verification['conclusion'] != 'success':
-        raise UserError(f'Lean verification {verification["conclusion"]}. Details: {verification["html_url"]}. Fix the table, then ./forshor submit.')
+        raise UserError(f'Lean verification {verification["conclusion"]}. Details: {verification["html_url"]}. Fix the submission, then ./forshor submit.')
     # Publisher workflow head SHA is main, never the submitted SHA. Match its
     # trusted diagnostics to the exact verifier ID/attempt, PR and source commit.
     from urllib.parse import urlencode
@@ -413,7 +426,11 @@ def watch(root, args):
             print(outcome['stage'].capitalize(), flush=True)
             previous = outcome['stage']
         if outcome['stage'] == 'published':
-            print(f'Submission: {outcome["submission"]}\nDashboard: {outcome["dashboard"]}\nRefresh the dashboard to load the latest results. A new winner is not guaranteed.')
+            if outcome.get('kind') == 'policy':
+                boards = ', '.join(outcome.get('boards') or []) or 'the boards'
+                print(f'Published as {outcome.get("name") or "your policy"} on {boards}.\nResults: {outcome["submission"]}\nRefresh the page to load the latest results. A new winner is not guaranteed.')
+            else:
+                print(f'Submission: {outcome["submission"]}\nDashboard: {outcome["dashboard"]}\nRefresh the dashboard to load the latest results. A new winner is not guaranteed.')
             state['published'] = outcome
             write_state(root, state)
         if outcome['stage'] == 'published' or not args.watch:
