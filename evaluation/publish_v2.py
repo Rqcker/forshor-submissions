@@ -98,7 +98,8 @@ def publish_v2_with_recovery(metadata: Dict[str, Any], model: Dict[str, Any], fe
 def _archive_view(path: Path) -> Tuple[List[str], str]:
     archive, revision = refresh_archive(path)
     index = json.loads((archive / "leaderboard/results.json").read_text())
-    return [p["policy_id"] for p in index["policies"]], revision
+    from archive_policy import policy_ids   # policy submissions are archived beside the table-generation entries, in their own index
+    return sorted({p["policy_id"] for p in index["policies"]} | set(policy_ids(archive))), revision
 
 
 def main(argv=None) -> int:

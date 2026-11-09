@@ -265,12 +265,16 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, log
     else:
         forshor = None
         log("no ForShor check (" + ("PhaseTripleProduct" if P.mode != eng.tables.PAIR else "no ForShor checkout given" if not forshor_tree else f"k above {MAX_FORSHOR_K}") + ")")
-    return {"schema": VERIFICATION_SCHEMA, "digest": digest, "mode": policy_json["mode"], "board": board, "policy": policy_json, "printed": printed,
-            "envelope": envelope, "forshor": forshor, "model": model, "login": login, "createdAt": _now()}
+    out = {"schema": VERIFICATION_SCHEMA, "digest": digest, "mode": policy_json["mode"], "board": board, "policy": policy_json, "printed": printed,
+           "envelope": envelope, "forshor": forshor, "model": model, "login": login, "createdAt": _now()}
+    if lean_policy is not None:                                 # what the archive stores; the publish job compares it with the file at the PR's head commit
+        out.update(leanSource=lean_policy, leanSha256=hashlib.sha256(lean_policy.encode()).hexdigest())
+    return out
 
 
 def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, token: str, workdir: Path, head_sha: Optional[str] = None, run_id: Optional[str] = None,
                          archive_commit: Optional[str] = None, archive_view: Optional[Callable[[], Any]] = None,
+                         archive_write: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
                          log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
     """Price and publish a verification (`verify_submission`'s output, possibly produced by another job). No Lean runs here and nothing in `v` is trusted: the policy's digest, the
     mirror's envelope (against this checkout's model and the policy), the printed document and ForShor's record are all checked again, and the handle and epoch against the live
@@ -337,7 +341,13 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
         sent["payload"] = payload                              # the last attempt is the one that was accepted
         return request_json(url.rstrip("/") + "/v2/publish", token, payload)
 
+    archived = None
+    if archive_write is not None:                               # the policy joins the archive first: the publisher wants its head among the accepted ids
+        archived = archive_write(v)
+        log(f"archived {archived['path']} on submission-results ({archived['commit'][:12]})" if archived["added"] else f"already archived: {archived['path']}")
     result = publish_v2_with_recovery(metadata, model, state_of, price, accepted_now, send)
+    if archived is not None:
+        result["archive"] = archived
     result["policy"] = {"digest": digest, "headSha": head_sha, "login": login, "pull": pull, "mode": policy_json["mode"],
                         "stoMirror": True, "forshorPolicy": bool(forshor)}
     # The publication record the trusted publish job uploads as `publication-result.json` (`./forshor status` and `watch` read it): which snapshot, which row, which boards.
@@ -377,7 +387,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--forshor-tree", type=Path, help="a built ForShor checkout (copied per run); omit to skip the ForShor check of a JSON policy; required for a Lean policy")
     ap.add_argument("--publisher-url", default=os.environ.get("PUBLISHER_URL"), help="with --no-publish: optional, checks the handle and the epoch against the live publisher first")
     ap.add_argument("--workdir", type=Path, default=Path("intake-work"))
-    ap.add_argument("--archive", type=Path, help="a checkout of the `submission-results` branch (as publish_v2.py reads it; needs GH_TOKEN); omit for a local rehearsal")
+    ap.add_argument("--archive", type=Path, help="a checkout of the `submission-results` branch (as publish_v2.py reads it; needs GH_TOKEN); omit for a local rehearsal. With --publish-from "
+                    "the policy is first archived there (Policy.lean, policy.json, verification.json, index entry; pushed to the branch) and then published")
     ap.add_argument("--archive-commit", help="the submission-results commit to record (default: the live snapshot's, read from the published dashboard)")
     ap.add_argument("--stage-timeout", type=int)
     ap.add_argument("--mirror-timeout", type=int, default=7200)
@@ -398,10 +409,20 @@ def main(argv: Optional[List[str]] = None) -> int:
             ap.error("publishing needs --publisher-url (or PUBLISHER_URL) and --pull; use --no-publish to verify only")
     token = os.environ.get("PUBLISHER_TOKEN", "local")
     archive_view = (lambda: __import__("publish_v2")._archive_view(a.archive)) if a.archive else None
+    archive_write = None
+    if a.archive and a.publish_from is not None:
+        def archive_write(v):
+            import archive_policy as ap_
+            if a.head_sha is None or a.run_id is None:
+                raise ap_.ArchiveRefused("archiving needs --head-sha and --run-id")
+            token_gh = os.environ["GH_TOKEN"]
+            source = ap_.github_source(a.head_sha, token_gh, __import__("publish").request_json)
+            return ap_.archive_policy(a.archive, v, login=a.login, pull=a.pull, head_sha=a.head_sha, run_id=a.run_id, source=source, token=token_gh)
     try:
         if a.publish_from is not None:
             result = publish_verification(json.loads(a.publish_from.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=token, workdir=a.workdir,
-                                          head_sha=a.head_sha, run_id=a.run_id, archive_commit=a.archive_commit, archive_view=archive_view)
+                                          head_sha=a.head_sha, run_id=a.run_id, archive_commit=a.archive_commit, archive_view=archive_view,
+                                          archive_write=archive_write)
         elif a.no_publish:
             v = verify_submission(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, login=a.login,
                                   url=a.publisher_url, token=token, tree=a.tree, workdir=a.workdir, forshor_tree=a.forshor_tree, stage_timeout=a.stage_timeout,
@@ -418,6 +439,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         code = 0
     except (Refused, ReservedHandle, ModelMismatch) as e:
         result, code = {"refused": True, "stage": getattr(e, "stage", type(e).__name__), "reason": getattr(e, "reason", str(e))}, 1
+    except __import__("archive_policy").ArchiveRefused as e:
+        result, code = {"refused": True, "stage": "archive", "reason": str(e)}, 1
     except (RetryPublication, RuntimeError, subprocess.SubprocessError, OSError, ValueError, KeyError) as e:
         result, code = {"failed": True, "error": f"{type(e).__name__}: {e}"[:600]}, 2
     text = json.dumps(result, indent=1)
