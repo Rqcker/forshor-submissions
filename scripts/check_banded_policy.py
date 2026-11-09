@@ -4,7 +4,7 @@ Lean mirror `TableGeneration.RecursiveCost.BandedPolicy`, end to end.
 
     python3 scripts/check_banded_policy.py POLICY.json --target-width 2048 \
         [--index I] [--workdir DIR | --in-place] [--out RECORD.json] [--full-replay] \
-        [--widths scan|exact]
+        [--widths scan|exact] [--fast]
 
 Stages (each timed; the first failure stops the run and is recorded):
 
@@ -61,6 +61,16 @@ Width rule (`--widths`, default `scan`, which keeps the 2026-10-28 records as th
            `exact_ladder_at_target` (`ladderTight N = exactLadder ∧ chainContractsTight N = true`).
            A declared ladder must obey the same rule (`declThresholdOK`, theorem `declared_thresholds`):
            otherwise rejected at `threshold` (HG7 T1).
+
+--fast (exact mode only): skip the `report` stage. That stage is Lean's INTERPRETER evaluating each band's `check` (State is a
+function, so every operation adds a closure that the interpreter never memoises: the cost doubles every ~10 operations, hours for
+a deep k = 8 table, while the kernel certificate below needs seconds). The report is diagnostics only; the kernel decides. In
+fast mode the exact ladder literal comes from `exact_width.exact_ladder` (an untrusted Python transcription of Tight.lean) and
+the certificate re-proves it (`exact_ladder`, `exact_ladder_at_target`, `chain_contracts_tight`) together with `accepted`
+(every band's table contract), so a wrong literal, a failed table contract or a failed threshold rule makes the certificate
+not build. Not evaluated in fast mode: the scan ladder, the advisory `bands_contract` theorem, and the named-band early
+rejections of the report (the same failures are caught by the kernel, with the build log as the reason).
+Same shape as `check_ptp_policy.py --fast`.
 
 Exit 0 = accepted, 1 = rejected (record says which stage and why), 2 = usage.
 """
@@ -140,6 +150,25 @@ def threshold_reason(f: dict, N: int) -> str:
             f"{why} (BandedPolicy.chainContractsTight {N} = false)")
 
 
+def threshold_failure_py(doc: dict, n: int):
+    """Diagnostic only (fast mode; acceptance is the kernel-checked `chainContractsTight`): the first rung on the exact-width
+    recursion from `n` that breaks the threshold rule, as the report's `threshold_failure` dict, or None. A Python mirror of
+    exact_width.exact_ladder that also checks the rule."""
+    from exact_width import choose, exact_width
+    bands = doc.get("bands", [])
+    w = n
+    while True:
+        b = choose(bands, w)
+        if b is None:
+            return None
+        child = exact_width(b["k"], b["operations"], w)
+        if w < b["k"]:
+            return {"kind": "degenerate_limbs", "band": bands.index(b), "threshold": b["threshold"], "k": b["k"], "width": w, "child_width": child}
+        if not child < w:
+            return {"kind": "no_shrink", "band": bands.index(b), "threshold": b["threshold"], "k": b["k"], "width": w, "child_width": child}
+        w = child
+
+
 def declared_rung_reason(doc: dict, declared) -> str:
     """Diagnostic only (acceptance is the kernel-checked `declThresholdOK`): the first declared rung that
     breaks the rule, with the band chosen there and its exact child width (Python exact_width mirror)."""
@@ -200,7 +229,11 @@ def main(argv=None) -> int:
     ap.add_argument("--cap-gb", type=float, default=10.0)
     ap.add_argument("--widths", choices=["scan", "exact"], default="scan",
                     help="width rule the declared ladder is certified against (default scan)")
+    ap.add_argument("--fast", action="store_true",
+                    help="exact mode only: skip the interpreted report stage; the kernel certificate proves the ladder")
     a = ap.parse_args(argv)
+    if a.fast and a.widths != "exact":
+        ap.error("--fast needs --widths exact")
 
     raw = Path(a.policy_json).read_bytes()
     rec = {"tool": "check_banded_policy", "started": datetime.now(timezone.utc).isoformat(),
@@ -250,13 +283,25 @@ def main(argv=None) -> int:
         if p.returncode:
             raise Reject("data", "data module does not elaborate", (p.stdout + p.stderr)[-4000:])
 
-        p, s = run(["lake", "env", "lean", "--run", "scripts/BandedPolicyReport.lean", "--", str(a.target_width)],
-                   work, a.timeout)
-        rec["seconds"]["report"] = s
-        if p.returncode:
-            raise Reject("report", "report failed", (p.stdout + p.stderr)[-4000:])
-        rec["report"] = json.loads(p.stdout.strip().splitlines()[-1])
-        if not rec["report"]["check"]:
+        if a.fast:
+            from exact_width import exact_ladder as python_exact_ladder
+            rec["seconds"]["report"] = 0.0
+            rec["fast"] = ("report stage skipped (--fast): the exact ladder is computed in Python (an untrusted oracle) and the "
+                           "certificate's `exact_ladder`, `exact_ladder_at_target`, `chain_contracts_tight` and `accepted` are re-proved by "
+                           "the kernel, so a wrong ladder, a failed table contract or a failed threshold rule makes the certificate not build; "
+                           "the scan ladder and the advisory `bands_contract` were not evaluated")
+            rec["report"] = {"fast": True, "target_width": a.target_width, "check": None, "chain_contracts_tight": None,
+                             "threshold_failure": None, "declared_threshold_ok": None, "declared_tight_ok": None, "bands_contract": None,
+                             "ladder": None, "tight_ladder": python_exact_ladder(doc, a.target_width)}
+        else:
+            p, s = run(["lake", "env", "lean", "--run", "scripts/BandedPolicyReport.lean", "--", str(a.target_width)],
+                       work, a.timeout)
+            rec["seconds"]["report"] = s
+            if p.returncode:
+                raise Reject("report", "report failed", (p.stdout + p.stderr)[-4000:])
+            rec["report"] = json.loads(p.stdout.strip().splitlines()[-1])
+        fast = bool(rec["report"].get("fast"))
+        if not fast and not rec["report"]["check"]:
             bad = [i for i, b in enumerate(rec["report"]["bands"]) if not b["check"]]
             reason = "thresholds not strictly decreasing" if not bad else f"band(s) {bad} fail STO's table contract"
             raise Reject("check", reason)
@@ -264,17 +309,18 @@ def main(argv=None) -> int:
         if a.widths == "exact":
             exact_ladder = [(r["width"], r["k"]) for r in rec["report"]["tight_ladder"]]
             rec["exact_ladder"] = rec["report"]["tight_ladder"]
-            rec["scan_ladder"] = rec["report"]["ladder"]
+            if not fast:
+                rec["scan_ladder"] = rec["report"]["ladder"]
             if "chain_contracts_tight" not in rec["report"]:
                 raise Reject("report", "report lacks chain_contracts_tight")
-            if rec["report"]["chain_contracts_tight"] is not True:
+            if not fast and rec["report"]["chain_contracts_tight"] is not True:
                 f = rec["report"].get("threshold_failure")
                 if not f:
                     raise Reject("threshold", f"BandedPolicy.chainContractsTight {a.target_width} = false",
                                  json.dumps({"exact": rec["report"]["tight_ladder"]}))
                 raise Reject("threshold", threshold_reason(f, a.target_width),
                              json.dumps({"failure": f, "exact": rec["report"]["tight_ladder"]}))
-            if declared is not None and rec["report"].get("declared_threshold_ok") is not True:
+            if not fast and declared is not None and rec["report"].get("declared_threshold_ok") is not True:
                 raise Reject("threshold", "threshold too low on the declared ladder: " + declared_rung_reason(doc, declared) +
                              " (BandedPolicy.declThresholdOK = false)",
                              json.dumps({"declared": declared, "exact": rec["report"]["tight_ladder"]}))
@@ -311,6 +357,9 @@ def main(argv=None) -> int:
         if p.returncode:
             out = p.stdout + p.stderr
             if "chain_contracts_tight" in out:
+                f = threshold_failure_py(doc, a.target_width) if fast else None
+                if f:       # fast mode has no report to name the band: the Python mirror does (diagnostic; the kernel already decided)
+                    raise Reject("threshold", threshold_reason(f, a.target_width) + " (kernel)", out[-4000:])
                 raise Reject("threshold", f"BandedPolicy.chainContractsTight {a.target_width} = false (kernel)", out[-4000:])
             reason = "chain does not contract from the target width" if "chain_contracts" in out else "certificate does not build"
             raise Reject("cert", reason, out[-4000:])

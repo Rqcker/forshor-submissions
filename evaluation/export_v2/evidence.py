@@ -141,8 +141,9 @@ def run_mirror(policy_json: Dict[str, Any], board: str, tree: Path, out_dir: Pat
     epoch's pins, and takes minutes (PhaseProduct about 100 s, PhaseTripleProduct about 7 to 13 minutes, up to ~6 GB). The
     policy is written first and the harness hashes that very file, which is what binds the record to the policy. ``stage_timeout`` is the
     harness's own per-stage limit (its default is 3600 s; a PhaseProduct policy with an 8-way top band ran past it in the report stage).
-    ``fast`` passes `--fast` to the PhaseTripleProduct harness only: it skips the interpreted report stage (hours for an 8-way band) and lets the
-    kernel certificate prove the ladder (see the fork's `check_ptp_policy.py`); the PhaseProduct harness has no such option and is unchanged."""
+    ``fast`` passes `--fast` to either harness: it skips the interpreted report stage (hours for an 8-way band: the interpreter never memoises
+    the closures a `State` is built from, so the cost doubles every ~10 operations) and lets the kernel certificate prove the ladder (see
+    `check_banded_policy.py` and the fork's `check_ptp_policy.py`). The tree must have the option: trees from before it reject the argument."""
     out_dir.mkdir(parents=True, exist_ok=True)
     digest = policy_digest(policy_json)
     policy_file = out_dir / f"{digest[:16]}.policy.json"
@@ -158,7 +159,7 @@ def run_mirror(policy_json: Dict[str, Any], board: str, tree: Path, out_dir: Pat
     with open(log_file, "w") as log:
         proc = subprocess.Popen([python, str(tree / "scripts" / script), str(policy_file), "--target-width", "2048", "--widths", "exact",
                                  "--cap-gb", str(cap_gb), "--out", str(record_file)] + (["--timeout", str(stage_timeout)] if stage_timeout else [])
-                                + (["--fast"] if fast and board == "ptp" else []),
+                                + (["--fast"] if fast else []),
                                 cwd=tree, stdout=log, stderr=subprocess.STDOUT,
                                 start_new_session=True)
         try:

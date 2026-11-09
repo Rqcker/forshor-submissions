@@ -241,7 +241,7 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, log
     digest = policy_digest(policy_json)
     board = "ptp" if policy_json["mode"] == eng.tables.TRIPLE else "pp"
     log(f"policy {digest[:12]} ({policy_json['mode']}, {len(policy_json['bands'])} bands): the Lean mirror at exact widths ...")
-    envelope = (run_mirror_fn or run_mirror)(policy_json, board, tree, workdir / "evidence", timeout=mirror_timeout, python=python, stage_timeout=stage_timeout, fast=True)   # `fast`: PhaseTripleProduct only, see run_mirror
+    envelope = (run_mirror_fn or run_mirror)(policy_json, board, tree, workdir / "evidence", timeout=mirror_timeout, python=python, stage_timeout=stage_timeout, fast=True)   # `fast`: skip the interpreted report stage, see run_mirror
     mirror, why = EvidenceStore(workdir / "evidence").stomirror(policy_json, model, board)
     if mirror is None:
         rec = envelope.get("record", {})
