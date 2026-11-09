@@ -12,7 +12,7 @@ on macOS and hosted evaluation remains Ubuntu. Git and GitHub CLI are prerequisi
 | --- | --- |
 | `./forshor setup` | Authenticate if needed, fetch trusted main, prepare the pinned Lean toolchain, fetch dependency binaries, and build the trusted verifier closure |
 | `./forshor setup DIRECTORY` | First clone a fresh checkout into a new directory, then prepare it; run later commands inside that directory |
-| `./forshor check` | Verify the current table and helpers, including uncommitted edits; write local reports under `artifacts/forshor/` |
+| `./forshor check` | Verify the current policy file, including uncommitted edits; write local reports under `artifacts/forshor/` |
 | `./forshor submit` | Recheck when needed; commit allowed edits, create a branch when on main, push, create/reuse the PR, and follow its publication |
 | `./forshor submit --no-wait` | Submit and print initial status without staying attached |
 | `./forshor status` | Inspect the last submission from this checkout |
@@ -44,7 +44,7 @@ estimates for hosted Qualtran evaluation.
 it first creates a submission branch. It never force-pushes, merges a PR, or adds
 unrelated files. Existing open PRs on the branch are reused. Source changes while
 verification/commit is running cause an error before publication is claimed.
-After an accepted PR closes, editing the table and running `submit` creates a
+After an accepted PR closes, editing the policy and running `submit` creates a
 fresh submission branch and PR. Running it again without edits follows the
 existing accepted submission instead.
 
@@ -55,6 +55,9 @@ Results. The publisher's Git head points to main, not the submitted commit.
 Both report checks on your PR under **Table submission**: **Verify table with
 Lean**, then **Estimate resources with Qualtran and publish results**.
 If Lean fails, the second check is skipped and the PR stays open.
+A failed first check does not always mean your policy is wrong: its run summary names the check that failed. `trees` ("FORSHOR_TREE must name a
+built ForShor checkout") means the hosted runner has no prepared Lean trees, which is the hosted setup. `./forshor check` verifies the same file
+locally.
 When Google confirms publication, the publisher posts links to the accepted
 table and staging dashboard, then closes the PR without merging it. A failed
 estimation, publication, or final reporting step keeps the second check red;

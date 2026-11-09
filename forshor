@@ -369,6 +369,14 @@ def publication_result(run_record, source, result, submission, verification):
     return outcome
 
 
+def hosted_failure(verification):
+    """Why a hosted verification did not pass. The conclusion alone cannot say whose fault it is, so do not blame the submission."""
+    return (f'The hosted Lean verification did not pass ({verification["conclusion"]}). Details: {verification["html_url"]}\n'
+            'Open the run summary: it names the check that failed. If that is the hosted environment (for example `trees`: the runner has no '
+            'prepared Lean trees), the cause is the hosted setup and not your policy; `./forshor check` verifies the same file locally. '
+            'If it names your policy, fix it and run ./forshor submit again.')
+
+
 def inspect_status(submission, inspected):
     pr = api(f'pulls/{submission["pr"]}')
     validate_pr(pr, submission['head'])
@@ -380,7 +388,7 @@ def inspect_status(submission, inspected):
     if verification['status'] != 'completed':
         return {'stage': 'Lean verification ' + verification['status'], 'verification': verification['html_url']}
     if verification['conclusion'] != 'success':
-        raise UserError(f'Lean verification {verification["conclusion"]}. Details: {verification["html_url"]}. Fix the submission, then ./forshor submit.')
+        raise UserError(hosted_failure(verification))
     # Publisher workflow head SHA is main, never the submitted SHA. Match its
     # trusted diagnostics to the exact verifier ID/attempt, PR and source commit.
     from urllib.parse import urlencode
@@ -507,17 +515,17 @@ def submit(args):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Prepare, verify, and submit ForShor tables.')
+    parser = argparse.ArgumentParser(description='Prepare, verify, and submit ForShor policies.')
     commands = parser.add_subparsers(dest='command', required=True)
     setup_parser = commands.add_parser('setup', help='Prepare pinned Lean and the trusted checker.')
     setup_parser.add_argument('directory', nargs='?', help='Clone a fresh checkout into this new directory first.')
-    commands.add_parser('check', help='Fully verify the edited table locally, without committing your working files.')
+    commands.add_parser('check', help='Fully verify the edited policy locally, without committing your working files.')
     for name in ('submit', 'status'):
         p = commands.add_parser(name, help='Submit a PR and follow publication.' if name == 'submit' else 'Show or follow the last submission.')
         p.add_argument('--timeout', type=int, default=3600, help='Seconds to wait (default 3600).')
         p.add_argument('--json', action='store_true', help='Also print a JSON status record.')
         if name == 'submit':
-            p.add_argument('--title', default='Submit a ForShor table')
+            p.add_argument('--title', default='Submit a ForShor policy')
             p.add_argument('--no-wait', dest='watch', action='store_false', default=True)
         else:
             p.add_argument('--watch', action='store_true')

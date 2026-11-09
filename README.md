@@ -10,7 +10,8 @@ gh repo clone zapatacomputing/forshor-submissions
 cd forshor-submissions
 ./forshor setup
 
-# Develop your table generator and Lean proofs in:
+# Your submission is one Lean file, a policy. The starter pack prices and
+# generates it (see the challenge page); put it in:
 # TableGeneration/Submission/Policy.lean
 ./forshor check
 ./forshor submit
