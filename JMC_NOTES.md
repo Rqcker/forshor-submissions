@@ -13,16 +13,13 @@ while that is discussed. If upstream adopts these changes, use upstream instead.
   ForShor's explicit gate counts, and the negation method a policy option) and the earlier merges of `qubitCount`
   (PR #75, the same Lean tree as `qubitCount` `6d55ad9`) and PhaseTripleProduct (PR #76), not a moving branch. `qubitCount` renamed the library `FastMultiplication` to
   `ForShor`, so a few STO files were ported: import paths, two removed helper names re-stated locally,
-  and the confinement check. ForShor itself is not modified. See `JMC_VALIDATION.md` (sections "Port to
-  ForShor `bb2aae0`", "Pin bump to ForShor `6d55ad9`", "PhaseTripleProduct moved to ForShor" and "Pin bump to ForShor
-  `21e129a`").
+  and the confinement check. ForShor itself is not modified.
 - **PhaseTripleProduct lives in ForShor.** The PTP proofs (`Statement.lean`, `Proofs/`, `Main.lean`, in
   `Implementation/PhaseTripleProduct`, namespace `Shor.PTP`) are ForShor's and are imported here, not
   copied. This fork holds only the PTP planner (`TableGeneration/RecursiveCost/PTPPlan/`), its 31 seeds,
   and the policy-checker harness (`scripts/check_ptp_policy.py` and friends).
 - **Apart from that port, the change adds files only.** It adds files under `TableGeneration/RecursiveCost/{BandedPolicy,PTPPlan,PTPCheck}/`,
-  `TableGeneration/RecursiveCost/PlanCore.lean`, `scripts/` and `policies/`, plus this file and
-  `JMC_VALIDATION.md`. The only upstream files it touches are `README.md` (a pointer at the top)
+  `TableGeneration/RecursiveCost/PlanCore.lean`, `scripts/` and `policies/`, plus this file. The only upstream files it touches are `README.md` (a pointer at the top)
   and `.gitignore` (two lines for harness scratch modules). The umbrella `TableGeneration.lean` is unchanged,
   so `lake build TableGeneration` and upstream CI behave as on upstream. ForShor is not modified.
 
@@ -64,10 +61,7 @@ in the Statement / Proofs / Main layout (ForShor PR #76) and are deleted here. T
 seeds with their negative controls), `PTPCheck/` (the `AxiomAudit` indirection; the checker writes its
 generated `PTPSubmitted*.lean` here, git-ignored), the policy-checker harness, `scripts/PTPAxiomCheck.lean`
 (the ForShor theorems this fork instantiates plus the planner's own) and `scripts/check_ptp_single_source.py`
-(fails if the fork grows its own PTP definitions again; it replaces `check_ptp_layers.py`, whose layer order
-no longer exists here). `docs/ptp_gap_note/` is a dated record of the 2026-11-04 rigor work and still names
-the old module layout. See `JMC_VALIDATION.md` for the checks run on this change.
-Check: `lake env lean scripts/PTPAxiomCheck.lean` and `python3 scripts/check_ptp_single_source.py`.
+(fails if the fork grows its own PTP definitions). Check: `lake env lean scripts/PTPAxiomCheck.lean` and `python3 scripts/check_ptp_single_source.py`.
 
 ## Check a policy
 
@@ -78,7 +72,3 @@ python3 scripts/check_ptp_policy.py    policies/ref_ptp_2048.json --target-width
 Kernel replay peaks at about 6 GB per module. Use `--cap-gb` to cap it. Negative controls, which
 must be rejected, are `policies/threshold_*.json` (except `threshold_scanonly_*`, which pass in
 exact mode) and `policies/faulty_width.json`.
-
-## Validation on this commit
-
-See `JMC_VALIDATION.md`.

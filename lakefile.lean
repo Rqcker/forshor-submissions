@@ -39,8 +39,8 @@ which contains eb00c5a, the merge commit of PR #79 (`swap/negation-incrementer`:
 one-clean-ancilla incrementer, `NegationMethod` with `.oneQubit` default and `.scratch` = the pre-swap Cuccaro charge,
 which equals 6d55ad9 behaviour; 6d55ad9 was the `qubitCount` branch tip of 2026-11-04). The Lean mirror here was built
 against 2b7aaf7, the head of #79, and is unchanged by #80 (new files, docstrings, `negation_default` theorems).
-PIN-PLACES (to bump the pin: one sed over this file, lake-manifest.json `rev` and `inputRev` of package
-Fast_multiplication, and the SHA strings in the notes listed in MERGE-NOTES.md).
+PIN-PLACES (to bump the pin: one sed over this file, and lake-manifest.json `rev` and `inputRev` of package
+Fast_multiplication).
 -/
 require «Fast_multiplication» from git
   "https://github.com/VerifiedQC/ForShor.git" @ "21e129aeefc0fd1bbb8fa63402f5799af2490788"
