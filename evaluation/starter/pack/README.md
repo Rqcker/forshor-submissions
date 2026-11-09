@@ -86,9 +86,9 @@ vendored unchanged.
 
 See `harness/LEAN_CHECKS.md`. The Lean build trees are not in the pack. In short:
 
-* PP: `python starter.py lean-input my_pp_policy.json`, then the STO policy mirror (`check_banded_policy.py --widths exact`, in the interim STO fork,
-  `courtneyjzapata/ShorTableOptimization_temp`, branch `port/forshor-21e129a`).
-* PTP: the same input, then `check_ptp_policy.py --widths exact` of the same fork (against ForShor's `Shor.PTP`).
+* PP: `python starter.py lean-input my_pp_policy.json`, then the STO policy mirror (`check_banded_policy.py --widths exact`), which is in the `forshor-submissions` repository
+  (github.com/zapatacomputing/forshor-submissions, `main`): its `TableGeneration/` and `scripts/` are the mirror's tree. `./forshor check` in a clone of it builds the trees and runs the whole check for you.
+* PTP: the same input, then `check_ptp_policy.py --widths exact` of the same repository (against ForShor's `Shor.PTP`).
 * Full run: ForShor at the pinned commit `21e129a` (VerifiedQC/ForShor). Your `Policy.lean` goes to
   `ForShor/ShorVerification/Submission/PolicyTemplate.lean` for the check (ForShor's own name for the file). Then:
   `lake exe cache get`, `lake build PolicySubmission forshor_policy_submission`, then
@@ -111,7 +111,7 @@ How to send a policy is in `SUBMISSION_FORMAT.md`, section 6: the pack prices an
 * Q is the live-qubit peak (`SUBMISSION_FORMAT.md` section 3), the score is Q × T. A negation is priced with ForShor's explicit counts (the complement plus a
   one-ancilla increment: Toffoli `12w - 28` for even `w`, `10w - 18` for odd, with its CNOTs and X gates), under ForShor's default method `oneQubit`.
 * PP and PTP boards: every child at the exact width, meaning the least width at which every reachable register value
-  and child operand fits (floor limbs). ShorTableOptimization's `exact_width` (Lean Tight.lean) and the PhaseTripleProduct exact-width function (ForShor's `Shor.PTP`, mirrored in the STO fork) are vendored verbatim. Python matching Lean is cross-checked, not proved.
+  and child operand fits (floor limbs). ShorTableOptimization's `exact_width` (Lean Tight.lean) and the PhaseTripleProduct exact-width function (ForShor's `Shor.PTP`, mirrored in `forshor-submissions`) are vendored verbatim. Python matching Lean is cross-checked, not proved.
 * Full run: ForShor's native structure (ForShor `21e129a`), with Step 4 `cmpLtNW` and Lean's work width (2347 bits at n = 2048, m = 2^150 − 3).
   Exact register widths: each table's child width is ForShor's `exactSignedWidthOfWidths`, max(tight, 1 + the widest
   initial chunk). The balanced split: Steps 1, 2 and 5 are padded to 2348 × 2348, and Step 4's 2348 × 4399 product

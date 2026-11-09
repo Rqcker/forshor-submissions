@@ -4,7 +4,8 @@ import sys
 from pathlib import Path
 
 STALE = ["FastMultiplication", "qubitCount", "f9adbe9", "10fe620", "run.sh", "probe-scan", "<LIB>", "PTP suite", "ptp-suite", "policy-mirror",
-         "November 1 to December 1", "static-layout formula at exact widths", "sto_site"]
+         "November 1 to December 1", "static-layout formula at exact widths", "sto_site",
+         "courtneyjzapata", "port/forshor-21e129a", "ShorTableOptimization_temp", "interim STO fork", "harness/ptp-fast-report"]
 ALLOWED = {"harness/policy_to_template.py": ["FastMultiplication", "qubitCount"]}   # a comment saying the old name no longer exists
 pack = Path(sys.argv[1])
 bad = []
@@ -35,6 +36,13 @@ for w in ("PolicyTemplate.lean`; you", "k ≤ 6 is the supported", "1 < k ≤ 6"
     for f in sorted(pack.rglob("*.md")):
         if not str(f.relative_to(pack)).startswith("engine/") and w in f.read_text():
             bad.append(f"{f.relative_to(pack)}: {w!r}")
+# no file of the pack (engine data and examples included) names the machine the pack was built on
+for f in sorted(pack.rglob("*")):
+    if f.is_file() and f.suffix not in {".zip", ".pyc"}:
+        text = f.read_text(errors="ignore")
+        for w in ("/Users/", "~/Desktop", "/home/joshua"):
+            if w in text:
+                bad.append(f"{f.relative_to(pack)}: a local path ({w!r})")
 print(f"{len(bad)} stale references")
 for b in bad:
     print("  ", b)

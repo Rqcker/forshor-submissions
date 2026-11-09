@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -51,6 +52,32 @@ def copy_engine(dest: Path) -> None:
     def keep(dirpath: str, names):
         return [n for n in names if n in EXCLUDE_DIRS or n.endswith(".pyc") or (Path(dirpath) == ENGINE and n in EXCLUDE_FILES)]
     shutil.copytree(ENGINE, dest, ignore=keep)
+
+
+# Absolute paths of the machine that produced the engine's pinned run records, replaced in the PACK's copy only (the repository's `evaluation/engine/` is untouched:
+# its records are inside the engine's cache fingerprint, and a commit there changes the epoch). Nothing in the pack reads these as paths.
+PATH_SCRUBS = [(re.compile(r"/Users/[A-Za-z0-9._-]+/Desktop/github_packages"), "$TREES"), (re.compile(r"~/Desktop/github_packages"), "$TREES"),
+               (re.compile(r"/Users/[A-Za-z0-9._-]+/Desktop"), "$TREES"), (re.compile(r"/Users/[A-Za-z0-9._-]+"), "$HOME")]
+TEXT_SUFFIXES = {".json", ".md", ".py", ".txt", ".lean", ".yaml", ".yml", ".toml", ".cfg", ".lock", ".csv", ".sh", ""}
+
+
+def scrub_paths(pack: Path) -> int:
+    """Replace the author's local paths in the pack's text files with `$TREES` / `$HOME`. Returns the number of files changed."""
+    changed = 0
+    for f in pack.rglob("*"):
+        if not f.is_file() or f.suffix not in TEXT_SUFFIXES:
+            continue
+        try:
+            text = f.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        new = text
+        for pattern, repl in PATH_SCRUBS:
+            new = pattern.sub(repl, new)
+        if new != text:
+            f.write_text(new, encoding="utf-8")
+            changed += 1
+    return changed
 
 
 def snapshot(seed_path: Path) -> dict:
@@ -88,6 +115,7 @@ def main() -> int:
         shutil.rmtree(pack)
     shutil.copytree(SRC, pack)
     copy_engine(pack / "engine")
+    print(f"local paths scrubbed in {scrub_paths(pack)} files")
     origins = {"pack": "evaluation/starter/pack (hand-written)", "engine": f"evaluation/engine at {git('rev-parse', '--short', 'HEAD')} (tests, caches excluded)"}
 
     snap = snapshot(a.seed)
