@@ -48,7 +48,7 @@ def fake_publisher(model, calls, number=1):
 
 def archived_mirror(calls):
     def run(policy_json, board, tree, out_dir, **kw):
-        assert kw.get("fast") is True, "the mirror is run with --fast (the PhaseTripleProduct harness skips its interpreted report stage)"
+        assert kw.get("fast") is True, "the mirror is run with --fast (both harnesses skip their interpreted report stage)"
         calls.append(("mirror", board))
         out_dir.mkdir(parents=True, exist_ok=True)
         for ext in ("policy", "record", "evidence"):

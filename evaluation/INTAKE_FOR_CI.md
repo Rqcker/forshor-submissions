@@ -36,7 +36,7 @@ a ForShor tree is given; always for a Lean submission) → price once → publis
 | 2 | the run could not complete (a tool failed, the harness wrote no record, the publisher is unreachable after retries) | `{"failed": true, "error": ...}`: re-run, it is not a verdict |
 
 A stage that hit its time limit is exit 1 with a `report`/timeout reason: a resource limit, not a mathematical rejection, and it yields no evidence. Measured: most policies take seconds to minutes in the mirror; a
-first band of k = 8 took about 2.4 hours in the report stage, so set the limits above and the job's own timeout accordingly.
+first band of k = 8 took about 2.4 hours in the report stage when that stage ran. Since `check_banded_policy.py --fast` (the intake passes it for both boards) the report stage is skipped and the same policy takes about 2 minutes (see `export_v2/README.md`, "`run-mirror --fast`"); the limits above still bound a tool that hangs.
 
 ## What the job must also do (not part of the script)
 
