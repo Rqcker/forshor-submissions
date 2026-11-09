@@ -211,6 +211,13 @@ def test_the_gate_does_not_replace_the_blocklist() -> None:
 
 
 if __name__ == "__main__":
+    # A policy submission (a ForShor policy file) is not a table-generator source: it is checked by scripts/policy_verifier.py (ForShor's own lexical gate and build),
+    # and the parse-tree gate below is about the older format. Run here, in CI, before the verifier, it must not stand in the way of that check.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import policy_verifier
+    if policy_verifier.applies(WORK):
+        print("submission syntax gate: not applicable to a policy submission (scripts/policy_verifier.py checks it)")
+        sys.exit(0)
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failures = 0
     for t in tests:
