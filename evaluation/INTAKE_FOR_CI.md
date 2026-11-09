@@ -20,7 +20,7 @@ with `PUBLISHER_TOKEN` in the environment (the identity token the publisher's IA
 | `$PR_AUTHOR`, `$PR_NUMBER`, `$PR_HEAD_SHA` | from the PR event. `forshor` is a reserved handle and is refused. The row is named `<login>_sub<N>`, N assigned by the publisher's ledger. |
 | `$STO_TREE` | a **built** Lean tree for the STO mirror: this repository (synced from the STO fork's `main` at `2558595`). Build it with the targets in `evaluation/policy-trees.json` (`sto_build`: `BandedPolicy`, `BridgeClosure`, `BandedPolicy.Plan`, `Instances.RefPP`, `PTPPlan.Plan`, `PTPCheck.AxiomAudit`); `lake build TableGeneration` alone does not build them. |
 | `$FORSHOR_TREE` | a built ForShor checkout at `21e129a` (`lake build PolicySubmission forshor_policy_submission`). Copied per run (it is written into), so use a cache and a copy-on-write or a throwaway checkout. Optional: without it, no row has the `ForShor` tag. |
-| `$ARCHIVE_CHECKOUT` | a checkout of the `submission-results` branch, as `publish_v2.py --archive` reads it. Omit only for a local rehearsal. |
+| `$ARCHIVE_CHECKOUT` | a checkout of the `submission-results` branch (a clone with an `origin` it may push to). With `--publish-from` the policy is archived there first (see "The archive"), then published. Omit only for a local rehearsal. |
 
 The epoch's pins are the ones in this repo's `lake-manifest.json` / `lean-toolchain` and the publisher's `/v2/state` model; a publisher on a different epoch is refused before any Lean runs.
 
@@ -70,7 +70,18 @@ A policy submission is checked by `scripts/verifier.py`, unchanged for the older
 |---|---|---|
 | `./forshor check` | the participant, on their machine | `scripts/verifier.py` from a checkout of the base commit with the submitted file copied in. `./forshor setup` (and the first `check`) clone and build the two Lean trees named in `evaluation/policy-trees.json` and a Python environment for the engine, under `.git/forshor`. Needs no publisher, no token, no pull request. |
 | pull-request job (`table-generation-submission.yml`) | CI, no secrets | the same `scripts/verifier.py` with `FORSHOR_TREE`, `STO_TREE`, `ENGINE_PYTHON` set (and `TABLE_GEN_LOGIN` the PR author); upload `verification.json` with the other artifacts. |
-| publish job (`publish-results.yml`, trusted) | CI, with the publisher identity | for a result whose `kind` is `policy`: `python evaluation/intake_v2.py --publish-from verification.json --login "$PR_AUTHOR" --pull "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --run-id "$RUN_ID" --publisher-url "$PUBLISHER_URL" [--archive ...]` with `PUBLISHER_TOKEN`. No Lean; about 5 seconds; everything in the verification is checked again. |
+| publish job (`publish-results.yml`, trusted) | CI, with the publisher identity | for a result whose `kind` is `policy`: `python evaluation/intake_v2.py --publish-from verification.json --login "$PR_AUTHOR" --pull "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --run-id "$RUN_ID" --publisher-url "$PUBLISHER_URL" --archive "$ARCHIVE_CHECKOUT"` with `PUBLISHER_TOKEN` and a `GH_TOKEN` that can push to `submission-results`. No Lean; archive push and publish take about 10 seconds; everything in the verification is checked again. |
 
-Not done: the publish job's branch for `kind: policy` in the workflow YAML and in `scripts/ci/publication.js`, and `./forshor status`/`watch` following a policy publication (they read the older publication record).
+## The archive
+
+Every accepted policy is archived on the `submission-results` branch, by the same call that publishes it (`intake_v2.py --publish-from ... --archive CHECKOUT`; `evaluation/archive_policy.py`), **before** the publisher is called: the publisher requires the archive's accepted ids to include the submission's head commit.
+
+* `results/policy-submissions/<head>/Policy.lean` (the submitted file, byte for byte), `policy.json` (the policy as the boards price it, with its digest) and `verification.json` (the mirror's envelope and ForShor's printed document), and one entry in `leaderboard/policy-submissions.json` (`schema: forshor.policy-archive/v1`; `policy_id` = head commit, `digest`, `mode`, `board`, `sha256` of the file, `source{repository, pr_number, github_login, run_id, created_at}`).
+* It is a separate index from the table-generation archive's `leaderboard/results.json`: that index's writer (`table_generation_report.js`) drops entries that have no table results, so policy entries must not go in it. `publish_v2._archive_view` reads the union of the two for the accepted ids; the older flow is untouched.
+* The source is not taken from the verification (an artifact of the untrusted job) alone: the publish job fetches `Policy.lean` at `--head-sha` from the GitHub contents API and refuses (stage `archive`) unless it equals the verification's `leanSource`.
+* Idempotent: the same head and file is a no-op (a re-run after a failed publish adds nothing); the same head with a different file is refused. A push that loses a race is retried from the branch's new tip (4 attempts).
+* The job needs `contents: write` on `submission-results` (the checkout must keep an `origin` it can push to; the token goes only into git's per-call environment, as `publish.refresh_archive` does). Branch protection on `submission-results` must allow that identity to push. Not exercised against GitHub: the tests push to a local bare repository, and the contents API is stubbed (a fork PR's head commit should resolve in the base repository, which is what the check relies on).
+* The CLI's receipt links to the results page; it carries the archive path and commit in `publication-result.json` under `archive`.
+
+Not done: the publish job's branch for `kind: policy` in the workflow YAML and in `scripts/ci/publication.js` (including the checkout of `submission-results` that `--archive` needs).
 

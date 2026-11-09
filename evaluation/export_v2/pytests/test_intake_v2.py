@@ -370,3 +370,58 @@ def test_the_command_line_modes_are_exclusive(tmp_path, capsys):
     # verify only: no publisher, no pull request; the file is written where asked and the result says where
     monkeypatch_free = intake_v2.verify_submission
     assert callable(monkeypatch_free)
+
+
+def test_a_lean_verification_carries_the_source_and_the_archive_is_written_before_the_publish(monkeypatch, tmp_path, model, policy_doc):
+    text = "namespace PolicySubmission\n-- the file\n"
+    monkeypatch.setattr(intake_v2, "policy_from_lean", lambda eng, t, tree, workdir, timeout=7200: (policy_doc, {"printed": True}))
+    monkeypatch.setattr(intake_v2, "forshor_record", lambda eng, P, doc, pin: {"verified": True, "bandsAgree": True, "irPriceAgrees": True, "claim": "c", "forshorCommit": pin})
+    v = intake_v2.verify_submission(None, lean_policy=text, login="tester", tree=tmp_path, workdir=tmp_path / "w", forshor_tree=tmp_path / "f",
+                                    run_mirror_fn=archived_mirror([]), log=lambda s: None)
+    assert v["leanSource"] == text and len(v["leanSha256"]) == 64
+    calls, order = [], []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
+    def write(verification):
+        order.append(("archive", sum(1 for u, _ in calls if isinstance(u, str) and u.endswith("/v2/publish"))))
+        return {"path": "results/policy-submissions/" + "a" * 40, "commit": "c" * 40, "added": True}
+    result = intake_v2.publish_verification(json.loads(json.dumps(v)), login="tester", pull=7, url="http://x", token="t", workdir=tmp_path / "w2", head_sha="a" * 40,
+                                            run_id="1", archive_commit="a" * 40, archive_write=write, log=lambda s: None)
+    assert order == [("archive", 0)], "the archive is written once, before anything is sent to the publisher"
+    assert result["archive"]["commit"] == "c" * 40
+    assert any(isinstance(u, str) and u.endswith("/v2/publish") for u, _ in calls)
+
+
+def test_a_refused_archive_stops_the_publication(monkeypatch, tmp_path, model, policy_doc):
+    import archive_policy
+    calls = []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
+    v = intake_v2.verify_submission(policy_doc, login="tester", tree=tmp_path, workdir=tmp_path / "w", run_mirror_fn=archived_mirror([]), log=lambda s: None)
+    def refuse(verification):
+        raise archive_policy.ArchiveRefused("the verification's Lean source is not the file at the pull request's head commit")
+    with pytest.raises(archive_policy.ArchiveRefused):
+        intake_v2.publish_verification(v, login="tester", pull=7, url="http://x", token="t", workdir=tmp_path / "w2", head_sha="a" * 40, run_id="1",
+                                       archive_commit="a" * 40, archive_write=refuse, log=lambda s: None)
+    assert not any(isinstance(u, str) and u.endswith("/v2/publish") for u, _ in calls)
+
+
+def test_the_command_line_archives_with_the_head_sha_the_run_and_the_githubs_copy_of_the_file(monkeypatch, tmp_path):
+    import archive_policy
+    seen = {}
+    monkeypatch.setenv("GH_TOKEN", "gh-token")
+    monkeypatch.setattr(archive_policy, "github_source", lambda head, token, req: seen.update(source=(head, token)) or "SRC")
+    monkeypatch.setattr(archive_policy, "archive_policy", lambda checkout, v, **kw: seen.update(archive=(checkout, kw)) or {"path": "p", "commit": "c" * 40, "added": True})
+    def publish(v, **kw):
+        kw["archive_write"](v)
+        return {"published": True}
+    monkeypatch.setattr(intake_v2, "publish_verification", publish)
+    verification = tmp_path / "verification.json"
+    verification.write_text("{}")
+    code = intake_v2.main(["--publish-from", str(verification), "--login", "tester", "--pull", "7", "--head-sha", "a" * 40, "--run-id", "5", "--publisher-url", "http://x",
+                           "--archive", str(tmp_path / "arch")])
+    assert code == 0
+    assert seen["source"] == ("a" * 40, "gh-token")
+    checkout, kw = seen["archive"]
+    assert checkout == tmp_path / "arch" and kw["source"] == "SRC" and kw["head_sha"] == "a" * 40 and kw["run_id"] == "5" and kw["pull"] == 7 and kw["token"] == "gh-token"
+    monkeypatch.setattr(intake_v2, "publish_verification", lambda v, **kw: kw["archive_write"](v))
+    assert intake_v2.main(["--publish-from", str(verification), "--login", "tester", "--pull", "7", "--publisher-url", "http://x", "--archive", str(tmp_path / "arch")]) == 1, \
+        "archiving without a head sha and run id is refused"
