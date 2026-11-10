@@ -44,6 +44,18 @@ def _compile(exprs: Dict[str, object], symbols) -> Callable[..., Dict[str, int]]
             num, den = sympy.fraction(sympy.together(e.args[0]))
             return f"(({self._print(num)}) // ({self._print(den)}))"
 
+        # The negation's counts (`tcost.negation`) carry Lean's truncating subtraction (`Max(0, ..)`) and a parity split (`Mod(w, 2)`):
+        # plain Python integer operations, never numpy's reductions.
+        def _print_Max(self, e):
+            # not `max(..)`: the generated function's namespace holds numpy's `max`, a reduction over an axis
+            out = self._print(e.args[0])
+            for a in e.args[1:]:
+                out = f"(lambda _a, _b: _a if _a > _b else _b)({out}, {self._print(a)})"
+            return out
+
+        def _print_Mod(self, e):
+            return f"(({self._print(e.args[0])}) % ({self._print(e.args[1])}))"
+
     f = sympy.lambdify(symbols, [sympy.sympify(exprs[k]) for k in KEYS], printer=_IntPrinter)
     return lambda *args: dict(zip(KEYS, (int(v) for v in f(*args))))
 

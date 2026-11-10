@@ -12,6 +12,8 @@ sto_site fork of Lean-To-Qualtran `cost_conventions` (via sto_policy_cost). The 
 * **adder**: Qualtran `Add(QInt(W'))` at the uniform child width W'.
 * **negsrc**: an `addScaled` with a negated source costs one adder, Qualtran `Subtract` (the L2Q convention and the
   one Lean charges). The tcost engine states the same thing as the atomic bloq `AddNegSrcW`.
+* **negate**: a `negate` table operation is ForShor's `oneQubit` charge, the full run's (`tcost.negation.negate_counts`: Toffoli 12w - 28 / 10w - 18,
+  CNOT 17w - 22 / 17w - 5, X 5w - 3 / 5w + 1, one clean ancilla), not Qualtran's `Negate`. The tcost engine states it as the atomic bloq `NegateW`.
 * **rotations**: `sto_currency`, shared with tcost: eps = 0.5 * delta / R, T per rotation unrounded.
 
 Each cost is a `TCost(base, rot)`: T without rotations (Qualtran `QECGatesCost`,
@@ -153,7 +155,9 @@ def leaf_callees(wx: int, wz: int, leaf: str = "product", ssa: Optional[SympySym
 def level_callees(census: Dict[str, int], w2: int, spec: ConventionSpec, sides: int = 2) -> Dict[Bloq, int]:
     """The arithmetic of one recursive node (without the children): each op on each of the `sides` operands at
     the uniform child width `w2`. Shifts and sign extensions are Clifford-only and add no T."""
-    from qualtran.bloqs.arithmetic import Add, Negate, Subtract
+    from qualtran.bloqs.arithmetic import Add, Subtract
+    from qualtran.bloqs.basic_gates import CNOT, Toffoli, XGate
+    from tcost.negation import negate_counts
     adds = sides * census["addScaled"]
     negsrc = sides * census["addScaled_negSrc"]
     negs = sides * census["negate"]
@@ -163,13 +167,20 @@ def level_callees(census: Dict[str, int], w2: int, spec: ConventionSpec, sides: 
         if k:
             out[b] = out.get(b, 0) + k
 
+    def put_negations(count):
+        # A negation is ForShor's `oneQubit` charge, the full run's (modular swap 001): `tcost.negation.negate_counts`, not Qualtran's
+        # `Negate`. Until 2026-11-10 both counting engines of the PhaseProduct / PhaseTripleProduct boards priced the Qualtran `Negate`.
+        r = negate_counts(w2)
+        for b, per in ((Toffoli(), r["toffoli"]), (CNOT(), r["cnot"]), (XGate(), r["x"])):
+            put(b, count * per)
+
     if spec.negsrc == "subtract":
         put(Add(QInt(w2)), adds - negsrc)
         put(Subtract(QInt(w2)), negsrc)
-        put(Negate(QInt(w2)), negs)
+        put_negations(negs)
     else:
         put(Add(QInt(w2)), adds)
-        put(Negate(QInt(w2)), negs + 2 * negsrc)
+        put_negations(negs + 2 * negsrc)
     return out
 
 
