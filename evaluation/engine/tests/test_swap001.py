@@ -101,9 +101,10 @@ def test_a_policy_whose_table_negates_pays_exactly_its_negation_sites_at_the_rea
 
 
 def test_exactly_three_library_tables_negate_and_the_sto_reference_policy_uses_none_of_them():
-    """The PhaseProduct and PhaseTripleProduct boards are priced by tcost, which still prices a negation the old way (D24), so they only
-    agree with the full run for policies whose tables do not negate. Three accepted library tables do negate (one PhaseTripleProduct
-    k = 2 and two PhaseProduct k = 6), and the STO reference policy uses none; the exporter refuses any listed policy that does."""
+    """Three accepted library tables negate (one PhaseTripleProduct k = 2 and two PhaseProduct k = 6), and the STO reference policy uses none.
+    (Until 2026-11-10 the PhaseProduct and PhaseTripleProduct boards, priced by tcost, charged a negation the old way (D24) and so only agreed
+    with the full run for policies whose tables do not negate; tcost now charges the full run's `oneQubit` negation, so they agree for every
+    policy: tests/test_negation_counts.py. The exporter's guard that refuses a policy with a negating table is a separate decision.)"""
     tables = lib.sto_tables(upto=len(lib.submissions()))
     negating = sorted((t.mode, t.k) for t in tables if t.census()["negate"])
     assert negating == [(PP, 6), (PP, 6), (tt.TRIPLE, 2)]
