@@ -86,17 +86,6 @@ def test_every_baseline_policy_has_at_least_one_band_and_is_distinct():
     assert len({b["number"] for b in baselines}) == len(baselines)
 
 
-def test_a_policy_whose_table_negates_is_recognised_and_the_listed_ones_are_not():
-    """The guard behind the swap: a policy built on a negating library table is flagged, and no baseline is."""
-    from export_v2 import epoch, engine
-    eng = engine.load()
-    tables = eng.library.sto_tables(upto=len(eng.library.submissions()))
-    neg = next(t for t in tables if t.mode == eng.tables.PAIR and t.census()["negate"])
-    P, _ = eng.planner.optimal_policy([neg], eng.tables.PAIR, 2048, 0.01, name="negating")
-    assert epoch.negating_bands(eng.seed_policies.canonical(P)) == [neg.k]
-    assert all(epoch.negating_bands(b["policy"]) == [] for b in epoch.baseline_policies())
-
-
 def test_the_kmy_policies_are_the_planner_optimum_over_exactly_the_kmy_tables():
     """KMY-only seed (2026-11-10): each board family has one starting policy, the planner's optimum over the tables of Kahanamoku-Meyer and Yao
     (PhaseProduct k = 3; PhaseTripleProduct k = 3 and 4), named forshor_sub1 and forshor_sub2, on a fixed date."""
@@ -114,11 +103,11 @@ def test_the_kmy_policies_are_the_planner_optimum_over_exactly_the_kmy_tables():
 
 def test_the_kmy_only_seed_carries_nothing_else(tmp_path):
     """No planner rows, baselines, reference or archive curves, no benchmark rows: one row per board and delta.
-    (`allow_negating` lifts the negation guard so the structure can be checked while the boards price a negation the old way.)"""
+    Every KMY table negates; the boards price a negation like the full run (engine/negation-real), so these policies are exportable."""
     from export_v2 import epoch
     from export_v2.evidence import EvidenceStore
     doc, rep = epoch.build_epoch_input(store=EvidenceStore(None), publisher_commit="e" * 40, archive_commit="a" * 40,
-                                       updated_at="2026-11-10T12:00:00Z", kmy_only=True, allow_negating=True)
+                                       updated_at="2026-11-10T12:00:00Z", kmy_only=True)
     assert {k: len(v) for k, v in doc["rows"].items()} == {f"{b}/{d}": 1 for b in ("pp", "full", "ptp") for d in epoch.FILE_KEY}
     assert all(r["name"] in ("forshor_sub1", "forshor_sub2") for rows in doc["rows"].values() for r in rows)
     assert all(v == [] for v in doc["benchmarks"].values())

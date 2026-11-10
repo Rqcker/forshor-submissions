@@ -189,13 +189,9 @@ def kmy_listed(kmys: List[Dict[str, Any]]) -> Dict[Tuple[str, str], List[Dict[st
     return {(b["board"], delta): [b] for b in kmys for delta in FILE_KEY}
 
 
-def negating_bands(policy) -> List[int]:
-    """The arities of a policy's tables that contain a `negate` operation. The FULL RUN charges a negation as ForShor's `negateResources` does
-    (complement plus a one-clean-ancilla incrementer, with the Lean counts of `NEGATION_OF`: Toffoli 12w-28 / 10w-18, CNOT 17w-22 / 17w-5,
-    X 5w-3 / 5w+1; 1 qubit), but `tcost`, which prices the PhaseProduct and PhaseTripleProduct boards, still prices a negation as Qualtran's
-    `Negate` (D24 of the swap log). For a table that negates the boards would therefore disagree, so no such policy is exported.
-    None of the policies listed today has one."""
-    return [b.table.k for b in policy.bands if b.table.census()["negate"]]
+# There is no guard on tables that negate any more. Until `engine/negation-real` the PhaseProduct and PhaseTripleProduct boards (tcost) priced a negation
+# as Qualtran's `Negate` while the full run charged ForShor's `oneQubit` circuit, so a policy with a negating table (every KMY table negates) would have
+# had boards that disagreed, and it was refused. Now tcost prices a negation with the same counts and the same one clean qubit as the full run.
 
 
 def first_per_policy(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -224,11 +220,10 @@ def list_rows(rows_in: Dict[Tuple[str, str], List[Dict[str, Any]]], baselines: L
 
 def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_commit: Optional[str] = None,
                       updated_at: Optional[str] = None, model: Optional[Dict[str, Any]] = None,
-                      log: Callable[[str], None] = lambda s: None, kmy_only: bool = False,
-                      allow_negating: bool = False) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+                      log: Callable[[str], None] = lambda s: None, kmy_only: bool = False) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """The epoch input and the evidence report (which policies have valid evidence, and why the others do not).
     `kmy_only`: the KMY-only seed (see `kmy_policies`): no planner frontier, no baselines, no reference curves, no benchmark rows; the only listed
-    policies are the KMY ones. `allow_negating` lifts the guard on tables that negate, for tests of the structure only."""
+    policies are the KMY ones."""
     eng = engine.load()
     model = model or model_of()
     epoch = epoch_of(model)
@@ -252,12 +247,6 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
     for b in baselines + kmys:
         entry = policies.setdefault(b["digest"], {"mode": MODES[b["board"]], "board": b["board"], "policy": b["policy"], "uses": []})
         entry["uses"].append({"board": b["board"], "delta": "1e-2", "rowId": b["id"]})
-
-    for digest, entry in policies.items():
-        bad = [] if allow_negating else negating_bands(entry["policy"])
-        if bad:
-            raise ValueError(f"policy {digest[:12]} uses a table that negates (k = {bad}): tcost prices a negation the old way and the full run "
-                             "the new way (modular swap 001), so its boards would disagree; not exporting it until tcost follows the swap")
 
     # Evidence is about the policy, not about a delta, so it is looked up once per distinct policy (one pricing to get its file).
     evidence: Dict[str, Tuple[Optional[Dict[str, Any]], Optional[str]]] = {}
