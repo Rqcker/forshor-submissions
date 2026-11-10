@@ -10,7 +10,9 @@ temporary directory, as a participant gets it, and checks that:
      digest, or the id/name of a seeded planner policy (all read from the repository's `evaluation/engine/data`);
   2. the pack's `engine/data` holds exactly the KMY tables (plus its README and the empty `personal_tables/tables.json`), none of the archive's
      data files, and the pack's own library loaders find no archive tables;
-  3. every policy file the pack ships (examples, templates) uses KMY's tables only, or is a ForShor printed document / the ForShor template;
+  3. every policy file the pack ships (examples, templates) uses KMY's tables only, or is a ForShor printed document / the ForShor template; and no
+     table of the pack, in any JSON or Lean file (printed documents included), has the OPERATIONS of an archive or DP-library table (a digest or an id
+     can be renamed away; the operations cannot);
   4. the unzipped pack's own commands work: `starter.py examples --check` matches its pinned outputs, `starter.py price` prices a KMY policy and
      `starter.py template` writes a submission file from it.
 
@@ -116,6 +118,91 @@ for f in sorted((pack / "examples").glob("*.policy.json")) + sorted((pack / "tem
 for lean in ("kmy_pp.Policy.lean", "kmy_ptp.Policy.lean"):
     if not (pack / "examples" / lean).is_file():
         fail(f"examples/{lean} is missing")
+
+# ---- 3b. no table of the archive or the DP library hides under another name: compare OPERATION SEQUENCES, in the site format, the printed-document format and Lean
+import re  # noqa: E402
+
+
+def norm_op(o):
+    if isinstance(o, dict):
+        n = o.get("op")
+        if n == "addScaled":
+            return ("addScaled", o["dst"], o["src"], -1 if o.get("negSrc") else 1, o["shift"])
+        if n in ("shiftL", "shiftR"):
+            return (n, o.get("i", o.get("reg")), o.get("n", o.get("shift", o.get("by"))))
+        if n in ("negate", "phaseProduct"):
+            return (n, o.get("i"))
+        return None
+    if isinstance(o, list) and o and isinstance(o[0], str):
+        if o[0] == "addScaled":
+            return ("addScaled", o[1], o[2], -1 if (o[3] is True or o[3] == -1) else 1, o[4])
+        if o[0] in ("shiftL", "shiftR"):
+            return (o[0], o[1], o[2])
+        if o[0] in ("negate", "phaseProduct"):
+            return (o[0], o[1])
+    return None
+
+
+def op_sequence(ops):
+    out = tuple(norm_op(o) for o in ops)
+    return out if len(out) >= 4 and None not in out else None
+
+
+def lean_sequences(text):
+    seqs = []
+    for m in re.finditer(r"def\s+\w+Ops\s*:\s*Prog[^:]*:=\s*\[(.*?)\]\s*\n\s*\n", text, re.S):
+        ops = []
+        for line in re.split(r"\n\s*,\s*|\[\s*|\n", m.group(1)):
+            mm = re.match(r"\s*valid_ops\.(\w+)\s*(.*)", line)
+            if not mm:
+                continue
+            name, args = mm.group(1), mm.group(2).split()
+            if name == "addScaled":
+                ops.append(("addScaled", int(args[0]), int(args[1]), -1 if args[2] == "true" else 1, int(args[3])))
+            elif name in ("shiftL", "shiftR"):
+                ops.append((name, int(args[0]), int(args[1])))
+            elif name in ("negate", "phaseProduct"):
+                ops.append((name, int(args[0])))
+        if len(ops) >= 4:
+            seqs.append(tuple(ops))
+    return seqs
+
+
+kmy_seqs = {op_sequence([list(o) for o in r["table"].to_json()["operations"]]) for r in lib.kmy_tables()}
+archive_seqs = {}
+for s_ in lib.submissions():
+    for T in s_.tables.values():
+        archive_seqs.setdefault(op_sequence([list(o) for o in T.to_json()["operations"]]), f"archive {s_.id}")
+for r in lib.personal_tables():
+    archive_seqs.setdefault(op_sequence([list(o) for o in r["table"].to_json()["operations"]]), f"DP {r['id']}")
+archive_seqs = {k: v for k, v in archive_seqs.items() if k is not None and k not in kmy_seqs}
+
+
+def scan_json(o, rel):
+    if isinstance(o, list):
+        sq = op_sequence(o)
+        if sq in archive_seqs:
+            fail(f"{rel}: a table equal to {archive_seqs[sq]} (same operations)")
+        for v in o:
+            scan_json(v, rel)
+    elif isinstance(o, dict):
+        for v in o.values():
+            scan_json(v, rel)
+
+
+for f in files:
+    rel = f.relative_to(pack)
+    if "vendor" in rel.parts:
+        continue
+    if f.suffix == ".json":
+        try:
+            scan_json(json.loads(f.read_text()), str(rel))
+        except ValueError:
+            pass
+    elif f.suffix == ".lean":
+        for sq in lean_sequences(f.read_text()):
+            if sq in archive_seqs:
+                fail(f"{rel}: a Lean table equal to {archive_seqs[sq]} (same operations)")
 
 # ---- 4. the unzipped pack's own commands
 run = lambda *c: subprocess.run([a.python, "starter.py", *c], cwd=pack, capture_output=True, text=True)

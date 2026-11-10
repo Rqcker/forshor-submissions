@@ -7,13 +7,14 @@ The pack is a participant's local copy of what prices a policy on the results bo
 and nothing else: NO archive table, DP-library table, seeded planner policy or STO reference policy is in it.
 
   * pack/ (hand-written, kept as they are): README.md, SUBMISSION_FORMAT.md, SKILL.md, requirements.txt, starter.py,
-    harness/{LEAN_CHECKS.md,policy_to_template.py}, templates/{Policy.lean,ptp.Policy.lean,LICENSE.forshor}, examples/{README.md,examples.json,forshor_*.policy.json};
+    harness/{LEAN_CHECKS.md,policy_to_template.py}, templates/{Policy.lean,LICENSE.forshor}, examples/{README.md,examples.json,forshor_*.policy.json};
   * engine/: `evaluation/engine` minus tests/, cache/, bytecode AND minus every archive table (`data/` keeps only `kmy_tables/`; the library's
     loaders find no archive, and `personal_tables/tables.json` is an empty list, so they return nothing). The repository's own engine is untouched.
     The vendored Qualtran tree is included: Qualtran imports bloqs lazily;
   * the KMY policies, written from the pack's own engine (the planner's optimum over KMY's tables at n = 2048, delta = 0.01, canonical): examples/kmy_pp.policy.json,
     kmy_ptp.policy.json, declared_ladder_ignored.policy.json, templates/pp_policy.json and ptp_policy.json (with their `*.lean-input.json`), and the
-    submission files examples/kmy_pp.Policy.lean and kmy_ptp.Policy.lean (`starter.py template`);
+    submission files examples/kmy_pp.Policy.lean and kmy_ptp.Policy.lean (`starter.py template`) and templates/ptp.Policy.lean (the same PhaseTripleProduct file under the
+    explanatory header in ptp_template_header.txt);
   * examples/forshor_dropin.policy.json and forshor_upstream_scan.policy.json are pack inputs (in pack/examples), not copied from the engine:
     ForShor `21e129a`'s own printed documents for its shipped template, `lake exe forshor_policy_submission --balanced` and the default width scan
     (printed 2026-11-08; both price to the same T as the documents the engine carries, and add the `negation` and `negate_charge` fields);
@@ -67,8 +68,9 @@ there are none here, and `personal_tables/tables.json` is deliberately an empty 
 """
 
 
-# Not read by any code of the pack, and they name archive submissions (certification results of archive tables).
-ARCHIVE_ENGINE_DIRS = {ENGINE / "tcost" / "certification"}
+# Not read by any code of the pack. certification/ names archive submissions; dp2048.policy.json is a printed document of a policy built from DP-library and archive tables
+# (found by comparing operation sequences, not ids: test_pack_kmy_only.py does the same).
+ARCHIVE_ENGINE_DIRS = {ENGINE / "tcost" / "certification", ENGINE / "fullalg" / "data" / "dp2048.policy.json"}
 
 
 def copy_engine(dest: Path) -> None:
@@ -165,6 +167,7 @@ import json, sys
 sys.path.insert(0, "engine")
 import site_engine  # noqa: F401
 from site_engine import library as lib
+from site_engine import frontier as fr
 from tcost import planner as tp, tables as tt
 
 
@@ -182,7 +185,7 @@ out = {}
 for key, mode in (("pp", tt.PAIR), ("ptp", tt.TRIPLE)):
     P, _ = tp.optimal_policy(lib.milestone_tables("kmy", mode), mode, 2048, 0.01)
     Q = canonical(P, "KMY (2024) " + mode)
-    out[key] = {"policy": Q.to_json(), "scan_ladder": [[w, k] for w, k in Q.with_widths("scan").ladder(2048)]}
+    out[key] = {"policy": Q.to_json(), "scan_ladder": [[w, k] for w, k in Q.with_widths("scan").ladder(2048)], "ladder": fr.ladder_str(fr._ladder(Q.with_widths("exact"), 2048))}
 print(json.dumps(out))
 """
 
@@ -203,6 +206,24 @@ def write_kmy_inputs(pack: Path, python: str) -> dict:
     dump(pack / "examples" / "declared_ladder_ignored.policy.json",
          {"name": "KMY (2024) PhaseProduct, with a declared ladder", "mode": gen["pp"]["policy"]["mode"], **ladder, "bands": gen["pp"]["policy"]["bands"]})
     return gen
+
+
+EDIT_ME = ("""/-- **Edit me.** The policy: bands widest first, each a threshold and a table. The default negation is one
+qubit; add `negation := .scratch` to ask for the other construction (not priced on the boards). -/
+""")
+
+
+def write_ptp_template(pack: Path, gen: dict) -> None:
+    """templates/ptp.Policy.lean: the PhaseTripleProduct submission file for the KMY policy, under the template's own explanatory header (ptp_template_header.txt)."""
+    body = (pack / "examples" / "kmy_ptp.Policy.lean").read_text()
+    pol = gen["ptp"]["policy"]
+    header = (HERE / "ptp_template_header.txt").read_text().rstrip("\n").replace("@@LADDER@@", gen["ptp"]["ladder"]).replace("@@OPS@@", str(len(pol["bands"][0]["operations"])))
+    i = body.index("/-!")
+    j = body.index("-/", i) + 2
+    text = body[:i] + header + body[j:]
+    assert "def policy : PTP.PTPPolicy where" in text
+    text = text.replace("def policy : PTP.PTPPolicy where", EDIT_ME + "def policy : PTP.PTPPolicy where", 1)
+    (pack / "templates" / "ptp.Policy.lean").write_text(text)
 
 
 def forshor_pin() -> str:
@@ -251,12 +272,13 @@ def main() -> int:
     origins = {"pack": "evaluation/starter/pack (hand-written)", "engine": f"evaluation/engine at {git('rev-parse', '--short', 'HEAD')} (tests, caches excluded)"}
 
     run = lambda *c: subprocess.run([a.python, str(pack / "starter.py"), *c], cwd=pack, check=True, capture_output=True, text=True)
-    write_kmy_inputs(pack, a.python)
+    gen = write_kmy_inputs(pack, a.python)
     snap = snapshot(a.seed) if a.seed else kmy_snapshot(pack, a.python)
     (pack / "examples" / "board_snapshot.json").write_text(json.dumps(snap, indent=1) + "\n")
     # derived examples and Lean inputs, written by the pack's own commands
     (pack / "examples" / "kmy_pp.Policy.lean").write_text(run("template", "examples/kmy_pp.policy.json").stdout)
     (pack / "examples" / "kmy_ptp.Policy.lean").write_text(run("template", "examples/kmy_ptp.policy.json").stdout)
+    write_ptp_template(pack, gen)
     for name, policy in (("pp_policy", "templates/pp_policy.json"), ("ptp_policy", "templates/ptp_policy.json")):
         (pack / "templates" / f"{name}.lean-input.json").write_text(run("lean-input", policy).stdout)
     run("examples", "--write-expected")
