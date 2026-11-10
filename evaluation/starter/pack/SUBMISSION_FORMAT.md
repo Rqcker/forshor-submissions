@@ -100,18 +100,16 @@ n = 2048.
 
 ## 5. Resources
 
-The Lean checks are heavy and the pack contains none of the Lean build trees. Measured on the 15 policies the results seed lists (ForShor `21e129a`, one machine): most policies pass
-the STO mirror in seconds to a few minutes; a PhaseProduct policy whose first band has k = 8 took about 2.4 hours in the mirror's report stage (three of them passed); the PhaseTripleProduct
-policy with a k = 8 first band did not finish that stage in 12 hours (with the PhaseTripleProduct harness's `--fast` mode, see `harness/LEAN_CHECKS.md`, it takes about a minute). Expect hours for large PhaseProduct first bands, and keep a first attempt small (k up to 6, few bands). The organisers' own limits for a submission
+The Lean checks are heavy and the pack contains none of the Lean build trees. Measured on earlier policies (ForShor `21e129a`, one machine): most pass
+the STO mirror in seconds to a few minutes. The mirror's interpreted report stage is the slow part (a PhaseProduct policy whose first band has k = 8 took about 2.4 hours in it, and a PhaseTripleProduct one with a k = 8 first band did not finish it in 12 hours); the hosted check skips that stage (`--fast`, see `harness/LEAN_CHECKS.md`), and the kernel certificate then proves the ladder: such a policy takes about two minutes in the mirror. Keep a first attempt small (k up to 6, few bands). The organisers' own limits for a submission
 are in the repository's instructions, not here.
 
 ## 6. Sending it
 
 This pack prices a policy and prepares it for the Lean checks; **it does not submit anything**. **What you submit is one Lean file, `TableGeneration/Submission/Policy.lean`, holding your policy** (section 2; the
-format is `templates/Policy.lean`, and `starter.py template` writes it for a PhaseProduct policy). A pull request may change that file and nothing else. The submission repository is
+format is `templates/Policy.lean`, and `starter.py template` writes it for a PhaseProduct policy). A pull request may change that file and nothing else. Optional LaTeX notes about your policy go inside that file, in a `/-! ... -/` block after the imports (limits and an example: `SKILL.md`, "Optional LaTeX Notes"); they never affect scoring. The submission repository is
 `zapatacomputing/forshor-submissions` (private during the sprint; the challenge page's **Participate** dialog has the commands), and its own instructions win over this file. The boards check the Lean file in Lean and price the policy it
 contains with the same engine as `starter.py price`. Whatever you send, quote the `starter.py price` output you got for the same policy as JSON (and, for a full-run policy, the `forshor-doc` output), and name the pack's build date
 (`MANIFEST.json`). The boards' numbers are the ones that count.
 
-A policy that is accepted appears on the boards under your GitHub handle as `<handle>_sub<N>`, N counting your own submissions from 1; the handle `forshor` is reserved. The boards also list the
-planner's own policies and nine deliberately weak single-arity baselines (all named `forshor_sub<N>`), ranked with yours by Q × T, and mark each row "STO mirror" if the policy has been checked in Lean.
+A policy that is accepted appears on the boards under your GitHub handle as `<handle>_sub<N>`, N counting your own submissions from 1; the handle `forshor` is reserved. The boards start with the policies built from KMY's tables (named `forshor_sub<N>`), ranked with yours by Q × T, and mark each row "STO mirror" if the policy has been checked in Lean.

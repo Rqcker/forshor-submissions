@@ -10,11 +10,10 @@ are the ones in the submission repository.
 | PhaseTripleProduct (PTP) banded policy, site policy JSON | `scripts/check_ptp_policy.py --widths exact`, against ForShor's `Shor.PTP` | the same repository | The same tree. `lake build TableGeneration` does **not** build the PhaseTripleProduct modules: build them by name first (`lake build TableGeneration.RecursiveCost.PTP.Census` and the other modules under `TableGeneration/RecursiveCost/PTP/`) or the harness fails at its report stage |
 | Full order finding, the submission file `Policy.lean` (ForShor's `PolicyTemplate` format) | ForShor's own build at `21e129a`: `lake build PolicySubmission forshor_policy_submission`, then `lake exe forshor_policy_submission --balanced` | a ForShor checkout | `VerifiedQC/ForShor`, commit `21e129aeefc0fd1bbb8fa63402f5799af2490788` |
 
-Use a machine with at least 16 GB of memory. Run one or two Lean checks at a time and keep every run under a memory cap (each tree's `scripts/memcap.py`). Measured on the policies of the
-results seed: most checks take seconds to a few minutes; a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the mirror's report stage, and the PhaseTripleProduct policy with a k = 8
-first band did not finish that stage in 12 hours. For PhaseTripleProduct, `check_ptp_policy.py --fast` (in the same repository) skips that interpreted stage: the ladder comes from Python
-and the kernel certificate re-proves it, so a wrong ladder makes the certificate fail. With it that k = 8 policy and a k = 6 baseline were accepted in about a minute each, with the same audited theorems; the census and formula numbers of the report are not
-evaluated (they are diagnostics). The PhaseProduct harness has no such option. Give a long run a stage limit (`--timeout`), and set `TMPDIR` to a directory you control: a run that long lost a file in the system temporary directory once.
+Use a machine with at least 16 GB of memory. Run one or two Lean checks at a time and keep every run under a memory cap (each tree's `scripts/memcap.py`). Measured on earlier policies: most checks take seconds to a few minutes; a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the mirror's interpreted report stage (the same stage as PhaseTripleProduct's: Lean's interpreter never memoises the closures a table's state is built from, so its cost doubles about every ten operations), and the PhaseTripleProduct policy with a k = 8
+first band did not finish that stage in 12 hours. Both harnesses now have a `--fast` option (`check_banded_policy.py --widths exact --fast` for PhaseProduct, `check_ptp_policy.py --fast` for PhaseTripleProduct, both in the submissions repository; the hosted check uses it) that skips that interpreted stage: the ladder comes from Python
+and the kernel certificate re-proves it, so a wrong ladder makes the certificate fail. With it a k = 8 PhaseProduct policy that took 2.4 hours in the report stage was accepted in about two minutes, and a PhaseTripleProduct k = 8 policy and a k = 6 baseline in about a minute each, with the same audited theorems; the census and formula numbers of the report (and PhaseProduct's advisory `bands_contract` theorem) are not
+evaluated (they are diagnostics). Give a long run a stage limit (`--timeout`), and set `TMPDIR` to a directory you control: a run that long lost a file in the system temporary directory once.
 A `rejected` record whose reason is a missing object file, a constructor-field error or a missing file in a temporary directory is an infrastructure failure, not a verdict on the policy: fix it and run again.
 
 ## 1. PhaseProduct: the STO policy mirror
@@ -91,7 +90,7 @@ identity) is what `forshor-doc` does for the fixed values; the template's lexica
 
 ForShor's template has an optional `negation` (`.oneQubit`, the default, or `.scratch`). The printed `policy.json` carries `negation` and `negate_charge`. The boards, and this pack, price `oneQubit` only.
 
-**k = 5 / 6 and three or more bands.** ForShor accepts them, through run-time IR extraction (the STO reference policy, k = 6, 3, 2, 2, 2, passes).
+**k = 5 / 6 and three or more bands.** ForShor accepts them, through run-time IR extraction.
 
 **Scan documents.** A document printed without `--balanced`/`--exact-widths` (ForShor's default width scan, no balanced split, no `ir.width_rule`)
 is priced by `starter.py forshor-doc` on upstream's IR, the board's labelled cross-check, not on the board's IR

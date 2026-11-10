@@ -174,19 +174,63 @@ JSON reaches the boards is not part of this pack. If the repository's instructio
 route or invent a command.
 
 What you can always give the user: the policy file, the `starter.py price` output (and, for a full-run policy, the `forshor-doc` output), the pack's build date (`MANIFEST.json`) and a
-short public Markdown note: the objective, the starting point (seed, leaderboard policy or template), what you changed, the exact commands, the prices with exact ladders (including
+short public Markdown note: the objective, the starting point (a KMY policy, a leaderboard policy or a template), what you changed, the exact commands, the prices with exact ladders (including
 attempts that did not help), limitations, and the model or harness you used. Leave out private reasoning and secrets.
 
 An accepted policy appears on the boards under the submitter's GitHub handle as `<handle>_sub<N>`, N counting their own submissions from 1 (the handle `forshor` is reserved), ranked by Q × T
-with the planner's own policies and nine deliberately weak baselines (named `forshor_sub<N>`), and carries an "STO mirror" tag if it has been checked in Lean. It inherits the repository's
+with the starting rows, the policies built from KMY's tables (named `forshor_sub<N>`), and carries an "STO mirror" tag if it has been checked in Lean. It inherits the repository's
 Apache 2.0 licence. **The boards' numbers are the ones that count:** the site prices the policy again with the same engine.
+
+## Optional LaTeX Notes
+
+Participants may add notes that explain their policy: the idea, why it is cheap, the derivation, what they tried and what did not work. **Notes are optional.** They never affect
+verification, pricing or rank, and a policy without them is complete. Offer them to the user; do not write them unless the user wants them, and never put private reasoning or secrets in them.
+
+**Where they go.** A pull request may change one file, `TableGeneration/Submission/Policy.lean`, and nothing else, so the notes live inside that file as a Lean block comment, written in LaTeX.
+A separate `.tex` (or `.md`) file is not accepted: a pull request that changes any other file is refused. Put the notes in a `/-! ... -/` block **right after the three `import` lines**
+(the generated file already has such a block there; add another or extend it). Lean accepts a `/-!` block only after the imports; a plain `/- ... -/` comment may also be the very first thing in the file.
+After the build, the notes stay with the archived `Policy.lean`; the challenge page does not render them.
+
+```lean
+import ForShor.ShorVerification.Framework.ToomCookTable
+import ForShor.ShorVerification.Framework.Policy
+import ForShor.ShorVerification.Submission.Decide
+
+/-!
+# Notes (LaTeX)
+
+\section*{Idea}
+We split the $n$-bit operand into $k=3$ limbs and evaluate the product polynomial at $0, 1, -1, -2, \infty$.
+\begin{align}
+  c(t) &= a(t)\,b(t) = \sum_{i=0}^{4} c_i t^i, \\
+  T(n) &\le 5\,T(\lceil n/3 \rceil) + O(n) \quad \text{(about 50\% fewer additions)}.
+\end{align}
+\emph{Why it is cheap:} the two bands reuse one addition chain; see \cite{kmy2024}.
+-/
+```
+
+**Limits, checked against ForShor's lexical gate and a real build at the pinned commit** (a file of this shape passed the gate, `lake build`, the printed document and the full intake with the same
+bands as without the notes):
+
+1. The notes must not contain `-/` (it ends the comment, and what follows is parsed as Lean: the build fails) and must not contain `/-` (Lean nests comments, so the comment never ends: "unterminated comment").
+   In LaTeX, watch `$a^{b-/c}$` and `$x/-y$`; write `$x / {-y}$` or put a space or brace between the two characters.
+2. ForShor's lexical gate reads the file **line by line and does not skip comments**. A line of the notes must not begin, after any spaces or tabs, with `unsafe`, `run_cmd`, `run_meta`, `initialize`, `elab`, `macro`, `syntax`
+   or `notation` (also after `private`, `protected`, `noncomputable`, `scoped` or `local`), with `import Lean`, with `set_option debug`, or with `@[` or `attribute [` naming `implemented_by`, `extern` or `csimp`.
+   The same words in the middle of a line are fine, a capital letter is fine (`Syntax`), and so is a leading backslash (`\notation`). If a line of prose starts with one of those words, re-wrap it or start it with something else.
+   Run `bash scripts/check_template_lexical.sh Policy.lean` in your ForShor checkout after adding notes.
+3. The whole file stays under 1,000,000 bytes.
+4. Backslashes, `$`, `%`, braces, `\begin{align}`, `\\`, underscores, carets and Unicode are fine inside the block.
+5. Put the notes after the imports, not before them: a `/-!` block above the `import` lines is a Lean error ("invalid 'import' command, it must be used in the beginning of the file").
+
+What to write: the objective, the construction, why it should be cheap (reasoning, not a proof unless you have one), the prices you got from `starter.py price` (copy the numbers, with the exact ladder), what is not proved, and credit for
+anything you reused (see Reuse And Provenance). Do not claim a number the pack did not print.
 
 ## Staying Current
 
-The challenge page's **Active bests and leaderboards** section lists the current best policy on each board; its data is public JSON (`/results/v2/dashboard.json` on the site, where each
+The challenge page's **Leaderboard** section lists the current best policy on each board; its data is public JSON (`/results/v2/dashboard.json` on the site, where each
 board names its rows file). Check it before you start and periodically while you work, so you do not improve from a stale baseline. `examples/board_snapshot.json` is the boards as they were when
 the pack was built. The pack's
-`examples/` hold the STO reference PP, a re-planned PP seed, a PTP seed and their expected prices. They are good
+`examples/` hold the KMY policies (PhaseProduct and PhaseTripleProduct) and their expected prices. They are
 starting points, not the frontier.
 
 If a better policy has been accepted, start from it: re-price it with `starter.py price`, then iterate from there.
@@ -281,7 +325,7 @@ you name with `--out` or `--json`.
 
 ## Reuse And Provenance
 
-Say precisely what you used: a seed or leaderboard policy, another solver's table, or a published construction (for
+Say precisely what you used: a KMY or leaderboard policy, another solver's table, or a published construction (for
 example KMY's points). Naming prior work as a baseline you compared against does not claim your policy derives from
 it; say which it is. If you are unsure of a table's origin, say that rather than guessing. Accepted policies are
 Apache 2.0, so reuse is allowed, but it must be credited in the submission.
