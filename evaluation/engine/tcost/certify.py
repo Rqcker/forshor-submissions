@@ -21,7 +21,7 @@ is cheap (at most 10 external qubits).
                          and compares them with diag(exp(i*pi*phi*x_s*z_s)) on SIGNED operands. This check is
                          sensitive to the sign-bit weight and to each pruned or Clifford cell that the dyadic
                          QFT form cannot see.
-  T1b primitives         The ShiftL / ShiftR / NegateW / Extend decompositions == their declared classical
+  T1b primitives         The ShiftL / ShiftR / Extend decompositions == their declared classical
                          action, exhaustively at W <= 6.
   T2 level phase action  One forced level of EACH table at limb width 1 (w = k; also 2 for k <= 5) AND at the
                          first limb width where each child angle is nonzero. (At limb m, the radix 2^m is
@@ -123,19 +123,25 @@ def tensor_seam(mode: str, chain, w: int, c: int) -> Dict[str, Any]:
 
 
 def primitive_seams() -> List[Dict[str, Any]]:
-    """ShiftL / ShiftR / NegateW: the classical action of the decomposition == the declared action, for each valid
-    input."""
+    """ShiftL / ShiftR: the classical action of the decomposition == the declared action, for each valid input; NegateW (atomic): its
+    declared action == two's-complement negation."""
     from .bloqs import Extend, NegateW, ShiftL, ShiftR
     rows = []
     for W in range(2, 7):
         lo, hi = -(1 << (W - 1)), 1 << (W - 1)
         for b, valid in ([(ShiftL(W, n), lambda x, n=n: lo <= x << n < hi) for n in range(1, W - 1)]
                          + [(ShiftR(W, n), lambda x, n=n: x % (1 << n) == 0) for n in range(1, W - 1)]
-                         + [(NegateW(W), lambda x: True)]):
+                         ):
             cb = b.decompose_bloq().flatten()
             bad = [x for x in range(lo, hi) if valid(x) and
                    int(cb.call_classically(x=x)[0]) != int(b.on_classical_vals(x=x)["x"])]
             rows.append({"bloq": str(b), "W": W, "bad": bad[:3], "ok": not bad})
+        # NegateW is atomic (ForShor's `oneQubit` negation, priced by its declared counts, like AddNegSrcW): there is no decomposition to
+        # compare, so its declared classical action is checked against two's-complement negation directly. The gate-level circuit that the
+        # counts come from is simulated in tests/test_negation_counts.py.
+        neg = NegateW(W)
+        bad = [x for x in range(lo, hi) if int(neg.on_classical_vals(x=x)["x"]) != ((-x + (1 << (W - 1))) % (1 << W)) - (1 << (W - 1))]
+        rows.append({"bloq": str(neg), "W": W, "bad": bad[:3], "ok": not bad})
         for wi in range(1, W):                             # Extend / un-extend: same value, clean ancillas
             for signed in (False, True):
                 ext, unext = Extend(wi, W, signed), Extend(wi, W, signed, uncompute=True)

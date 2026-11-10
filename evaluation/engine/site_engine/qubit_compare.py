@@ -93,7 +93,8 @@ def peak_extra(LP, wx: int, wz: int, controlled: bool = False) -> int:
     """Qualtran's sequential min-max peak of one (rectangular) phase product, above its operands, by the rules of
     tcost's decomposition (validated: equals Qualtran `QubitCount` of tcost's `PolicyPhaseProduct` for every square
     policy tested). At a node: the limbs grown to W' (sum of W' - limb over both sides) stay live while either the
-    node's own arithmetic runs (Gidney Add/Subtract(QInt(W')): W' - 1 ancillas; Negate(QInt(W')): 2W' - 1) or ONE
+    node's own arithmetic runs (Gidney Add/Subtract(QInt(W')): W' - 1 ancillas; a negation, ForShor's `oneQubit` charge as the full run prices it: 1
+    clean ancilla, `tcost.negation.CLEAN_ANCILLA`; it was Qualtran's `Negate(QInt(W'))`, 2W' - 1, until 2026-11-10) or ONE
     child runs (its own peak); children run one after another and free their growth. Leaf: the product leaf, a
     (wx + wz)-bit product register plus the CAdd's 2 max(wx, wz) - 1 ancillas. A controlled product adds 1 (the
     control's And) at the leaf."""
@@ -106,7 +107,8 @@ def peak_extra(LP, wx: int, wz: int, controlled: bool = False) -> int:
     grow = sum(max(0, w2 - a) for a in _split_widths(int(wx), limb, T.k)) + \
         sum(max(0, w2 - a) for a in _split_widths(int(wz), limb, T.k))
     ops = {o["op"] for o in T.ops}
-    own = max((w2 - 1) if "addScaled" in ops else 0, (2 * w2 - 1) if "negate" in ops else 0)
+    from tcost.negation import CLEAN_ANCILLA
+    own = max((w2 - 1) if "addScaled" in ops else 0, CLEAN_ANCILLA if "negate" in ops else 0)
     return grow + max(own, peak_extra(LP, w2, w2, controlled))
 
 
