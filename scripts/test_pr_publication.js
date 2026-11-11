@@ -11,7 +11,7 @@ const REPO = 'zapatacomputing/forshor-submissions';
 async function fixture(fn) {
   const root = process.cwd(), directory = fs.mkdtempSync(path.join(os.tmpdir(), 'forshor-pr-check-'));
   process.chdir(directory);
-  const calls = [], errors = [], checks = [], comments = [];
+  const calls = [], errors = [], checks = [], comments = [], delays = [];
   const context = { repo: { owner: 'zapatacomputing', repo: 'forshor-submissions' }, runId: 456 };
   const source = { run: { id: 123, run_attempt: 1, conclusion: 'success' }, pr: { number: 12, headSha: HEAD } };
   let pr = { number: 12, user: { login: 'contributor' }, head: { sha: HEAD }, base: { ref: 'main', repo: { full_name: REPO } }, state: 'open', merged: false };
@@ -39,8 +39,9 @@ async function fixture(fn) {
     pullRequestUrl: `https://github.com/${REPO}/pull/12` });
   write('publication-result.json', { snapshotId: 'd'.repeat(64), updatedAt: '2026-10-25T02:37:59.063Z' });
   const begin = () => lifecycle.begin({ github, context, ...source });
-  const finish = (outcome = 'success') => lifecycle.finalize({ github, context, core, outcome });
-  try { await fn({ github, context, source, checks, comments, calls, errors, write, begin, finish,
+  const finish = (outcome = 'success') => lifecycle.finalize({ github, context, core, outcome,
+    waitForRetry: async milliseconds => { delays.push(milliseconds); } });
+  try { await fn({ github, context, source, checks, comments, calls, errors, delays, write, begin, finish,
     get pr() { return pr; }, set pr(value) { pr = value; } }); }
   finally { process.chdir(root); fs.rmSync(directory, { recursive: true, force: true }); }
 }
@@ -64,6 +65,69 @@ test('a failed Lean attempt skips Qualtran and leaves the PR open', () => fixtur
   await f.begin(); await f.finish();
   assert.equal(f.checks[0].conclusion, 'skipped');
   assert.equal(f.pr.state, 'open'); assert.equal(f.comments.length, 0);
+}));
+
+test('a newly created check returning 404 is retried before reporting a skipped publication', () => fixture(async f => {
+  f.source.run.conclusion = 'failure';
+  f.write('publication-source.json', f.source);
+  await f.begin();
+  const get = f.github.rest.checks.get, lookups = [];
+  f.github.rest.checks.get = async args => {
+    lookups.push(args);
+    if (lookups.length < 3) throw Object.assign(new Error('Not Found'), {status: 404});
+    return get(args);
+  };
+  await f.finish();
+  assert.deepEqual(f.delays, [1000, 2000]);
+  assert.equal(lookups.length, 3);
+  assert(lookups.every(args => args.check_run_id === f.checks[0].id));
+  assert.equal(f.checks[0].conclusion, 'skipped');
+  assert.equal(f.pr.state, 'open'); assert.equal(f.comments.length, 0);
+}));
+
+test('a transient check lookup failure does not prevent verified publication reporting', () => fixture(async f => {
+  await f.begin();
+  const get = f.github.rest.checks.get;
+  let attempts = 0;
+  f.github.rest.checks.get = async args => {
+    if (++attempts === 1) throw Object.assign(new Error('Not Found'), {status: 404});
+    return get(args);
+  };
+  await f.finish();
+  assert.equal(attempts, 2); assert.deepEqual(f.delays, [1000]);
+  assert.equal(f.checks[0].conclusion, 'success'); assert.equal(f.pr.state, 'closed');
+  assert.equal(f.comments.length, 1); assert.deepEqual(f.errors, []);
+}));
+
+test('permanent check lookup failure is bounded and cannot close or accept the PR', () => fixture(async f => {
+  await f.begin();
+  let attempts = 0;
+  f.github.rest.checks.get = async () => { attempts++; throw Object.assign(new Error('Not Found'), {status: 404}); };
+  await assert.rejects(f.finish(), error => error.status === 404);
+  assert.equal(attempts, 4); assert.deepEqual(f.delays, [1000, 2000, 4000]);
+  assert.equal(f.pr.state, 'open'); assert.equal(f.comments.length, 0);
+  assert.equal(f.calls.filter(call => call[0] === 'update-check').length, 0);
+}));
+
+test('check lookup permission failures are not retried or treated as acceptance', () => fixture(async f => {
+  await f.begin();
+  f.github.rest.checks.get = async () => { throw Object.assign(new Error('Forbidden'), {status: 403}); };
+  await assert.rejects(f.finish(), error => error.status === 403);
+  assert.deepEqual(f.delays, []); assert.equal(f.pr.state, 'open'); assert.equal(f.comments.length, 0);
+}));
+
+test('readback retry preserves the guard against a newer publisher owning the check', () => fixture(async f => {
+  await f.begin();
+  const before = f.calls.length, get = f.github.rest.checks.get;
+  let attempts = 0;
+  f.github.rest.checks.get = async args => {
+    if (++attempts === 1) throw Object.assign(new Error('Not Found'), {status: 404});
+    f.checks[0].external_id += '-new-attempt';
+    return get(args);
+  };
+  await f.finish();
+  assert.equal(attempts, 2); assert.deepEqual(f.delays, [1000]);
+  assert.equal(f.calls.length, before); assert.equal(f.pr.state, 'open'); assert.equal(f.comments.length, 0);
 }));
 
 for (const outcome of ['failure', 'cancelled']) test(`${outcome} cannot close or claim publication even if a receipt exists`, () => fixture(async f => {
