@@ -1,0 +1,23 @@
+/-!
+# The file a PhaseTripleProduct policy submitter owns
+
+This is the PhaseTripleProduct counterpart of [`PolicyTemplate.lean`](PolicyTemplate.lean), and like it
+the only file a submitter edits. A policy is a width-indexed list of tables: each band is a threshold and
+a `PTPTable` (its `k`, its `3 k - 2` evaluation points in consumption order, and its program of
+reversible operations). The shipped content is the policy built from the PhaseTripleProduct tables of Kahanamoku-Meyer and Yao (2024)
+(one band, `k = 4`: `@@LADDER@@`, @@OPS@@ operations); replace the tables and the thresholds.
+
+| Edit | What |
+|---|---|
+| `t0K`, `t0Pts`, `t0Ops`, `t0Hpts` (one set per distinct table) | `k` is the number of limb registers, `2 ≤ k ≤ 8`; `3 k - 2` points; the program over `Fin k` registers |
+| `policy.bands` | the bands, widest first: `⟨threshold, table⟩`; thresholds strictly decrease |
+| `policy.negation` (optional) | `.scratch` instead of the default `.oneQubit`; the boards price `oneQubit` only |
+
+Nothing else is a submitter's: the proofs live in [`PTPPolicyCheck.lean`](PTPPolicyCheck.lean), which is
+the repo-owned root of the check. That file proves the table contract and the strict decrease of the
+thresholds (`PTPPolicy.check`), and the exact-width threshold rule from 2048 (`chainContractsTight`)
+by `decide +kernel`, audits the axioms, and states the correctness, the census and the peak qubit count
+at this policy. Do not use `#`-commands, `native_decide`, `sorry`, `axiom`, `set_option`, `unsafe`,
+`implemented_by`, `extern`, `csimp`, macros or `IO.`/`System.`: `scripts/check_template_lexical.sh` refuses the
+compiled-code and metaprogramming ones before anything is built, and the audit refuses the axioms.
+-/

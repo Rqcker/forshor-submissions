@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """Build the ForShor Challenge starter pack from this repository.
 
-    python evaluation/starter/build_starter_pack.py --seed PATH/epoch-input.json [--out DIR] [--no-zip]
+    python evaluation/starter/build_starter_pack.py [--seed PATH/epoch-input.json] [--out DIR] [--no-zip]
 
-The pack is a participant's local copy of what prices a policy on the results boards:
+The pack is a participant's local copy of what prices a policy on the results boards. It starts from the Kahanamoku-Meyer and Yao (2024) tables
+and nothing else: NO archive table, DP-library table, seeded planner policy or STO reference policy is in it.
 
   * pack/ (hand-written, kept as they are): README.md, SUBMISSION_FORMAT.md, SKILL.md, requirements.txt, starter.py,
-    harness/{LEAN_CHECKS.md,policy_to_template.py}, templates/, examples/{README.md,examples.json,*.policy.json};
-  * engine/: `evaluation/engine` whole, the engine the exporter priced the results seed with, minus tests/, cache/ and bytecode
-    (the vendored Qualtran tree is included: Qualtran imports bloqs lazily);
+    harness/{LEAN_CHECKS.md,policy_to_template.py}, templates/{Policy.lean,LICENSE.forshor}, examples/{README.md,examples.json,summary.tex,forshor_*.policy.json}
+    (examples/summary.tex is the template of the optional TableGeneration/Submission/summary.tex: standard LaTeX, never compiled by anything in the pack);
+  * engine/: `evaluation/engine` minus tests/, cache/, bytecode AND minus every archive table (`data/` keeps only `kmy_tables/`; the library's
+    loaders find no archive, and `personal_tables/tables.json` is an empty list, so they return nothing). The repository's own engine is untouched.
+    The vendored Qualtran tree is included: Qualtran imports bloqs lazily;
+  * the starting policies, written from the pack's own engine (the planner's optimum over exactly the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) at n = 2048, delta = 0.01, canonical):
+    examples/starting_pp.policy.json, starting_ptp.policy.json, declared_ladder_ignored.policy.json, templates/pp_policy.json and ptp_policy.json (with their `*.lean-input.json`), and the
+    submission files examples/starting_pp.Policy.lean and starting_ptp.Policy.lean (`starter.py template`) and templates/ptp.Policy.lean (the same PhaseTripleProduct file under the
+    explanatory header in ptp_template_header.txt);
   * examples/forshor_dropin.policy.json and forshor_upstream_scan.policy.json are pack inputs (in pack/examples), not copied from the engine:
     ForShor `21e129a`'s own printed documents for its shipped template, `lake exe forshor_policy_submission --balanced` and the default width scan
     (printed 2026-11-08; both price to the same T as the documents the engine carries, and add the `negation` and `negate_charge` fields);
-  * examples/board_snapshot.json: the rows of the results seed at delta = 0.01 (name, T, Q, Q x T per board), so `starter.py price`
-    can say where a policy would rank. `--seed` is the exporter's epoch input (forshor.epoch-input/v2) the seed was made from;
+  * examples/board_snapshot.json: the rows of the boards at delta = 0.01 (name, T, Q, Q x T per board), so `starter.py price` can say where a policy would
+    rank. By default the rows are the starting policies priced by the pack's own engine. `--seed` (the exporter's epoch input, forshor.epoch-input/v2) takes them from a
+    results seed instead: pass only a seed that lists just the starting policies (the exporter with `--kmy-only`), or the snapshot would show the scores of the policies the challenge removed;
   * examples/expected/*.json: `starter.py examples --write-expected`, run on the PACK's own engine copy;
   * MANIFEST.json: every file with its sha256 and origin, and what the pack was built from.
 
@@ -48,10 +56,35 @@ def git(*args: str) -> str:
     return subprocess.check_output(["git", *args], cwd=REPO, text=True).strip()
 
 
+# The archive's data: every table, seeded policy and pinned run the engine's library loaders read, except KMY's three tables. None of it goes into the pack.
+ARCHIVE_DATA_DIRS = {"sto_archive", "sto_accepted", "sto_submitted", "forshor_submitted", "table_sto_mirror", "personal_tables"}
+ARCHIVE_DATA_FILES = {"BestKnown.STO-main.lean", "reference_policies.json", "sto_replay.json", "table_sto_mirror_runs.json"}
+PACK_DATA_README = """# Data in this pack
+
+Only the three explicit tables of Kahanamoku-Meyer and Yao (2024), arXiv:2403.18006v4, Appendix "Parallel sequences" (PhaseProduct k = 3;
+PhaseTripleProduct k = 3 and k = 4): `kmy_tables/operations.json`.
+
+The challenge starts from these tables. The engine's library loaders look for other table collections (an archive, a DP library, seeded policies);
+there are none here, and `personal_tables/tables.json` is deliberately an empty list so those loaders return nothing.
+"""
+
+
+# Not read by any code of the pack. certification/ names archive submissions; dp2048.policy.json is a printed document of a policy built from DP-library and archive tables
+# (found by comparing operation sequences, not ids: test_pack_kmy_only.py does the same).
+ARCHIVE_ENGINE_DIRS = {ENGINE / "tcost" / "certification", ENGINE / "fullalg" / "data" / "dp2048.policy.json"}
+
+
 def copy_engine(dest: Path) -> None:
     def keep(dirpath: str, names):
-        return [n for n in names if n in EXCLUDE_DIRS or n.endswith(".pyc") or (Path(dirpath) == ENGINE and n in EXCLUDE_FILES)]
+        drop = [n for n in names if n in EXCLUDE_DIRS or n.endswith(".pyc") or (Path(dirpath) == ENGINE and n in EXCLUDE_FILES)]
+        drop += [n for n in names if Path(dirpath, n) in ARCHIVE_ENGINE_DIRS]
+        if Path(dirpath) == ENGINE / "data":
+            drop += [n for n in names if n in ARCHIVE_DATA_DIRS or n in ARCHIVE_DATA_FILES]
+        return drop
     shutil.copytree(ENGINE, dest, ignore=keep)
+    (dest / "data" / "personal_tables").mkdir()
+    (dest / "data" / "personal_tables" / "tables.json").write_text("[]\n")
+    (dest / "data" / "README.md").write_text(PACK_DATA_README)
 
 
 # Absolute paths of the machine that produced the engine's pinned run records, replaced in the PACK's copy only (the repository's `evaluation/engine/` is untouched:
@@ -59,6 +92,38 @@ def copy_engine(dest: Path) -> None:
 PATH_SCRUBS = [(re.compile(r"/Users/[A-Za-z0-9._-]+/Desktop/github_packages"), "$TREES"), (re.compile(r"~/Desktop/github_packages"), "$TREES"),
                (re.compile(r"~/Desktop"), "$TREES"), (re.compile(r"/Users/[A-Za-z0-9._-]+/Desktop"), "$TREES"), (re.compile(r"/Users/[A-Za-z0-9._-]+"), "$HOME")]
 TEXT_SUFFIXES = {".json", ".md", ".py", ".txt", ".lean", ".yaml", ".yml", ".toml", ".cfg", ".lock", ".csv", ".sh", ""}
+
+
+def archive_ids() -> list:
+    """Every identifier the repository's engine data gives the archive and the seeded planner policies: archive submission shas (and their 12-hex ids),
+    accepted-copy directory names, seeded policy ids. Longest first, so a sha is replaced whole."""
+    ids = set()
+    for kind in ("sto_archive", "sto_accepted", "sto_submitted", "forshor_submitted"):
+        for d in (ENGINE / "data" / kind).glob("*"):
+            m = re.fullmatch(r"[PS]?([0-9a-f]{12,64})", d.name)            # hex ids only: never a directory like `seed_exact`
+            if d.is_dir() and m:
+                h = m.group(1)
+                ids |= {d.name, h, h[:12], "P" + h[:12], "S" + h[:12]}
+    return sorted(ids, key=len, reverse=True)
+
+
+def scrub_archive_ids(pack: Path) -> int:
+    """Replace archive and seed identifiers that survive in the pack's engine SOURCE and notes (docstrings and comments that cite a submission) with a neutral
+    word. Only .py and .md files of the engine's code are touched, never its data; `starter.py examples --check` runs afterwards on the result."""
+    pattern = re.compile("|".join(re.escape(i) for i in archive_ids()))
+    changed = 0
+    for f in (pack / "engine").rglob("*"):
+        if not f.is_file() or f.suffix not in {".py", ".md"} or "data" in f.relative_to(pack / "engine").parts[:1]:
+            continue
+        try:
+            text = f.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        new = pattern.sub("an archive submission", text)
+        if new != text:
+            f.write_text(new, encoding="utf-8")
+            changed += 1
+    return changed
 
 
 def scrub_paths(pack: Path) -> int:
@@ -98,9 +163,98 @@ def snapshot(seed_path: Path) -> dict:
             "boards": boards}
 
 
+GEN_STARTING = r"""
+import json, sys
+sys.path.insert(0, "engine")
+import site_engine  # noqa: F401
+from site_engine import library as lib
+from site_engine import frontier as fr
+from tcost import planner as tp, tables as tt
+
+
+def canonical(P, name):
+    bands = []
+    for b in P.bands:
+        if bands and bands[-1].table.digest == b.table.digest:
+            bands[-1] = tt.Band(b.threshold, b.table)
+        else:
+            bands.append(b)
+    return tt.Policy(mode=P.mode, bands=tuple(bands), name=name, widths=P.widths)
+
+
+out = {}
+for key, mode in (("pp", tt.PAIR), ("ptp", tt.TRIPLE)):
+    P, _ = tp.optimal_policy(lib.milestone_tables("kmy", mode), mode, 2048, 0.01)
+    Q = canonical(P, "Starting policy " + mode)
+    out[key] = {"policy": Q.to_json(), "scan_ladder": [[w, k] for w, k in Q.with_widths("scan").ladder(2048)], "ladder": fr.ladder_str(fr._ladder(Q.with_widths("exact"), 2048))}
+print(json.dumps(out))
+"""
+
+HOW = {"PhaseProduct": "A PhaseProduct banded policy: bands widest first, thresholds strictly decreasing; a band serves every width w >= its threshold down to the next band's threshold; below the last threshold the leaf. One table per k. point_order is the order the program consumes the points ('0', '1', '-1', '2', '1/2', 'inf', ...); operations are [\"addScaled\", dst, src, sign(+1/-1), shift], [\"negate\", i], [\"shiftL\", i, n], [\"shiftR\", i, n], [\"phaseProduct\", i]. Do not declare widths: the board derives the exact ladder. This starting policy is the planner's optimum over the table of Kahanamoku-Meyer and Yao (2024) (one band); replace the table and thresholds with yours, and add bands with other tables. This file prices as it stands (python starter.py price).",
+       "PhaseTripleProduct": "A PhaseTripleProduct banded policy (a table evaluates at 3k - 2 points): bands widest first, thresholds strictly decreasing; a band serves every width w >= its threshold down to the next band's threshold; below the last threshold the leaf. One table per k. point_order is the order the program consumes the points ('0', '1', '-1', '2', '1/2', 'inf', ...); operations are [\"addScaled\", dst, src, sign(+1/-1), shift], [\"negate\", i], [\"shiftL\", i, n], [\"shiftR\", i, n], [\"phaseProduct\", i]. Do not declare widths: the board derives the exact ladder. This starting policy is the planner's optimum over the two tables of Kahanamoku-Meyer and Yao (2024) (one band); replace the tables and thresholds with yours, and add bands with other tables. This file prices as it stands (python starter.py price)."}
+
+
+def write_starting_inputs(pack: Path, python: str) -> dict:
+    """The starting policies (the planner's optimum over the Kahanamoku-Meyer and Yao tables), from the pack's own engine, and the files that start from them. Returns the raw generator output."""
+    r = subprocess.run([python, "-c", GEN_STARTING], cwd=pack, check=True, capture_output=True, text=True)
+    gen = json.loads(r.stdout.strip().splitlines()[-1])
+    dump = lambda path, doc: path.write_text(json.dumps(doc, indent=1) + "\n")
+    for key, stem in (("pp", "starting_pp"), ("ptp", "starting_ptp")):
+        pol = gen[key]["policy"]
+        dump(pack / "examples" / f"{stem}.policy.json", pol)
+        dump(pack / "templates" / f"{key}_policy.json", {"_how": HOW[pol["mode"]], **{**pol, "name": f"my {key.upper()} policy"}})
+    ladder = {"declared_ladder": gen["pp"]["scan_ladder"]}
+    dump(pack / "examples" / "declared_ladder_ignored.policy.json",
+         {"name": "Starting policy PhaseProduct, with a declared ladder", "mode": gen["pp"]["policy"]["mode"], **ladder, "bands": gen["pp"]["policy"]["bands"]})
+    return gen
+
+
+EDIT_ME = ("""/-- **Edit me.** The policy: bands widest first, each a threshold and a table. The default negation is one
+qubit; add `negation := .scratch` to ask for the other construction (not priced on the boards). -/
+""")
+
+
+def write_ptp_template(pack: Path, gen: dict) -> None:
+    """templates/ptp.Policy.lean: the PhaseTripleProduct submission file for the starting policy, under the template's own explanatory header (ptp_template_header.txt)."""
+    body = (pack / "examples" / "starting_ptp.Policy.lean").read_text()
+    pol = gen["ptp"]["policy"]
+    header = (HERE / "ptp_template_header.txt").read_text().rstrip("\n").replace("@@LADDER@@", gen["ptp"]["ladder"]).replace("@@OPS@@", str(len(pol["bands"][0]["operations"])))
+    i = body.index("/-!")
+    j = body.index("-/", i) + 2
+    text = body[:i] + header + body[j:]
+    assert "def policy : PTP.PTPPolicy where" in text
+    text = text.replace("def policy : PTP.PTPPolicy where", EDIT_ME + "def policy : PTP.PTPPolicy where", 1)
+    (pack / "templates" / "ptp.Policy.lean").write_text(text)
+
+
+def forshor_pin() -> str:
+    for pkg in json.loads((REPO / "lake-manifest.json").read_text())["packages"]:
+        if pkg.get("name") == "Fast_multiplication":
+            return pkg["rev"]
+    raise SystemExit("lake-manifest.json has no Fast_multiplication (ForShor) package")
+
+
+def starting_snapshot(pack: Path, python: str) -> dict:
+    """The boards' rows as the pack's own engine prices the starting policies (PhaseProduct on the PP and full boards, PhaseTripleProduct on its board)."""
+    rows = {}
+    for board, stem, extra in (("pp", "starting_pp", ["--no-full"]), ("full", "starting_pp", []), ("ptp", "starting_ptp", ["--no-full"])):
+        out = pack / f".price-{board}.json"
+        subprocess.run([python, str(pack / "starter.py"), "price", str(pack / "examples" / f"{stem}.policy.json"), "--json", str(out), *extra],
+                       cwd=pack, check=True, capture_output=True, text=True)
+        got = json.loads(out.read_text())["policies"][0]
+        out.unlink()
+        pr = got["full_run"] if board == "full" else got["board"]
+        rows[board] = [{"name": got["name"], "rowId": hashlib.sha256(json.dumps(got["bands"]).encode()).hexdigest()[:12], "T": pr["T"], "qubits": pr["qubits"],
+                        "score": pr["T"] * pr["qubits"], "stoMirror": "none"}]
+    return {"built": date.today().isoformat(), "delta": "1e-2", "n": 2048, "source": "the starting policies priced by the pack's own engine",
+            "forshorPin": forshor_pin(), "negation": "incrementer", "updatedAt": None,
+            "note": "The starting rows of the boards at delta = 0.01 when the pack was built: policies built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024). The page shows the live boards; score = Q x T, lower is better.",
+            "boards": rows}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--seed", type=Path, required=True, help="the exporter's epoch input the results seed was made from")
+    ap.add_argument("--seed", type=Path, help="a results seed that lists only the starting policies (the exporter's epoch input, `--kmy-only`) to take the snapshot rows from; default: the starting policies priced by the pack's own engine")
     ap.add_argument("--out", type=Path, default=REPO / "dist-starter", help="output directory (default: dist-starter/ at the repo root)")
     ap.add_argument("--no-zip", action="store_true")
     ap.add_argument("--allow-dirty", action="store_true", help="build from uncommitted source (a trial; the manifest's commit will not describe it)")
@@ -115,16 +269,17 @@ def main() -> int:
         shutil.rmtree(pack)
     shutil.copytree(SRC, pack)
     copy_engine(pack / "engine")
-    print(f"local paths scrubbed in {scrub_paths(pack)} files")
+    print(f"local paths scrubbed in {scrub_paths(pack)} files; archive ids scrubbed from {scrub_archive_ids(pack)} engine source files")
     origins = {"pack": "evaluation/starter/pack (hand-written)", "engine": f"evaluation/engine at {git('rev-parse', '--short', 'HEAD')} (tests, caches excluded)"}
 
-    snap = snapshot(a.seed)
-    (pack / "examples" / "board_snapshot.json").write_text(json.dumps(snap, indent=1) + "\n")
-
     run = lambda *c: subprocess.run([a.python, str(pack / "starter.py"), *c], cwd=pack, check=True, capture_output=True, text=True)
+    gen = write_starting_inputs(pack, a.python)
+    snap = snapshot(a.seed) if a.seed else starting_snapshot(pack, a.python)
+    (pack / "examples" / "board_snapshot.json").write_text(json.dumps(snap, indent=1) + "\n")
     # derived examples and Lean inputs, written by the pack's own commands
-    (pack / "examples" / "seed_pp_S707dd51bf951.Policy.lean").write_text(run("template", "examples/seed_pp_S707dd51bf951.policy.json").stdout)
-    (pack / "examples" / "seed_ptp_S80e6a121410d.Policy.lean").write_text(run("template", "examples/seed_ptp_S80e6a121410d.policy.json").stdout)
+    (pack / "examples" / "starting_pp.Policy.lean").write_text(run("template", "examples/starting_pp.policy.json").stdout)
+    (pack / "examples" / "starting_ptp.Policy.lean").write_text(run("template", "examples/starting_ptp.policy.json").stdout)
+    write_ptp_template(pack, gen)
     for name, policy in (("pp_policy", "templates/pp_policy.json"), ("ptp_policy", "templates/ptp_policy.json")):
         (pack / "templates" / f"{name}.lean-input.json").write_text(run("lean-input", policy).stdout)
     run("examples", "--write-expected")
@@ -139,6 +294,7 @@ def main() -> int:
     manifest = {"schema": "forshor-starter.manifest/1", "built": snap["built"], "forshorPin": snap["forshorPin"],
                 "epoch_input_updatedAt": snap["updatedAt"], "exporter_commit": git("rev-parse", "HEAD"),
                 "engine_revision": git("log", "-1", "--format=%H", "--", "evaluation/engine"), "origins": origins,
+                "archive": "none: the pack's engine/data holds only the KMY (2024) tables",
                 "files": [{"path": str(p.relative_to(pack)), "sha256": sha256(p), "bytes": p.stat().st_size} for p in files]}
     (pack / "MANIFEST.json").write_text(json.dumps(manifest, indent=1) + "\n")
     shutil.copy(pack / "SKILL.md", a.out / "forshor-skill.md")

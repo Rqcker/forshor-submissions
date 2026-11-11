@@ -1,7 +1,7 @@
 # ForShor Challenge starter pack
 
 Use this pack to write a policy, price it locally with the challenge site's own engine, and get it ready for the Lean
-checks before you submit. The challenge runs from November 12 to December 12, 2026 (the challenge page has the current dates).
+checks before you submit. The challenge runs from November 17 to 11:59 PM Eastern on December 31, 2026 (the challenge page has the current dates).
 
 A submission is a **full policy**: Toom-Cook tables and the width thresholds at which each table is used. A bare table
 is not a submission. There are three boards, each ranked separately by **Q × T** (qubits times T count, lower is better, at n = 2048 and δ = 0.01), where **Q is the live-qubit peak**
@@ -26,7 +26,7 @@ Rotations are priced with Ross–Selinger, 3.075 log2(1/ε) + 0.86 T at ε = 0.5
 | `SKILL.md` | The same workflow, written for AI agents (Claude and others). |
 | `starter.py` | `price`, `forshor-doc`, `template`, `lean-input`, `examples` (see below). |
 | `templates/` | `pp_policy.json` and `ptp_policy.json` (site policy JSON; both price as they stand), their Lean-checker inputs `*.lean-input.json`, `ptp.Policy.lean` (the PhaseTripleProduct submission file, from ForShor's `PTPPolicyTemplate.lean`) and `Policy.lean` (the PhaseProduct submission file: ForShor's shipped template, verbatim). |
-| `examples/` | The STO reference PP, a re-planned PP seed, a PTP seed, the board's reference document (ForShor `21e129a`'s printed `policy.json` for the shipped template at exact widths), upstream ForShor's own document (scanned widths, the cross-check), a policy with a declared ladder, and the expected output of each (`expected/`). |
+| `examples/` | The starting policies (built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024)), as site policy JSON and as submission files (`starting_pp`, `starting_ptp`), ForShor `21e129a`'s printed documents for its own shipped template (a format example, and the cross-check at scanned widths), a policy with a declared ladder (ignored, with a notice), `board_snapshot.json` (the starting rows of the boards) and `expected/*.json` (the pinned outputs `python starter.py examples --check` compares with). |
 | `harness/LEAN_CHECKS.md` | How to run the Lean checks. The build trees are not in the pack; the file says where they come from. |
 | `harness/policy_to_template.py` | The site's converter from a PP policy to a ForShor template (used by `starter.py template`). |
 | `engine/` | The site's pricing engine, vendored: `tcost` (engine 1), `forshor_qualtran` (engine 2), the full-run pricer `site_engine/fullalg.py` with Lean-To-Qualtran's `PolicyShorCore`, the exact-width functions (`tcost/exact`, and ForShor's rule `fullalg/forshor_exact_width.py`), the two ForShor policy documents (`fullalg/data`: the exact-width one, which is the board's IR, and the default-scan one, the cross-check), Qualtran 0.8.0.dev0, and the table library (used only to name tables). |
@@ -51,7 +51,7 @@ python starter.py examples --check     # prices every example and compares with 
   with your own. Do not declare widths. If you declare a width ladder, the board ignores it and shows a notice (see
   `examples/declared_ladder_ignored.policy.json`).
 * **Full order finding:** the same PP policy. **What you submit is one Lean file, `TableGeneration/Submission/Policy.lean`**
-  (the only file a pull request may change). Write it by hand from `templates/Policy.lean` (ForShor's shipped template, from
+  (a pull request may change that file and, optionally, a LaTeX summary of your policy in `TableGeneration/Submission/summary.tex`, and nothing else; see `SKILL.md`, "Optional LaTeX Summary", and the template `examples/summary.tex`). Write it by hand from `templates/Policy.lean` (ForShor's shipped template, from
   `21e129a`), or generate it with `python starter.py template my_pp_policy.json --out Policy.lean --forshor /path/to/ForShor`.
   ForShor's Lean library is `ForShor`; `--forshor` checks the name against your checkout. Bands take k up to 8, any number
   of bands; a PhaseTripleProduct policy is submitted the same way, as a `PTPPolicy` (`templates/ptp.Policy.lean`; the namespace says which board). ForShor's policies also carry an optional `negation` (`oneQubit` or `scratch`); the boards price
@@ -118,7 +118,7 @@ How to send a policy is in `SUBMISSION_FORMAT.md`, section 6: the pack prices an
   becomes two 2348 × 2348 products. The census comes from ForShor's IR, matched to the compiled circuit at sampled
   widths only: at n = 2048 it is not proved. Upstream ForShor's own IR (scanned widths, no split) is the labelled
   cross-check (`forshor_scan_ir`); `examples/expected/` pins what each example prices to.
-* The table library in `engine/data` is the snapshot the engine had when the pack was built (`MANIFEST.json`). It only names tables.
+* `engine/data` holds KMY's three tables and nothing else (`engine/data/README.md`), so the ladders name only those (`KMY-PP3`, `KMY-PTP3`, `KMY-PTP4`); a table of your own shows as `pasted`. It only names tables.
 * The ranking line in `price` compares with `examples/board_snapshot.json`, the board's rows when the pack was built; the page shows the live board.
 
 ## Licences

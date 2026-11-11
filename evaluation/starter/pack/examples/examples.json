@@ -2,28 +2,21 @@
  "note": "The examples `python starter.py examples --check` prices and compares with expected/. The pinned outputs are written by the pack builder (build_starter_pack.py) from the pack's own engine; they change whenever the engine does, so a pack and its pinned outputs always go together.",
  "examples": [
   {
-   "name": "STO reference PP",
+   "name": "Starting policy, PhaseProduct: the planner's optimum over the k = 3 table of Kahanamoku-Meyer and Yao (2024)",
    "kind": "price",
-   "file": "sto_reference_pp.policy.json",
-   "expected": "sto_reference_pp.json",
+   "file": "starting_pp.policy.json",
+   "expected": "starting_pp.json",
    "full": true
   },
   {
-   "name": "re-planned PP seed S707dd51bf951 (KMY-PP3)",
+   "name": "Starting policy, PhaseTripleProduct: the planner's optimum over the k = 3 and k = 4 tables of Kahanamoku-Meyer and Yao (2024)",
    "kind": "price",
-   "file": "seed_pp_S707dd51bf951.policy.json",
-   "expected": "seed_pp_S707dd51bf951.json",
-   "full": true
-  },
-  {
-   "name": "PTP seed S80e6a121410d",
-   "kind": "price",
-   "file": "seed_ptp_S80e6a121410d.policy.json",
-   "expected": "seed_ptp_S80e6a121410d.json",
+   "file": "starting_ptp.policy.json",
+   "expected": "starting_ptp.json",
    "full": false
   },
   {
-   "name": "the board's reference document: ForShor 21e129a's printed policy.json for the shipped template (`--balanced`: exact widths, balanced split, trial count 386; it carries `negation` and `negate_charge`)",
+   "name": "ForShor 21e129a's printed policy.json for the shipped template (`--balanced`: exact widths, balanced split, trial count 386; it carries `negation` and `negate_charge`)",
    "kind": "forshor-doc",
    "file": "forshor_dropin.policy.json",
    "expected": "forshor_dropin.json"
