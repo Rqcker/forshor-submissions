@@ -1,0 +1,37 @@
+% Template for the optional summary of a ForShor Challenge submission: TableGeneration/Submission/summary.tex
+%
+% It is text for people to read. Nothing in the harness or in the hosted checks compiles, renders or runs it, so it cannot change your score, and it must not need any other file
+% (the pull request carries only Policy.lean and this file). Rules, checked without compiling it: a regular UTF-8 file, not empty, at most 100 KiB (102,400 bytes),
+% no control characters except tab, line feed and carriage return. Replace everything below with your own account; delete this file if you have nothing to say.
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+
+\title{Summary of my policy}
+\author{your GitHub handle}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Objective}
+Which board the policy is for (PhaseProduct, PhaseTripleProduct, or full order finding) and what it minimises.
+
+\section*{Starting point}
+The starting policies are built from the tables in the Parallel sequences appendix of Kahanamoku-Meyer and Yao (2024), the planner's optimum over those tables.
+Say which starting policy, leaderboard policy or template you began from, and credit anything you reused.
+
+\section*{Construction}
+What you changed and why it should be cheaper. A formula is fine:
+\begin{align}
+  c(t) &= a(t)\,b(t) = \sum_{i=0}^{4} c_i\, t^i, \\
+  T(n) &\le 5\,T(\lceil n/3 \rceil) + O(n).
+\end{align}
+
+\section*{Prices}
+Copy the numbers and the exact ladder printed by \texttt{starter.py price} for this policy; do not quote a number the pack did not print.
+
+\section*{What is not proved}
+Limitations, attempts that did not help, and the model or harness you used. Leave out private reasoning and secrets.
+
+\end{document}

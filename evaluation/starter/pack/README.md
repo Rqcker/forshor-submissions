@@ -51,7 +51,7 @@ python starter.py examples --check     # prices every example and compares with 
   with your own. Do not declare widths. If you declare a width ladder, the board ignores it and shows a notice (see
   `examples/declared_ladder_ignored.policy.json`).
 * **Full order finding:** the same PP policy. **What you submit is one Lean file, `TableGeneration/Submission/Policy.lean`**
-  (the only file a pull request may change). Write it by hand from `templates/Policy.lean` (ForShor's shipped template, from
+  (a pull request may change that file and, optionally, a LaTeX summary of your policy in `TableGeneration/Submission/summary.tex`, and nothing else; see `SKILL.md`, "Optional LaTeX Summary", and the template `examples/summary.tex`). Write it by hand from `templates/Policy.lean` (ForShor's shipped template, from
   `21e129a`), or generate it with `python starter.py template my_pp_policy.json --out Policy.lean --forshor /path/to/ForShor`.
   ForShor's Lean library is `ForShor`; `--forshor` checks the name against your checkout. Bands take k up to 8, any number
   of bands; a PhaseTripleProduct policy is submitted the same way, as a `PTPPolicy` (`templates/ptp.Policy.lean`; the namespace says which board). ForShor's policies also carry an optional `negation` (`oneQubit` or `scratch`); the boards price

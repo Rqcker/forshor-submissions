@@ -35,7 +35,7 @@ A submission is this one Lean file, `Policy.lean`, holding the policy: for Phase
 The full order-finding board prices every PP policy (section 1). ForShor builds the PhaseProduct file (`starter.py template` writes it from site policy JSON) at the pinned commit `21e129aeefc0fd1bbb8fa63402f5799af2490788`
 (VerifiedQC/ForShor `main`, the merge of PR #80, which contains PR #79). Its Lean library is `ForShor`. If you write the file by hand, these rules apply:
 
-* **One file: `TableGeneration/Submission/Policy.lean`, the only file a pull request may change**, at most 1,000,000 bytes. For ForShor's build it is
+* **One file: `TableGeneration/Submission/Policy.lean`, the only file a pull request must change** (the optional `TableGeneration/Submission/summary.tex`, section 6, is the only other file it may carry), at most 1,000,000 bytes. For ForShor's build it is
   copied to `ForShor/ShorVerification/Submission/PolicyTemplate.lean` (ForShor's name for the file); nothing else in the ForShor tree changes.
 * Imports: only the three modules the shipped template imports (`ForShor.ShorVerification.Framework.ToomCookTable`,
   `ForShor.ShorVerification.Framework.Policy`, `ForShor.ShorVerification.Submission.Decide`).
@@ -107,7 +107,7 @@ are in the repository's instructions, not here.
 ## 6. Sending it
 
 This pack prices a policy and prepares it for the Lean checks; **it does not submit anything**. **What you submit is one Lean file, `TableGeneration/Submission/Policy.lean`, holding your policy** (section 2; the
-format is `templates/Policy.lean`, and `starter.py template` writes it for a PhaseProduct policy). A pull request may change that file and nothing else. Optional LaTeX notes about your policy go inside that file, in a `/-! ... -/` block after the imports (limits and an example: `SKILL.md`, "Optional LaTeX Notes"); they never affect scoring. The submission repository is
+format is `templates/Policy.lean`, and `starter.py template` writes it for a PhaseProduct policy). A pull request may change that file and one optional second file, `TableGeneration/Submission/summary.tex`, and nothing else. The optional summary is LaTeX written for people to read, in its own file (not inside `Policy.lean`): a regular UTF-8 file of at most 100 KiB (102,400 bytes), not empty, with no control characters except tab and line breaks; it cannot be submitted without a policy; the harness never compiles or runs it, and it never affects scoring (template: `examples/summary.tex`; details: `SKILL.md`, "Optional LaTeX Summary"). The submission repository is
 `zapatacomputing/forshor-submissions` (private during the sprint; the challenge page's **Participate** dialog has the commands), and its own instructions win over this file. The boards check the Lean file in Lean and price the policy it
 contains with the same engine as `starter.py price`. Whatever you send, quote the `starter.py price` output you got for the same policy as JSON (and, for a full-run policy, the `forshor-doc` output), and name the pack's build date
 (`MANIFEST.json`). The boards' numbers are the ones that count.

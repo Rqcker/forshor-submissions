@@ -129,7 +129,7 @@ The Lean checkers' input for PP or PTP (widths are dropped):
 python starter.py lean-input my_policy.json --out my_policy.lean-input.json
 ```
 
-The submission file, `TableGeneration/Submission/Policy.lean` (PP; bands take 1 < k ≤ 8; the only file a pull request may change; a PhaseTripleProduct policy is submitted in the same file as a `PTPPolicy` in `namespace PTPPolicySubmission`, format `templates/ptp.Policy.lean`, written by the same command):
+The submission file, `TableGeneration/Submission/Policy.lean` (PP; bands take 1 < k ≤ 8; a pull request may change this file and the optional `summary.tex`, nothing else; a PhaseTripleProduct policy is submitted in the same file as a `PTPPolicy` in `namespace PTPPolicySubmission`, format `templates/ptp.Policy.lean`, written by the same command):
 
 ```bash
 python starter.py template my_pp_policy.json --out Policy.lean --forshor /path/to/ForShor
@@ -181,46 +181,43 @@ An accepted policy appears on the boards under the submitter's GitHub handle as 
 with the starting rows, the starting policies, built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (named `forshor_sub<N>`), and carries an "STO mirror" tag if it has been checked in Lean. It inherits the repository's
 Apache 2.0 licence. **The boards' numbers are the ones that count:** the site prices the policy again with the same engine.
 
-## Optional LaTeX Notes
+## Optional LaTeX Summary
 
-Participants may add notes that explain their policy: the idea, why it is cheap, the derivation, what they tried and what did not work. **Notes are optional.** They never affect
-verification, pricing or rank, and a policy without them is complete. Offer them to the user; do not write them unless the user wants them, and never put private reasoning or secrets in them.
+Participants may add a summary that explains their policy: the idea, why it is cheap, the derivation, what they tried and what did not work. **The summary is optional.** It never affects
+verification, pricing or rank, and a policy without it is complete. Offer it to the user; do not write one unless the user wants it, and never put private reasoning or secrets in it.
 
-**Where they go.** A pull request may change one file, `TableGeneration/Submission/Policy.lean`, and nothing else, so the notes live inside that file as a Lean block comment, written in LaTeX.
-A separate `.tex` (or `.md`) file is not accepted: a pull request that changes any other file is refused. Put the notes in a `/-! ... -/` block **right after the three `import` lines**
-(the generated file already has such a block there; add another or extend it). Lean accepts a `/-!` block only after the imports; a plain `/- ... -/` comment may also be the very first thing in the file.
-After the build, the notes stay with the archived `Policy.lean`; the challenge page does not render them.
+**Where it goes.** In its own file, next to the policy: `TableGeneration/Submission/summary.tex` (exactly that path, lower case). It is **not** a comment inside `Policy.lean`: do not put LaTeX in the Lean file.
+A pull request may change `Policy.lean` and this one file, and nothing else: a pull request that adds any other file (a `notes.tex`, a `README`, a figure, a `.bib`) is refused, and a pull request that changes
+only `summary.tex` is refused too ("a submission needs a policy"). `./forshor check` validates the summary with the same rules as the hosted check, and `./forshor submit` includes it in the pull request when the file exists.
+The hosted pipeline archives it unchanged beside the accepted policy; the challenge page does not render it.
 
-```lean
-import ForShor.ShorVerification.Framework.ToomCookTable
-import ForShor.ShorVerification.Framework.Policy
-import ForShor.ShorVerification.Submission.Decide
+**What it is.** Text for people to read, written in LaTeX. **Nothing compiles, renders or runs it**: not the harness, not the hosted check, not the archive. TeX can run shell commands and read files
+(`\write18`, `\input{/etc/passwd}`), so the file is only ever stored and shown as text. Write it so a reader can follow it as plain text, and so it compiles on the reader's own machine if they choose to.
+Either form is fine: a plain LaTeX body (sections, formulas, lists), or a small self-contained document (`\documentclass` … `\end{document}`) that needs no other file. Nothing else is in the pull request, so
+`\input`, `\include`, `\includegraphics` and `\bibliography` of your own files will not find anything: put figures in words or tables, and type the references in the text.
 
-/-!
-# Notes (LaTeX)
+**Rules, checked by the verifier** (not by compiling it; a file that breaks one is rejected with a message naming the rule, which is about the file, not a verdict on your policy):
 
+1. a regular file: not a symbolic link, not a directory;
+2. not empty;
+3. at most 100 KiB (102,400 bytes), which is about twenty-five dense pages;
+4. valid UTF-8 (save the file as UTF-8; accents and symbols such as `é` or `∑` are fine);
+5. no control characters except tab, line feed and carriage return (so no NUL byte and no escape sequences).
+
+Backslashes, `$`, `%`, braces, `\begin{align}` and Unicode are fine. The Lean checks never read the file, so none of the Lean comment limits applies to it.
+
+A short example (`examples/summary.tex` is a template to start from):
+
+```latex
 \section*{Idea}
 We split the $n$-bit operand into $k=3$ limbs and evaluate the product polynomial at $0, 1, -1, -2, \infty$.
 \begin{align}
   c(t) &= a(t)\,b(t) = \sum_{i=0}^{4} c_i t^i, \\
-  T(n) &\le 5\,T(\lceil n/3 \rceil) + O(n) \quad \text{(about 50\% fewer additions)}.
+  T(n) &\le 5\,T(\lceil n/3 \rceil) + O(n).
 \end{align}
-\emph{Why it is cheap:} the two bands reuse one addition chain; see \cite{kmy2024}.
--/
+\emph{Why it is cheap:} the two bands reuse one addition chain.
+The starting point is the planner's optimum over the tables in the Parallel sequences appendix of Kahanamoku-Meyer and Yao (2024); the prices below are the `starter.py price` output.
 ```
-
-**Limits, checked against ForShor's lexical gate and a real build at the pinned commit** (a file of this shape passed the gate, `lake build`, the printed document and the full intake with the same
-bands as without the notes):
-
-1. The notes must not contain `-/` (it ends the comment, and what follows is parsed as Lean: the build fails) and must not contain `/-` (Lean nests comments, so the comment never ends: "unterminated comment").
-   In LaTeX, watch `$a^{b-/c}$` and `$x/-y$`; write `$x / {-y}$` or put a space or brace between the two characters.
-2. ForShor's lexical gate reads the file **line by line and does not skip comments**. A line of the notes must not begin, after any spaces or tabs, with `unsafe`, `run_cmd`, `run_meta`, `initialize`, `elab`, `macro`, `syntax`
-   or `notation` (also after `private`, `protected`, `noncomputable`, `scoped` or `local`), with `import Lean`, with `set_option debug`, or with `@[` or `attribute [` naming `implemented_by`, `extern` or `csimp`.
-   The same words in the middle of a line are fine, a capital letter is fine (`Syntax`), and so is a leading backslash (`\notation`). If a line of prose starts with one of those words, re-wrap it or start it with something else.
-   Run `bash scripts/check_template_lexical.sh Policy.lean` in your ForShor checkout after adding notes.
-3. The whole file stays under 1,000,000 bytes.
-4. Backslashes, `$`, `%`, braces, `\begin{align}`, `\\`, underscores, carets and Unicode are fine inside the block.
-5. Put the notes after the imports, not before them: a `/-!` block above the `import` lines is a Lean error ("invalid 'import' command, it must be used in the beginning of the file").
 
 What to write: the objective, the construction, why it should be cheap (reasoning, not a proof unless you have one), the prices you got from `starter.py price` (copy the numbers, with the exact ladder), what is not proved, and credit for
 anything you reused (see Reuse And Provenance). Do not claim a number the pack did not print.

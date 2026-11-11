@@ -7,7 +7,8 @@ The pack is a participant's local copy of what prices a policy on the results bo
 and nothing else: NO archive table, DP-library table, seeded planner policy or STO reference policy is in it.
 
   * pack/ (hand-written, kept as they are): README.md, SUBMISSION_FORMAT.md, SKILL.md, requirements.txt, starter.py,
-    harness/{LEAN_CHECKS.md,policy_to_template.py}, templates/{Policy.lean,LICENSE.forshor}, examples/{README.md,examples.json,forshor_*.policy.json};
+    harness/{LEAN_CHECKS.md,policy_to_template.py}, templates/{Policy.lean,LICENSE.forshor}, examples/{README.md,examples.json,summary.tex,forshor_*.policy.json}
+    (examples/summary.tex is the template of the optional TableGeneration/Submission/summary.tex: standard LaTeX, never compiled by anything in the pack);
   * engine/: `evaluation/engine` minus tests/, cache/, bytecode AND minus every archive table (`data/` keeps only `kmy_tables/`; the library's
     loaders find no archive, and `personal_tables/tables.json` is an empty list, so they return nothing). The repository's own engine is untouched.
     The vendored Qualtran tree is included: Qualtran imports bloqs lazily;

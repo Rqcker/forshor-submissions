@@ -15,6 +15,7 @@ These three tables are the only tables the pack carries, and the policies below 
 | `forshor_dropin.policy.json` | ForShor `21e129a`'s printed `policy.json` for its own shipped template, `lake exe forshor_policy_submission --balanced` (exact widths, balanced split, trial count 386), printed 2026-11-08. It carries `negation` (`oneQubit`) and the per-method `negate_charge`. A format example, not a starting policy. |
 | `forshor_upstream_scan.policy.json` | ForShor `21e129a`'s printed document for the same template at its default width scan (scanned widths, no balanced split): priced on upstream's IR, the cross-check. |
 | `declared_ladder_ignored.policy.json` | The PhaseProduct starting policy with a `declared_ladder`: the same prices, plus the notice that the board ignores the ladder. |
+| `summary.tex` | A template for the optional LaTeX summary of a submission, `TableGeneration/Submission/summary.tex` (see `SKILL.md`, "Optional LaTeX Summary"). A small self-contained document in standard LaTeX; no harness compiles it. Replace its text with your own. |
 | `board_snapshot.json` | The starting rows of the boards at δ = 0.01 when the pack was built (name, T, Q, Q × T): the starting policies, priced by this pack's engine. It is what `starter.py price` ranks against. The page shows the live boards. |
 
 Each `expected/*.json` has, for a policy: the board's T and exact ladder, Q (the live-qubit peak) and the score Q × T, the engines' agreement, the scanned-width cross-check and, for a
