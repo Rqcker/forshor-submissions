@@ -8,6 +8,7 @@ on:
     # Source changes trigger verification. A mixed source/infrastructure PR still
     # triggers and is rejected by the trusted changed-files check.
     paths:
+      # Covers Policy.lean and the optional summary.tex. Which paths a submission may change is decided by the verifier (scripts/policy_verifier.py), never by this filter.
       - 'TableGeneration/Submission/**'
   workflow_dispatch:
 

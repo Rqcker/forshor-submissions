@@ -5,7 +5,7 @@ the publisher, the page) before this was written; the workflow below only has to
 
 ## The call
 
-A submission is the Lean file `TableGeneration/Submission/Policy.lean` (the only file a PR may change; ForShor's PolicyTemplate format, see the starter pack's `templates/Policy.lean`):
+A submission is the Lean file `TableGeneration/Submission/Policy.lean` (ForShor's PolicyTemplate format, see the starter pack's `templates/Policy.lean`), optionally with a LaTeX summary, `TableGeneration/Submission/summary.tex` (`--summary`; text for people, never compiled or run: see `docs/POLICY_CI.md`). Those are the only files a PR may change:
 
 ```sh
 python evaluation/intake_v2.py --lean-policy "$POLICY_LEAN" --login "$PR_AUTHOR" --pull "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --run-id "$GITHUB_RUN_ID" \
@@ -17,6 +17,7 @@ with `PUBLISHER_TOKEN` in the environment (the identity token the publisher's IA
 | input | what it is |
 |---|---|
 | `$POLICY_LEAN` | the participant's `TableGeneration/Submission/Policy.lean` from the PR. It is only compiled by ForShor (after ForShor's lexical gate), never run by us. `--forshor-tree` is required with it. `--policy FILE.json` (site policy JSON: `mode` and `bands`) is the other input, for rehearsals and for a PhaseTripleProduct policy, which has no Lean template yet; give exactly one of the two. |
+| `$SUMMARY_TEX` | optional: the PR's `TableGeneration/Submission/summary.tex`, with `--lean-policy` only. Checked against `evaluation/summary_tex.py` (regular UTF-8 file, 1 byte to 100 KiB, no control characters but tab/LF/CR), read as bytes, carried in the verification (`summarySource`, `summarySha256`, `summaryBytes`) and archived verbatim. It never reaches Lean, ForShor or the mirror and cannot change the digest. |
 | `$PR_AUTHOR`, `$PR_NUMBER`, `$PR_HEAD_SHA` | from the PR event. `forshor` is a reserved handle and is refused. The row is named `<login>_sub<N>`, N assigned by the publisher's ledger. |
 | `$STO_TREE` | a **built** Lean tree for the STO mirror: this repository (synced from the STO fork's `main` at `2558595`). Build it with the targets in `evaluation/policy-trees.json` (`sto_build`: `BandedPolicy`, `BridgeClosure`, `BandedPolicy.Plan`, `Instances.RefPP`, `PTPPlan.Plan`, `PTPCheck.AxiomAudit`); `lake build TableGeneration` alone does not build them. |
 | `$FORSHOR_TREE` | a built ForShor checkout at `21e129a` (`lake build PolicySubmission forshor_policy_submission`). Copied per run (it is written into), so use a cache and a copy-on-write or a throwaway checkout. Optional: without it, no row has the `ForShor` tag. |
@@ -63,7 +64,7 @@ a PhaseProduct k = 3 file in 4 minutes; a PhaseProduct k = 8, 4, 3 file builds i
 ## How the pieces connect (`./forshor check`, the pull-request job, the publish job)
 
 A policy submission is checked by `scripts/verifier.py`, unchanged for the older table-generator submissions: when `TableGeneration/Submission/Policy.lean` declares `namespace PolicySubmission` or
-`namespace PTPPolicySubmission` it hands over to `scripts/policy_verifier.py`, which refuses any changed file other than `Policy.lean`, runs `evaluation/intake_v2.py --no-publish` and writes the
+`namespace PTPPolicySubmission` it hands over to `scripts/policy_verifier.py`, which refuses any changed file other than `Policy.lean` and the optional `summary.tex` (and a summary alone), validates the summary, runs `evaluation/intake_v2.py --no-publish` and writes the
 `table-generation-submission-result.json` (`status`, `phase: "full"`, the checks) and `verification.json` that `./forshor check` and the workflow artifacts already carry.
 
 | Step | Who runs it | What |
@@ -76,7 +77,7 @@ A policy submission is checked by `scripts/verifier.py`, unchanged for the older
 
 Every accepted policy is archived on the `submission-results` branch, by the same call that publishes it (`intake_v2.py --publish-from ... --archive CHECKOUT`; `evaluation/archive_policy.py`), **before** the publisher is called: the publisher requires the archive's accepted ids to include the submission's head commit.
 
-* `results/policy-submissions/<head>/Policy.lean` (the submitted file, byte for byte), `policy.json` (the policy as the boards price it, with its digest) and `verification.json` (the mirror's envelope and ForShor's printed document), and one entry in `leaderboard/policy-submissions.json` (`schema: forshor.policy-archive/v1`; `policy_id` = head commit, `digest`, `mode`, `board`, `sha256` of the file, `source{repository, pr_number, github_login, run_id, created_at}`).
+* `results/policy-submissions/<head>/Policy.lean` (the submitted file, byte for byte), `summary.tex` (only when the PR has one: byte for byte, never compiled; the publish job fetches it at the head commit and refuses unless the verification carries the same file), `policy.json` (the policy as the boards price it, with its digest) and `verification.json` (the mirror's envelope and ForShor's printed document), and one entry in `leaderboard/policy-submissions.json` (`schema: forshor.policy-archive/v1`; `policy_id` = head commit, `digest`, `mode`, `board`, `sha256` of the file, `summarySha256` (only with a summary), `source{repository, pr_number, github_login, run_id, created_at}`).
 * It is a separate index from the table-generation archive's `leaderboard/results.json`: that index's writer (`table_generation_report.js`) drops entries that have no table results, so policy entries must not go in it. `publish_v2._archive_view` reads the union of the two for the accepted ids; the older flow is untouched.
 * The source is not taken from the verification (an artifact of the untrusted job) alone: the publish job fetches `Policy.lean` at `--head-sha` from the GitHub contents API and refuses (stage `archive`) unless it equals the verification's `leanSource`.
 * Idempotent: the same head and file is a no-op (a re-run after a failed publish adds nothing); the same head with a different file is refused. A push that loses a race is retried from the branch's new tip (4 attempts).

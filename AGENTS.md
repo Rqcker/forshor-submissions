@@ -9,7 +9,8 @@ and a recursive gate-count planner over the accepted `PhaseProduct` tables.
 
 A file declaring `namespace PolicySubmission` or `namespace PTPPolicySubmission`
 uses the v2 complete-policy route. Only `TableGeneration/Submission/Policy.lean`
-may change. Both modes receive Lean/exact-width verification and resource pricing;
+and the optional `TableGeneration/Submission/summary.tex` (a LaTeX summary for
+people to read: see `docs/POLICY_CI.md`, never compiled) may change. Both modes receive Lean/exact-width verification and resource pricing;
 PhaseProduct enters the PP and full boards, and PhaseTripleProduct enters PTP.
 Use `docs/POLICY_CI.md` and `evaluation/INTAKE_FOR_CI.md` for this route.
 
