@@ -120,11 +120,25 @@ async function tellPublicationIncomplete({ github, context, core, state, author 
   }
 }
 
-async function finalize({ github, context, core, outcome }) {
+async function readCheck(github, params, waitForRetry) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await github.rest.checks.get(params);
+    } catch (error) {
+      // A check created by this job can briefly return 404 on readback. Retry
+      // the same ID; never create a replacement or bypass the ownership guard.
+      if (error.status !== 404 || attempt >= 3) throw error;
+      await waitForRetry(1000 * 2 ** attempt);
+    }
+  }
+}
+
+async function finalize({ github, context, core, outcome,
+  waitForRetry = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)) }) {
   if (!fs.existsSync(STATE)) return; // Source did not pass trusted PR resolution.
   const state = JSON.parse(fs.readFileSync(STATE, 'utf8'));
   // An older finally/retry cannot overwrite the check now owned by a newer run.
-  const { data: check } = await github.rest.checks.get({ ...context.repo, check_run_id: state.checkId });
+  const { data: check } = await readCheck(github, { ...context.repo, check_run_id: state.checkId }, waitForRetry);
   // GitHub rewrites details_url for checks created by the Actions app. Bind the
   // owner through external_id, which GitHub preserves, not that display URL.
   if (state.detailsUrl !== workflowUrl(context)
