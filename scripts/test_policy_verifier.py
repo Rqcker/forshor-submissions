@@ -124,5 +124,155 @@ class PolicyVerifier(unittest.TestCase):
         self.assertEqual(code, 1)
 
 
+HOSTILE = ("\\documentclass{article}\n\\immediate\\write18{touch CANARY}\n\\input{/etc/passwd}\n@everyone <script>alert(1)</script> ```\n" + "x" * 60000 + "\r\n\tend\n")
+
+
+def carrying_stub(tmp: Path, wrong: bool = False) -> list:
+    """An intake stand-in that behaves like the real one with --summary: the verification carries the hash of the file it was given (`wrong`: of another file)."""
+    script = tmp / "stub_intake2.py"
+    script.write_text("import hashlib, json, sys\n"
+                      "a = sys.argv\n"
+                      "digest = hashlib.sha256(open(a[a.index('--summary') + 1], 'rb').read() + (b'x' if " + repr(wrong) + " else b'')).hexdigest() if '--summary' in a else None\n"
+                      "o = {'verified': True, 'policy': {'digest': 'a' * 64, 'mode': 'PhaseProduct', 'bands': 1, 'forshorPolicy': True}}\n"
+                      "open(a[a.index('--out') + 1], 'w').write(json.dumps(o))\n"
+                      "open(a[a.index('--verification-out') + 1], 'w').write(json.dumps({'summarySha256': digest}))\n"
+                      "open('args.json', 'w').write(json.dumps(a))\n")
+    return [sys.executable, str(script)]
+
+
+class OptionalSummary(unittest.TestCase):
+    """The optional TableGeneration/Submission/summary.tex: the rules are enforced here (never by compiling), it rides along to the intake as a path, it cannot be submitted
+    alone, and nothing else may be added beside it."""
+
+    def setUp(self):
+        self.t = tempfile.TemporaryDirectory()
+        self.tmp = Path(self.t.name)
+        self.repo = self.tmp / "repo"
+        (self.repo / "TableGeneration/Submission").mkdir(parents=True)
+        (self.repo / pv.SUBMISSION).write_text(PP)
+        self.out = self.tmp / "out"
+        (self.tmp / "forshor").mkdir()
+        self.env = {"FORSHOR_TREE": str(self.tmp / "forshor")}
+
+    def tearDown(self):
+        self.t.cleanup()
+
+    def summary_path(self):
+        return self.repo / pv.SUMMARY
+
+    def run_pv(self, files=None, intake=None, preflight=False, env=None):
+        files = [pv.SUBMISSION, pv.SUMMARY] if files is None else files
+        code = pv.run(self.repo, self.out, get_changed_files=lambda repo: (True, files, "Compared base...head."), env=self.env if env is None else env,
+                      intake=intake or carrying_stub(self.tmp), preflight=preflight)
+        return code, json.loads((self.out / "table-generation-submission-result.json").read_text())
+
+    def test_the_summary_path_is_the_agreed_one_and_the_rules_are_the_shared_module(self):
+        self.assertEqual(pv.SUMMARY, "TableGeneration/Submission/summary.tex")
+        self.assertIs(pv.summary_tex.problem, __import__("summary_tex").problem)
+
+    def test_policy_only_is_unchanged_and_runs_no_summary_option(self):
+        code, result = self.run_pv(files=[pv.SUBMISSION], intake=stub(self.tmp, {"verified": True, "policy": {"digest": "a" * 64, "mode": "PhaseProduct", "bands": 1, "forshorPolicy": True}}))
+        self.assertEqual((code, result["status"]), (0, "success"))
+        self.assertIsNone(result["summary"])
+        self.assertNotIn("--summary", json.loads((self.repo / "args.json").read_text()))
+        self.assertEqual([c["name"] for c in result["checks"]], ["changed files", "policy"], "no summary check is reported when there is no summary")
+
+    def test_policy_and_summary_pass_the_file_by_path_and_record_its_hash(self):
+        self.summary_path().write_bytes(HOSTILE.encode())
+        code, result = self.run_pv()
+        self.assertEqual((code, result["status"]), (0, "success"), result["checks"])
+        args = json.loads((self.repo / "args.json").read_text())
+        self.assertEqual(args[args.index("--summary") + 1], str(self.repo.resolve() / pv.SUMMARY))
+        import hashlib
+        self.assertEqual(result["summary"], {"sha256": hashlib.sha256(HOSTILE.encode()).hexdigest(), "bytes": len(HOSTILE.encode())})
+        self.assertEqual([c["name"] for c in result["checks"]], ["changed files", "summary", "policy"])
+        self.assertIn("never compiled or run", result["checks"][1]["details"])
+
+    def test_a_summary_alone_is_not_a_submission(self):
+        self.summary_path().write_text("hello\n")
+        code, result = self.run_pv(files=[pv.SUMMARY])
+        self.assertEqual(code, 1)
+        self.assertEqual(result["checks"][0]["name"], "changed files")
+        self.assertTrue(result["checks"][0]["details"].startswith("a submission needs a policy"), result["checks"][0]["details"])
+        self.assertFalse((self.repo / "args.json").exists(), "nothing ran")
+
+    def test_nothing_else_may_be_added_beside_the_pair(self):
+        self.summary_path().write_text("hello\n")
+        for extra in ("TableGeneration/Submission/notes.tex", "TableGeneration/Submission/Policy/summary.tex", "TableGeneration/Submission/Policy/Helper.lean", "README.md",
+                      ".github/workflows/x.yml", "TableGeneration/Submission/Summary.tex"):
+            code, result = self.run_pv(files=[pv.SUBMISSION, pv.SUMMARY, extra])
+            self.assertEqual(code, 1, extra)
+            self.assertTrue(result["checks"][0]["details"].startswith("only TableGeneration/Submission/Policy.lean"), result["checks"][0]["details"])
+            self.assertIn(extra, result["checks"][0]["details"])
+            self.assertEqual(len(result["checks"]), 1, "the summary is not even looked at when the file list is wrong")
+
+    def test_each_rule_names_itself_and_stops_before_any_lean(self):
+        cases = {"symlink": "symbolic link", "directory": "not a directory", "oversize": "limit is 102,400", "latin1": "must be UTF-8", "nul": "U+0000", "escape": "U+001B", "empty": "is empty"}
+        for name, expected in cases.items():
+            path = self.summary_path()
+            if path.is_symlink() or path.is_file():
+                path.unlink()
+            elif path.is_dir():
+                path.rmdir()
+            if name == "symlink":
+                (self.tmp / "real.tex").write_text("fine\n")
+                path.symlink_to(self.tmp / "real.tex")
+            elif name == "directory":
+                path.mkdir()
+            else:
+                path.write_bytes({"oversize": b"a" * 102401, "latin1": b"caf\xe9\n", "nul": b"a\x00b\n", "escape": b"a\x1b[31mb\n", "empty": b""}[name])
+            (self.repo / "args.json").unlink(missing_ok=True)
+            code, result = self.run_pv()
+            self.assertEqual(code, 1, name)
+            failing = [c for c in result["checks"] if c["status"] == "failure"]
+            self.assertEqual([c["name"] for c in failing], ["summary"], name)
+            self.assertIn(expected, failing[0]["details"], name)
+            self.assertIn("summary.tex", failing[0]["details"])
+            self.assertFalse((self.repo / "args.json").exists(), f"{name}: the intake did not run")
+            self.assertIsNone(result["verification"])
+
+    def test_a_deleted_summary_in_the_file_list_is_refused(self):
+        code, result = self.run_pv()           # listed as changed, absent on disk
+        self.assertEqual(code, 1)
+        self.assertIn("deleted or renamed", result["checks"][-1]["details"])
+
+    def test_the_preflight_checks_the_summary_too_and_runs_no_lean(self):
+        self.summary_path().write_bytes(b"a\x00")
+        code, result = self.run_pv(preflight=True, env={})
+        self.assertEqual((code, result["phase"]), (1, "preflight"))
+        self.assertEqual(result["checks"][-1]["name"], "summary")
+        self.summary_path().write_text("fine\n")
+        code, result = self.run_pv(preflight=True, env={})
+        self.assertEqual((code, result["phase"]), (0, "preflight"))
+
+    def test_a_verification_that_does_not_carry_the_checked_file_is_not_a_success(self):
+        self.summary_path().write_text("hello\n")
+        code, result = self.run_pv(intake=carrying_stub(self.tmp, wrong=True))
+        self.assertEqual(code, 1)
+        self.assertIn("does not carry the summary", result["checks"][-1]["details"])
+        self.assertIsNone(result["verification"])
+
+    def test_the_summary_is_never_compiled_or_executed(self):
+        """The only subprocess the verifier starts is the intake command; the TeX in the file is not run, and the intake is handed a path, never the text."""
+        self.summary_path().write_bytes(HOSTILE.encode())
+        started = []
+        real = pv.subprocess.run
+
+        def recording(cmd, *a, **k):
+            started.append(list(cmd))
+            return real(cmd, *a, **k)
+        pv.subprocess.run = recording
+        try:
+            code, _ = self.run_pv()
+        finally:
+            pv.subprocess.run = real
+        self.assertEqual(code, 0)
+        self.assertEqual(len(started), 1, started)
+        self.assertEqual(Path(started[0][1]).name, "stub_intake2.py")
+        self.assertFalse(any("tex" in Path(part).name.lower() and Path(part).name != "summary.tex" for part in started[0][:2]), "no TeX engine")
+        self.assertFalse(any("write18" in part for part in started[0]), "the text itself is not in the command line")
+        self.assertFalse(list(self.tmp.rglob("CANARY")), "nothing ran the \\write18 line")
+
+
 if __name__ == "__main__":
     unittest.main()

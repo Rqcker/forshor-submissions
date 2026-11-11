@@ -409,6 +409,7 @@ def test_the_command_line_archives_with_the_head_sha_the_run_and_the_githubs_cop
     seen = {}
     monkeypatch.setenv("GH_TOKEN", "gh-token")
     monkeypatch.setattr(archive_policy, "github_source", lambda head, token, req: seen.update(source=(head, token)) or "SRC")
+    monkeypatch.setattr(archive_policy, "github_summary", lambda head, token, req: seen.update(summary=(head, token)) or "SUMMARY")
     monkeypatch.setattr(archive_policy, "archive_policy", lambda checkout, v, **kw: seen.update(archive=(checkout, kw)) or {"path": "p", "commit": "c" * 40, "added": True})
     def publish(v, **kw):
         kw["archive_write"](v)
@@ -419,9 +420,92 @@ def test_the_command_line_archives_with_the_head_sha_the_run_and_the_githubs_cop
     code = intake_v2.main(["--publish-from", str(verification), "--login", "tester", "--pull", "7", "--head-sha", "a" * 40, "--run-id", "5", "--publisher-url", "http://x",
                            "--archive", str(tmp_path / "arch")])
     assert code == 0
-    assert seen["source"] == ("a" * 40, "gh-token")
+    assert seen["source"] == ("a" * 40, "gh-token") and seen["summary"] == ("a" * 40, "gh-token"), "the summary is read at the same head commit, with the same token"
     checkout, kw = seen["archive"]
-    assert checkout == tmp_path / "arch" and kw["source"] == "SRC" and kw["head_sha"] == "a" * 40 and kw["run_id"] == "5" and kw["pull"] == 7 and kw["token"] == "gh-token"
+    assert checkout == tmp_path / "arch" and kw["source"] == "SRC" and kw["summary"] == "SUMMARY" and kw["head_sha"] == "a" * 40 and kw["run_id"] == "5" and kw["pull"] == 7 and kw["token"] == "gh-token"
     monkeypatch.setattr(intake_v2, "publish_verification", lambda v, **kw: kw["archive_write"](v))
     assert intake_v2.main(["--publish-from", str(verification), "--login", "tester", "--pull", "7", "--publisher-url", "http://x", "--archive", str(tmp_path / "arch")]) == 1, \
         "archiving without a head sha and run id is refused"
+
+
+# ---- the optional summary.tex: data that rides along with a Lean submission and never changes what is verified
+HOSTILE = ("\\documentclass{article}\n\\immediate\\write18{touch CANARY}\n\\input{/etc/passwd}\n@everyone <script>alert(1)</script>\n" + "x" * 60000 + "\r\n\tend \u00e9\n")
+LEAN = "namespace PolicySubmission\n-- the file\n"
+
+
+def lean_world(monkeypatch, policy_doc):
+    monkeypatch.setattr(intake_v2, "policy_from_lean", lambda eng, t, tree, workdir, timeout=7200: (policy_doc, {"printed": True}))
+    monkeypatch.setattr(intake_v2, "forshor_record", lambda eng, P, doc, pin: {"verified": True, "bandsAgree": True, "irPriceAgrees": True, "claim": "c", "forshorCommit": pin})
+
+
+def verify_with(tmp_path, summary):
+    return intake_v2.verify_submission(None, lean_policy=LEAN, summary=summary, login="tester", tree=tmp_path, workdir=tmp_path / "w", forshor_tree=tmp_path / "f",
+                                       run_mirror_fn=archived_mirror([]), log=lambda s: None)
+
+
+def test_the_summary_is_carried_as_data_and_cannot_change_the_policy_digest(monkeypatch, tmp_path, policy_doc):
+    import hashlib
+    lean_world(monkeypatch, policy_doc)
+    without = verify_with(tmp_path, None)
+    with_it = verify_with(tmp_path, HOSTILE)
+    assert "summarySource" not in without and "summarySha256" not in without
+    assert with_it["summarySource"] == HOSTILE and with_it["summarySha256"] == hashlib.sha256(HOSTILE.encode()).hexdigest() and with_it["summaryBytes"] == len(HOSTILE.encode())
+    for key in ("digest", "policy", "printed", "envelope", "forshor", "mode", "board", "leanSha256"):
+        assert with_it[key] == without[key], f"{key}: the summary changed what was verified"
+
+
+def test_a_summary_that_breaks_a_rule_is_refused_before_anything_is_built(monkeypatch, tmp_path):
+    monkeypatch.setattr(intake_v2, "policy_from_lean", lambda *a, **k: pytest.fail("ForShor must not run for a refused summary"))
+    for bad, text in (("limit", "a" * 102401), ("UTF-8", "bad \udcff\n"), (r"U\+0000", "a\x00b"), ("empty", " \n")):
+        with pytest.raises(intake_v2.Refused, match=bad) as e:
+            verify_with(tmp_path, text)
+        assert e.value.stage == "summary"
+    with pytest.raises(intake_v2.Refused, match="never alone"):
+        intake_v2.verify_submission({"mode": "pair"}, summary="x\n", login="tester", tree=tmp_path, workdir=tmp_path / "w", log=lambda s: None)
+
+
+def test_the_publish_step_checks_a_carried_summary_again(monkeypatch, tmp_path, model, policy_doc):
+    import archive_policy
+    lean_world(monkeypatch, policy_doc)
+    v = verify_with(tmp_path, HOSTILE)
+    calls = []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
+    def publish(verification):
+        return intake_v2.publish_verification(json.loads(json.dumps(verification)), login="tester", pull=7, url="http://x", token="t", workdir=tmp_path / "w2", head_sha="a" * 40,
+                                              run_id="1", archive_commit="a" * 40, log=lambda s: None)
+    assert publish(v)["policy"]["digest"] == v["digest"]
+    for mutate in (lambda x: x.update(summarySha256="0" * 64), lambda x: x.update(summaryBytes=1), lambda x: x.pop("summaryBytes"), lambda x: x.pop("summarySha256"),
+                   lambda x: x.update(summarySource="a\x00b", summarySha256=archive_policy.sha256("a\x00b"), summaryBytes=3), lambda x: x.update(summarySource=5)):
+        forged = json.loads(json.dumps(v))
+        mutate(forged)
+        with pytest.raises(intake_v2.Refused) as e:
+            publish(forged)
+        assert e.value.stage == "summary"
+    only_hash = json.loads(json.dumps(v))
+    for key in ("summarySource", "summarySha256", "summaryBytes"):
+        only_hash.pop(key)
+    only_hash["leanSource"] = LEAN
+    assert publish(only_hash)["policy"]["digest"] == v["digest"], "no summary at all is the ordinary submission"
+
+
+def test_the_command_line_reads_the_summary_as_bytes_and_refuses_a_bad_one_before_any_work(monkeypatch, tmp_path, capsys):
+    lean = tmp_path / "Policy.lean"
+    lean.write_text(LEAN)
+    summary = tmp_path / "summary.tex"
+    summary.write_bytes(HOSTILE.encode())
+    seen = {}
+    monkeypatch.setattr(intake_v2, "verify_submission", lambda doc, **kw: seen.update(kw) or {"digest": "d" * 16, "mode": "pair", "policy": {"bands": []}, "forshor": None, "printed": None})
+    base = ["--lean-policy", str(lean), "--no-publish", "--login", "u", "--tree", str(tmp_path), "--forshor-tree", str(tmp_path), "--workdir", str(tmp_path / "w"),
+            "--verification-out", str(tmp_path / "v.json")]
+    assert intake_v2.main([*base, "--summary", str(summary)]) == 0
+    assert seen["summary"] == HOSTILE and "\r\n" in seen["summary"], "bytes in, bytes out: the carriage return survives"
+    seen.clear()
+    summary.write_bytes(b"a\x00b")
+    assert intake_v2.main([*base, "--summary", str(summary), "--out", str(tmp_path / "r.json")]) == 1
+    assert seen == {} and json.loads((tmp_path / "r.json").read_text())["stage"] == "summary"
+    summary.unlink()
+    summary.symlink_to(lean)
+    assert intake_v2.main([*base, "--summary", str(summary), "--out", str(tmp_path / "r.json")]) == 1
+    assert "symbolic link" in json.loads((tmp_path / "r.json").read_text())["reason"] and seen == {}
+    with pytest.raises(SystemExit):                                             # a summary with a JSON policy, or with --publish-from, is a usage error
+        intake_v2.main(["--policy", str(lean), "--summary", str(summary), "--login", "u", "--tree", str(tmp_path), "--no-publish"])

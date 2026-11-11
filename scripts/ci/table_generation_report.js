@@ -17,10 +17,13 @@ const RESULT_MARKER = '<!-- table-generation-submission-result -->';
 const SUBMISSION_BASE_REF = 'main';
 const SUBMISSION_POLICY_FILE = 'TableGeneration/Submission/Policy.lean';
 const SUBMISSION_HELPER_PREFIX = 'TableGeneration/Submission/Policy/';
+// The optional LaTeX summary of a policy: exactly this path, never anything beside it (notes.tex, Policy/*.tex, ...). Text for people: no workflow compiles it.
+const SUBMISSION_SUMMARY_FILE = 'TableGeneration/Submission/summary.tex';
 
 function isAdmittedSubmissionPath(path) {
   return (
     path === SUBMISSION_POLICY_FILE ||
+    path === SUBMISSION_SUMMARY_FILE ||
     (path.startsWith(SUBMISSION_HELPER_PREFIX) && path.endsWith('.lean'))
   );
 }
@@ -93,13 +96,14 @@ async function resolveTrustedPullRequest(github, context, workflowRun) {
     throw refuse(
       `Pull request #${pr.number} changes files outside the submission surface ` +
         `(${foreign.join(', ')}). The verification run cannot be trusted to have ` +
-        'used the base workflow; refusing to archive.'
+        'used the base workflow; refusing to archive. A submission may change only ' +
+        `${SUBMISSION_POLICY_FILE} and the optional ${SUBMISSION_SUMMARY_FILE}.`
     );
   }
   if (!names.includes(SUBMISSION_POLICY_FILE)) {
     throw refuse(
       `Pull request #${pr.number} does not change ${SUBMISSION_POLICY_FILE}; ` +
-        'a submission must replace the policy implementation. Refusing to archive.'
+        'a submission must replace the policy implementation (a summary.tex alone is not a submission). Refusing to archive.'
     );
   }
   return { number: pr.number, headSha };
@@ -500,4 +504,5 @@ module.exports = {
   reportPullRequestResult,
   resolveTrustedPullRequest,
   isAdmittedSubmissionPath,
+  SUBMISSION_SUMMARY_FILE,
 };

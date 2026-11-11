@@ -32,6 +32,14 @@ scientific model come from the fetched main commit. Only the editable submission
 file and allowed Lean helpers are copied into that checker. Symlinks and changes
 outside the submission boundary are rejected.
 
+A policy submission may also carry an optional LaTeX summary,
+`TableGeneration/Submission/summary.tex`. `check` validates it with the same rules
+as the hosted check before anything is built (a regular file, UTF-8, at most
+100 KiB, no control characters except tab and line breaks; it cannot be
+submitted without a policy, and nothing else may accompany the pair), and
+`submit` commits it with the policy when it exists. The CLI never compiles or
+renders it. `status` is unchanged.
+
 A local snapshot commit is made only inside the generated checker so the trusted
 changed-file check has concrete base/head identities. `check` leaves your original
 branch, index and source commits alone. A successful receipt includes the fetched

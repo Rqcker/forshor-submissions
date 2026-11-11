@@ -28,7 +28,8 @@ const MAX_REASON_LINES = 25;
 const REPORTED = new Set(['failure', 'timed_out', 'cancelled', 'startup_failure']);
 const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 const SHA = /^[a-f0-9]{40}$/;
-const CHANGED_FILES_VERDICT = 'only TableGeneration/Submission/Policy.lean may change';
+// How the verifier words a changed-files rule it enforced (a verdict on the pull request). Any other failure of that check is a tool failure.
+const CHANGED_FILES_VERDICTS = ['only TableGeneration/Submission/Policy.lean', 'a submission needs a policy'];
 
 // Checks whose failure says nothing about the policy: the environment or a tool failed.
 const NOT_A_VERDICT = new Set(['trees', 'verification', 'verifier exception']);
@@ -37,8 +38,9 @@ const LIMIT_STAGES = new Set(['timeout', 'harness', 'killed', 'epoch', 'publishe
 
 // What each check or stage means, in plain words. Anything not listed is shown by its own (sanitised) name.
 const STAGES = {
-  'changed files': 'The pull request changes files other than the submission file. A submission may change only TableGeneration/Submission/Policy.lean.',
-  'changed files are allowed': 'The pull request changes files other than the submission file.',
+  'changed files': 'The pull request changes files other than the submission. A submission may change only TableGeneration/Submission/Policy.lean and, optionally, TableGeneration/Submission/summary.tex (a summary alone is not a submission).',
+  summary: 'The optional summary file TableGeneration/Submission/summary.tex broke one of its rules (a regular UTF-8 text file of at most 100 KiB, with no control characters other than tab and line breaks). This is about the file, not a verdict on your policy; the summary is never compiled or run.',
+  'changed files are allowed': 'The pull request changes files other than the submission file (a summary.tex alone, without a policy, is also refused here).',
   format: 'The file is not a valid ForShor policy submission (its format, size, widths or arity).',
   lexical: "The file was refused by ForShor's lexical gate.",
   forshor: "ForShor's Lean build or policy check did not pass.",
@@ -100,7 +102,7 @@ function classify({ conclusion, result }) {
   const stage = cleanName(failed[0].name);
   const details = String(failed[0].details ?? '');
   if (NOT_A_VERDICT.has(stage)) return { outcome: 'incomplete', cause: 'tool', stage, reason: details };
-  if (stage === 'changed files' && !details.startsWith(CHANGED_FILES_VERDICT)) return { outcome: 'incomplete', cause: 'tool', stage, reason: details };
+  if (stage === 'changed files' && !CHANGED_FILES_VERDICTS.some(prefix => details.startsWith(prefix))) return { outcome: 'incomplete', cause: 'tool', stage, reason: details };
   if (LIMIT_STAGES.has(stage)) return { outcome: 'incomplete', cause: 'limits', stage, reason: details };
   return { outcome: 'rejected', stage, reason: details };
 }
@@ -131,7 +133,9 @@ function buildComment({ outcome, login, headSha, runUrl, stage, reason, cause })
     const label = cleanName(stage);
     const what = STAGES[label] || `The check named "${neutralize(label, { chars: 60, lines: 1 })}" did not pass.`;
     return `${marker}\n### Submission not accepted\n\n`
-      + `${hello}your policy did not pass verification for commit \`${sha7(headSha)}\`.\n\n`
+      + (label === 'summary'
+        ? `${hello}commit \`${sha7(headSha)}\` was not accepted because its optional summary file breaks a rule. Your policy itself was not judged.\n\n`
+        : `${hello}your policy did not pass verification for commit \`${sha7(headSha)}\`.\n\n`)
       + `**What failed:** ${what}\n${fenced}\n`
       + 'Fix the problem and push a new commit to this pull request (a new commit starts a new check), or open a new submission pull request. '
       + '`./forshor check` runs the same checks on your machine, and `./forshor status` follows a hosted run. Published results are unchanged.\n\n'

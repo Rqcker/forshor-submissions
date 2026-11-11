@@ -21,6 +21,7 @@ import uuid
 REPO = 'zapatacomputing/forshor-submissions'
 DASHBOARD = 'https://forshor-staging-769861884059.us-central1.run.app'
 POLICY = 'TableGeneration/Submission/Policy.lean'
+SUMMARY = 'TableGeneration/Submission/summary.tex'
 HELPERS = 'TableGeneration/Submission/Policy/'
 POLICY_NAMESPACE = re.compile(r'^\s*namespace\s+(PTPPolicySubmission|PolicySubmission)\b', re.M)
 TREES = 'evaluation/policy-trees.json'
@@ -120,8 +121,37 @@ def allowed(path):
     return path == POLICY or (path.startswith(HELPERS) and path.endswith('.lean'))
 
 
+def summary_rules():
+    """The rules of the optional summary file, from the one definition the hosted verifier uses (`evaluation/summary_tex.py`, next to this script)."""
+    import importlib.util
+    path = Path(__file__).resolve().parent / 'evaluation' / 'summary_tex.py'
+    if not path.is_file():
+        raise UserError('This checkout predates summary.tex support. Fetch the latest main before adding a summary.')
+    spec = importlib.util.spec_from_file_location('forshor_summary_tex', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def check_summary(root, paths):
+    """The optional `summary.tex`: absent is fine; present it must be a regular UTF-8 text file within the limits (checked here exactly as the hosted check will, never compiled).
+    It goes with a policy only. Returns True when there is a summary to submit."""
+    path = Path(root) / SUMMARY
+    if os.path.lexists(path):
+        _, why = summary_rules().inspect_file(path)
+        if why:
+            raise UserError(why)
+    elif SUMMARY in paths:
+        raise UserError('summary.tex was deleted or renamed; a submission may only add it or edit it.')
+    else:
+        return False
+    if not policy_format(root) or (paths and POLICY not in paths):
+        raise UserError(f'A summary goes with a policy: {SUMMARY} cannot be submitted alone. Write your policy in {POLICY} first.')
+    return True
+
+
 def policy_format(root):
-    """True when the submission file is a ForShor policy (`namespace PolicySubmission` or `PTPPolicySubmission`): the policy format, in which that one file is the whole submission."""
+    """True when the submission file is a ForShor policy (`namespace PolicySubmission` or `PTPPolicySubmission`): the policy format, in which that file (and the optional summary.tex beside it) is the whole submission."""
     path = Path(root) / POLICY
     return path.is_file() and not path.is_symlink() and bool(POLICY_NAMESPACE.search(path.read_text(errors='replace')))
 
@@ -132,10 +162,12 @@ def validate_changes(root, base):
     raw = run(['git', 'status', '--porcelain=v1', '-z', '--untracked-files=all', '--no-renames'], cwd=root).stdout
     working = [entry[3:] for entry in raw.split('\0') if entry]
     paths = set(filter(None, committed + working))
+    if SUMMARY in paths or os.path.lexists(root / SUMMARY):
+        check_summary(root, paths)
     if policy_format(root):
-        bad = sorted(path for path in paths if path != POLICY)
+        bad = sorted(path for path in paths if path not in (POLICY, SUMMARY))
         if bad:
-            raise UserError(f'Only {POLICY} may change in a policy submission. Restore or move: ' + ', '.join(bad))
+            raise UserError(f'Only {POLICY} and the optional {SUMMARY} may change in a policy submission. Restore or move: ' + ', '.join(bad))
     else:
         bad = sorted(path for path in paths if not allowed(path))
         if bad:
@@ -150,7 +182,8 @@ def validate_changes(root, base):
 
 def source_files(root):
     if policy_format(root):
-        return [root / POLICY]
+        summary = root / SUMMARY
+        return [root / POLICY] + ([summary] if summary.is_file() and not summary.is_symlink() else [])
     files = [root / POLICY]
     helper = root / HELPERS
     if helper.exists():

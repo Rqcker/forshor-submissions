@@ -326,3 +326,54 @@ test('the publisher still runs this module\'s tests and keeps its own boundaries
   assert.match(publish, /node --test scripts\/test_notify_submitters\.js/);
   assert.doesNotMatch(publish, /pull_request_target/);
 });
+
+// ---- the optional summary.tex: its rules are named in plain words, and a summary-only pull request is told why
+test('classify: a broken summary rule is a rejection of the file, named "summary"; a changed-files verdict about the pair is a verdict', () => {
+  const rule = 'summary.tex is 120,000 bytes; the limit is 102,400 bytes (100 KiB).';
+  assert.deepEqual(notify.classify({ conclusion: 'failure', result: result(failed('summary', rule)) }), { outcome: 'rejected', stage: 'summary', reason: rule });
+  for (const details of ['only TableGeneration/Submission/Policy.lean (and the optional TableGeneration/Submission/summary.tex) may change; also changed: README.md',
+                         'a submission needs a policy: TableGeneration/Submission/summary.tex changed but TableGeneration/Submission/Policy.lean did not.']) {
+    assert.equal(notify.classify({ conclusion: 'failure', result: result([{ name: 'changed files', status: 'failure', details }]) }).outcome, 'rejected', details);
+  }
+});
+
+test('buildComment: a summary-rule rejection says it is about the file, not the policy, and shows the rule', () => {
+  const body = notify.buildComment({ outcome: 'rejected', login: 'contributor', headSha: HEAD, runUrl: RUN_URL, stage: 'summary',
+    reason: 'summary.tex contains the control character U+0000 (character 5); only tab, line feed and carriage return are allowed.' });
+  assert.match(body, /### Submission not accepted/);
+  assert.match(body, /@contributor, commit `a{7}` was not accepted because its optional summary file breaks a rule\. Your policy itself was not judged/);
+  assert.match(body, /summary\.tex contains the control character U\+0000/);
+  assert.match(body, /never compiled or run/);
+  assert.doesNotMatch(body, /your policy did not pass verification/);
+});
+
+test('buildComment: hostile summary text in a rule message cannot mention, break the fence or inject', () => {
+  const body = notify.buildComment({ outcome: 'rejected', login: 'contributor', headSha: HEAD, runUrl: RUN_URL, stage: 'summary',
+    reason: '```\n@everyone <script>alert(1)</script> \\write18{rm -rf /}\n```' });
+  assert.ok(!body.includes('@everyone'), 'mentions are neutralised');
+  assert.equal(body.split('```').length - 1, 2, 'the fence the comment opens is the only fence');
+});
+
+test('inspect: a summary-only pull request is refused from the API alone, in plain words', () => inTemp(async () => {
+  const w = world({ files: ['TableGeneration/Submission/summary.tex'] });
+  await notify.inspect(w);
+  assert.equal(w.outputs.process, 'true'); assert.equal(w.outputs.download, 'false');
+  const source = JSON.parse(fs.readFileSync('notify-source.json', 'utf8'));
+  assert.match(source.refusal, /summary\.tex alone is not a submission/);
+  await notify.post(w);
+  assert.match(w.comments.comments[0].body, /### Submission not accepted/);
+}));
+
+test('inspect: a policy with a notes.tex beside it is refused, naming the allowed pair', () => inTemp(async () => {
+  const w = world({ files: ['TableGeneration/Submission/Policy.lean', 'TableGeneration/Submission/summary.tex', 'TableGeneration/Submission/notes.tex'] });
+  await notify.inspect(w);
+  const source = JSON.parse(fs.readFileSync('notify-source.json', 'utf8'));
+  assert.match(source.refusal, /notes\.tex/); assert.match(source.refusal, /Policy\.lean and the optional .*summary\.tex/);
+}));
+
+test('inspect: a policy with its summary.tex is an ordinary submission pull request', () => inTemp(async () => {
+  const w = world({ files: ['TableGeneration/Submission/Policy.lean', 'TableGeneration/Submission/summary.tex'] });
+  await notify.inspect(w);
+  assert.equal(w.outputs.process, 'true'); assert.equal(w.outputs.download, 'true');
+  assert.equal(JSON.parse(fs.readFileSync('notify-source.json', 'utf8')).refusal, null);
+}));

@@ -43,6 +43,7 @@ sys.path.insert(0, str(HERE / "starter" / "pack" / "harness"))
 
 from publish import RetryPublication, request_json  # noqa: E402  (v1 helpers, unchanged)
 from publish_v2 import ModelMismatch, ReservedHandle, policy_name, publish_v2_with_recovery  # noqa: E402
+import summary_tex  # noqa: E402  (the shared rules for the optional summary.tex)
 
 REPO = "zapatacomputing/forshor-submissions"
 MAX_FORSHOR_K = 8           # a submission's bands take 2 <= k <= 8
@@ -213,7 +214,19 @@ VERIFICATION_SCHEMA = "forshor.policy-verification/v1"
 PUBLICATION_SCHEMA = "forshor.publication/v2"
 
 
-def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str, url: Optional[str] = None, token: str = "local", tree: Path, workdir: Path,
+def check_summary(summary: Optional[str], lean_policy: Optional[str]) -> None:
+    """The optional `summary.tex` text: the shared rules (`summary_tex.problem`), and it goes with a Lean policy only. Raises `Refused("summary", ...)`. The text is never
+    compiled, included or run by anything here: it is carried as data and archived verbatim."""
+    if summary is None:
+        return
+    if lean_policy is None:
+        raise Refused("summary", "a summary goes with a submitted Policy.lean, never alone")
+    why = summary_tex.problem(summary.encode("utf-8", "surrogatepass"))
+    if why:
+        raise Refused("summary", why)
+
+
+def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, summary: Optional[str] = None, login: str, url: Optional[str] = None, token: str = "local", tree: Path, workdir: Path,
                       forshor_tree: Optional[Path] = None, stage_timeout: Optional[int] = None, mirror_timeout: int = 7200,
                       run_mirror_fn: Optional[Callable[..., Dict[str, Any]]] = None, python: str = sys.executable,
                       log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
@@ -224,6 +237,7 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, log
     from export_v2.canon import policy_digest
     from export_v2.evidence import EvidenceStore, run_mirror
     from publish_v2 import HOUSE_HANDLE
+    check_summary(summary, lean_policy)                         # a rule of the summary file first: cheap, and not a verdict on the policy
     eng = engine.load()
     model = epoch.model_of()
     if login.lower() == HOUSE_HANDLE:                           # the reserved handle, before any compute (also offline)
@@ -271,6 +285,9 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, log
            "envelope": envelope, "forshor": forshor, "model": model, "login": login, "createdAt": _now()}
     if lean_policy is not None:                                 # what the archive stores; the publish job compares it with the file at the PR's head commit
         out.update(leanSource=lean_policy, leanSha256=hashlib.sha256(lean_policy.encode()).hexdigest())
+    if summary is not None:                                     # data only: nothing above read it, so it cannot have changed the digest or the verdict
+        raw = summary.encode("utf-8")
+        out.update(summarySource=summary, summarySha256=summary_tex.sha256(raw), summaryBytes=len(raw))
     return out
 
 
@@ -290,6 +307,12 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
         raise Refused("format", "not a policy verification")
     if v.get("login") != login:
         raise Refused("format", "the verification was made for another handle")
+    carried = [k for k in ("summarySource", "summarySha256", "summaryBytes") if k in v]
+    if carried:                                                 # all three or none, and the text is checked again here: the artifact is data, not a verdict
+        text = v.get("summarySource")
+        if len(carried) != 3 or not isinstance(text, str) or check_summary(text, v.get("leanSource")) is not None \
+                or v["summarySha256"] != summary_tex.sha256(text.encode("utf-8")) or v["summaryBytes"] != len(text.encode("utf-8")):
+            raise Refused("summary", "the verification's summary is inconsistent")
     if v.get("model") != model:
         raise ModelMismatch("the verification was made under another model than this checkout's")
     state_of = lambda: request_json(url.rstrip("/") + "/v2/state", token)
@@ -362,11 +385,11 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
 def run_intake(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str, pull: int, url: str, token: str, tree: Path, workdir: Path,
                head_sha: Optional[str] = None, run_id: Optional[str] = None, forshor_tree: Optional[Path] = None,
                stage_timeout: Optional[int] = None, mirror_timeout: int = 7200, archive_commit: Optional[str] = None,
-               archive_view: Optional[Callable[[], Any]] = None,
+               archive_view: Optional[Callable[[], Any]] = None, summary: Optional[str] = None,
                run_mirror_fn: Optional[Callable[..., Dict[str, Any]]] = None, python: str = sys.executable,
                log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
     """The pipeline above, verify then publish in one call. Returns the publisher's result. Raises `Refused`, `ReservedHandle`, `ModelMismatch`."""
-    v = verify_submission(policy_doc, lean_policy=lean_policy, login=login, url=url, token=token, tree=tree, workdir=workdir, forshor_tree=forshor_tree,
+    v = verify_submission(policy_doc, lean_policy=lean_policy, summary=summary, login=login, url=url, token=token, tree=tree, workdir=workdir, forshor_tree=forshor_tree,
                           stage_timeout=stage_timeout, mirror_timeout=mirror_timeout, run_mirror_fn=run_mirror_fn, python=python, log=log)
     return publish_verification(v, login=login, pull=pull, url=url, token=token, workdir=workdir, head_sha=head_sha, run_id=run_id,
                                 archive_commit=archive_commit, archive_view=archive_view, log=log)
@@ -376,6 +399,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--policy", type=Path, help="a policy as site policy JSON (the pack's format)")
     ap.add_argument("--lean-policy", type=Path, help="a submitted Policy.lean (ForShor's PolicyTemplate format); needs --forshor-tree. Exactly one of --policy, --lean-policy and --publish-from")
+    ap.add_argument("--summary", type=Path, help="the optional summary.tex that goes with --lean-policy: checked against the shared rules (evaluation/summary_tex.py), carried "
+                    "in the verification and archived verbatim. It is never compiled or run")
     ap.add_argument("--no-publish", action="store_true",
                     help="verify only (the reserved handle, ForShor's gate and build, the STO mirror, ForShor's check) and write a verification file; nothing is priced, nothing is "
                          "sent, no publisher or token is needed. This is `./forshor check`, and the untrusted half of CI")
@@ -399,6 +424,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     modes = [a.policy is not None, a.lean_policy is not None, a.publish_from is not None]
     if sum(modes) != 1:
         ap.error("give exactly one of --policy, --lean-policy and --publish-from")
+    if a.summary is not None and a.lean_policy is None:
+        ap.error("--summary goes with --lean-policy (the publish job takes the summary from the verification and the pull request's head commit)")
     if a.publish_from is not None:
         if a.no_publish:
             ap.error("--publish-from publishes: it cannot be combined with --no-publish")
@@ -409,6 +436,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             ap.error("--tree is required to verify")
         if not a.no_publish and (not a.publisher_url or a.pull is None):
             ap.error("publishing needs --publisher-url (or PUBLISHER_URL) and --pull; use --no-publish to verify only")
+    summary_text = None
+    if a.summary is not None:
+        data, why = summary_tex.inspect_file(a.summary)
+        if why or data is None:
+            result = {"refused": True, "stage": "summary", "reason": why or "summary.tex is missing"}
+            text = json.dumps(result, indent=1)
+            print(text)
+            if a.out:
+                a.out.write_text(text + "\n")
+            return 1
+        summary_text = data.decode("utf-8")               # bytes in, bytes out: no newline translation, so the hash is the file's
     token = os.environ.get("PUBLISHER_TOKEN", "local")
     archive_view = (lambda: __import__("publish_v2")._archive_view(a.archive)) if a.archive else None
     archive_write = None
@@ -419,14 +457,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                 raise ap_.ArchiveRefused("archiving needs --head-sha and --run-id")
             token_gh = os.environ["GH_TOKEN"]
             source = ap_.github_source(a.head_sha, token_gh, __import__("publish").request_json)
-            return ap_.archive_policy(a.archive, v, login=a.login, pull=a.pull, head_sha=a.head_sha, run_id=a.run_id, source=source, token=token_gh)
+            summary = ap_.github_summary(a.head_sha, token_gh, __import__("publish").request_json)   # None when the pull request has none
+            return ap_.archive_policy(a.archive, v, login=a.login, pull=a.pull, head_sha=a.head_sha, run_id=a.run_id, source=source, summary=summary, token=token_gh)
     try:
         if a.publish_from is not None:
             result = publish_verification(json.loads(a.publish_from.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=token, workdir=a.workdir,
                                           head_sha=a.head_sha, run_id=a.run_id, archive_commit=a.archive_commit, archive_view=archive_view,
                                           archive_write=archive_write)
         elif a.no_publish:
-            v = verify_submission(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, login=a.login,
+            v = verify_submission(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, summary=summary_text, login=a.login,
                                   url=a.publisher_url, token=token, tree=a.tree, workdir=a.workdir, forshor_tree=a.forshor_tree, stage_timeout=a.stage_timeout,
                                   mirror_timeout=a.mirror_timeout)
             path = a.verification_out or (a.workdir / "verification.json")
@@ -435,7 +474,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             result = {"verified": True, "verification": str(path), "policy": {"digest": v["digest"], "mode": v["mode"], "bands": len(v["policy"]["bands"]),
                       "stoMirror": True, "forshorPolicy": bool(v["forshor"]), "forshorChecked": v["printed"] is not None}}
         else:
-            result = run_intake(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, login=a.login,
+            result = run_intake(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, summary=summary_text, login=a.login,
                                 pull=a.pull, url=a.publisher_url, token=token, tree=a.tree, workdir=a.workdir, head_sha=a.head_sha, run_id=a.run_id, forshor_tree=a.forshor_tree,
                                 stage_timeout=a.stage_timeout, mirror_timeout=a.mirror_timeout, archive_commit=a.archive_commit, archive_view=archive_view)
         code = 0

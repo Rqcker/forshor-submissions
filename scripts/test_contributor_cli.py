@@ -81,13 +81,120 @@ class WorkingFiles(unittest.TestCase):
         helper = self.root / cli.HELPERS / 'Proof.lean'
         helper.parent.mkdir(parents=True)
         helper.write_text('a helper\n')
-        with self.assertRaisesRegex(cli.UserError, 'Only .*Policy.lean may change in a policy submission'):
+        with self.assertRaisesRegex(cli.UserError, 'Only .*Policy.lean and the optional .*summary.tex may change in a policy submission'):
             cli.validate_changes(self.root, self.base)
         self.assertEqual(cli.source_files(self.root), [self.root / cli.POLICY], 'a helper is never copied into the checker')
         helper.unlink()
         (self.root / 'protected.lean').write_text('changed\n')
         with self.assertRaisesRegex(cli.UserError, 'protected.lean'):
             cli.validate_changes(self.root, self.base)
+
+    # ---- the optional summary.tex
+    HOSTILE = '\\documentclass{article}\n\\immediate\\write18{touch CANARY}\n\\input{/etc/passwd}\n@everyone <script>alert(1)</script>\n' + 'x' * 60000 + '\r\n\tend\n'
+
+    def policy(self):
+        (self.root / cli.POLICY).write_text('import ForShor.X\nnamespace PolicySubmission\ndef policy := 1\nend PolicySubmission\n')
+
+    def test_summary_path_is_the_agreed_one(self):
+        self.assertEqual(cli.SUMMARY, 'TableGeneration/Submission/summary.tex')
+
+    def test_a_summary_with_a_policy_is_part_of_the_submission_and_of_its_fingerprint(self):
+        self.policy()
+        before = cli.fingerprint(self.root, self.base)
+        summary = self.root / cli.SUMMARY
+        summary.write_bytes(self.HOSTILE.encode())
+        self.assertEqual(cli.validate_changes(self.root, self.base), [cli.POLICY, cli.SUMMARY])
+        self.assertEqual(cli.source_files(self.root), [self.root / cli.POLICY, summary])
+        after = cli.fingerprint(self.root, self.base)
+        self.assertNotEqual(before, after)
+        summary.write_bytes(self.HOSTILE.encode() + b'x')
+        self.assertNotEqual(after, cli.fingerprint(self.root, self.base), 'editing the summary invalidates a passed check')
+
+    def test_a_policy_alone_is_unchanged(self):
+        self.policy()
+        self.assertEqual(cli.validate_changes(self.root, self.base), [cli.POLICY])
+        self.assertEqual(cli.source_files(self.root), [self.root / cli.POLICY])
+
+    def test_a_summary_alone_is_not_a_submission(self):
+        (self.root / cli.SUMMARY).write_text('only a summary\n')
+        with self.assertRaisesRegex(cli.UserError, 'cannot be submitted alone'):
+            cli.validate_changes(self.root, self.base)
+        self.policy()
+        git(self.root, 'add', cli.POLICY)
+        git(self.root, 'commit', '-m', 'a policy at the base')
+        base = git(self.root, 'rev-parse', 'HEAD')
+        (self.root / cli.SUMMARY).write_text('still only a summary\n')
+        with self.assertRaisesRegex(cli.UserError, 'cannot be submitted alone'):
+            cli.validate_changes(self.root, base)
+
+    def test_nothing_else_may_travel_with_the_pair(self):
+        self.policy()
+        (self.root / cli.SUMMARY).write_text('fine\n')
+        for extra in ('TableGeneration/Submission/notes.tex', cli.HELPERS + 'Helper.lean', cli.HELPERS + 'summary.tex', 'README.md'):
+            target = self.root / extra
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text('x\n')
+            with self.assertRaisesRegex(cli.UserError, 'Only .*Policy.lean and the optional .*summary.tex may change'):
+                cli.validate_changes(self.root, self.base)
+            target.unlink()
+
+    def test_every_summary_rule_is_checked_before_anything_is_built(self):
+        self.policy()
+        summary = self.root / cli.SUMMARY
+        cases = [('symbolic link', lambda: summary.symlink_to(self.root / 'protected.lean')),
+                 ('not a directory', lambda: summary.mkdir()),
+                 ('limit is 102,400', lambda: summary.write_bytes(b'a' * 102401)),
+                 ('must be UTF-8', lambda: summary.write_bytes(b'caf\xe9\n')),
+                 ('U\\+0000', lambda: summary.write_bytes(b'a\x00b\n')),
+                 ('is empty', lambda: summary.write_bytes(b''))]
+        for expected, make in cases:
+            if summary.is_symlink() or summary.is_file():
+                summary.unlink()
+            elif summary.is_dir():
+                summary.rmdir()
+            make()
+            with self.assertRaisesRegex(cli.UserError, expected):
+                cli.validate_changes(self.root, self.base)
+
+    def test_a_deleted_summary_is_refused(self):
+        self.policy()
+        (self.root / cli.SUMMARY).write_text('x\n')
+        git(self.root, 'add', '.')
+        git(self.root, 'commit', '-m', 'summary at the base')
+        base = git(self.root, 'rev-parse', 'HEAD')
+        (self.root / cli.SUMMARY).unlink()
+        with self.assertRaisesRegex(cli.UserError, 'deleted or renamed'):
+            cli.validate_changes(self.root, base)
+
+    def test_submit_commits_the_summary_with_the_policy(self):
+        self.policy()
+        (self.root / cli.SUMMARY).write_bytes(self.HOSTILE.encode())
+        git(self.root, 'switch', '-c', 'submission/with-summary')
+        digest = cli.fingerprint(self.root, self.base)
+        cli.write_state(self.root, {'checked': {'base': self.base, 'digest': digest}})
+        args = argparse.Namespace(watch=False, json=False, timeout=1, title='test')
+        calls = []
+        def fake_run(command, cwd=None, env=None, capture=True, check=True):
+            calls.append(command)
+            if command[:3] == ['gh', 'pr', 'list']:
+                return SimpleNamespace(stdout='[]', returncode=0)
+            if command[:3] == ['gh', 'api', 'user']:
+                return SimpleNamespace(stdout=json.dumps({'login': 'tester', 'id': 1}), returncode=0)
+            if command[:3] == ['gh', 'pr', 'create']:
+                return SimpleNamespace(stdout='https://github.com/zapatacomputing/forshor-submissions/pull/9\n', returncode=0)
+            return cli_run(command, cwd=cwd, env=env, capture=capture, check=check)
+        cli_run = cli.run
+        with patch.object(cli, 'authenticate'), patch.object(cli, 'repository', return_value=self.root), patch.object(cli, 'refresh_base', return_value=self.base), \
+                patch.object(cli, 'run', side_effect=fake_run), patch.object(cli, 'network_git'), patch.object(cli, 'validate_pr'), patch.object(cli, 'watch', return_value=0):
+            cli.submit(args)
+        self.assertEqual(sorted(git(self.root, 'show', '--name-only', '--format=', 'HEAD').splitlines()), [cli.POLICY, cli.SUMMARY])
+        self.assertEqual(subprocess.check_output(['git', 'show', f'HEAD:{cli.SUMMARY}'], cwd=self.root), self.HOSTILE.encode(), 'committed byte for byte')
+
+    def test_nothing_in_the_cli_runs_the_summary(self):
+        """The CLI hands the file to the verifier's copy as bytes; it never starts a TeX engine or anything else for it."""
+        source = (Path(__file__).parents[1] / 'forshor').read_text()
+        for word in ('pdflatex', 'xelatex', 'lualatex', 'latexmk', 'tectonic', 'write18', 'shell-escape'):
+            self.assertNotIn(word, source)
 
     def test_the_ptp_namespace_is_a_policy_file_too_and_a_symlink_is_not(self):
         (self.root / cli.POLICY).write_text('namespace PTPPolicySubmission\nend PTPPolicySubmission\n')

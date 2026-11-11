@@ -22,9 +22,28 @@ The archive carries a trusted verification receipt. Publisher retries may recove
 
 The policy archive is separate from the older `leaderboard/results.json` index. Model changes or any engine change require the epoch migration procedure; ordinary CI wiring must not alter scientific sources or the active model.
 
+## The optional summary (`TableGeneration/Submission/summary.tex`)
+
+A policy submission may carry a LaTeX summary of what the participant did, in one extra file: `TableGeneration/Submission/summary.tex`. It is text for people to read.
+
+* **Admitted paths.** A pull request may change `Policy.lean` and, optionally, exactly `summary.tex`. A pull request that changes only `summary.tex` is refused ("a submission needs a policy"). Every other extra path stays refused: `notes.tex`, anything under `Policy/` other than `.lean` helpers (which a policy submission does not take either), `README`, workflows. The same rule runs in the verify job (`scripts/policy_verifier.py`), in the trusted publish job (`scripts/ci/table_generation_report.js`, `scripts/ci/policy_publication.js`) and in `./forshor` (`forshor`), and the notifier words it in plain language.
+* **File rules** (one definition, `evaluation/summary_tex.py`; a violation is a rejection of the file with a message naming the rule, not a verdict on the policy): a regular file (no symlink, no directory); not empty; at most 100 KiB (102,400 bytes: about twenty-five dense pages, ten times anything worth reading, a tenth of the policy file's own limit); valid UTF-8; no control characters except tab, line feed and carriage return (so no NUL).
+* **Never executed.** **No workflow or script compiles, renders, includes or runs the LaTeX.** TeX can run shell commands (`\write18`) and read files (`\input{/etc/passwd}`), so the file is only ever read as bytes, stored verbatim and shown as text. It cannot change verification: the policy's digest is computed from the policy alone, and the summary is carried beside it.
+* **Flow.** The verify job reads the file from the submission checkout and records `summarySource`, `summarySha256` and `summaryBytes` in `verification.json`. The trusted publish job takes the identity (pull request, head commit, author) from the GitHub API, fetches `summary.tex` at the head commit through the contents API exactly as it does `Policy.lean`, and refuses unless the verification carries the same text, in both directions (a summary on one side only is refused). `evaluation/archive_policy.py` then writes it verbatim to `results/policy-submissions/<head>/summary.tex` on `submission-results`, records `summarySha256` in the index entry, and a re-run is a no-op. The v2 publisher contract and the site are unchanged; a link from the policy dialog to the archived summary is a follow-up.
+
+### Validating the summary live, after the merge
+
+What can be tested before the merge is everything that does not need the default-branch workflows: the unit and trust suites above, the local intake (`evaluation/intake_v2.py --lean-policy ... --summary ... --no-publish`) and the archive round trip against a local bare repository. The pull-request verify job runs the verifier from the PR's **base** commit and the publish and notify workflows (`workflow_run`) run their **default-branch** versions, so until this change is on `main` a hosted run still refuses a `summary.tex`. After the merge, on the staging publisher:
+
+1. Warm the environments as for a normal rehearsal. Open a throwaway PR (a deliberate test handle) with the supplied `seed_pp_S707dd51bf951.Policy.lean` as `Policy.lean` **and** a small `TableGeneration/Submission/summary.tex` (for instance `examples/summary.tex` from the starter pack, plus a line of hostile text such as `\immediate\write18{touch /tmp/x}`).
+2. Expect the verify job to pass, its artifact `verification.json` to carry `summarySha256` and `summaryBytes`, and the step summary to say the summary is kept as text and never compiled. Expect no TeX process in any log.
+3. Expect the publish job to archive `results/policy-submissions/<head>/summary.tex` byte-identical to the PR's file (compare `git show submission-results:...` with the PR's blob), the `leaderboard/policy-submissions.json` entry to carry `summarySha256`, and the policy row to be unchanged from the same PR without the summary (same digest).
+4. Re-run the publish job: expect "already archived", no new commit on `submission-results`.
+5. Negative PRs, one each, with the expected comment from the notifier: `summary.tex` alone (a submission needs a policy), a `notes.tex` beside the pair (names the allowed pair), an oversize file, a file with a NUL byte, a symlink (the summary rule named in plain words).
+
 ## Hosted rehearsal
 
-First warm the policy environments on `main`. Open a PR containing only the supplied `seed_pp_S707dd51bf951.Policy.lean` as `TableGeneration/Submission/Policy.lean`. Confirm both PR checks, archived source and evidence, CLI status, and the PhaseProduct/full-board rows. Repeat with the supplied PhaseTripleProduct example. A published row remains in the ledger, so use a deliberate test handle. Test failed verification and publisher retry without replacing the valid snapshot.
+First warm the policy environments on `main`. Open a PR containing only the supplied `seed_pp_S707dd51bf951.Policy.lean` as `TableGeneration/Submission/Policy.lean` (and, once, the same PR with a small `summary.tex` beside it: the archive then holds `summary.tex` and the entry a `summarySha256`). Confirm both PR checks, archived source and evidence, CLI status, and the PhaseProduct/full-board rows. Repeat with the supplied PhaseTripleProduct example. A published row remains in the ledger, so use a deliberate test handle. Test failed verification and publisher retry without replacing the valid snapshot.
 
 Tracking: [QP-436](https://linear.app/zapata-quantum/issue/QP-436), [QP-437](https://linear.app/zapata-quantum/issue/QP-437).
 
