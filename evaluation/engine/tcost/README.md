@@ -79,8 +79,11 @@ The score is a Qualtran closed form evaluated at n. It never comes from a decomp
 One Qualtran inconsistency is corrected. With a symbolic width, Qualtran's `XorK(1)` (inside
 `Negate = BitwiseNot + AddK(1)`) charges W X gates instead of 1. A symbolic `Negate` therefore
 reports 10W − 10 Cliffords against 8W − 8 for its concrete decomposition (T is unaffected).
-`bloqs.NegateW` decomposes to Qualtran's `Negate` but attests the concrete call graph
-(`BitwiseNot + 2 X + Add`), so symbolic and concrete agree for every W.
+`bloqs.NegateW` is not Qualtran's `Negate` (since 2026-11-10): it is ForShor's `oneQubit` negation, the charge the full
+order-finding run uses (complement plus Gidney's one-clean-ancilla increment: Toffoli 12W − 28 even W / 10W − 18 odd W,
+CNOT 17W − 22 / 17W − 5, X 5W − 3 / 5W + 1, one clean qubit; `tcost/negation.py`). It is atomic like `AddNegSrcW`, and its counts are
+written as a closed form (`Mod`, `Max`) so symbolic and concrete agree for every W. The old Qualtran `Negate` cost about 4(W − 1) T
+and 2W − 1 clean ancillas.
 
 ## One recursion level
 
@@ -159,7 +162,7 @@ a content hash of the archive and of the Lean-To-Qualtran sources, and the seed 
 | T0 width form | closed-form `nextSignedWidth` equals Lean's literal scan, every table, for w ∈ [k, 256] and every width (±2) any scored ladder visits |
 | T1 tensor action | QFT(z)·PP·IQFT(z) at φ = 2c/2^w is the permutation z ← z + c·x (triple: + c·x·y). The fully flattened circuit (every And, ZPowGate, adder, CNOT, extension qubit) is tensor-contracted at ≤ 10 external qubits: every leaf (pair w ≤ 5, triple w ≤ 3), forced pair Karatsuba levels, and a two-level chain |
 | T1d diagonal action | the same circuits at the non-dyadic φ = 3/7, contracted directly and compared with diag(exp(iπφ·x_s·z_s)) on **signed** operands. This catches sign-bit and pruned-cell errors that the dyadic QFT form cannot see |
-| T1b primitives | `ShiftL`/`ShiftR`/`NegateW`/`Extend` decompositions equal their classical action, exhaustively for W ≤ 6 |
+| T1b primitives | `ShiftL`/`ShiftR`/`Extend` decompositions equal their classical action, and the atomic `NegateW` declares two's-complement negation, exhaustively for W ≤ 6 |
 | T2 level phase | one forced level of every table at limb width 1 (and 2 for k ≤ 5) and at the first limb width where every child angle is nonzero (at limb m the radix 2^m is often a table point, leaving one live child), children acting as declared: exact phased classical simulation, exhaustive when there are at most 4096 inputs |
 | T3 cost seam | symbolic cost (substituted) equals the attested call graph equals the decomposition, in all 8 fields, for one level of every table and every leaf; plus one end-to-end flattening |
 | T4 ranking path | symbolic score equals concrete call-graph cost (every table as a constant policy, n ∈ {64, 2048}); planner's composed counts equal the score |

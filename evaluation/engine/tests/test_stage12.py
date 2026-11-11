@@ -125,12 +125,15 @@ def test_analytic_peak_equals_qualtran_qubitcount_of_the_tcost_bloq():
         assert 2 * w + qc.peak_extra(fa.to_l2q_full(P, "scan"), w, w) == fr.qubits(P.with_widths("scan"), w)
 
 
-def test_kmy_qualtran_peak_exceeds_the_lean_static_layout():
-    # KMY-PP3 has a negate: Qualtran Negate(QInt(698)) needs 2*698 - 1 ancillas; Lean's 2w + R has no room for them.
-    # Lean's own literal lowering needed cleanAnc = w + 1 = 699 for the negate (5,292 + 699 = 5,991, the pin before modular
-    # swap 001), and needs 1 since (5,292 + 1 = 5,293): the incrementer negation borrows one clean ancilla, not a w-bit register.
+def test_kmy_qualtran_peak_is_below_the_lean_static_layout_now_that_negation_holds_one_qubit():
+    # KMY-PP3 has a negate. Until 2026-11-10 tcost priced it as Qualtran Negate(QInt(w)), which holds 2w - 1 clean ancillas, and Qualtran's
+    # peak of KMY's policy (5,583) EXCEEDED Lean's static layout (5,292), which has no room for them. tcost now prices a negation as ForShor's
+    # `oneQubit` charge, one clean ancilla (the full run's): Qualtran's peak is 4,885 (2 x 2,048 + 789), BELOW the static layout, which is a
+    # worst-case allocation (every child slot has its own workspace). Lean's own literal lowering needed cleanAnc = w + 1 = 699 for the negate
+    # (5,292 + 699 = 5,991, the pin before modular swap 001), and needs 1 since (5,292 + 1 = 5,293).
     r = qc.pp_compare(fr.planned("kmy", tt.PAIR, 2048, 0.01, "scan")[0], 2048)     # Stage 12's comparison: scanned widths
-    assert (r["lean_static"], r["qualtran_tcost"], r["lean_qubit_count"]) == (5292, 5583, 5293)
+    assert (r["lean_static"], r["qualtran_tcost"], r["lean_qubit_count"]) == (5292, 4885, 5293)
+    assert r["qualtran_tcost"] < r["lean_static"]
     assert r["lean_qubit_count"] - r["lean_static"] == 1 and 5991 - 5292 == 698 + 1
 
 

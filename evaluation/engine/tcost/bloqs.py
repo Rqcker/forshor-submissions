@@ -9,7 +9,7 @@ conventions exactly as in the priced bloqs of Lean-To-Qualtran (`LeanPhaseProduc
     (top bit -2^(W-1)). The exponents are folded into (-1, 1], and the zero cells are skipped.
   * Each table op acts on ALL operand sides (2 for pair, 3 for triple) at the uniform child width
     W' = nextSignedWidth: addScaled -> `Add(QInt(W'))`, negSrc is one `Subtract(QInt(W'))` (`AddNegSrcW`),
-    negate -> `Negate(QInt(W'))`.
+    negate -> `NegateW(W')`, ForShor's `oneQubit` negation (as the full run prices it).
   * One recursion level has `pointCount(mode, k)` children with angles phi * c_l(2^limb).
 
 These items are new relative to Lean-To-Qualtran. All of them decompose, so the Q01 seam checks can run on them:
@@ -42,7 +42,7 @@ import attrs
 import numpy as np
 import sympy
 from qualtran import Bloq, BloqBuilder, QAny, QBit, QInt, QUInt, Register, Side, Signature, Soquet
-from qualtran.bloqs.arithmetic import Add, CAdd, Negate, Subtract
+from qualtran.bloqs.arithmetic import Add, CAdd, Subtract
 from qualtran.bloqs.basic_gates import CNOT, CZPowGate, Toffoli, ZPowGate
 from qualtran.bloqs.mcmt import And
 from qualtran.resource_counting import BloqCountDictT, SympySymbolAllocator
@@ -661,32 +661,41 @@ class ShiftR(Bloq):
 
 @attrs.frozen
 class NegateW(Bloq):
-    """Two's-complement negation of a QInt(W): the Qualtran `Negate`, with an exact statement of its call graph.
+    """Two's-complement negation of a QInt(W), priced as the full order-finding run prices it: ForShor's `oneQubit` negation (the
+    bitwise complement and Gidney's increment gate with ONE clean ancilla), with the counts of `tcost.negation.negate_counts`
+    (Toffoli 12W - 28 / 10W - 18, CNOT 17W - 22 / 17W - 5, X 5W - 3 / 5W + 1) and one clean ancilla.
 
-    In Qualtran, `Negate` = BitwiseNot + AddK(1), and AddK(1) = XorK(1) . Add . XorK(1). At concrete W,
-    XorK(1) is one X gate. But the SYMBOLIC XorK of Qualtran charges W, so a symbolic `Negate` reports 2W - 2
-    extra Cliffords (10W - 10 instead of 8W - 8). This wrapper attests the concrete structure for each W, so the
-    symbolic and concrete costs agree. It decomposes to the Qualtran `Negate` (the cost seam checks it).
-    """
+    Before 2026-11-10 this was the Qualtran `Negate` (about 4 (W - 1) T and 2 W - 1 clean ancillas), which made the PhaseProduct and
+    PhaseTripleProduct boards disagree with the full run for any policy whose table negates. It is atomic here, like `AddNegSrcW`:
+    its classical action is written out and its cost is the call graph below. The cost seam checks it against the full run's
+    `IncrementerNegate` (tests/test_negation_counts.py)."""
     W: object
 
     @cached_property
     def signature(self) -> Signature:
         return Signature([Register("x", QInt(self.W))])
 
-    def build_composite_bloq(self, bb: BloqBuilder, x: Soquet) -> Dict[str, Soquet]:
-        return {"x": bb.add(Negate(QInt(self.W)), x=x)}
-
     def build_call_graph(self, ssa: SympySymbolAllocator) -> BloqCountDictT:
-        from qualtran.bloqs.arithmetic import BitwiseNot
         from qualtran.bloqs.basic_gates import XGate
-        return {BitwiseNot(QInt(self.W)): 1, XGate(): 2, Add(QInt(self.W)): 1}
+        from .negation import negate_counts
+        r = negate_counts(self.W)
+        return {b: k for b, k in ((Toffoli(), r["toffoli"]), (CNOT(), r["cnot"]), (XGate(), r["x"])) if not (isinstance(k, int) and k == 0)}
 
     def on_classical_vals(self, x):
-        # Two's-complement negation mod 2^W, written out. (The `Negate` of qualtran 0.7.0 has no classical action.)
+        # Two's-complement negation mod 2^W, written out.
         W = int(self.W)
         v = (-int(x)) % (1 << W)
         return {"x": v - (1 << W) if v >= 1 << (W - 1) else v}
+
+    def my_static_costs(self, cost_key):
+        from qualtran.resource_counting import QubitCount
+        from .negation import CLEAN_ANCILLA
+        if isinstance(cost_key, QubitCount):
+            return self.W + CLEAN_ANCILLA                    # the register and the one clean ancilla
+        return NotImplemented
+
+    def __str__(self):
+        return f"NegateW({self.W})"
 
 
 @attrs.frozen

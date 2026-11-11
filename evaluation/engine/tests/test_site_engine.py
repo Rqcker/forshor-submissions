@@ -52,8 +52,10 @@ def test_library_pins(key, mode, want, scan):
 @pytest.mark.parametrize("key,want,scan", [("champions", 3_312_422_191.9647865, 15_693_043_332.862968),
                                            ("all_sto", 2_575_548_521.975925, 15_693_043_332.862968),
                                            ("dp", 2_574_587_561.975925, 12_068_904_014.841936),
-                                           ("kmy", 5_608_558_646.543741, 38_357_893_759.1274)])
+                                           ("kmy", 5_619_387_662.543741, 38_363_595_727.1274)])
 def test_ptp_grid_leaf_pins_are_the_stage13_numbers(key, want, scan):
+    # kmy: was 5_608_558_646.543741 / 38_357_893_759.1274 until the 2026-11-10 negation change (+10,829,016 exact, +5,701,968 scan: the KMY PTP
+    # policies' negation sites at the one-clean-ancilla price, recomputed in tests/test_negation_counts.py); the other keys have no negating table.
     for widths, v in (("exact", want), ("scan", scan)):
         P = tp.optimal_policy(lib.milestone_tables(key, PTP), PTP, N, 0.01, widths=widths, leaf="grid")[0]
         assert ts.score_policy(P, N, 0.01, leaf="grid")["t_count"] == pytest.approx(v, rel=1e-12)
@@ -243,13 +245,17 @@ def test_kmy_benchmark():
     assert {r["id"] for r in lib.kmy_tables()} == {"KMY-PP3", "KMY-PTP3", "KMY-PTP4"}
     for r in lib.kmy_tables():
         xc.to_l2q(tt.Policy.constant(r["table"]))
-    # Stage 13 re-pin (exact widths); the scanned-width pins are kept as the cross-check
-    assert ts.score_policy(_opt("kmy", PP), N, 0.01)["t_count"] == pytest.approx(12_882_273.822456302, rel=1e-12)
+    # Stage 13 re-pin (exact widths); the scanned-width pins are kept as the cross-check.
+    # 2026-11-10 re-pin: every KMY table negates, and tcost now prices a negation as ForShor's `oneQubit` charge, the full run's (it priced Qualtran's
+    # `Negate`), so each pin below rises by exactly its negation sites' price difference (tests/test_negation_counts.py recomputes them):
+    # PP exact 12,882,273.8 -> 14,073,729.8 (+1,191,456), PTP exact 96,146,895.0 -> 97,630,311.0 (+1,483,416), PP scan 21,648,525.0 ->
+    # 22,407,421.0 (+758,896), PTP scan 143,104,808.9 -> 144,328,136.9 (+1,223,328). The ladders are unchanged.
+    assert ts.score_policy(_opt("kmy", PP), N, 0.01)["t_count"] == pytest.approx(14_073_729.822456302, rel=1e-12)
     # Stage 17 re-pin (digital PTP leaf; was 5,608,558,646.5 / 38,357,893,759.1 with the grid leaf, now pinned in
     # test_ptp_grid_leaf_pins_are_the_stage13_numbers)
-    assert ts.score_policy(_opt("kmy", PTP), N, 0.01)["t_count"] == pytest.approx(96_146_895.03315397, rel=1e-12)
-    assert ts.score_policy(_opt("kmy", PP, widths="scan"), N, 0.01)["t_count"] == pytest.approx(21_648_524.992123913, rel=1e-12)
-    assert ts.score_policy(_opt("kmy", PTP, widths="scan"), N, 0.01)["t_count"] == pytest.approx(143_104_808.87460065, rel=1e-12)
+    assert ts.score_policy(_opt("kmy", PTP), N, 0.01)["t_count"] == pytest.approx(97_630_311.03315397, rel=1e-12)
+    assert ts.score_policy(_opt("kmy", PP, widths="scan"), N, 0.01)["t_count"] == pytest.approx(22_407_420.992123913, rel=1e-12)
+    assert ts.score_policy(_opt("kmy", PTP, widths="scan"), N, 0.01)["t_count"] == pytest.approx(144_328_136.87460065, rel=1e-12)
 
 
 # ------------------------------------------------------------------ full order finding (PLAN_v2 Stage 2)
@@ -287,9 +293,9 @@ def test_full_seam_phase_product_equals_tcost(key, w, widths):
     """Seam between the two packages: under the digital-product leaf, Qualtran adders, negated source = one Subtract
     (the site's conventions), the l2q_full PolicyPhaseProduct at (w, w) has tcost's T-without-rotations and rotation
     count for the same policy, at the same width rule.
-    Modular swap 001: `tcost` (the PP/PTP engine) still prices a negation the old way (Qualtran `Negate`, the owner's STO conventions), so
-    the seam is stated under `negate="legacy"`; with the real negation (the default, `gidney_circuit`) a table that negates no longer matches it
-    (test_full_seam_diverges_from_tcost_for_a_negating_table_under_the_new_negation). No table on the site negates.
+    Negation: `tcost` (the PP/PTP engine) and the full run price a negation the same way, ForShor's `oneQubit` charge (`tcost.negation`, from
+    2026-11-10; before that `tcost` priced Qualtran's `Negate` and this seam had to be stated under `negate="legacy"`), so the seam holds for
+    tables that negate too: KMY's tables all do, and `kmy` is one of the keys below.
     Stage 18 (rewritten): the full run prices at the ForShor drop-in's exact widths (`forshor_exact_width`, max(tight,
     floor)), and the PP board at STO's exact widths (`tcost/exact`, tightWidth); the seam is checked at exact widths
     (the board's) and, as before, at scanned widths (the cross-check). The two exact rules differ only where ForShor's
@@ -299,7 +305,8 @@ def test_full_seam_phase_product_equals_tcost(key, w, widths):
     from l2q_full import cost_conventions as cc
     from l2q_full.bloqs.policy_phase_product import PolicyPhaseProduct
     P = (lib.sto_reference_policies()[PP] if key == "reference" else _opt(key, PP, widths=widths)).with_widths(widths)
-    spec = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract", negate="legacy")
+    spec = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract")
+    assert spec.negate == "gidney_circuit"                                    # the default: the real circuit
     LP = fa.to_l2q_full(P)
     assert {b.table.width_rule for b in LP.bands} == {widths}
     c = cc.split(PolicyPhaseProduct(LP, w, w, convention=spec))
@@ -307,11 +314,10 @@ def test_full_seam_phase_product_equals_tcost(key, w, widths):
     assert (c.base, c.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
 
 
-def test_full_seam_diverges_from_tcost_for_a_negating_table_under_the_new_negation():
-    """The other half of the seam test: KMY's table negates, `tcost` prices that negation the old way, and the full run now prices it as
-    complement + the one-clean-ancilla increment with Lean's counts (Toffoli 12w-28 even / 10w-18 odd, 4 T each), so the two disagree on T
-    by exactly the negations' price difference, recomputed below from the call graph's negation sites, and agree on the rotation count.
-    If they ever agree again the swap has been undone, or `tcost` has been changed to follow it."""
+def test_full_seam_agrees_with_tcost_for_a_negating_table_and_the_old_negation_differs_by_the_sites():
+    """The other half of the seam test, for a table that negates (KMY's does): `tcost` and the full run price the same negation, so they
+    agree on T and on the rotation count; the full run's `negate="legacy"` (ForShor's `scratch`, kept selectable there) is a different
+    price, and `tcost` differs from it by exactly the negations' price difference, recomputed below from the call graph's negation sites."""
     from site_engine import fullalg as fa
     from l2q_full import cost_conventions as cc
     from l2q_full.bloqs.policy_phase_product import PolicyPhaseProduct
@@ -319,14 +325,14 @@ def test_full_seam_diverges_from_tcost_for_a_negating_table_under_the_new_negati
     LP = fa.to_l2q_full(P)
     s = ts.score_policy(P, 300, 0.01)
     base = cc.QUALTRAN.with_(leaf="product", leaf_options=("product",), negsrc="subtract")
-    old = cc.split(PolicyPhaseProduct(LP, 300, 300, convention=base.with_(negate="legacy")))
     assert base.negate == "gidney_circuit"                                    # the default is the real circuit
     node = PolicyPhaseProduct(LP, 300, 300, convention=base)
     new = cc.split(node)
-    assert (old.base, old.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
+    assert (new.base, new.rot) == (s["t_breakdown"]["t_from_toffoli_class"], s["gate_counts"]["rotation"])
+    old = cc.split(PolicyPhaseProduct(LP, 300, 300, convention=base.with_(negate="legacy")))
     assert new.rot == old.rot
-    # first principles: the negation sites (width -> count) read off the call graph, 4 T per Toffoli, the legacy negation = Qualtran
-    # `Negate(QInt(w))` = one w-bit Gidney adder = 4 (w - 1) T, the real one 4 x (12w - 28 even w, 10w - 18 odd w, truncated at 0)
+    # first principles: the negation sites (width -> count) read off the call graph, 4 T per Toffoli, ForShor's `scratch` negation = Qualtran
+    # `Negate(QInt(w))`-priced here as one w-bit Gidney adder = 4 (w - 1) T, the real one 4 x (12w - 28 even w, 10w - 18 odd w, truncated at 0)
     from qualtran.resource_counting import get_bloq_call_graph
     _, sigma = get_bloq_call_graph(node, keep=lambda b: isinstance(b, cc.IncrementerNegate))
     sites = {b.w: k for b, k in sigma.items() if isinstance(b, cc.IncrementerNegate)}
