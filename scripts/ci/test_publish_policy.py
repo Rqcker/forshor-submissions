@@ -56,3 +56,12 @@ class PolicyPublisherTests(unittest.TestCase):
         self.assertEqual(args[args.index('--run-id') + 1], '123')
         self.assertEqual(args[args.index('--archive') + 1], 'archive')
         self.assertNotIn('test-only', args)
+
+    def test_the_summary_never_travels_on_the_command_line(self):
+        """The optional summary.tex reaches the intake only through the verification file and the head commit; the publish command has no option for its text or path."""
+        env = {'PUBLISHER_URL': 'https://publisher.example', 'ENGINE_PYTHON': '/engine/python', 'PUBLISHER_TOKEN': 'test-only'}
+        with patch.dict(os.environ, env), patch('sys.argv', ['publish_policy.py']), patch('subprocess.run') as run:
+            run.return_value.returncode = 0
+            publish_policy.main()
+            args = run.call_args.args[0]
+        self.assertNotIn('--summary', args)
