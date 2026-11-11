@@ -14,7 +14,7 @@ async function fixture(fn) {
   const calls = [], errors = [], checks = [], comments = [];
   const context = { repo: { owner: 'zapatacomputing', repo: 'forshor-submissions' }, runId: 456 };
   const source = { run: { id: 123, run_attempt: 1, conclusion: 'success' }, pr: { number: 12, headSha: HEAD } };
-  let pr = { number: 12, head: { sha: HEAD }, base: { ref: 'main', repo: { full_name: REPO } }, state: 'open', merged: false };
+  let pr = { number: 12, user: { login: 'contributor' }, head: { sha: HEAD }, base: { ref: 'main', repo: { full_name: REPO } }, state: 'open', merged: false };
   const github = { paginate: async (method, params) => method(params), rest: {
     checks: {
       listForRef: async () => checks,
@@ -69,7 +69,34 @@ test('a failed Lean attempt skips Qualtran and leaves the PR open', () => fixtur
 for (const outcome of ['failure', 'cancelled']) test(`${outcome} cannot close or claim publication even if a receipt exists`, () => fixture(async f => {
   await f.begin(); await f.finish(outcome);
   assert.equal(f.checks[0].conclusion, outcome);
-  assert.equal(f.pr.state, 'open'); assert.equal(f.comments.length, 0);
+  assert.equal(f.pr.state, 'open');
+  // A publisher failure after Lean passed tells the author it is not their policy's fault (and never claims acceptance); a cancellation is silent.
+  if (outcome === 'failure') {
+    assert.equal(f.comments.length, 1);
+    assert.match(f.comments[0].body, /### Verification could not complete/); assert.match(f.comments[0].body, /@contributor, /);
+    assert.match(f.comments[0].body, /not a verdict on your policy/); assert.doesNotMatch(f.comments[0].body, /accepted|Submission accepted and published/);
+  } else assert.equal(f.comments.length, 0);
+}));
+
+test('a publisher failure notice is posted once, in place on a retry, and a failure to post never changes the check', () => fixture(async f => {
+  await f.begin(); await f.finish('failure'); await f.begin(); await f.finish('failure');
+  assert.equal(f.comments.length, 1); assert.equal(f.calls.filter(c => c[0] === 'update-comment').length, 0, 'an identical notice is left alone');
+  assert.equal(f.checks[0].conclusion, 'failure');
+  await fixture(async g => {
+    g.github.rest.issues.createComment = async () => { throw new Error('GitHub is down'); };
+    await g.begin(); await g.finish('failure');
+    assert.equal(g.checks[0].conclusion, 'failure'); assert.deepEqual(g.errors, []); assert.equal(g.pr.state, 'open');
+  });
+}));
+
+test('the accepted comment mentions the author, and only a plain login', () => fixture(async f => {
+  await f.begin(); await f.finish();
+  assert.match(f.comments[0].body, /^<!-- forshor-publication:a{40} -->\n### Submission accepted and published\n\n@contributor, Lean verification passed/);
+  for (const user of [null, { login: 'dependabot[bot]' }, { login: 'x\n@victim' }]) await fixture(async g => {
+    g.pr = { ...g.pr, user }; await g.begin(); await g.finish();
+    assert.ok(!/@(?!\u200b)[A-Za-z]/.test(g.comments[0].body), JSON.stringify(user));
+    assert.match(g.comments[0].body, /Submission accepted and published/);
+  });
 }));
 
 for (const result of [null, {}, { snapshotId: 'd'.repeat(64) }, { alreadyPublished: true, evaluationKey: 'forged' }]) {

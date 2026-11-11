@@ -1,0 +1,59 @@
+name: Notify Submitters
+
+# Tells a submission's author, by a pull-request comment that mentions them, when their verification ended WITHOUT being accepted:
+# rejected (the verifier gave a verdict on the policy) or could not complete (a tool, a limit or the runner: not a verdict).
+# An accepted submission is reported by Publish Verified Results after publication, so `success` is not handled here.
+#
+# Like the publisher this runs from trusted main (workflow_run), never checks out or executes the submission, treats the verifier's
+# artifact as data, and takes the pull request, its head commit and its author from the API. Unlike the publisher it has no secret,
+# no identity token and no write access to contents or checks: it can only comment on the pull request.
+on:
+  workflow_run:
+    workflows: [Policy submission]
+    types: [completed]
+permissions: {}
+jobs:
+  notify:
+    if: >-
+      github.event.workflow_run.event == 'pull_request'
+      && contains(fromJSON('["failure","timed_out","cancelled","startup_failure"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: forshor-notify-${{ github.event.workflow_run.id }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - name: Checkout trusted notifier code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Test the notification trust boundaries
+        run: node --test scripts/test_notify_submitters.js
+      - name: Resolve the pull request and the verification attempt
+        id: source
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            await require('./scripts/ci/notify_submitters.js').inspect({ github, context, core });
+      - name: Download verifier output as data
+        if: steps.source.outputs.process == 'true' && steps.source.outputs.download == 'true'
+        # A run that failed early may have uploaded nothing; the comment then says the run ended without a readable result.
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ${{ steps.source.outputs.artifact }}
+          path: artifacts
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Tell the author
+        if: steps.source.outputs.process == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            await require('./scripts/ci/notify_submitters.js').post({ github, context, core });

@@ -37,6 +37,7 @@ jobs:
           node scripts/test_report_trust.js
           node --test scripts/test_publication.js
           node --test scripts/test_pr_publication.js scripts/test_policy_publication.js
+          node --test scripts/test_notify_submitters.js
           python3 -m unittest discover -s scripts/ci -p 'test_*.py'
       - name: Inspect the exact source attempt
         id: source
