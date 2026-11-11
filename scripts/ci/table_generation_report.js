@@ -63,6 +63,8 @@ async function resolveTrustedPullRequest(github, context, workflowRun) {
     throw error;
   }
   const pr = candidates[0];
+  // The refusals below are verdicts on this pull request; the number lets the notifier tell its author (see notify_submitters.js).
+  const refuse = (message) => Object.assign(new Error(message), { pullNumber: pr.number });
   const files = await github.paginate(github.rest.pulls.listFiles, {
     owner,
     repo,
@@ -74,12 +76,12 @@ async function resolveTrustedPullRequest(github, context, workflowRun) {
   // past the cap -- fail closed. A real submission always changes Policy.lean, so
   // it is neither empty nor anywhere near the cap.
   if (files.length === 0) {
-    throw new Error(
+    throw refuse(
       `Pull request #${pr.number} reports no changed files; refusing to archive.`
     );
   }
   if (files.length >= 3000) {
-    throw new Error(
+    throw refuse(
       `Pull request #${pr.number} changes ${files.length} files; the list may be ` +
         'truncated at the API cap, so a file outside the submission surface could ' +
         'be hidden. Refusing to archive.'
@@ -88,14 +90,14 @@ async function resolveTrustedPullRequest(github, context, workflowRun) {
   const names = files.map((file) => file.filename);
   const foreign = names.filter((path) => !isAdmittedSubmissionPath(path));
   if (foreign.length) {
-    throw new Error(
+    throw refuse(
       `Pull request #${pr.number} changes files outside the submission surface ` +
         `(${foreign.join(', ')}). The verification run cannot be trusted to have ` +
         'used the base workflow; refusing to archive.'
     );
   }
   if (!names.includes(SUBMISSION_POLICY_FILE)) {
-    throw new Error(
+    throw refuse(
       `Pull request #${pr.number} does not change ${SUBMISSION_POLICY_FILE}; ` +
         'a submission must replace the policy implementation. Refusing to archive.'
     );

@@ -66,6 +66,13 @@ The CLI therefore matches trusted publication diagnostics against the exact
 verifier run ID, attempt, PR number, and submitted SHA. An unrelated success or
 a successful job without a publication receipt is never reported as your result.
 
+You are told how it ended. When verification finishes the PR gets a comment that mentions the PR's author, so GitHub notifies them
+(web, email or mobile, as their notification settings say): **accepted and published** (the publisher's comment, with the row name),
+**not accepted** (the check that failed, in plain words, and the verifier's message), or **could not complete** (a tool, a limit or the
+runner failed, or the run was cancelled: this is not a verdict on the policy, and nothing needs to change on your side). There is one
+comment per commit and outcome, updated in place on a re-run. The *Notify Submitters* workflow posts "not accepted" and
+"could not complete"; the publisher posts "accepted" and reports a publication failure that happens after Lean passed.
+
 If Lean rejects a submission, open the printed verification URL, fix the source,
 and run `./forshor submit` again. If publication fails after Lean passes, open
 the matching publisher URL and rerun its failed job; then use

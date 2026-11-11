@@ -2,6 +2,7 @@
 
 // Trusted-main code only. No uploaded artifact chooses a PR, commit, or check.
 const fs = require('node:fs');
+const notify = require('./notify_submitters.js');
 const NAME = 'Estimate resources with Qualtran and publish results';
 const CHECK_NAMES = new Set([NAME, 'Qualtran estimation and publication']);
 const STATE = 'publication-check.json';
@@ -78,25 +79,45 @@ function sameHead(pr, state) {
     && pr.base?.repo?.full_name === REPOSITORY && !pr.merged;
 }
 
-async function comment(github, context, state, result, metadata) {
+/** The comment for an accepted and published submission. `author` is the pull request's author from the API; it is mentioned only if it is a plain login. */
+function acceptedBody(state, result, metadata, author) {
   const marker = `<!-- forshor-publication:${state.pr.headSha} -->`;
   const verification = `https://github.com/${REPOSITORY}/actions/runs/${state.run.id}/attempts/${state.run.attempt}`;
   const isPolicy = metadata.kind === 'policy';
   const archive = `https://github.com/${REPOSITORY}/tree/submission-results/results/${isPolicy ? 'policy-submissions' : 'policies'}/${state.pr.headSha}`;
   const snapshotPath = isPolicy ? `/results/v2/e/${metadata.epoch}/s/${result.snapshotId}/dashboard.json` : `/results/snapshots/${result.snapshotId}/dashboard.json`;
   const snapshot = result.snapshotId ? `\nSnapshot: [\`${result.snapshotId.slice(0, 12)}\`](${DASHBOARD}${snapshotPath}).` : '';
-  const body = `${marker}\n### Submission accepted and published\n\n`
-    + `Lean verification passed and Google confirmed publication for commit \`${state.pr.headSha}\`.\n\n`
+  const who = notify.mention(author);
+  return `${marker}\n### Submission accepted and published\n\n`
+    + `${who ? `${who}, ` : ''}Lean verification passed and Google confirmed publication for commit \`${state.pr.headSha}\`.\n\n`
     + `[Lean verification](${verification}) · [Qualtran and publication](${state.detailsUrl}) · [Archived ${isPolicy ? 'policy' : 'table'}](${archive}) · [Staging dashboard](${DASHBOARD})${snapshot}\n\n`
     + (isPolicy ? `Refresh the dashboard to see ${result.name ? `\`${result.name}\`` : 'your policy'}. A valid policy need not take first place. ` : 'Refresh the dashboard to see the latest results. A valid table need not change the winning plan. ')
     + 'Accepted submission PRs are closed without merging; their results and source remain in the archive. '
     + `Use a new submission PR for your next ${isPolicy ? 'policy' : 'table'}.`;
+}
+
+async function comment(github, context, state, result, metadata, author) {
+  const body = acceptedBody(state, result, metadata, author);
+  const marker = `<!-- forshor-publication:${state.pr.headSha} -->`;
   const comments = await github.paginate(github.rest.issues.listComments, {
     ...context.repo, issue_number: state.pr.number, per_page: 100,
   });
   const existing = comments.find(c => c.user?.login === 'github-actions[bot]' && c.body?.startsWith(marker));
   if (existing) await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
   else await github.rest.issues.createComment({ ...context.repo, issue_number: state.pr.number, body });
+}
+
+/**
+ * Lean passed but publication did not finish: tell the author it is not their policy's fault. Best effort: a failure to post must never
+ * change the check or hide the original failure, and it never claims acceptance.
+ */
+async function tellPublicationIncomplete({ github, context, core, state, author }) {
+  try {
+    await notify.upsert({ github, context, prNumber: state.pr.number, marker: notify.markerOf(state.pr.headSha, 'incomplete'),
+      body: notify.buildComment({ outcome: 'incomplete', cause: 'publication', login: author, headSha: state.pr.headSha, runUrl: state.detailsUrl }) });
+  } catch (error) {
+    core.warning?.(`Could not post the notification: ${error.message}`);
+  }
 }
 
 async function finalize({ github, context, core, outcome }) {
@@ -114,7 +135,8 @@ async function finalize({ github, context, core, outcome }) {
     if (source.pr.number !== state.pr.number || source.pr.headSha !== state.pr.headSha
         || source.run.id !== state.run.id || source.run.run_attempt !== state.run.attempt)
       throw new Error('Trusted source identity changed');
-    if (!sameHead(await currentPullRequest(github, context, state), state)) {
+    const current = await currentPullRequest(github, context, state);
+    if (!sameHead(current, state)) {
       await finishCheck(github, context, state, 'cancelled', 'Superseded submission',
         'The PR has moved or was merged. This old result will not close the current PR.');
       return;
@@ -128,11 +150,12 @@ async function finalize({ github, context, core, outcome }) {
       await finishCheck(github, context, state, outcome === 'cancelled' ? 'cancelled' : 'failure',
         'Resource estimation or publication did not finish',
         `The PR remains open. [Inspect and rerun the publisher](${state.detailsUrl}); accepted Lean verification is reused.`);
+      if (outcome === 'failure') await tellPublicationIncomplete({ github, context, core, state, author: current.user?.login });
       return;
     }
     const metadata = JSON.parse(fs.readFileSync('evaluation-metadata.json', 'utf8'));
     const result = receipt(source, metadata, JSON.parse(fs.readFileSync('publication-result.json', 'utf8')));
-    await comment(github, context, state, result, metadata);
+    await comment(github, context, state, result, metadata, current.user?.login);
     // Recheck after network operations. GitHub's close endpoint has no expected
     // SHA guard, so inspect its response too and restore open if a push raced it.
     const pr = await currentPullRequest(github, context, state);
@@ -162,4 +185,4 @@ async function finalize({ github, context, core, outcome }) {
   }
 }
 
-module.exports = { NAME, begin, finalize, receipt };
+module.exports = { NAME, begin, finalize, receipt, acceptedBody };
