@@ -157,13 +157,41 @@ def baseline_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[
     return out
 
 
-def negating_bands(policy) -> List[int]:
-    """The arities of a policy's tables that contain a `negate` operation. The FULL RUN charges a negation as ForShor's `negateResources` does
-    (complement plus a one-clean-ancilla incrementer, with the Lean counts of `NEGATION_OF`: Toffoli 12w-28 / 10w-18, CNOT 17w-22 / 17w-5,
-    X 5w-3 / 5w+1; 1 qubit), but `tcost`, which prices the PhaseProduct and PhaseTripleProduct boards, still prices a negation as Qualtran's
-    `Negate` (D24 of the swap log). For a table that negates the boards would therefore disagree, so no such policy is exported.
-    None of the policies listed today has one."""
-    return [b.table.k for b in policy.bands if b.table.census()["negate"]]
+# The leaderboard's starting rows when the seed starts only from the Kahanamoku-Meyer and Yao tables (`--kmy-only`, 2026-11-10 decision): for each board
+# family the planner's optimum over exactly the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (`library.milestone_tables("kmy", mode)`: PhaseProduct k = 3; PhaseTripleProduct k = 3 and 4),
+# generated once at the default delta and repriced at every delta like the baselines, so a row is the same policy on every delta. Their creation
+# time is a fixed constant (not "now", so the export stays reproducible; on or before any seed time, as the contract requires of a row's date).
+STARTING_CREATED_AT = "2026-11-10T00:00:00Z"
+
+
+def starting_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[str, Any]]:
+    """The starting policies (the planner's optimum over the Kahanamoku-Meyer and Yao tables, not a policy of theirs), PhaseProduct first (it appears on the PhaseProduct and full boards), then PhaseTripleProduct, named forshor_sub1, forshor_sub2."""
+    eng = engine.load()
+    out: List[Dict[str, Any]] = []
+    for board, mode in MODES.items():
+        tabs = eng.library.milestone_tables("kmy", mode)
+        if not tabs:
+            continue
+        P, _ = eng.planner.optimal_policy(tabs, mode, pricing.N, mapping.DELTA_VALUES["1e-2"], name=f"starting-{board}")
+        Q = eng.seed_policies.canonical(P)
+        if not Q.bands:
+            log(f"starting {board}: no band, skipped")
+            continue
+        digest = policy_digest(Q.to_json())
+        out.append({"id": digest[:12], "createdAt": STARTING_CREATED_AT, "pr": None, "policy": Q, "digest": digest,
+                    "number": len(out) + 1, "board": board, "starting": True})
+        log(f"starting {board}: {digest[:12]} forshor_sub{len(out)} " + " -> ".join(f"{b.threshold}:{b.table.k}" for b in Q.bands))
+    return out
+
+
+def starting_listed(starts: List[Dict[str, Any]]) -> Dict[Tuple[str, str], List[Dict[str, Any]]]:
+    """What is listed in a seed that starts only from the Kahanamoku-Meyer and Yao tables: each board family's starting policy, at every delta."""
+    return {(b["board"], delta): [b] for b in starts for delta in FILE_KEY}
+
+
+# There is no guard on tables that negate any more. Until `engine/negation-real` the PhaseProduct and PhaseTripleProduct boards (tcost) priced a negation
+# as Qualtran's `Negate` while the full run charged ForShor's `oneQubit` circuit, so a policy with a negating table (every KMY table negates) would have
+# had boards that disagreed, and it was refused. Now tcost prices a negation with the same counts and the same one clean qubit as the full run.
 
 
 def first_per_policy(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -192,12 +220,14 @@ def list_rows(rows_in: Dict[Tuple[str, str], List[Dict[str, Any]]], baselines: L
 
 def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_commit: Optional[str] = None,
                       updated_at: Optional[str] = None, model: Optional[Dict[str, Any]] = None,
-                      log: Callable[[str], None] = lambda s: None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """The epoch input and the evidence report (which policies have valid evidence, and why the others do not)."""
+                      log: Callable[[str], None] = lambda s: None, kmy_only: bool = False) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """The epoch input and the evidence report (which policies have valid evidence, and why the others do not).
+    `kmy_only`: the seed that starts only from the Kahanamoku-Meyer and Yao tables (see `starting_policies`): no planner frontier, no baselines, no reference curves, no benchmark rows; the only listed
+    policies are the starting policies."""
     eng = engine.load()
     model = model or model_of()
     epoch = epoch_of(model)
-    rows_in = planner_rows(log)
+    rows_in = {} if kmy_only else planner_rows(log)
     views: Dict[Tuple[str, str, str], Dict[str, Any]] = {}   # (board, delta, policy digest) -> priced view
     policies: Dict[str, Dict[str, Any]] = {}                 # digest -> {mode, policy, uses}
     boards_of = lambda board: ("pp", "full") if board == "pp" else ("ptp",)
@@ -212,16 +242,11 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         for r in rows:
             entry = policies.setdefault(r["digest"], {"mode": MODES[board], "board": board, "policy": r["policy"], "uses": []})
             entry["uses"].append({"board": board, "delta": delta, "rowId": r["id"]})
-    baselines = baseline_policies(log)
-    for b in baselines:
+    baselines = [] if kmy_only else baseline_policies(log)
+    starts = starting_policies(log) if kmy_only else []
+    for b in baselines + starts:
         entry = policies.setdefault(b["digest"], {"mode": MODES[b["board"]], "board": b["board"], "policy": b["policy"], "uses": []})
         entry["uses"].append({"board": b["board"], "delta": "1e-2", "rowId": b["id"]})
-
-    for digest, entry in policies.items():
-        bad = negating_bands(entry["policy"])
-        if bad:
-            raise ValueError(f"policy {digest[:12]} uses a table that negates (k = {bad}): tcost prices a negation the old way and the full run "
-                             "the new way (modular swap 001), so its boards would disagree; not exporting it until tcost follows the swap")
 
     # Evidence is about the policy, not about a delta, so it is looked up once per distinct policy (one pricing to get its file).
     evidence: Dict[str, Tuple[Optional[Dict[str, Any]], Optional[str]]] = {}
@@ -230,7 +255,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         b0 = boards_of(first["board"])[0]
         evidence[digest] = store.stomirror(view_of(b0, first["delta"], digest)["policy_json"], model, "ptp" if entry["mode"] == MODES["ptp"] else "pp")
 
-    listed = list_rows(rows_in, baselines)
+    listed = starting_listed(starts) if kmy_only else list_rows(rows_in, baselines)
 
     panels: Dict[str, Any] = {}
     rows: Dict[str, List[Dict[str, Any]]] = {}
@@ -238,7 +263,8 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         for r in board_rows:
             for b in boards_of(board):
                 view = copy.deepcopy(view_of(b, delta, r["digest"]))
-                title = (f"Baseline policy {r['digest'][:12]}" if r.get("baseline") else f"STO frontier after {r['id']}") + (
+                title = (f"Kahanamoku-Meyer and Yao (2024) tables, policy {r['digest'][:12]}" if r.get("starting")
+                         else f"Baseline policy {r['digest'][:12]}" if r.get("baseline") else f"STO frontier after {r['id']}") + (
                     f", {MODES[board]}, n = 2048, delta = {mapping.DELTA_VALUES[delta]:g}") + (", full order finding" if b == "full" else "")
                 view["title"] = view["policy_json"]["name"] = title
                 verification = {"stoMirror": evidence[r["digest"]][0], "forshorPolicy": None}   # None for a planner policy the STO mirror has not checked (D9)
@@ -272,10 +298,13 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
     for delta, file_key in FILE_KEY.items():
         for b in mapping.BOARDS:
             name = "fullalg" if b == "full" else f"frontier_{b.upper()}"
-            series = {m: v for m, v in json.loads((eng.engine_dir / "cache" / f"{name}_{file_key}.json").read_text())["milestones"].items()}
-            series = {m: v["points"] for m, v in series.items()}
+            if kmy_only:
+                series = {}     # no reference curves at all (the page draws none), so nothing is read from the engine's caches
+            else:
+                series = {m: v for m, v in json.loads((eng.engine_dir / "cache" / f"{name}_{file_key}.json").read_text())["milestones"].items()}
+                series = {m: v["points"] for m, v in series.items()}
             charts[mapping.chart_path(epoch, b, delta)] = mapping.chart_of(series, epoch=epoch, board=b, delta=delta)
-            benchmarks[f"{b}/{delta}"] = mapping.benchmarks_of(series)
+            benchmarks[f"{b}/{delta}"] = [] if kmy_only else mapping.benchmarks_of(series)
 
     updated_at = updated_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     document = {"schema": "forshor.epoch-input/v2", "model": model, "rows": rows, "benchmarks": benchmarks, "submissions": [],
@@ -284,6 +313,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
     document["sourceDigest"] = sha256_hex(document)
     report = evidence_report(policies, evidence)
     report["rowsBaseline"] = sum(1 for v in listed.values() for r in v if r.get("baseline"))
+    report["rowsStarting"] = sum(1 for v in listed.values() for r in v if r.get("starting"))
     report["rowsListed"] = sum(len(v) for v in listed.values())   # baseline policy x delta rows
     return document, report
 

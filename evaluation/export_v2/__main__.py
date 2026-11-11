@@ -2,7 +2,7 @@
 
   evidence-needed  OUT_DIR              the planner policies and which have valid evidence; writes each policy as a file for the harness
   run-mirror       OUT_DIR --tree DIR   run the tree's own harness on every planner policy still lacking evidence (needs a BUILT tree)
-  epoch-input      OUT.json --publisher-commit SHA [--evidence-dir DIR] [--archive-commit SHA] [--updated-at ISO]
+  epoch-input      OUT.json --publisher-commit SHA [--evidence-dir DIR] [--archive-commit SHA] [--updated-at ISO] [--kmy-only]
   request          OUT.json --policy FILE --evidence-dir DIR --head-sha SHA --pull N --login NAME --run-id ID ...
 """
 from __future__ import annotations
@@ -21,11 +21,16 @@ def _log(message: str) -> None:
     print(message, file=sys.stderr, flush=True)
 
 
-def _planner_policies(store: EvidenceStore, model, only: str = "all"):
+def _planner_policies(store: EvidenceStore, model, only: str = "all", kmy_only: bool = False):
     """Distinct listed policies (digest -> board family and policy JSON), without pricing them: the planner's frontier policies and the
     single-arity baselines, or one of the two."""
     from . import epoch
     out = {}
+    if kmy_only:
+        from . import epoch as _epoch
+        for k in _epoch.starting_policies(_log):
+            out.setdefault(k["digest"], (k["board"], k["policy"].to_json()))
+        return out
     if only in ("all", "planner"):
         for (board, _delta), rows in epoch.planner_rows(_log).items():
             for r in rows:
@@ -43,11 +48,13 @@ def main(argv=None) -> int:
     r = sub.add_parser("run-mirror"); r.add_argument("out_dir"); r.add_argument("--tree", required=True); r.add_argument("--evidence-dir")
     for p in (n, r):
         p.add_argument("--only", choices=("all", "planner", "baselines"), default="all", help="which listed policies to consider")
+        p.add_argument("--kmy-only", action="store_true", help="only the starting policies, built from the Kahanamoku-Meyer and Yao tables (ignores --only)")
     r.add_argument("--timeout", type=int, default=7200, help="seconds before one harness run is killed (default 7200)")
     r.add_argument("--stage-timeout", type=int, default=None, help="the harness's own per-stage limit in seconds (its default is 3600)")
     r.add_argument("--only-digest", action="append", default=[], help="run only the policy with this digest prefix (repeatable)")
     r.add_argument("--fast", action="store_true", help="skip the interpreted report stage (PhaseProduct and PhaseTripleProduct); the kernel certificate proves the ladder. The tree needs the option")
     e = sub.add_parser("epoch-input"); e.add_argument("out"); e.add_argument("--publisher-commit", required=True)
+    e.add_argument("--kmy-only", action="store_true", help="only the starting policies, built from the Kahanamoku-Meyer and Yao tables; no reference curves")
     e.add_argument("--evidence-dir"); e.add_argument("--archive-commit"); e.add_argument("--updated-at"); e.add_argument("--report")
     q = sub.add_parser("request"); q.add_argument("out"); q.add_argument("--policy", required=True); q.add_argument("--evidence-dir", required=True)
     for flag in ("head-sha", "login", "run-id", "submitted-at", "evaluated-at", "archive-commit", "evaluation-key", "base-generation"):
@@ -61,7 +68,7 @@ def main(argv=None) -> int:
     model = epoch.model_of()
     if a.command in ("evidence-needed", "run-mirror"):
         out = Path(a.out_dir); out.mkdir(parents=True, exist_ok=True)
-        policies = _planner_policies(store, model, a.only)
+        policies = _planner_policies(store, model, a.only, a.kmy_only)
         missing = {}
         for digest, (board, pj) in policies.items():
             ok, why = store.stomirror(pj, model, "ptp" if board == "ptp" else "pp")
@@ -83,7 +90,7 @@ def main(argv=None) -> int:
         return 0
     if a.command == "epoch-input":
         document, report = epoch.build_epoch_input(store=store, publisher_commit=a.publisher_commit, archive_commit=a.archive_commit,
-                                                   updated_at=a.updated_at, model=model, log=_log)
+                                                   updated_at=a.updated_at, model=model, log=_log, kmy_only=a.kmy_only)
         Path(a.out).write_text(json.dumps(document, separators=(",", ":")))
         if a.report:
             Path(a.report).write_text(json.dumps(report, indent=1))

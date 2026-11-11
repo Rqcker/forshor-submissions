@@ -250,7 +250,7 @@ def chart_of(series: Raw, *, epoch: str, board: str, delta: str) -> Raw:
 
 def benchmarks_of(series: Raw, n: int = 2048) -> List[Raw]:
     out = []
-    for key, label, note in (("kmy", "KMY benchmark", "The explicit tables of Kahanamoku-Meyer and Yao, priced by the same engine."),
+    for key, label, note in (("kmy", "Benchmark from the Kahanamoku-Meyer and Yao tables", "The planner's optimum over the explicit tables of Kahanamoku-Meyer and Yao, priced by the same engine."),
                              ("reference", "STO reference policy", "ShorTableOptimization's reference policy, priced by the same engine.")):
         p = next((x for x in series.get(key, []) if x["n"] == n), None)
         if p:
