@@ -112,4 +112,4 @@ format is `templates/Policy.lean`, and `starter.py template` writes it for a Pha
 contains with the same engine as `starter.py price`. Whatever you send, quote the `starter.py price` output you got for the same policy as JSON (and, for a full-run policy, the `forshor-doc` output), and name the pack's build date
 (`MANIFEST.json`). The boards' numbers are the ones that count.
 
-A policy that is accepted appears on the boards under your GitHub handle as `<handle>_sub<N>`, N counting your own submissions from 1; the handle `forshor` is reserved. The boards start with the policies built from KMY's tables (named `forshor_sub<N>`), ranked with yours by Q × T, and mark each row "STO mirror" if the policy has been checked in Lean.
+A policy that is accepted appears on the boards under your GitHub handle as `<handle>_sub<N>`, N counting your own submissions from 1; the handle `forshor` is reserved. The boards start with the starting policies, built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (named `forshor_sub<N>`), ranked with yours by Q × T, and mark each row "STO mirror" if the policy has been checked in Lean.

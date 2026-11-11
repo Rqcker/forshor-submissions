@@ -13,7 +13,7 @@ temporary directory, as a participant gets it, and checks that:
   3. every policy file the pack ships (examples, templates) uses KMY's tables only, or is a ForShor printed document / the ForShor template; and no
      table of the pack, in any JSON or Lean file (printed documents included), has the OPERATIONS of an archive or DP-library table (a digest or an id
      can be renamed away; the operations cannot);
-  4. the unzipped pack's own commands work: `starter.py examples --check` matches its pinned outputs, `starter.py price` prices a KMY policy and
+  4. the unzipped pack's own commands work: `starter.py examples --check` matches its pinned outputs, `starter.py price` prices a starting policy and
      `starter.py template` writes a submission file from it.
 
 Exit status 1 on any failure.
@@ -115,7 +115,7 @@ for f in sorted((pack / "examples").glob("*.policy.json")) + sorted((pack / "tem
         for b in P.bands:
             if b.table.digest not in kmy:
                 fail(f"{f.relative_to(pack)}: a band uses a table that is not one of KMY's")
-for lean in ("kmy_pp.Policy.lean", "kmy_ptp.Policy.lean"):
+for lean in ("starting_pp.Policy.lean", "starting_ptp.Policy.lean"):
     if not (pack / "examples" / lean).is_file():
         fail(f"examples/{lean} is missing")
 
@@ -209,19 +209,19 @@ run = lambda *c: subprocess.run([a.python, "starter.py", *c], cwd=pack, capture_
 r = run("examples", "--check")
 if r.returncode != 0 or "every example matches its pinned output" not in r.stdout:
     fail("starter.py examples --check: " + (r.stdout[-400:] + r.stderr[-400:]))
-out = tmp / "kmy.json"
-r = run("price", "examples/kmy_pp.policy.json", "--json", str(out))
+out = tmp / "starting.json"
+r = run("price", "examples/starting_pp.policy.json", "--json", str(out))
 if r.returncode != 0:
-    fail("starter.py price on the KMY PhaseProduct policy: " + r.stderr[-300:])
+    fail("starter.py price on the PhaseProduct starting policy: " + r.stderr[-300:])
 else:
     got = json.loads(out.read_text())["policies"][0]
     rank = got["board"]["rank_on_board"]
     if not rank or rank["rank"] != 2 or rank["of"] != 2:
-        fail(f"the KMY policy should tie with the snapshot's one row and rank after it (rank 2 of 2), got {rank}")
-r = run("template", "examples/kmy_pp.policy.json")
+        fail(f"the starting policy should tie with the snapshot's one row and rank after it (rank 2 of 2), got {rank}")
+r = run("template", "examples/starting_pp.policy.json")
 if r.returncode != 0 or "namespace PolicySubmission" not in r.stdout:
     fail("starter.py template did not write a PhaseProduct submission file: " + r.stderr[-300:])
-r = run("template", "examples/kmy_ptp.policy.json")
+r = run("template", "examples/starting_ptp.policy.json")
 if r.returncode != 0 or "namespace PTPPolicySubmission" not in r.stdout:
     fail("starter.py template did not write a PhaseTripleProduct submission file: " + r.stderr[-300:])
 

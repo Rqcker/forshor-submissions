@@ -1,7 +1,7 @@
 # Starter pack: source and build
 
 `pack/` holds the hand-written files of the participant starter pack (README, skill, format document, `starter.py`, ForShor's shipped template, the two ForShor printed documents, Lean-check guide).
-`build_starter_pack.py` assembles the pack from them and from `evaluation/engine`, and writes the rest from the pack's own engine: the KMY policies, the templates, the submission files, the board
+`build_starter_pack.py` assembles the pack from them and from `evaluation/engine`, and writes the rest from the pack's own engine: the starting policies (built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024)), the templates, the submission files, the board
 snapshot and every example's pinned output. It then writes `MANIFEST.json` and the zip.
 
 **The pack starts from the Kahanamoku-Meyer and Yao (2024) tables and nothing else.** Its `engine/data/` keeps only `kmy_tables/` (PhaseProduct k = 3, PhaseTripleProduct k = 3 and 4); the archive tables, the DP
@@ -10,15 +10,15 @@ identifiers that survive in the engine's *source* (docstrings, comments) are rep
 hidden by the pack, and it matters when the repository becomes public.
 
 ```sh
-python evaluation/starter/build_starter_pack.py [--seed <KMY-only epoch-input.json>] --out <dir> --python <python with the pack's requirements>
+python evaluation/starter/build_starter_pack.py [--seed <epoch-input.json>] --out <dir> --python <python with the pack's requirements>
 python evaluation/starter/test_pack_docs.py <dir>/forshor-challenge-starter                  # no stale references in what a participant reads
 python evaluation/starter/test_pack_kmy_only.py <dir>/forshor-challenge-starter.zip --python <python>
                                                                                               # nothing of the archive in the pack; the unzipped pack's own commands work
-python evaluation/starter/test_pack_matches_seed.py <dir>/forshor-challenge-starter.zip <KMY-only epoch-input.json> --python <python>
+python evaluation/starter/test_pack_matches_seed.py <dir>/forshor-challenge-starter.zip <epoch-input.json> --python <python>
                                                                                               # the unzipped pack prices every policy of a results seed to the boards' T and Q
 ```
 
-Without `--seed` the snapshot rows are the KMY policies priced by the pack's own engine. Pass `--seed` only with a KMY-only seed (the exporter's output for the KMY-only leaderboard); a seed that still lists
+Without `--seed` the snapshot rows are the starting policies priced by the pack's own engine. Pass `--seed` only with a seed that lists just the starting policies (the exporter's output with `--kmy-only`); a seed that still lists
 the planner's policies would put their scores in `examples/board_snapshot.json`.
 
 The pack changes whenever `evaluation/engine` does (its pinned outputs and `MANIFEST.json` go with it), so rebuild it after any engine change and after each re-seed.

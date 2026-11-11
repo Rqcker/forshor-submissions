@@ -174,11 +174,11 @@ JSON reaches the boards is not part of this pack. If the repository's instructio
 route or invent a command.
 
 What you can always give the user: the policy file, the `starter.py price` output (and, for a full-run policy, the `forshor-doc` output), the pack's build date (`MANIFEST.json`) and a
-short public Markdown note: the objective, the starting point (a KMY policy, a leaderboard policy or a template), what you changed, the exact commands, the prices with exact ladders (including
+short public Markdown note: the objective, the starting point (a starting policy, a leaderboard policy or a template), what you changed, the exact commands, the prices with exact ladders (including
 attempts that did not help), limitations, and the model or harness you used. Leave out private reasoning and secrets.
 
 An accepted policy appears on the boards under the submitter's GitHub handle as `<handle>_sub<N>`, N counting their own submissions from 1 (the handle `forshor` is reserved), ranked by Q × T
-with the starting rows, the policies built from KMY's tables (named `forshor_sub<N>`), and carries an "STO mirror" tag if it has been checked in Lean. It inherits the repository's
+with the starting rows, the starting policies, built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (named `forshor_sub<N>`), and carries an "STO mirror" tag if it has been checked in Lean. It inherits the repository's
 Apache 2.0 licence. **The boards' numbers are the ones that count:** the site prices the policy again with the same engine.
 
 ## Optional LaTeX Notes
@@ -230,7 +230,7 @@ anything you reused (see Reuse And Provenance). Do not claim a number the pack d
 The challenge page's **Leaderboard** section lists the current best policy on each board; its data is public JSON (`/results/v2/dashboard.json` on the site, where each
 board names its rows file). Check it before you start and periodically while you work, so you do not improve from a stale baseline. `examples/board_snapshot.json` is the boards as they were when
 the pack was built. The pack's
-`examples/` hold the KMY policies (PhaseProduct and PhaseTripleProduct) and their expected prices. They are
+`examples/` hold the starting policies (PhaseProduct and PhaseTripleProduct) and their expected prices. They are
 starting points, not the frontier.
 
 If a better policy has been accepted, start from it: re-price it with `starter.py price`, then iterate from there.
@@ -325,7 +325,7 @@ you name with `--out` or `--json`.
 
 ## Reuse And Provenance
 
-Say precisely what you used: a KMY or leaderboard policy, another solver's table, or a published construction (for
-example KMY's points). Naming prior work as a baseline you compared against does not claim your policy derives from
+Say precisely what you used: a starting or leaderboard policy, another solver's table, or a published construction (for
+example the points of the Kahanamoku-Meyer and Yao tables). Naming prior work as a baseline you compared against does not claim your policy derives from
 it; say which it is. If you are unsure of a table's origin, say that rather than guessing. Accepted policies are
 Apache 2.0, so reuse is allowed, but it must be credited in the submission.

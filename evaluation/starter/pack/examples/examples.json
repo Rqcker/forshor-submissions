@@ -2,17 +2,17 @@
  "note": "The examples `python starter.py examples --check` prices and compares with expected/. The pinned outputs are written by the pack builder (build_starter_pack.py) from the pack's own engine; they change whenever the engine does, so a pack and its pinned outputs always go together.",
  "examples": [
   {
-   "name": "KMY (2024) PhaseProduct: the planner's optimum over KMY's k = 3 table",
+   "name": "Starting policy, PhaseProduct: the planner's optimum over the k = 3 table of Kahanamoku-Meyer and Yao (2024)",
    "kind": "price",
-   "file": "kmy_pp.policy.json",
-   "expected": "kmy_pp.json",
+   "file": "starting_pp.policy.json",
+   "expected": "starting_pp.json",
    "full": true
   },
   {
-   "name": "KMY (2024) PhaseTripleProduct: the planner's optimum over KMY's k = 3 and k = 4 tables",
+   "name": "Starting policy, PhaseTripleProduct: the planner's optimum over the k = 3 and k = 4 tables of Kahanamoku-Meyer and Yao (2024)",
    "kind": "price",
-   "file": "kmy_ptp.policy.json",
-   "expected": "kmy_ptp.json",
+   "file": "starting_ptp.policy.json",
+   "expected": "starting_ptp.json",
    "full": false
   },
   {
