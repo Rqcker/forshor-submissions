@@ -1,7 +1,7 @@
 # ForShor Challenge starter pack
 
 Use this pack to write a policy, price it locally with the challenge site's own engine, and get it ready for the Lean
-checks before you submit. The challenge runs from November 12 to 11:59 PM Eastern on December 31, 2026 (the challenge page has the current dates).
+checks before you submit. The challenge runs from November 17 to 11:59 PM Eastern on December 31, 2026 (the challenge page has the current dates).
 
 A submission is a **full policy**: Toom-Cook tables and the width thresholds at which each table is used. A bare table
 is not a submission. There are three boards, each ranked separately by **Q × T** (qubits times T count, lower is better, at n = 2048 and δ = 0.01), where **Q is the live-qubit peak**
