@@ -182,11 +182,15 @@ class WorkingFiles(unittest.TestCase):
                 return SimpleNamespace(stdout=json.dumps({'login': 'tester', 'id': 1}), returncode=0)
             if command[:3] == ['gh', 'pr', 'create']:
                 return SimpleNamespace(stdout='https://github.com/zapatacomputing/forshor-submissions/pull/9\n', returncode=0)
+            if command[0] == 'gh':
+                self.fail(f'Unexpected GitHub command in an offline test: {command}')
             return cli_run(command, cwd=cwd, env=env, capture=capture, check=check)
         cli_run = cli.run
         with patch.object(cli, 'authenticate'), patch.object(cli, 'repository', return_value=self.root), patch.object(cli, 'refresh_base', return_value=self.base), \
-                patch.object(cli, 'run', side_effect=fake_run), patch.object(cli, 'network_git'), patch.object(cli, 'validate_pr'), patch.object(cli, 'watch', return_value=0):
+                patch.object(cli, 'run', side_effect=fake_run), patch.object(cli, 'network_git'), patch.object(cli, 'api', return_value={}) as fetch_pr, \
+                patch.object(cli, 'validate_pr'), patch.object(cli, 'watch', return_value=0):
             cli.submit(args)
+        fetch_pr.assert_called_once_with('pulls/9')
         self.assertEqual(sorted(git(self.root, 'show', '--name-only', '--format=', 'HEAD').splitlines()), [cli.POLICY, cli.SUMMARY])
         self.assertEqual(subprocess.check_output(['git', 'show', f'HEAD:{cli.SUMMARY}'], cwd=self.root), self.HOSTILE.encode(), 'committed byte for byte')
 
