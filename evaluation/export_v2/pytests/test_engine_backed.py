@@ -86,22 +86,22 @@ def test_every_baseline_policy_has_at_least_one_band_and_is_distinct():
     assert len({b["number"] for b in baselines}) == len(baselines)
 
 
-def test_the_kmy_policies_are_the_planner_optimum_over_exactly_the_kmy_tables():
-    """KMY-only seed (2026-11-10): each board family has one starting policy, the planner's optimum over the tables of Kahanamoku-Meyer and Yao
+def test_the_starting_policies_are_the_planner_optimum_over_exactly_the_kmy_tables():
+    """Seed that starts from the Kahanamoku-Meyer and Yao tables (2026-11-10): each board family has one starting policy, the planner's optimum over the tables of Kahanamoku-Meyer and Yao
     (PhaseProduct k = 3; PhaseTripleProduct k = 3 and 4), named forshor_sub1 and forshor_sub2, on a fixed date."""
     from export_v2 import epoch, engine
     eng = engine.load()
-    ks = epoch.kmy_policies()
-    assert [(k["board"], k["number"], k["createdAt"]) for k in ks] == [("pp", 1, epoch.KMY_CREATED_AT), ("ptp", 2, epoch.KMY_CREATED_AT)]
+    ks = epoch.starting_policies()
+    assert [(k["board"], k["number"], k["createdAt"]) for k in ks] == [("pp", 1, epoch.STARTING_CREATED_AT), ("ptp", 2, epoch.STARTING_CREATED_AT)]
     for k in ks:
         kmy_ks = {t.k for t in eng.library.milestone_tables("kmy", epoch.MODES[k["board"]])}
         assert k["policy"].bands and {b.table.k for b in k["policy"].bands} <= kmy_ks
         assert all(b.table.digest in {t.digest for t in eng.library.milestone_tables("kmy", epoch.MODES[k["board"]])} for b in k["policy"].bands)
     assert len({k["digest"] for k in ks}) == 2
-    assert set(epoch.kmy_listed(ks)) == {(b, d) for b in ("pp", "ptp") for d in epoch.FILE_KEY}
+    assert set(epoch.starting_listed(ks)) == {(b, d) for b in ("pp", "ptp") for d in epoch.FILE_KEY}
 
 
-def test_the_kmy_only_seed_carries_nothing_else(tmp_path):
+def test_the_seed_that_starts_from_the_kmy_tables_carries_nothing_else(tmp_path):
     """No planner rows, baselines, reference or archive curves, no benchmark rows: one row per board and delta.
     Every KMY table negates; the boards price a negation like the full run (engine/negation-real), so these policies are exportable."""
     from export_v2 import epoch

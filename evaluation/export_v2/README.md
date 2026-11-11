@@ -108,12 +108,12 @@ Qualtran 0.7.0 environment and must not import the vendored engine.
 The harness runner (`run_mirror`) was run against a real built tree on 2026-11-05 for the policies in the table above; its tests use
 a stub for speed, plus the real records as fixtures.
 
-## The KMY-only seed (2026-11-10)
+## The seed that starts from the Kahanamoku-Meyer and Yao tables (2026-11-10)
 
-The leaderboard starts from the policies built from the tables of Kahanamoku-Meyer and Yao (2024) and nothing else. `--kmy-only` (on `evidence-needed`, `run-mirror` and `epoch-input`)
-replaces the planner frontier, the baselines and the reference curves by two policies, each the planner's optimum over exactly KMY's tables at n = 2048, delta = 0.01 (`epoch.kmy_policies`):
+The leaderboard starts from the starting policies, built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) and nothing else. `--kmy-only` (on `evidence-needed`, `run-mirror` and `epoch-input`)
+replaces the planner frontier, the baselines and the reference curves by two policies, each the planner's optimum over exactly those tables at n = 2048, delta = 0.01 (`epoch.starting_policies`; a policy is a recursion with thresholds, and these are not Kahanamoku-Meyer and Yao's):
 PhaseProduct k = 3 (`forshor_sub1`, also on the full board) and PhaseTripleProduct k = 4 (`forshor_sub2`). The same policy is repriced at every delta. Their creation time is the constant
-`KMY_CREATED_AT`. Benchmarks are empty and the chart series are empty (no cache is read). Every KMY table contains a negation: the exporter's old guard on negating tables is gone because
+`STARTING_CREATED_AT`. Benchmarks are empty and the chart series are empty (no cache is read). Every KMY table contains a negation: the exporter's old guard on negating tables is gone because
 the PhaseProduct and PhaseTripleProduct boards now price a negation like the full run (`engine/negation-real`).
 
 ```sh

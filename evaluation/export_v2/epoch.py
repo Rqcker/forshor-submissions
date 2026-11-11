@@ -157,36 +157,36 @@ def baseline_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[
     return out
 
 
-# The leaderboard's starting rows when the seed is KMY-only (2026-11-10 decision): for each board family the planner's optimum over the
-# explicit tables of Kahanamoku-Meyer and Yao (2024) (`library.milestone_tables("kmy", mode)`: PhaseProduct k = 3; PhaseTripleProduct k = 3 and 4),
+# The leaderboard's starting rows when the seed starts only from the Kahanamoku-Meyer and Yao tables (`--kmy-only`, 2026-11-10 decision): for each board
+# family the planner's optimum over exactly the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (`library.milestone_tables("kmy", mode)`: PhaseProduct k = 3; PhaseTripleProduct k = 3 and 4),
 # generated once at the default delta and repriced at every delta like the baselines, so a row is the same policy on every delta. Their creation
 # time is a fixed constant (not "now", so the export stays reproducible; on or before any seed time, as the contract requires of a row's date).
-KMY_CREATED_AT = "2026-11-10T00:00:00Z"
+STARTING_CREATED_AT = "2026-11-10T00:00:00Z"
 
 
-def kmy_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[str, Any]]:
-    """The KMY starting policies, PhaseProduct first (it appears on the PhaseProduct and full boards), then PhaseTripleProduct, named forshor_sub1, forshor_sub2."""
+def starting_policies(log: Callable[[str], None] = lambda s: None) -> List[Dict[str, Any]]:
+    """The starting policies (the planner's optimum over the Kahanamoku-Meyer and Yao tables, not a policy of theirs), PhaseProduct first (it appears on the PhaseProduct and full boards), then PhaseTripleProduct, named forshor_sub1, forshor_sub2."""
     eng = engine.load()
     out: List[Dict[str, Any]] = []
     for board, mode in MODES.items():
         tabs = eng.library.milestone_tables("kmy", mode)
         if not tabs:
             continue
-        P, _ = eng.planner.optimal_policy(tabs, mode, pricing.N, mapping.DELTA_VALUES["1e-2"], name=f"kmy-{board}")
+        P, _ = eng.planner.optimal_policy(tabs, mode, pricing.N, mapping.DELTA_VALUES["1e-2"], name=f"starting-{board}")
         Q = eng.seed_policies.canonical(P)
         if not Q.bands:
-            log(f"kmy {board}: no band, skipped")
+            log(f"starting {board}: no band, skipped")
             continue
         digest = policy_digest(Q.to_json())
-        out.append({"id": digest[:12], "createdAt": KMY_CREATED_AT, "pr": None, "policy": Q, "digest": digest,
-                    "number": len(out) + 1, "board": board, "kmy": True})
-        log(f"kmy {board}: {digest[:12]} forshor_sub{len(out)} " + " -> ".join(f"{b.threshold}:{b.table.k}" for b in Q.bands))
+        out.append({"id": digest[:12], "createdAt": STARTING_CREATED_AT, "pr": None, "policy": Q, "digest": digest,
+                    "number": len(out) + 1, "board": board, "starting": True})
+        log(f"starting {board}: {digest[:12]} forshor_sub{len(out)} " + " -> ".join(f"{b.threshold}:{b.table.k}" for b in Q.bands))
     return out
 
 
-def kmy_listed(kmys: List[Dict[str, Any]]) -> Dict[Tuple[str, str], List[Dict[str, Any]]]:
-    """What is listed in a KMY-only seed: each board family's KMY policy, at every delta."""
-    return {(b["board"], delta): [b] for b in kmys for delta in FILE_KEY}
+def starting_listed(starts: List[Dict[str, Any]]) -> Dict[Tuple[str, str], List[Dict[str, Any]]]:
+    """What is listed in a seed that starts only from the Kahanamoku-Meyer and Yao tables: each board family's starting policy, at every delta."""
+    return {(b["board"], delta): [b] for b in starts for delta in FILE_KEY}
 
 
 # There is no guard on tables that negate any more. Until `engine/negation-real` the PhaseProduct and PhaseTripleProduct boards (tcost) priced a negation
@@ -222,8 +222,8 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
                       updated_at: Optional[str] = None, model: Optional[Dict[str, Any]] = None,
                       log: Callable[[str], None] = lambda s: None, kmy_only: bool = False) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """The epoch input and the evidence report (which policies have valid evidence, and why the others do not).
-    `kmy_only`: the KMY-only seed (see `kmy_policies`): no planner frontier, no baselines, no reference curves, no benchmark rows; the only listed
-    policies are the KMY ones."""
+    `kmy_only`: the seed that starts only from the Kahanamoku-Meyer and Yao tables (see `starting_policies`): no planner frontier, no baselines, no reference curves, no benchmark rows; the only listed
+    policies are the starting policies."""
     eng = engine.load()
     model = model or model_of()
     epoch = epoch_of(model)
@@ -243,8 +243,8 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
             entry = policies.setdefault(r["digest"], {"mode": MODES[board], "board": board, "policy": r["policy"], "uses": []})
             entry["uses"].append({"board": board, "delta": delta, "rowId": r["id"]})
     baselines = [] if kmy_only else baseline_policies(log)
-    kmys = kmy_policies(log) if kmy_only else []
-    for b in baselines + kmys:
+    starts = starting_policies(log) if kmy_only else []
+    for b in baselines + starts:
         entry = policies.setdefault(b["digest"], {"mode": MODES[b["board"]], "board": b["board"], "policy": b["policy"], "uses": []})
         entry["uses"].append({"board": b["board"], "delta": "1e-2", "rowId": b["id"]})
 
@@ -255,7 +255,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         b0 = boards_of(first["board"])[0]
         evidence[digest] = store.stomirror(view_of(b0, first["delta"], digest)["policy_json"], model, "ptp" if entry["mode"] == MODES["ptp"] else "pp")
 
-    listed = kmy_listed(kmys) if kmy_only else list_rows(rows_in, baselines)
+    listed = starting_listed(starts) if kmy_only else list_rows(rows_in, baselines)
 
     panels: Dict[str, Any] = {}
     rows: Dict[str, List[Dict[str, Any]]] = {}
@@ -263,7 +263,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         for r in board_rows:
             for b in boards_of(board):
                 view = copy.deepcopy(view_of(b, delta, r["digest"]))
-                title = (f"Kahanamoku-Meyer and Yao (2024) tables, policy {r['digest'][:12]}" if r.get("kmy")
+                title = (f"Kahanamoku-Meyer and Yao (2024) tables, policy {r['digest'][:12]}" if r.get("starting")
                          else f"Baseline policy {r['digest'][:12]}" if r.get("baseline") else f"STO frontier after {r['id']}") + (
                     f", {MODES[board]}, n = 2048, delta = {mapping.DELTA_VALUES[delta]:g}") + (", full order finding" if b == "full" else "")
                 view["title"] = view["policy_json"]["name"] = title
@@ -299,7 +299,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
         for b in mapping.BOARDS:
             name = "fullalg" if b == "full" else f"frontier_{b.upper()}"
             if kmy_only:
-                series = {}     # KMY-only: no reference curves at all (the page draws none), so nothing is read from the engine's caches
+                series = {}     # no reference curves at all (the page draws none), so nothing is read from the engine's caches
             else:
                 series = {m: v for m, v in json.loads((eng.engine_dir / "cache" / f"{name}_{file_key}.json").read_text())["milestones"].items()}
                 series = {m: v["points"] for m, v in series.items()}
@@ -313,7 +313,7 @@ def build_epoch_input(*, store: EvidenceStore, publisher_commit: str, archive_co
     document["sourceDigest"] = sha256_hex(document)
     report = evidence_report(policies, evidence)
     report["rowsBaseline"] = sum(1 for v in listed.values() for r in v if r.get("baseline"))
-    report["rowsKmy"] = sum(1 for v in listed.values() for r in v if r.get("kmy"))
+    report["rowsStarting"] = sum(1 for v in listed.values() for r in v if r.get("starting"))
     report["rowsListed"] = sum(len(v) for v in listed.values())   # baseline policy x delta rows
     return document, report
 
