@@ -200,7 +200,34 @@ async function main() {
     );
   });
 
+  await run('a policy with its summary.tex is admitted; a summary alone, or anything beside the pair, is refused', async () => {
+    const make = (number, names) => fakeGithub({
+      associated: [{ number, base: { ref: 'main' }, head: { sha: HEAD } }],
+      files: names.map((filename) => ({ filename })),
+    });
+    const policy = 'TableGeneration/Submission/Policy.lean';
+    const summary = 'TableGeneration/Submission/summary.tex';
+    const pr = await reporting.resolveTrustedPullRequest(make(30, [policy, summary]), context, { head_sha: HEAD });
+    assert.deepStrictEqual(pr, { number: 30, headSha: HEAD });
+    await expectThrows(
+      reporting.resolveTrustedPullRequest(make(31, [summary]), context, { head_sha: HEAD }),
+      /does not change .*Policy\.lean.*summary\.tex alone is not a submission/
+    );
+    for (const [n, extra] of [[32, 'TableGeneration/Submission/notes.tex'], [33, 'TableGeneration/Submission/Policy/summary.tex'],
+                              [34, 'README.md'], [35, 'TableGeneration/Submission/Summary.tex'], [36, 'TableGeneration/Submission/summary.tex.bak']]) {
+      await expectThrows(
+        reporting.resolveTrustedPullRequest(make(n, [policy, summary, extra]), context, { head_sha: HEAD }),
+        /outside the submission surface .*may change only .*Policy\.lean and the optional .*summary\.tex/s
+      );
+    }
+  });
+
   await run('path admission matches the submission surface', async () => {
+    assert.ok(reporting.isAdmittedSubmissionPath('TableGeneration/Submission/summary.tex'));
+    for (const near of ['TableGeneration/Submission/Summary.tex', 'TableGeneration/Submission/notes.tex', 'TableGeneration/Submission/summary.tex/x',
+                        'TableGeneration/summary.tex', 'summary.tex', 'TableGeneration/Submission/Policy/summary.tex']) {
+      assert.ok(!reporting.isAdmittedSubmissionPath(near), near);
+    }
     assert.ok(
       reporting.isAdmittedSubmissionPath('TableGeneration/Submission/Policy.lean')
     );

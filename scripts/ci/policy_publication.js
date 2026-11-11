@@ -4,13 +4,29 @@ const fs = require('node:fs');
 const { createHash } = require('node:crypto');
 const REPOSITORY = 'zapatacomputing/forshor-submissions';
 const SOURCE = 'TableGeneration/Submission/Policy.lean';
+// The optional LaTeX summary: text for people, never compiled or run. It is bound to the exact file at the head commit exactly as the policy is.
+const SUMMARY = 'TableGeneration/Submission/summary.tex';
 const INDEX = 'leaderboard/policy-submissions.json';
 const digest = text => createHash('sha256').update(text).digest('hex');
 
-async function content(github, context, path, ref) {
+const strictUtf8 = new TextDecoder('utf-8', { fatal: true });
+
+async function content(github, context, path, ref, { strict = false } = {}) {
   const { data } = await github.rest.repos.getContent({ ...context.repo, path, ref });
-  if (data.encoding !== 'base64' || typeof data.content !== 'string') throw new Error('Expected a versioned source file');
-  return Buffer.from(data.content, 'base64').toString('utf8');
+  if (Array.isArray(data) || (data.type && data.type !== 'file') || data.encoding !== 'base64' || typeof data.content !== 'string')
+    throw new Error('Expected a versioned source file');
+  const bytes = Buffer.from(data.content, 'base64');
+  return strict ? strictUtf8.decode(bytes) : bytes.toString('utf8');
+}
+
+/** The summary at a ref, or null when the ref has none (HTTP 404, the only answer that means "no summary": any other failure propagates). */
+async function summaryAt(github, context, path, ref) {
+  try {
+    return await content(github, context, path, ref, { strict: true });
+  } catch (error) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
 }
 
 async function accepted({ github, context, identity, readJson }) {
@@ -34,12 +50,19 @@ async function prepare({ github, context, core, run, pr, identity, result, recov
   const { data: details } = await github.rest.pulls.get({ ...context.repo, pull_number: pr.number });
   const login = details.user.login;
   const files = await github.paginate(github.rest.pulls.listFiles, { ...context.repo, pull_number: pr.number });
-  if (files.length !== 1 || files[0].filename !== SOURCE || files[0].previous_filename)
-    throw new Error('A policy submission may change only Policy.lean');
+  // Exactly the policy, or the policy and its optional summary.tex: nothing else, no rename, no copy, and a summary alone is not a submission.
+  const names = files.map(f => f.filename);
+  if (files.length < 1 || files.length > 2 || new Set(names).size !== files.length || !names.includes(SOURCE)
+      || names.some(name => name !== SOURCE && name !== SUMMARY) || files.some(f => f.previous_filename))
+    throw new Error('A policy submission may change only Policy.lean and the optional summary.tex');
+  if (files.some(f => f.filename === SUMMARY && f.status === 'removed'))
+    throw new Error('summary.tex may be added or edited, not deleted');
   let verification;
   if (recovered) {
     verification = { ...recovered.verification,
       leanSource: await content(github, context, `${recovered.base}/Policy.lean`, 'submission-results') };
+    if (recovered.verification.summarySha256 !== undefined)      // archived without its text (the text is stored once, as summary.tex)
+      verification.summarySource = await content(github, context, `${recovered.base}/summary.tex`, 'submission-results', { strict: true });
   } else {
     if (result.kind !== 'policy' || result.challenge !== 'forshor-policy') throw new Error('Not a policy verification result');
     verification = JSON.parse(fs.readFileSync('artifacts/verification.json', 'utf8'));
@@ -49,6 +72,13 @@ async function prepare({ github, context, core, run, pr, identity, result, recov
   if (verification.schema !== 'forshor.policy-verification/v1' || verification.login !== login
       || verification.leanSource !== source || verification.leanSha256 !== digest(source))
     throw new Error('Policy evidence does not match the GitHub author and exact submitted source');
+  // The summary is data: it must be the very file at the head commit, in both directions (none on either side means none on both), and it never changes the policy.
+  const summaryHead = await summaryAt(github, context, SUMMARY, pr.headSha);
+  const carriesSummary = ['summarySource', 'summarySha256', 'summaryBytes'].filter(key => verification[key] !== undefined);
+  if (summaryHead === null ? carriesSummary.length !== 0
+      : carriesSummary.length !== 3 || verification.summarySource !== summaryHead || verification.summarySha256 !== digest(summaryHead)
+        || verification.summaryBytes !== Buffer.byteLength(summaryHead, 'utf8'))
+    throw new Error('Summary evidence does not match the exact summary.tex submitted at the head commit');
   const receipt = recovered?.receipt ?? { ...identity, runId: String(run.id), runAttempt: run.run_attempt, pullRequest: pr.number };
   if (receipt.pullRequest !== pr.number) throw new Error('Archived verification belongs to another PR');
   verification.ciVerification = receipt;
