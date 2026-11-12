@@ -8,7 +8,7 @@ const NAME = 'Estimate resources with Qualtran and publish results';
 const CHECK_NAMES = new Set([NAME, 'Qualtran estimation and publication']);
 const STATE = 'publication-check.json';
 const REPOSITORY = 'zapatacomputing/forshor-submissions';
-const DASHBOARD = 'https://forshor-ai.web.app';
+const DASHBOARD = 'https://forshor-services.web.app';
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 
 function workflowUrl(context) {

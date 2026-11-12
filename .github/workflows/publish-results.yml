@@ -1,5 +1,16 @@
 name: Publish Verified Results
 on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Completed verification run to recover after maintenance
+        required: true
+        type: string
+      source_run_attempt:
+        description: Exact original verification attempt
+        required: true
+        default: '1'
+        type: string
   workflow_run:
     # Retain the old name so historical verification runs can still be retried.
     workflows: [Policy submission, Table submission, Verify Table Generation]
@@ -7,7 +18,7 @@ on:
 permissions: {}
 jobs:
   publish:
-    if: github.event.workflow_run.event == 'pull_request'
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     # One publisher at a time; do not drop intermediate accepted submissions.
@@ -22,8 +33,8 @@ jobs:
       checks: write
       id-token: write
     env:
-      SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
-      SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.source_run_id }}
+      SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt || inputs.source_run_attempt }}
       PUBLISHER_URL: ${{ vars.PUBLISHER_URL }}
     steps:
       - name: Checkout trusted publisher code
@@ -53,7 +64,7 @@ jobs:
           path: artifacts
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
       - name: Prepare verified publication identity
         id: publication
         if: steps.source.outputs.process == 'true'
@@ -66,8 +77,8 @@ jobs:
         id: google
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
         with:
-          workload_identity_provider: projects/769861884059/locations/global/workloadIdentityPools/forshor-staging/providers/github-submissions
-          service_account: forshor-results-ci@quantum-pilot-services.iam.gserviceaccount.com
+          workload_identity_provider: projects/1015282270412/locations/global/workloadIdentityPools/forshor-staging/providers/github-submissions
+          service_account: forshor-results-ci@forshor-services.iam.gserviceaccount.com
           token_format: id_token
           id_token_audience: ${{ vars.PUBLISHER_URL }}
           id_token_include_email: true

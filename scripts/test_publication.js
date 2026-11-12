@@ -124,6 +124,32 @@ test('an old run for a PR that has moved is explicitly superseded', async () => 
     error => error.code === 'SUPERSEDED');
 });
 
+test('maintenance recovery fetches the exact completed run from GitHub and refuses untrusted selection', async () => {
+  const run = { id: 123, run_attempt: 2, status: 'completed', event: 'pull_request',
+    path: '.github/workflows/table-generation-submission.yml', head_sha: HEAD, conclusion: 'success' };
+  const selected = { ...context, eventName: 'workflow_dispatch', ref: 'refs/heads/main', payload: { inputs: {
+    source_run_id: '123', source_run_attempt: '2', head_sha: 'b'.repeat(40), conclusion: 'success',
+  } } };
+  const calls = [];
+  const github = { rest: { actions: { getWorkflowRunAttempt: async params => { calls.push(params); return { data: run }; } } } };
+  assert.equal(await publication.sourceEvent({ github, context: selected }), run);
+  assert.deepEqual(calls, [{ ...context.repo, run_id: 123, attempt_number: 2 }]);
+  for (const inputs of [{ source_run_id: '../other', source_run_attempt: '2' }, { source_run_id: '9007199254740993', source_run_attempt: '2' },
+    { source_run_id: '123', source_run_attempt: '0' }]) {
+    await assert.rejects(publication.sourceEvent({ github, context: { ...selected, payload: { inputs } } }), /exact positive/);
+  }
+  await assert.rejects(publication.sourceEvent({ github, context: { ...selected, ref: 'refs/heads/feature' } }), /requires main/);
+  await assert.rejects(publication.sourceEvent({ github, context: { ...selected, repo: { owner: 'other', repo: 'fork' } } }), /requires main/);
+  const mismatch = { rest: { actions: { getWorkflowRunAttempt: async () => ({ data: { ...run, run_attempt: 3 } }) } } };
+  await assert.rejects(publication.sourceEvent({ github: mismatch, context: selected }), /exact completed/);
+  mismatch.rest.actions.getWorkflowRunAttempt = async () => ({ data: { ...run, status: 'in_progress' } });
+  await assert.rejects(publication.sourceEvent({ github: mismatch, context: selected }), /exact completed/);
+  for (const change of [{ event: 'push' }, { path: '.github/workflows/contributor-cli.yml' }]) {
+    mismatch.rest.actions.getWorkflowRunAttempt = async () => ({ data: { ...run, ...change } });
+    await assert.rejects(publication.inspect({ github: mismatch, context: selected, core: {} }), /Unexpected source verification/);
+  }
+});
+
 test('verification failure produces a visible outcome without archiving or publishing', async t => {
   const output = {}, messages = [];
   const summary = { addHeading(x) { messages.push(x); return this; }, addRaw(x) { messages.push(x); return this; },
