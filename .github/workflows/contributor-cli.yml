@@ -25,6 +25,6 @@ jobs:
       - run: python3 scripts/test_contributor_cli.py
       - run: python3 -m py_compile forshor
       - run: node scripts/test_report_trust.js
-      - run: node --test scripts/test_publication.js scripts/test_pr_publication.js scripts/test_policy_publication.js scripts/test_notify_submitters.js
+      - run: node --test scripts/test_publication.js scripts/test_pr_publication.js scripts/test_policy_publication.js scripts/test_notify_submitters.js scripts/test_submission_citation.js
       - run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
       - run: python3 scripts/test_policy_verifier.py

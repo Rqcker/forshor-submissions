@@ -3,6 +3,7 @@
 // Trusted-main code only. No uploaded artifact chooses a PR, commit, or check.
 const fs = require('node:fs');
 const notify = require('./notify_submitters.js');
+const { citation } = require('./submission_citation.js');
 const NAME = 'Estimate resources with Qualtran and publish results';
 const CHECK_NAMES = new Set([NAME, 'Qualtran estimation and publication']);
 const STATE = 'publication-check.json';
@@ -93,7 +94,8 @@ function acceptedBody(state, result, metadata, author) {
     + `[Lean verification](${verification}) · [Qualtran and publication](${state.detailsUrl}) · [Archived ${isPolicy ? 'policy' : 'table'}](${archive}) · [Staging dashboard](${DASHBOARD})${snapshot}\n\n`
     + (isPolicy ? `Refresh the dashboard to see ${result.name ? `\`${result.name}\`` : 'your policy'}. A valid policy need not take first place. ` : 'Refresh the dashboard to see the latest results. A valid table need not change the winning plan. ')
     + 'Accepted submission PRs are closed without merging; their results and source remain in the archive. '
-    + `Use a new submission PR for your next ${isPolicy ? 'policy' : 'table'}.`;
+    + `Use a new submission PR for your next ${isPolicy ? 'policy' : 'table'}.`
+    + (isPolicy && citation({ state, result, metadata }) ? `\n\n${citation({ state, result, metadata })}` : '');
 }
 
 async function comment(github, context, state, result, metadata, author) {

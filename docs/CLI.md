@@ -75,7 +75,7 @@ verifier run ID, attempt, PR number, and submitted SHA. An unrelated success or
 a successful job without a publication receipt is never reported as your result.
 
 You are told how it ended. When verification finishes the PR gets a comment that mentions the PR's author, so GitHub notifies them
-(web, email or mobile, as their notification settings say): **accepted and published** (the publisher's comment, with the row name),
+(web, email or mobile, as their notification settings say): **accepted and published** (the publisher's comment, with the row name and a "Cite this submission" section: the policy digest, the submission commit, the snapshot it was published in, and a ready citation and BibTeX entry; a DOI is assigned when accepted submissions are deposited after the challenge closes),
 **not accepted** (the check that failed, in plain words, and the verifier's message), or **could not complete** (a tool, a limit or the
 runner failed, or the run was cancelled: this is not a verdict on the policy, and nothing needs to change on your side). There is one
 comment per commit and outcome, updated in place on a re-run. The *Notify Submitters* workflow posts "not accepted" and
