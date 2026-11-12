@@ -158,7 +158,7 @@ test('the accepted comment mentions the author, and only a plain login', () => f
   assert.match(f.comments[0].body, /^<!-- forshor-publication:a{40} -->\n### Submission accepted and published\n\n@contributor, Lean verification passed/);
   for (const user of [null, { login: 'dependabot[bot]' }, { login: 'x\n@victim' }]) await fixture(async g => {
     g.pr = { ...g.pr, user }; await g.begin(); await g.finish();
-    assert.ok(!/@(?!\u200b)[A-Za-z]/.test(g.comments[0].body), JSON.stringify(user));
+    assert.ok(!/@(?!\u200b)[A-Za-z]/.test(g.comments[0].body.replace(/```[\s\S]*?```/g, '')), JSON.stringify(user));   // a fenced citation holds `@misc`, which is not a mention
     assert.match(g.comments[0].body, /Submission accepted and published/);
   });
 }));
@@ -283,6 +283,11 @@ for (const forged of [false, true]) test(`v2 policy receipt ${forged ? 'rejects 
     assert.equal(f.pr.state, 'closed'); assert.equal(f.checks[0].conclusion, 'success');
     assert.match(f.comments[0].body, /results\/policy-submissions\/a{40}/);
     assert.match(f.comments[0].body, /results\/v2\/e\/7a11b2b8b6d68718\/s\/d{64}\/dashboard.json/);
+    // the submitter is sent the hash and a citation for their own submission, in the same comment
+    assert.match(f.comments[0].body, /\n### Cite this submission\n/);
+    assert.ok(f.comments[0].body.includes(`Policy digest (sha256): \`${KEY}\``));
+    assert.ok(f.comments[0].body.includes(`Submission commit: \`${HEAD}\``));
+    assert.match(f.comments[0].body, /```bibtex\n@misc\{forshor_[a-f0-9]{12},/);
     assert.match(f.comments[0].body, /contributor_sub1/);
   }
 }));
