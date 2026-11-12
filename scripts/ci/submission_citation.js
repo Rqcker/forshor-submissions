@@ -1,7 +1,7 @@
 'use strict';
 
 // Trusted-main code only. The "Cite this submission" section of the accepted comment. It is built only from values the publisher has already
-// checked against the verified pull request (digest, commit, epoch, snapshot, login, pull number) and is empty if any of them is not in its
+// checked against the verified pull request (digest, commit, login, pull number, snapshot) and is empty if any of them is not in its
 // exact expected form: nothing a contributor wrote reaches the comment except through a pattern.
 
 const REPOSITORY = 'zapatacomputing/forshor-submissions';
@@ -17,16 +17,18 @@ const bibtexText = text => text.replace(/_/g, '\\_');
  */
 function citation({ state, result, metadata }) {
   if (metadata?.kind !== 'policy') return '';
-  const digest = metadata.policyDigest, head = state?.pr?.headSha, epoch = metadata.epoch, login = metadata.githubLogin, pull = state?.pr?.number;
-  if (!hex(digest, 64) || !hex(head, 40) || !hex(epoch, 16) || !LOGIN.test(login ?? '') || !Number.isSafeInteger(pull) || pull < 1) return '';
+  const digest = metadata.policyDigest, head = state?.pr?.headSha, login = metadata.githubLogin, pull = state?.pr?.number;
+  if (!hex(digest, 64) || !hex(head, 40) || !LOGIN.test(login ?? '') || !Number.isSafeInteger(pull) || pull < 1) return '';
   const mode = MODES.has(result?.policy?.mode) ? result.policy.mode : null;
   const name = ROW_NAME.test(result?.name ?? '') ? result.name : null;
   const snapshot = hex(result?.snapshotId, 64) ? result.snapshotId : null;
-  const published = Date.parse(result?.updatedAt);
-  const year = new Date(Number.isFinite(published) ? published : Date.now()).getUTCFullYear();
+  // The year the submission was made (the pull request's creation), so the text never changes with a later publication; the site's Details dialog says the same.
+  const made = Date.parse(metadata.submittedAt), published = Date.parse(result?.updatedAt);
+  const year = new Date(Number.isFinite(made) ? made : Number.isFinite(published) ? published : Date.now()).getUTCFullYear();
   const url = `https://github.com/${REPOSITORY}/pull/${pull}`;
   const title = `ForShor challenge: ${mode ? `${mode} policy` : 'policy'}${name ? ` ${name}` : ''}`;
-  const facts = [`policy digest sha256:${digest}`, `submission commit ${head}`, `epoch ${epoch}`, ...(snapshot ? [`snapshot ${snapshot}`] : [])].join('; ');
+  // Only what never changes: the snapshot it was first listed in is a separate line, and the site's Details dialog produces this exact text without it.
+  const facts = `policy digest sha256:${digest}; submission commit ${head}`;
   return [
     '### Cite this submission',
     '',
