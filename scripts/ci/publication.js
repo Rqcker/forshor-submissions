@@ -41,8 +41,24 @@ async function acceptedReceipt(github, context, identity) {
     && Number(policy.source.pr_number) === receipt.pullRequest ? receipt : null;
 }
 
+// Maintenance recovery selects only a run/attempt. GitHub supplies all acceptance data; callers cannot provide a head, PR, or result.
+async function sourceEvent({ github, context }) {
+  if (context.eventName !== 'workflow_dispatch') return context.payload.workflow_run;
+  const inputs = context.payload.inputs || {};
+  const valid = value => typeof value === 'string' && /^[1-9][0-9]*$/.test(value) && Number.isSafeInteger(Number(value));
+  if (context.ref !== 'refs/heads/main' || `${context.repo.owner}/${context.repo.repo}` !== REPOSITORY
+      || !valid(inputs.source_run_id) || !valid(inputs.source_run_attempt))
+    throw new Error('Maintenance recovery requires main and an exact positive run/attempt');
+  const { data: run } = await github.rest.actions.getWorkflowRunAttempt({
+    ...context.repo, run_id: Number(inputs.source_run_id), attempt_number: Number(inputs.source_run_attempt),
+  });
+  if (run.id !== Number(inputs.source_run_id) || run.run_attempt !== Number(inputs.source_run_attempt) || run.status !== 'completed')
+    throw new Error('Recovery must use the exact completed verification attempt');
+  return run;
+}
+
 async function inspect({ github, context, core }) {
-  const event = context.payload.workflow_run;
+  const event = await sourceEvent({ github, context });
   if (!event || event.event !== 'pull_request' || event.path !== '.github/workflows/table-generation-submission.yml'
       || !Number.isSafeInteger(event.id) || !Number.isSafeInteger(event.run_attempt) || !sha(event.head_sha))
     throw new Error('Unexpected source verification workflow');
@@ -138,4 +154,4 @@ async function archive({ github, context, core }) {
     .addRaw('\n\nThe publication step can be retried independently of Lean verification.\n').write();
 }
 
-module.exports = { inspect, archive, verificationIdentity, evaluationKey, assertReceipt };
+module.exports = { inspect, archive, verificationIdentity, evaluationKey, assertReceipt, sourceEvent };
