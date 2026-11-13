@@ -8,7 +8,7 @@ const NAME = 'Estimate resources with Qualtran and publish results';
 const CHECK_NAMES = new Set([NAME, 'Qualtran estimation and publication']);
 const STATE = 'publication-check.json';
 const REPOSITORY = 'zapatacomputing/forshor-submissions';
-const DASHBOARD = 'https://forshor-staging-769861884059.us-central1.run.app';
+const DASHBOARD = 'https://forshor-ai.web.app';
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 
 function workflowUrl(context) {
@@ -91,7 +91,7 @@ function acceptedBody(state, result, metadata, author) {
   const who = notify.mention(author);
   return `${marker}\n### Submission accepted and published\n\n`
     + `${who ? `${who}, ` : ''}Lean verification passed and Google confirmed publication for commit \`${state.pr.headSha}\`.\n\n`
-    + `[Lean verification](${verification}) · [Qualtran and publication](${state.detailsUrl}) · [Archived ${isPolicy ? 'policy' : 'table'}](${archive}) · [Staging dashboard](${DASHBOARD})${snapshot}\n\n`
+    + `[Lean verification](${verification}) · [Qualtran and publication](${state.detailsUrl}) · [Archived ${isPolicy ? 'policy' : 'table'}](${archive}) · [Published dashboard](${DASHBOARD})${snapshot}\n\n`
     + (isPolicy ? `Refresh the dashboard to see ${result.name ? `\`${result.name}\`` : 'your policy'}. A valid policy need not take first place. ` : 'Refresh the dashboard to see the latest results. A valid table need not change the winning plan. ')
     + 'Accepted submission PRs are closed without merging; their results and source remain in the archive. '
     + `Use a new submission PR for your next ${isPolicy ? 'policy' : 'table'}.`
