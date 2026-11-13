@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import shutil
 
 from policy_source import validate
 
@@ -67,6 +68,33 @@ class PolicySource(unittest.TestCase):
             self.assertEqual(data['metadata']['head_sha'], 'a' * 40)
             self.assertEqual(data['status'], 'failure')
             self.assertEqual(data['checks'][0]['name'], 'policy-source')
+
+    def test_current_sparse_controls_work_with_an_older_scientific_verifier(self):
+        repository = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            controls = workspace / 'controls'
+            for relative in ['scripts/ci/policy_source.py', 'scripts/verifier.py', 'scripts/leaderboard.py', 'leaderboard/config.json']:
+                target = controls / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(repository / relative, target)
+            old_verifier = workspace / 'verifier'
+            old_verifier.mkdir()
+            (old_verifier / 'old-scientific-input').write_text('pinned and unchanged')
+            submission = workspace / 'submission'
+            submission.mkdir()
+            source = submission / 'Policy.lean'
+            source.write_text(SAFE + '\n#eval IO.println "canary"\n')
+            artifacts = submission / 'artifacts'
+            artifacts.mkdir()
+            report = artifacts / 'table-generation-submission-result.json'
+            report.write_text(json.dumps({'kind': 'policy', 'phase': 'preflight', 'status': 'success', 'checks': []}))
+            result = subprocess.run([sys.executable, 'scripts/ci/policy_source.py', '../submission/Policy.lean',
+                                     '--artifacts', '../submission/artifacts'], cwd=controls, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('build-time commands', result.stderr)
+            self.assertEqual(json.loads(report.read_text())['checks'][0]['name'], 'policy-source')
+            self.assertEqual((old_verifier / 'old-scientific-input').read_text(), 'pinned and unchanged')
 
 
 if __name__ == '__main__':

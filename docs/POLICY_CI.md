@@ -17,7 +17,9 @@ The verification job is bounded to 30 minutes in total, including setup, ForShor
 ## Source restrictions before compilation
 
 The trusted `scripts/ci/policy_source.py` filter runs before dependency setup or
-verification reuse, and local `./forshor check` runs it from the fetched company
+verification reuse. Hosted jobs fetch a separate, sparse `controls` checkout
+from company main because older PR events may retain an earlier scientific
+verifier revision without this filter. Local `./forshor check` runs it from the fetched company
 checker. It applies the existing site-harness restrictions missing from the
 upstream shell gate: no build-time commands, effects, metaprogramming, unproved
 axioms, native proof shortcuts, compiler overrides, or extra imports. It uses
