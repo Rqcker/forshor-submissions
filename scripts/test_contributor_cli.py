@@ -356,6 +356,10 @@ class WorkingFiles(unittest.TestCase):
             if args[:3] == ['gh', 'pr', 'create']:
                 calls.append(args)
                 return SimpleNamespace(stdout='https://github.com/zapatacomputing/forshor-submissions/pull/99\n')
+            if args[:3] == ['gh', 'api', 'user']:
+                return SimpleNamespace(stdout=json.dumps({'login': 'participant', 'id': 1}), returncode=0)
+            if args[0] == 'gh':
+                self.fail(f'Unexpected network command in fork test: {args}')
             return original_run(args, **kwargs)
         def pr(_):
             return {'head': {'sha': git(self.root, 'rev-parse', 'HEAD'), 'repo': {'full_name': source_repo}},
