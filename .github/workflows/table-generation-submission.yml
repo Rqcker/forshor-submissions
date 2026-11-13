@@ -96,9 +96,27 @@ jobs:
           print('kind=' + ('policy' if result.get('kind') == 'policy' else 'table'))
           PYCODE
 
+      - name: Checkout current trusted policy controls
+        if: steps.format.outputs.kind == 'policy'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: zapatacomputing/forshor-submissions
+          ref: main
+          path: controls
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            scripts/ci/policy_source.py
+            scripts/verifier.py
+            scripts/leaderboard.py
+            leaderboard/config.json
+
       - name: Check policy source before compilation or reuse
         if: steps.format.outputs.kind == 'policy'
-        working-directory: verifier
+        # Existing PR events can retain their original base SHA. Operational
+        # restrictions must come from current company main, independently of
+        # that pinned mathematical verifier. Never use the fork's helper.
+        working-directory: controls
         run: python3 scripts/ci/policy_source.py ../submission/TableGeneration/Submission/Policy.lean --artifacts ../submission/artifacts
 
       - name: Reuse an identical accepted verification
