@@ -169,6 +169,8 @@ Resource rules:
 
 Read `SUBMISSION_FORMAT.md` section 6 first. **This pack prices a policy and prepares it; it does not submit it.** The submission repository is
 `zapatacomputing/forshor-submissions` (private during the sprint; the challenge page's **Participate** dialog has the commands), and its instructions win over this file.
+Once the repository is public, `./forshor submit` creates or reuses the participant's GitHub fork and opens the PR against `zapatacomputing/forshor-submissions/main`; participants do not need upstream Write access. While private, existing authorized staging contributors retain their current route.
+
 Its CLI (`./forshor setup`, `./forshor check`, `./forshor submit`) takes a Lean `GeneratorPolicy` in `TableGeneration/Submission/Policy.lean`. The route by which a policy
 JSON reaches the boards is not part of this pack. If the repository's instructions do not say how to send the policy JSON you wrote, tell the user that and stop: do not guess a
 route or invent a command.

@@ -79,10 +79,73 @@ def repository():
     if result.returncode:
         raise UserError('Run this inside your forshor-submissions checkout, or use ./forshor setup DIRECTORY.')
     root = Path(result.stdout.strip()).resolve()
-    origin = git(root, 'remote', 'get-url', 'origin').removesuffix('.git').rstrip('/')
-    if origin not in (f'https://github.com/{REPO}', f'git@github.com:{REPO}', f'ssh://git@github.com/{REPO}'):
-        raise UserError(f'This checkout must use {REPO} as origin. No files were submitted.')
+    origin = git(root, 'remote', 'get-url', 'origin').rstrip('/').removesuffix('.git')
+    match = re.fullmatch(r'(?:https://github.com/|git@github.com:|ssh://git@github.com/)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)', origin)
+    if not match:
+        raise UserError(f'Origin must be {REPO} or a GitHub fork of it. No files were submitted.')
+    name = match[1]
+    if name != REPO and not is_submission_fork(github_repository(name)):
+        raise UserError(f'Origin is not a fork of {REPO}. No files were submitted.')
     return root
+
+
+def github_repository(name, missing_ok=False):
+    response = run(['gh', 'api', '--method', 'GET', f'repos/{name}'], check=False)
+    try:
+        data = json.loads(response.stdout)
+    except ValueError:
+        data = {}
+    if response.returncode:
+        if missing_ok and data.get('status') in (404, '404'):
+            return None
+        raise UserError(f'Could not inspect GitHub repository {name}. Check GitHub sign-in and repository access.')
+    return data
+
+
+def is_submission_fork(details):
+    return bool(details.get('fork') and (
+        (details.get('source') or {}).get('full_name') == REPO
+        or (details.get('parent') or {}).get('full_name') == REPO))
+
+
+def submission_repository(root):
+    """Public submissions always use the authenticated user's fork.
+
+    Authorized private staging contributors retain the existing upstream flow
+    while company policy disables private forks. Never grant upstream access.
+    """
+    upstream = github_repository(REPO)
+    if upstream.get('private') and upstream.get('permissions', {}).get('push'):
+        return REPO
+    login = gh_json('api', 'user')['login']
+    name = f'{login}/{REPO.split("/")[1]}'
+    details = github_repository(name, missing_ok=True)
+    if details is None:
+        run(['gh', 'repo', 'fork', REPO, '--clone=false', '--remote=false'])
+        details = github_repository(name)
+    if details.get('full_name', '').lower() != name.lower() or not is_submission_fork(details):
+        raise UserError(f'{name} is not your fork of {REPO}. No files were pushed. Use a correctly linked fork.')
+    return details['full_name']
+
+
+def pull_requests(branch, head_repository):
+    # REST's owner-qualified head filter avoids confusing identically named
+    # branches in different forks. `gh pr list --head owner:branch` is unsupported.
+    from urllib.parse import urlencode
+    query = urlencode({'head': f'{head_repository.split("/")[0]}:{branch}',
+                       'base': 'main', 'state': 'all', 'per_page': 100})
+    pages = gh_json('api', '--method', 'GET', f'repos/{REPO}/pulls?{query}', '--paginate', '--slurp')
+    return [{'number': pr['number'], 'url': pr['html_url'], 'headRefOid': pr['head']['sha'],
+             'state': pr['state'].upper()} for page in pages for pr in page
+            if (pr.get('head', {}).get('repo') or {}).get('full_name', '').lower() == head_repository.lower()]
+
+
+def submission_branch():
+    identifier = uuid.uuid4().hex
+    # Four fixed GitHub concurrency groups, with one active verification each.
+    # Routing is only scheduling; it grants no acceptance or publishing rights.
+    lane = int(identifier[-1], 16) % 4
+    return f'submission/q{lane}/' + time.strftime('%Y%m%d-%H%M%S') + '-' + identifier[:8]
 
 
 def storage(root):
@@ -205,8 +268,12 @@ def fingerprint(root, base):
 
 
 def refresh_base(root):
-    network_git(root, 'fetch', '--no-tags', 'origin', 'main')
-    return git(root, 'rev-parse', 'origin/main')
+    # Origin may be a participant's fork. The verifier always comes from the
+    # fixed company repository, never that fork's main or a user-set upstream.
+    reference = 'refs/remotes/forshor-upstream/main'
+    network_git(root, 'fetch', '--no-tags', f'https://github.com/{REPO}.git',
+                f'+refs/heads/main:{reference}')
+    return git(root, 'rev-parse', reference)
 
 
 def logged(root, label, args, cwd, env=None):
@@ -365,13 +432,13 @@ def check(root=None, base=None):
     return base, digest
 
 
-def validate_pr(pr, head):
+def validate_pr(pr, head, head_repository=REPO):
     if pr.get('head', {}).get('sha') != head:
         raise UserError('This PR now points to another commit. Run ./forshor status for the current submission.')
     if (pr.get('base', {}).get('ref') != 'main'
-            or pr.get('base', {}).get('repo', {}).get('full_name') != REPO
-            or pr.get('head', {}).get('repo', {}).get('full_name') != REPO):
-        raise UserError('The PR is not a submission from this repository against main.')
+            or (pr.get('base', {}).get('repo') or {}).get('full_name') != REPO
+            or (pr.get('head', {}).get('repo') or {}).get('full_name') != head_repository):
+        raise UserError('The PR does not match the recorded source repository and company main branch.')
 
 
 def publication_matches(source, submission, verification):
@@ -412,7 +479,7 @@ def hosted_failure(verification):
 
 def inspect_status(submission, inspected):
     pr = api(f'pulls/{submission["pr"]}')
-    validate_pr(pr, submission['head'])
+    validate_pr(pr, submission['head'], submission.get('repository', REPO))
     verifiers = api(f'actions/workflows/table-generation-submission.yml/runs?head_sha={submission["head"]}&event=pull_request&per_page=100')['workflow_runs']
     verifiers = [r for r in verifiers if r['path'] == VERIFIER and r['event'] == 'pull_request']
     if not verifiers:
@@ -497,20 +564,20 @@ def submit(args):
         if state.get('submission'):
             return watch(root, args)
         raise UserError('No changes to submit. Edit Policy.lean first.')
+    head_repository = submission_repository(root)
     branch = git(root, 'branch', '--show-current')
     prs = []
     new_branch = not branch or branch in ('main', 'submission-results')
     if not new_branch:
         # Discover before pushing: GitHub also updates the recorded head of a
         # closed PR, but pushing there does not trigger submission verification.
-        prs = gh_json('pr', 'list', '--repo', REPO, '--head', branch, '--base', 'main',
-                      '--state', 'all', '--json', 'number,url,headRefOid,state')
+        prs = pull_requests(branch, head_repository)
         head = git(root, 'rev-parse', 'HEAD')
         dirty = bool(git(root, 'status', '--porcelain', '--untracked-files=all'))
         new_branch = bool(prs) and not any(p['state'] == 'OPEN' for p in prs) and (
             dirty or not any(p['headRefOid'] == head for p in prs))
     if new_branch:
-        branch = 'submission/' + time.strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:6]
+        branch = submission_branch()
         git(root, 'switch', '-c', branch)
         prs = []
     git(root, 'add', '--', *paths)
@@ -525,7 +592,7 @@ def submit(args):
     if fingerprint(root, base) != digest:
         raise UserError('Submission files changed during commit. Check again before pushing.')
     head = git(root, 'rev-parse', 'HEAD')
-    network_git(root, 'push', '--set-upstream', 'origin', f'HEAD:refs/heads/{branch}')
+    network_git(root, 'push', f'https://github.com/{head_repository}.git', f'HEAD:refs/heads/{branch}')
     matching = next((pr for pr in prs if pr['headRefOid'] == head), None)
     if matching:
         number, url = matching['number'], matching['url']
@@ -537,11 +604,12 @@ def submit(args):
         with tempfile.TemporaryDirectory(prefix='forshor-pr-') as directory:
             bodyfile = Path(directory) / 'body.md'
             bodyfile.write_text(body + '\n')
-            url = run(['gh', 'pr', 'create', '--repo', REPO, '--base', 'main', '--head', branch,
+            qualified_head = branch if head_repository == REPO else f'{head_repository.split("/")[0]}:{branch}'
+            url = run(['gh', 'pr', 'create', '--repo', REPO, '--base', 'main', '--head', qualified_head,
                        '--title', args.title, '--body-file', str(bodyfile)]).stdout.strip()
         number = int(url.rstrip('/').split('/')[-1])
-    validate_pr(api(f'pulls/{number}'), head)
-    state['submission'] = {'pr': number, 'url': url, 'head': head, 'branch': branch}
+    validate_pr(api(f'pulls/{number}'), head, head_repository)
+    state['submission'] = {'pr': number, 'url': url, 'head': head, 'branch': branch, 'repository': head_repository}
     write_state(root, state)
     print(f'Submitted: {url}\nCommit: {head}', flush=True)
     return watch(root, args)
@@ -571,6 +639,7 @@ def main(argv=None):
         if args.command == 'setup':
             setup(args)
         else:
+            authenticate()
             root = repository()
             with repository_lock(root):
                 if args.command == 'check':

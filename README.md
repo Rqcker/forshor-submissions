@@ -1,11 +1,10 @@
-# Private ForShor submission pipeline
+# ForShor submissions
 
 ## Contribute with the CLI
 
 With [GitHub CLI](https://cli.github.com/), Git, and Python 3.12 or newer installed:
 
 ```sh
-gh auth status || gh auth login
 gh repo clone zapatacomputing/forshor-submissions
 cd forshor-submissions
 ./forshor setup
@@ -24,8 +23,12 @@ follows that exact submission through hosted Lean verification, resource
 estimation, and publication. It prints the accepted-source and dashboard links.
 Refresh staging after publication; acceptance does not guarantee a new winner.
 
-No new website account or API key is needed. Your GitHub account needs access to
-this private repository; the staging website retains its separate password login.
+No website account or API key is needed to submit. After the repository becomes
+public, `submit` creates or reuses your GitHub fork and opens a PR from there;
+you do not need Write access to the company repository. The CLI handles GitHub
+sign-in when needed. While the repository remains private, existing authorized
+staging contributors retain their current submission route and staging retains
+its separate password login.
 See [CLI behavior and recovery](docs/CLI.md) or `./forshor --help`.
 
 ## Pipeline implementation
@@ -43,19 +46,26 @@ The older table-generator route remains separate: its accepted catalog, v1 archi
 Trusted main warms separate Lean and Python caches; PR jobs restore only. See [policy environments, limits, and recovery](docs/POLICY_CI.md). Policies are checked against the active model; engine changes require an epoch migration.
 
 Website: https://github.com/zapatacomputing/forshor-site
-Tracking: [QP-436](https://linear.app/zapata-quantum/issue/QP-436), [QP-437](https://linear.app/zapata-quantum/issue/QP-437).
+Public participation: [MIS-23](https://linear.app/zapata-quantum/issue/MIS-23/public-submissions).
 
-## Reliable private staging pipeline (QP-396)
+## Queues and recovery
 
 The detailed receipt/catalog paths below describe the original table-generator route. Policy evidence is archived separately with its trusted `ciVerification` receipt; [POLICY_CI.md](docs/POLICY_CI.md) describes the v2 route.
 
-The private sprint allows **one active verification job and one active
-publication job**, which can overlap. Each stage uses GitHub's `queue: max`
-concurrency queue (up to 100 waiting jobs per stage). Waiting does not hold a
-runner. The separate PR concurrency group cancels superseded verification
-runs; it never cancels a different PR's accepted publication. These conservative
-limits are the staging configuration, not the earlier theoretical 20-runner
-compute ceiling. Other organization workflows still share GitHub's overall cap.
+Allow **up to four active verification jobs and one active publication job**.
+The CLI assigns new submission branches across four fixed verification queues;
+each allows one active job and up to 100 waiting jobs. Older/manual branch names
+use the first queue. A busy queue can wait while another is idle: these are four
+independent queues, not a scheduler that moves work between them. Publication
+uses a separate single queue with up to 100 waiting jobs. Waiting does not hold
+a runner. All jobs still share the organization's overall Actions concurrency.
+
+Verification has a **30-minute job timeout** (including setup); its ForShor
+stage has a 15-minute limit and its mirror stage has a 10-minute limit. The
+trusted Qualtran/archive/publication job has a **20-minute job timeout**.
+Timeouts report a failure, not a mathematical rejection. Trusted cache warming
+is separate and may take longer on a cold build. An updated PR cancels only its
+older verification run. It never cancels another PR or an active publication.
 
 An accepted verification gets a trusted receipt on `submission-results` at
 `results/evaluations/<key>.json`. The key includes the submitted commit and
@@ -98,8 +108,8 @@ visibly rather than being mistaken for missing cache entries.
 
 Verifier artifacts are retained for 90 days; publication diagnostics for 14.
 Before verification is archived, its source artifact must still exist. After
-archival, modern recovery does not depend on artifact retention. If a stage's 100-job waiting
-queue fills, GitHub cancels additional arrivals visibly: rerun those runs after
+archival, modern recovery does not depend on artifact retention. If a queue's 100-job waiting
+limit is reached, GitHub cancels additional arrivals visibly: rerun those runs after
 capacity is available. This is a bounded sprint queue, not an unlimited intake
 service. Retry exhaustion is a failed job with recovery instructions, never a
 successful workflow that silently lost a result.
@@ -113,7 +123,12 @@ python3 -m unittest discover -s scripts/ci -p 'test_*.py'
 python -m unittest discover -s evaluation -p 'test_*.py' # pinned Qualtran environment
 ```
 
-The original upstream README follows. Its public-repository branch/promotion instructions are background; this private pipeline uses main and publishes to private staging only.
+See [public participation and repository protections](docs/PUBLIC_PARTICIPATION.md)
+for the release checklist, fork behavior, limits, and operator checks.
+
+The original upstream README follows. Its promotion instructions are background;
+this pipeline targets `forshor-submissions/main` and archives accepted source on
+`forshor-submissions/submission-results` without merging participant PRs.
 
 ---
 

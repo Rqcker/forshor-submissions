@@ -187,6 +187,7 @@ class WorkingFiles(unittest.TestCase):
             return cli_run(command, cwd=cwd, env=env, capture=capture, check=check)
         cli_run = cli.run
         with patch.object(cli, 'authenticate'), patch.object(cli, 'repository', return_value=self.root), patch.object(cli, 'refresh_base', return_value=self.base), \
+                patch.object(cli, 'submission_repository', return_value=cli.REPO), patch.object(cli, 'pull_requests', return_value=[]), \
                 patch.object(cli, 'run', side_effect=fake_run), patch.object(cli, 'network_git'), patch.object(cli, 'api', return_value={}) as fetch_pr, \
                 patch.object(cli, 'validate_pr'), patch.object(cli, 'watch', return_value=0):
             cli.submit(args)
@@ -265,7 +266,8 @@ class WorkingFiles(unittest.TestCase):
         args = argparse.Namespace(watch=False, json=False, timeout=1, title='test')
         with patch.object(cli, 'authenticate'), patch.object(cli, 'repository', return_value=self.root), \
                 patch.object(cli, 'refresh_base', return_value=self.base), \
-                patch.object(cli, 'gh_json', return_value=[pr]) as github, \
+                patch.object(cli, 'submission_repository', return_value=cli.REPO), \
+                patch.object(cli, 'pull_requests', return_value=[pr]) as github, \
                 patch.object(cli, 'api', return_value=details), patch.object(cli, 'network_git'), \
                 patch.object(cli, 'watch'), patch.object(cli, 'check') as check:
             cli.submit(args)
@@ -308,6 +310,7 @@ class WorkingFiles(unittest.TestCase):
         args = argparse.Namespace(watch=False, json=False, timeout=1, title='test')
         with patch.object(cli, 'authenticate'), patch.object(cli, 'repository', return_value=self.root), \
                 patch.object(cli, 'refresh_base', return_value=self.base), \
+                patch.object(cli, 'submission_repository', return_value=cli.REPO), patch.object(cli, 'pull_requests', return_value=[pr]), \
                 patch.object(cli, 'gh_json', side_effect=github), patch.object(cli, 'run', side_effect=run), \
                 patch.object(cli, 'api', side_effect=details), patch.object(cli, 'network_git') as push, \
                 patch.object(cli, 'watch'), patch.object(cli, 'check') as check:
@@ -330,6 +333,129 @@ class WorkingFiles(unittest.TestCase):
 
     def test_unchanged_accepted_submission_reuses_closed_pr_for_status(self):
         self.closed_pr_iteration(None)
+
+    def test_fork_submission_pushes_only_to_fork_and_binds_the_pr_to_it(self):
+        # Real commits and a real Git push: the upstream bare repository must
+        # remain unchanged even though the test participant can write locally.
+        upstream = self.root.parent / (self.root.name + '-upstream.git')
+        fork = self.root.parent / (self.root.name + '-fork.git')
+        self.addCleanup(lambda: __import__('shutil').rmtree(upstream))
+        self.addCleanup(lambda: __import__('shutil').rmtree(fork))
+        subprocess.run(['git', 'clone', '--quiet', '--bare', str(self.root), str(upstream)], check=True)
+        subprocess.run(['git', 'clone', '--quiet', '--bare', str(upstream), str(fork)], check=True)
+        self.policy()
+        (self.root / cli.SUMMARY).write_text('Explanation, retained as text.\n')
+        cli.write_state(self.root, {'checked': {'base': self.base, 'digest': cli.fingerprint(self.root, self.base)}})
+        source_repo = 'participant/forshor-submissions'
+        calls = []
+        def push(root, *args):
+            self.assertEqual(args[:2], ('push', f'https://github.com/{source_repo}.git'))
+            return git(root, 'push', str(fork), args[-1])
+        original_run = cli.run
+        def run(args, **kwargs):
+            if args[:3] == ['gh', 'pr', 'create']:
+                calls.append(args)
+                return SimpleNamespace(stdout='https://github.com/zapatacomputing/forshor-submissions/pull/99\n')
+            return original_run(args, **kwargs)
+        def pr(_):
+            return {'head': {'sha': git(self.root, 'rev-parse', 'HEAD'), 'repo': {'full_name': source_repo}},
+                    'base': {'ref': 'main', 'repo': {'full_name': cli.REPO}}}
+        args = argparse.Namespace(watch=False, json=False, timeout=1, title='Test public submission')
+        with patch.object(cli, 'authenticate'), patch.object(cli, 'repository', return_value=self.root), \
+                patch.object(cli, 'refresh_base', return_value=self.base), \
+                patch.object(cli, 'submission_repository', return_value=source_repo), \
+                patch.object(cli, 'pull_requests', return_value=[]), patch.object(cli, 'api', side_effect=pr), \
+                patch.object(cli, 'network_git', side_effect=push), patch.object(cli, 'watch'), \
+                patch.object(cli, 'run', side_effect=run):
+            cli.submit(args)
+        state = cli.read_state(self.root)['submission']
+        self.assertEqual(state['repository'], source_repo)
+        self.assertEqual(git(fork, 'show', f'{state["branch"]}:{cli.POLICY}'), (self.root / cli.POLICY).read_text().strip())
+        self.assertEqual(git(fork, 'show', f'{state["branch"]}:{cli.SUMMARY}'), 'Explanation, retained as text.')
+        self.assertEqual(git(upstream, 'for-each-ref', '--format=%(refname)'), 'refs/heads/main')
+        self.assertEqual(git(upstream, 'rev-parse', 'main'), self.base)
+        self.assertEqual(calls[0][calls[0].index('--head') + 1], f'participant:{state["branch"]}')
+
+
+class ForkRouting(unittest.TestCase):
+    FORK = {'full_name': 'participant/forshor-submissions', 'fork': True,
+            'parent': {'full_name': cli.REPO}, 'source': {'full_name': cli.REPO}}
+
+    def test_public_maintainer_also_uses_fork_without_requesting_upstream_write(self):
+        with patch.object(cli, 'github_repository', side_effect=[{'private': False, 'permissions': {'push': True}}, self.FORK]), \
+                patch.object(cli, 'gh_json', return_value={'login': 'participant'}), patch.object(cli, 'run') as run:
+            self.assertEqual(cli.submission_repository(Path('.')), self.FORK['full_name'])
+            run.assert_not_called()
+
+    def test_missing_fork_is_created_without_cloning_or_changing_remotes(self):
+        with patch.object(cli, 'github_repository', side_effect=[{'private': False}, None, self.FORK]), \
+                patch.object(cli, 'gh_json', return_value={'login': 'participant'}), patch.object(cli, 'run') as run:
+            self.assertEqual(cli.submission_repository(Path('.')), self.FORK['full_name'])
+            run.assert_called_once_with(['gh', 'repo', 'fork', cli.REPO, '--clone=false', '--remote=false'])
+
+    def test_an_unrelated_existing_repository_cannot_be_used_or_overwritten(self):
+        with patch.object(cli, 'github_repository', side_effect=[{'private': False}, {'fork': False, 'full_name': self.FORK['full_name']}]), \
+                patch.object(cli, 'gh_json', return_value={'login': 'participant'}), patch.object(cli, 'run') as run:
+            with self.assertRaisesRegex(cli.UserError, 'not your fork'):
+                cli.submission_repository(Path('.'))
+            run.assert_not_called()
+
+    def test_private_staging_writer_retains_existing_route(self):
+        with patch.object(cli, 'github_repository', return_value={'private': True, 'permissions': {'push': True}}), \
+                patch.object(cli, 'gh_json') as github:
+            self.assertEqual(cli.submission_repository(Path('.')), cli.REPO)
+            github.assert_not_called()
+
+    def test_a_private_read_only_participant_does_not_get_upstream_write(self):
+        with patch.object(cli, 'github_repository', side_effect=[{'private': True, 'permissions': {'push': False}}, None]), \
+                patch.object(cli, 'gh_json', return_value={'login': 'participant'}), \
+                patch.object(cli, 'run', side_effect=cli.UserError('Private forks are disabled')):
+            with self.assertRaisesRegex(cli.UserError, 'Private forks are disabled'):
+                cli.submission_repository(Path('.'))
+
+    def test_api_denial_is_not_treated_as_a_missing_fork(self):
+        response = SimpleNamespace(returncode=1, stdout=json.dumps({'status': '403'}))
+        with patch.object(cli, 'run', return_value=response):
+            with self.assertRaisesRegex(cli.UserError, 'Could not inspect'):
+                cli.github_repository(self.FORK['full_name'], missing_ok=True)
+        response.stdout = json.dumps({'status': '404'})
+        with patch.object(cli, 'run', return_value=response):
+            self.assertIsNone(cli.github_repository(self.FORK['full_name'], missing_ok=True))
+
+    def test_verifier_fetch_is_fixed_even_when_origin_is_a_fork(self):
+        with patch.object(cli, 'network_git') as fetch, patch.object(cli, 'git', return_value='trusted-main'):
+            self.assertEqual(cli.refresh_base(Path('.')), 'trusted-main')
+        self.assertEqual(fetch.call_args.args[1:4], ('fetch', '--no-tags', f'https://github.com/{cli.REPO}.git'))
+        self.assertIn('refs/remotes/forshor-upstream/main', fetch.call_args.args[-1])
+
+    def test_repository_accepts_a_verified_github_fork_and_refuses_lookalikes(self):
+        def check(origin, details):
+            with patch.object(cli, 'run', return_value=SimpleNamespace(returncode=0, stdout='/tmp/checkout\n')), \
+                    patch.object(cli, 'git', return_value=origin), patch.object(cli, 'github_repository', return_value=details):
+                return cli.repository()
+        self.assertEqual(check(f'https://github.com/{self.FORK["full_name"]}.git', self.FORK), Path('/tmp/checkout').resolve())
+        for origin, details in [(f'https://github.com/{self.FORK["full_name"]}.git', {'fork': False}),
+                                (f'https://github.com.evil/{cli.REPO}', self.FORK),
+                                (f'https://token@github.com/{cli.REPO}', self.FORK)]:
+            with self.assertRaises(cli.UserError):
+                check(origin, details)
+
+    def test_pr_discovery_filters_out_another_forks_identically_named_branch(self):
+        def pr(name, number):
+            return {'number': number, 'html_url': f'https://github.com/example/pull/{number}', 'state': 'open',
+                    'head': {'sha': 'a' * 40, 'repo': {'full_name': name} if name else None}}
+        with patch.object(cli, 'gh_json', return_value=[[pr('other/forshor-submissions', 1)], [pr(self.FORK['full_name'], 2), pr(None, 3)]]) as gh:
+            records = cli.pull_requests('submission/test', self.FORK['full_name'])
+        self.assertEqual([r['number'] for r in records], [2])
+        self.assertIn('head=participant%3Asubmission%2Ftest', gh.call_args.args[3])
+
+    def test_status_accepts_only_the_recorded_fork_and_exact_commit(self):
+        pr = {'head': {'sha': 'a' * 40, 'repo': {'full_name': self.FORK['full_name']}},
+              'base': {'ref': 'main', 'repo': {'full_name': cli.REPO}}}
+        cli.validate_pr(pr, 'a' * 40, self.FORK['full_name'])
+        for head, repo in [('b' * 40, self.FORK['full_name']), ('a' * 40, 'other/forshor-submissions')]:
+            with self.assertRaises(cli.UserError):
+                cli.validate_pr(pr, head, repo)
 
 
 class PublicationIdentity(unittest.TestCase):

@@ -23,11 +23,13 @@ jobs:
   verify:
     name: Verify submission with Lean
     runs-on: ${{ vars.POLICY_RUNNER || 'ubuntu-24.04' }}
-    timeout-minutes: 350
-    # Private sprint: one active verifier; retain up to 100 waiting runs.
-    # The workflow-level PR group still cancels superseded commits.
+    timeout-minutes: 30
+    # Four fixed queues, one active verifier and up to 100 pending in each.
+    # The CLI distributes new branches across q0..q3. Existing/manual branch
+    # names use q0. Never derive an unbounded group from untrusted branch text.
+    # PR-level concurrency above still replaces older commits of the same PR.
     concurrency:
-      group: forshor-verification
+      group: forshor-verification-${{ startsWith(github.head_ref, 'submission/q1/') && '1' || startsWith(github.head_ref, 'submission/q2/') && '2' || startsWith(github.head_ref, 'submission/q3/') && '3' || '0' }}
       cancel-in-progress: false
       queue: max
     permissions:
@@ -35,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout submission
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           path: submission
@@ -44,7 +46,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Checkout verifier
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ github.event.pull_request.base.repo.full_name || github.repository }}
           path: verifier
@@ -212,8 +214,8 @@ jobs:
         working-directory: submission
         env:
           LEAN_NUM_THREADS: '1'
-          POLICY_STAGE_TIMEOUT: '7200'
-          POLICY_MIRROR_TIMEOUT: '10800'
+          POLICY_STAGE_TIMEOUT: '900'
+          POLICY_MIRROR_TIMEOUT: '600'
           TABLE_GEN_LOGIN: ${{ github.event.pull_request.user.login || 'local-check' }}
           TABLE_GEN_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
           TABLE_GEN_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
