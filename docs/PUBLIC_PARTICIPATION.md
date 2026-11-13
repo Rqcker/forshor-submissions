@@ -66,7 +66,12 @@ They are separate from the scientific Lean and Qualtran submission checks.
 For **zapatacomputing/forshor-submissions/submission-results**, only the
 publishing automation's GitHub App is permitted to push. No users or teams are
 on the push allowlist. Disable force pushes and branch deletion on both
-branches, including for administrators. Administrators can still edit GitHub
+branches, including for administrators. Three repository rulesets enforce this:
+one requires maintenance PRs/checks, one restricts archive updates to the App,
+and one prevents history rewrites/deletion with no exceptions, even for the App.
+There is no administrator bypass in any ruleset. Classic push restrictions
+alone would still let repository administrators write directly to the archive.
+Administrators can still edit GitHub
 settings or delete a repository; these settings do not replace MIS-24 backups.
 
 The current publisher uses GitHub's Actions App. Its token gets explicit
@@ -76,7 +81,7 @@ GitHub restricts public fork tokens to read access; do not enable write tokens
 or secrets for fork PR jobs. App restrictions identify an App, not an individual
 workflow: the trusted main workflows and their permissions remain part of the
 security boundary. A separately installed publisher App can be selected with
-`--publisher-app SLUG` if required by GitHub or the company's access model.
+`--publisher-app SLUG --publisher-app-id ID` if required by GitHub or the company's access model.
 
 Default workflow tokens are read-only and cannot approve PRs. Review the
 existing collaborator list with the repository owner; do not automatically

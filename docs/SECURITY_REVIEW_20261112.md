@@ -38,14 +38,16 @@ credentials or identity permission, and no persisted checkout credential.
 PR jobs restore dependency caches without saving them; trusted main warms them.
 
 The collaborator review found 14 accounts: seven Admin, six Write, one Read.
+Four accounts have direct repository grants; the others' access is inherited.
 No collaborator's access was changed. Confirm the intended maintainer list and
 MFA with the repository owner; the API did not expose MFA state to this caller.
 No company-wide MFA or private-fork policy was changed.
 
 `scripts/ci/repository_security.py` prepares the release protections with zero
-required reviewers, required maintenance checks, administrator enforcement,
-and no force pushes or branch deletion. The archive write allowlist names only
-the publisher App. Activation must verify GitHub accepts the App restriction;
+required reviewers, required maintenance checks, no administrator bypass,
+and no force pushes or branch deletion. Separate repository rulesets keep the
+publisher App as the only archive writer without letting it rewrite history.
+Classic push restrictions alone would still permit administrator archive writes. Activation must verify GitHub accepts the App restriction;
 if it does not, use a dedicated installed publisher App rather than a human
 bypass. These rules cannot yet be claimed active on the private Free repository.
 
