@@ -55,6 +55,20 @@ test('policy publication binds source, GitHub attribution and stable evaluation 
   assert.equal(v.ciVerification.runAttempt, 2);
 }));
 
+for (const reused of [false, true]) test(`a ${reused ? 'reused receipt' : 'source-bound artifact'} cannot publish build-time execution commands`, () => fixture(async f => {
+  const source = TEXT + '#eval IO.println "canary"\n';
+  f.verification.leanSource = source;
+  f.verification.leanSha256 = hash(source);
+  f.input.github.rest.repos.getContent = async p => {
+    if (p.path.endsWith('summary.tex')) throw Object.assign(new Error('Not Found'), { status: 404 });
+    return { data: { type: 'file', encoding: 'base64', content: Buffer.from(source).toString('base64') } };
+  };
+  f.write();
+  if (reused) f.input.recovered = { verification: f.verification, receipt: { ...f.input.identity, runId: '123', runAttempt: 2, pullRequest: 12 } };
+  await assert.rejects(policy.prepare(f.input));
+  assert.ok(!fs.existsSync('evaluation-metadata.json'));
+}));
+
 for (const field of ['login', 'leanSource', 'leanSha256', 'digest']) {
   test(`a forged policy ${field} cannot reach publication`, () => fixture(async f => {
     f.verification[field] = 'forged'; f.write();

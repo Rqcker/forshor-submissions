@@ -96,6 +96,11 @@ jobs:
           print('kind=' + ('policy' if result.get('kind') == 'policy' else 'table'))
           PYCODE
 
+      - name: Check policy source before compilation or reuse
+        if: steps.format.outputs.kind == 'policy'
+        working-directory: verifier
+        run: python3 scripts/ci/policy_source.py ../submission/TableGeneration/Submission/Policy.lean --artifacts ../submission/artifacts
+
       - name: Reuse an identical accepted verification
         id: reuse
         working-directory: verifier

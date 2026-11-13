@@ -14,6 +14,25 @@ Bootstrap explicitly fetches the compiled `Mathlib` root. The cache tool does no
 
 The verification job is bounded to 30 minutes in total, including setup, ForShor, and the STO mirror. The mirror also has a 10-minute overall limit. `POLICY_STAGE_TIMEOUT=900` bounds individual STO replay stages; it is not a separate ForShor deadline. The outer job limit covers the ForShor harness as well. The trusted Qualtran/archive/publication job is bounded to 20 minutes. A resource timeout or exhausted memory is an infrastructure limit, not a mathematical verdict. Timings are retained in the `policy-bootstrap` artifact. The large disposable Lean tree is excluded from result artifacts; `verification.json`, identity, outcomes, and logs are retained.
 
+## Source restrictions before compilation
+
+The trusted `scripts/ci/policy_source.py` filter runs before dependency setup or
+verification reuse, and local `./forshor check` runs it from the fetched company
+checker. It applies the existing site-harness restrictions missing from the
+upstream shell gate: no build-time commands, effects, metaprogramming, unproved
+axioms, native proof shortcuts, compiler overrides, or extra imports. It uses
+the existing hardened comment lexer. All 14 archived policy files and shipped
+starter Lean templates passed the filter during MIS-23.
+
+A source refusal updates the trusted preflight result, so the PR receives a
+rejection with its reason and no Lean compilation or Google publication occurs.
+The optional summary remains text and is not passed to this filter.
+
+The trusted publisher applies the same filter to the exact file read from
+GitHub, including archived/reused verification. This operational guard is
+always applied around the mathematical proof cache; it does not change the
+Lean theorems, estimator/model pins, epoch, or the archived proof identity.
+
 ## Trusted publication
 
 After GitHub confirms the exact source run and PR files, the publisher checks the artifact's source/run metadata and compares the verification's Lean bytes and author with GitHub. For a policy it calls `intake_v2.py --publish-from` using the isolated v2 engine and short-lived Google identity. That call revalidates evidence, archives the policy on `submission-results`, calculates resource values, and publishes into the existing v2 epoch.

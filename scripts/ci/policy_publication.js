@@ -2,6 +2,8 @@
 // Trusted main only: choose attribution from GitHub and bind evidence to the exact Lean file.
 const fs = require('node:fs');
 const { createHash } = require('node:crypto');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
 const REPOSITORY = 'zapatacomputing/forshor-submissions';
 const SOURCE = 'TableGeneration/Submission/Policy.lean';
 // The optional LaTeX summary: text for people, never compiled or run. It is bound to the exact file at the head commit exactly as the policy is.
@@ -72,6 +74,11 @@ async function prepare({ github, context, core, run, pr, identity, result, recov
   if (verification.schema !== 'forshor.policy-verification/v1' || verification.login !== login
       || verification.leanSource !== source || verification.leanSha256 !== digest(source))
     throw new Error('Policy evidence does not match the GitHub author and exact submitted source');
+  // Apply even to archived/reused evidence. Read GitHub's exact source as data;
+  // never run the policy or let an artifact select the checker executable.
+  execFileSync('python3', [path.join(__dirname, 'policy_source.py'), '--stdin'], {
+    input: source, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'],
+  });
   // The summary is data: it must be the very file at the head commit, in both directions (none on either side means none on both), and it never changes the policy.
   const summaryHead = await summaryAt(github, context, SUMMARY, pr.headSha);
   const carriesSummary = ['summarySource', 'summarySha256', 'summaryBytes'].filter(key => verification[key] !== undefined);
