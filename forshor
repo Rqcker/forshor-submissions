@@ -403,6 +403,11 @@ def check(root=None, base=None):
     base = base or refresh_base(root)
     validate_changes(root, base)
     digest = fingerprint(root, base)
+    if policy_format(root):
+        # Run only the fetched company checker's source filter, before setup
+        # or compilation. A fork cannot provide its own acceptance script.
+        trusted = trusted_checkout(root, base)
+        run([sys.executable, trusted / 'scripts/ci/policy_source.py', root / POLICY], cwd=trusted)
     env = lean_environment(root, base)
     cache = prepare(root, base, env)
     for path in source_files(root):

@@ -253,6 +253,17 @@ class WorkingFiles(unittest.TestCase):
             check.assert_called_once_with(self.root, self.base)
             push.assert_not_called()
 
+    def test_local_policy_source_is_refused_before_lean_or_dependency_setup(self):
+        self.policy()
+        (self.root / cli.POLICY).write_text((self.root / cli.POLICY).read_text() + '\n#eval IO.println "canary"\n')
+        trusted = Path(__file__).resolve().parents[1]
+        with patch.object(cli, 'authenticate'), patch.object(cli, 'trusted_checkout', return_value=trusted) as checkout, \
+                patch.object(cli, 'lean_environment') as setup:
+            with self.assertRaisesRegex(cli.UserError, 'build-time commands'):
+                cli.check(self.root, self.base)
+            checkout.assert_called_once_with(self.root, self.base)
+            setup.assert_not_called()
+
     def test_submit_reuses_existing_pr_after_interrupted_state_save(self):
         git(self.root, 'switch', '-c', 'submission/test')
         (self.root / cli.POLICY).write_text('new table\n')
