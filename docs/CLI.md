@@ -94,7 +94,7 @@ locally.
 When Google confirms publication, the publisher posts links to the accepted
 policy and staging dashboard, then closes the PR without merging it. A failed
 estimation, publication, or final reporting step keeps the second check red;
-rerun the publisher to recover. A newer commit cannot be closed by an old result.
+a maintainer reruns the publisher to recover. A newer commit cannot be closed by an old result.
 The CLI therefore matches trusted publication diagnostics against the exact
 verifier run ID, attempt, PR number, and submitted SHA. An unrelated success or
 a successful job without a publication receipt is never reported as your result.
@@ -108,7 +108,8 @@ comment per commit and outcome, updated in place on a re-run. The *Notify Submit
 
 If Lean rejects a submission, open the printed verification URL, fix the source,
 and run `./forshor submit` again. If publication fails after Lean passes, open
-the matching publisher URL and rerun its failed job; then use
+the matching publisher URL. A maintainer can rerun the failed publishing job;
+participants do not need or receive upstream Write access. Follow recovery with
 `./forshor status --watch`. Do not repeat Lean just to retry publication. Already
 published replay receipts are treated as success without inventing a new snapshot.
 

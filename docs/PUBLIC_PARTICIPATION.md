@@ -39,8 +39,9 @@ queue can wait while another is idle; this is not a shared work-stealing queue.
 Publication has its own single queue with 100 waiting jobs. Organization-wide
 runner limits can further reduce available capacity.
 
-The 30-minute verifier job includes setup, a 15-minute ForShor stage limit, and
-a 10-minute mirror stage limit. The separately trusted main cache warmer may
+The 30-minute verifier limit covers setup, ForShor, and the STO mirror together.
+The mirror also has a 10-minute overall limit. The 15-minute per-stage setting
+applies to individual STO replay stages; it does not set a ForShor deadline. The separately trusted main cache warmer may
 take up to 180 minutes; that is maintenance, not a per-submission allowance.
 Warm the pinned caches before testing the largest supported policies. Cold
 cache misses can cause a submission job to time out: report an infrastructure
@@ -51,8 +52,9 @@ An updated commit cancels only the older verification of that same PR. The
 publisher is never automatically canceled during archive or snapshot writes.
 Timeouts, exhausted queues and missing artifacts are visible failures, not
 mathematical rejections. Retry a canceled queued verification after capacity is
-available. If Lean passed and publication failed, rerun the publisher rather
-than Lean. This bounded queue cannot absorb a 10,000-submission burst.
+available. Rerunning upstream jobs requires a maintainer. If Lean passed and
+publication failed, a maintainer reruns the publisher rather than Lean; the
+participant follows with `./forshor status --watch`. This bounded queue cannot absorb a 10,000-submission burst.
 
 ## Rules enforced by GitHub
 
