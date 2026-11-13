@@ -454,7 +454,7 @@ def publication_result(run_record, source, result, submission, verification):
     if not publication_matches(source, submission, verification):
         return None
     if run_record.get('conclusion') != 'success':
-        raise UserError(f'Publication failed. Open {run_record["html_url"]}; rerun its failed job, then ./forshor status --watch.')
+        raise UserError(f'Publication failed. Details: {run_record["html_url"]}. A maintainer can rerun its failed publishing job without repeating Lean. Follow recovery with ./forshor status --watch.')
     if not result or (not result.get('alreadyPublished') and not re.fullmatch(r'[a-f0-9]{64}', str(result.get('snapshotId', '')))):
         raise UserError('The matching workflow finished without a publication receipt. Inspect its diagnostics.')
     outcome = {'stage': 'published', 'pr': submission['url'], 'commit': submission['head'],

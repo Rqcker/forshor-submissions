@@ -60,8 +60,8 @@ independent queues, not a scheduler that moves work between them. Publication
 uses a separate single queue with up to 100 waiting jobs. Waiting does not hold
 a runner. All jobs still share the organization's overall Actions concurrency.
 
-Verification has a **30-minute job timeout** (including setup); its ForShor
-stage has a 15-minute limit and its mirror stage has a 10-minute limit. The
+Verification has a **30-minute job timeout**, shared by setup, ForShor, and
+the STO mirror. The mirror also has a 10-minute overall limit. The
 trusted Qualtran/archive/publication job has a **20-minute job timeout**.
 Timeouts report a failure, not a mathematical rejection. Trusted cache warming
 is separate and may take longer on a cold build. An updated PR cancels only its

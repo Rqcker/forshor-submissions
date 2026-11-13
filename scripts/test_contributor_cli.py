@@ -497,7 +497,7 @@ class PublicationIdentity(unittest.TestCase):
 
     def test_failed_publication_directs_recovery_to_publisher_not_lean(self):
         self.publisher['conclusion'] = 'failure'
-        with self.assertRaisesRegex(cli.UserError, 'rerun its failed job'):
+        with self.assertRaisesRegex(cli.UserError, 'maintainer can rerun its failed publishing job without repeating Lean'):
             cli.publication_result(self.publisher, self.source, None, self.submission, self.verifier)
 
     def test_completed_replay_is_a_success_without_a_new_snapshot(self):
