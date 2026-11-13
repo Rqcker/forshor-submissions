@@ -19,7 +19,7 @@ import urllib.request
 import uuid
 
 REPO = 'zapatacomputing/forshor-submissions'
-DASHBOARD = 'https://forshor-ai.web.app'
+DASHBOARD = 'https://forshor-services.web.app'
 POLICY = 'TableGeneration/Submission/Policy.lean'
 SUMMARY = 'TableGeneration/Submission/summary.tex'
 HELPERS = 'TableGeneration/Submission/Policy/'
