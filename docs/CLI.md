@@ -92,7 +92,7 @@ A failed first check does not always mean your policy is wrong: its run summary 
 built ForShor checkout") means the hosted runner has no prepared Lean trees, which is the hosted setup. `./forshor check` verifies the same file
 locally.
 When Google confirms publication, the publisher posts links to the accepted
-policy and staging dashboard, then closes the PR without merging it. A failed
+policy and public dashboard, then closes the PR without merging it. A failed
 estimation, publication, or final reporting step keeps the second check red;
 a maintainer reruns the publisher to recover. A newer commit cannot be closed by an old result.
 The CLI therefore matches trusted publication diagnostics against the exact
@@ -121,7 +121,7 @@ accepted output from the archive.
 
 Acceptance produces an archived table and recalculated plans. Eligibility depends
 on the planner's depth bound; champion replacement and new winning metrics are
-separate outcomes. The CLI prints the accepted archive and private staging URL.
+separate outcomes. The CLI prints the accepted archive and public dashboard URL.
 It does not collect staging passwords, bypass website authentication, or deploy
 frontend code. Contributors refresh the website after publication.
 
