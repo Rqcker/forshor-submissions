@@ -5,7 +5,7 @@
 With [GitHub CLI](https://cli.github.com/), Git, and Python 3.12 or newer installed:
 
 ```sh
-gh repo clone zapatacomputing/forshor-submissions
+git clone https://github.com/zapatacomputing/forshor-submissions.git
 cd forshor-submissions
 ./forshor setup
 
