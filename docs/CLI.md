@@ -13,7 +13,7 @@ on macOS and hosted evaluation remains Ubuntu. Git and GitHub CLI are prerequisi
 | `./forshor setup` | Authenticate if needed, fetch trusted main, prepare the pinned Lean toolchain, fetch dependency binaries, and build the trusted verifier closure |
 | `./forshor setup DIRECTORY` | First clone a fresh checkout into a new directory, then prepare it; run later commands inside that directory |
 | `./forshor check` | Verify the current policy file, including uncommitted edits; write local reports under `artifacts/forshor/` |
-| `./forshor submit` | Recheck when needed; commit allowed edits, create a branch when on main, push, create/reuse the PR, and follow its publication |
+| `./forshor submit` | Recheck when needed; commit allowed edits, prepare your fork for public submissions, push, create/reuse the PR, and follow its publication |
 | `./forshor submit --no-wait` | Submit and print initial status without staying attached |
 | `./forshor status` | Inspect the last submission from this checkout |
 | `./forshor status --watch` | Resume following queued verification or publication |
@@ -25,7 +25,7 @@ hosted jobs. The first setup can be slow; later checks retain compiled dependenc
 
 ## What local checking means
 
-The CLI fetches main from the fixed private submission repository, checks all
+The CLI fetches main from the fixed company submission repository, checks all
 committed and working changes, then prepares a generated checker checkout inside
 the checkout's Git metadata. The verifier, scoring configuration, adapters, and
 scientific model come from the fetched main commit. Only the editable submission
@@ -55,6 +55,31 @@ verification/commit is running cause an error before publication is claimed.
 After an accepted PR closes, editing the policy and running `submit` creates a
 fresh submission branch and PR. Running it again without edits follows the
 existing accepted submission instead.
+
+## Forks and source identity
+
+After `zapatacomputing/forshor-submissions` becomes public, `submit` creates or
+reuses your own GitHub fork and pushes there, even when you are a company
+maintainer. It does not request upstream Write access, rename your remotes, or
+change global Git configuration. A checkout cloned from the company repository
+or from a verified fork is supported. In either case the verifier is fetched
+directly from the fixed company's `main`, never the fork's `main`.
+
+Your fork must belong to the authenticated GitHub account and be linked to this
+repository. An unrelated repository with the same name is refused. GitHub API
+denials and outages stop the command; they are not treated as a missing fork.
+PR discovery includes the fork owner, and status binds the PR to the recorded
+fork and exact commit. Identically named branches in other forks cannot be reused.
+
+While the repository remains private and company policy disables private forks,
+existing contributors with upstream Write access retain the staging route. A
+read-only user is never silently given Write access or pushed upstream. Public
+fork testing requires the public release or an explicitly authorized private
+fork policy; the CLI does not change repository visibility or company policy.
+
+New branch names select one of four fixed verification queues. Manual or older
+branch names use the first queue. This controls scheduling only; every policy
+still goes through the same verification and publication checks.
 
 ## Publication and recovery
 
