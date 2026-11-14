@@ -203,6 +203,22 @@ def git(args, *, env=None):
     return result.stdout
 
 
+def restore_git(bundle, destination, refs, head):
+    if not head.startswith("refs/heads/"):
+        raise ValueError("Invalid default Git branch")
+    git(["check-ref-format", head])
+    git(["clone", "--mirror", bundle, destination])
+    if git(["-C", destination, "for-each-ref", "--format=%(refname) %(objectname)"]) != refs:
+        raise ValueError("Restored Git references differ")
+    git(["-C", destination, "show-ref", "--verify", head])
+    # Bundles preserve refs/objects, but some Git versions infer HEAD using the
+    # restore machine's defaults. Restore the separately recorded symbolic HEAD.
+    git(["-C", destination, "symbolic-ref", "HEAD", head])
+    git(["-C", destination, "fsck", "--full"])
+    if git(["-C", destination, "symbolic-ref", "HEAD"]).strip() != head:
+        raise ValueError("Restored default Git branch differs")
+
+
 def capture_repo(component, root, github_token):
     repository = REPOSITORIES[component]
     print(json.dumps({"event": "backup_repository_started", "repository": repository}), flush=True)
@@ -223,12 +239,7 @@ def capture_repo(component, root, github_token):
         git(["-C", mirror, "bundle", "verify", bundle])
         # Verify recoverability into an empty Git repository before upload.
         restored = Path(temp) / "restored.git"
-        git(["clone", "--mirror", bundle, restored])
-        git(["-C", restored, "fsck", "--full"])
-        if git(["-C", restored, "for-each-ref", "--format=%(refname) %(objectname)"]) != refs:
-            raise ValueError("Restored Git references differ")
-        if git(["-C", restored, "symbolic-ref", "HEAD"]).strip() != head:
-            raise ValueError("Restored default Git branch differs")
+        restore_git(bundle, restored, refs, head)
     entries = [write_file(root, "repository.bundle", bundle.read_bytes()),
                write_file(root, "refs.txt", refs.encode()), write_file(root, "HEAD.txt", (head + "\n").encode())]
     metadata = json.loads(request(f"https://api.github.com/repos/{repository}", github_token))
@@ -284,13 +295,8 @@ def restore_archive(archive, destination):
         check_publication(destination)
     elif manifest["component"] in REPOSITORIES:
         mirror = destination / "restored.git"
-        git(["clone", "--mirror", destination / "repository.bundle", mirror])
-        git(["-C", mirror, "fsck", "--full"])
-        refs = git(["-C", mirror, "for-each-ref", "--format=%(refname) %(objectname)"])
-        if refs != (destination / "refs.txt").read_text():
-            raise ValueError("Restored Git references differ")
-        if git(["-C", mirror, "symbolic-ref", "HEAD"]).strip() != (destination / "HEAD.txt").read_text().strip():
-            raise ValueError("Restored default Git branch differs")
+        restore_git(destination / "repository.bundle", mirror, (destination / "refs.txt").read_text(),
+                    (destination / "HEAD.txt").read_text().strip())
     else:
         raise ValueError("Unknown backup component")
     return manifest

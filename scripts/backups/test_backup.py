@@ -155,7 +155,8 @@ class BackupTests(unittest.TestCase):
                        backup.write_file(payload, "HEAD.txt", b"refs/heads/main\n")]
             archive = root / "repo.tgz"
             backup.make_archive(payload, archive, entries, {}, "submissions")
-            backup.restore_archive(archive, root / "restored")
+            with patch.dict(backup.os.environ, {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "init.defaultBranch", "GIT_CONFIG_VALUE_0": "different-default"}):
+                backup.restore_archive(archive, root / "restored")
             restored = root / "restored/restored.git"
             self.assertEqual(backup.git(["-C", restored, "for-each-ref", "--format=%(refname) %(objectname)"]), refs)
             self.assertEqual(backup.git(["-C", restored, "show", "main:Policy.lean"]), "original submission")
