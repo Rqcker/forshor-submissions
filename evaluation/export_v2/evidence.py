@@ -39,13 +39,10 @@ def tree_pins(tree: Path) -> Dict[str, Optional[str]]:
             if package.get("name") in ("Fast_multiplication", "ForShor"):
                 pin = package.get("rev")
     base = None
-    for name in ("PROVENANCE.md", "JMC_NOTES.md"):   # the old name is read too, so a tree that still has it keeps working
-        notes = tree / name
-        if notes.exists():
-            m = re.search(r"upstream `main` at `([0-9a-f]{7,40})`", notes.read_text())
-            if m:
-                base = m.group(1)
-                break
+    notes = tree / "PROVENANCE.md"
+    if notes.exists():
+        m = re.search(r"upstream `main` at `([0-9a-f]{7,40})`", notes.read_text())
+        base = m.group(1) if m else None
     return {"lean": lean, "forshorPin": pin, "stoBase": base}
 
 

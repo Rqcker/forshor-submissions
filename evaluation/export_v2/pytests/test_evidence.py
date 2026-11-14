@@ -33,7 +33,7 @@ STUB = textwrap.dedent('''
 ''')
 
 
-def make_tree(tmp_path, *, lean=None, pin=None, base="361e81e", stub=STUB, notes="JMC_NOTES.md"):
+def make_tree(tmp_path, *, lean=None, pin=None, base="361e81e", stub=STUB, notes="PROVENANCE.md"):
     tree = tmp_path / "tree"
     (tree / "scripts").mkdir(parents=True)
     (tree / "lean-toolchain").write_text((lean or MODEL["lean"]) + "\n")
@@ -124,17 +124,19 @@ def test_tree_pins_read_a_trees_own_files(tmp_path):
     assert evidence.tree_pins(tmp_path / "empty") == {"lean": None, "forshorPin": None, "stoBase": None}
 
 
-def test_tree_pins_read_provenance_md_and_prefer_it_to_the_old_notes(tmp_path):
-    only_new = make_tree(tmp_path / "a", notes="PROVENANCE.md", base="abcdef1")
-    assert evidence.tree_pins(only_new)["stoBase"] == "abcdef1"
-    both = make_tree(tmp_path / "b", notes="JMC_NOTES.md", base="1111111")
-    (both / "PROVENANCE.md").write_text("- **Base:** upstream `main` at `2222222` (2026-11-03)\n")
-    assert evidence.tree_pins(both)["stoBase"] == "2222222", "the new file wins when both exist"
-    only_old = make_tree(tmp_path / "c", notes="JMC_NOTES.md", base="3333333")
-    assert evidence.tree_pins(only_old)["stoBase"] == "3333333", "a tree that still has the old notes keeps working"
+def test_tree_pins_read_provenance_md_and_only_that_file(tmp_path):
+    assert evidence.tree_pins(make_tree(tmp_path / "a", base="abcdef1"))["stoBase"] == "abcdef1"
+    old = make_tree(tmp_path / "b", notes="JMC_NOTES.md", base="3333333")
+    assert evidence.tree_pins(old)["stoBase"] is None, "the old notes file is no longer read"
 
 
-def test_a_tree_with_neither_notes_file_is_refused_with_the_same_words(tmp_path):
+def test_the_old_notes_file_is_gone_from_the_repository_and_the_reader():
+    repo = Path(__file__).resolve().parents[3]
+    assert not (repo / "JMC_NOTES.md").exists()
+    assert "JMC_NOTES" not in (repo / "evaluation/export_v2/evidence.py").read_text()
+
+
+def test_a_tree_without_the_provenance_file_is_refused_with_the_same_words(tmp_path):
     pins = evidence.tree_pins(make_tree(tmp_path, notes=None))
     assert pins["stoBase"] is None
     ran, why = evidence._ran(pins, MODEL)
