@@ -134,7 +134,7 @@ this pipeline targets `forshor-submissions/main` and archives accepted source on
 
 # Shor Table Optimization
 
-> **Interim fork, not the official repository.** This copy proposes banded PhaseProduct / PhaseTripleProduct policies, a planner and a ForShor bridge on top of upstream `361e81e` (adds files only; not merged upstream). See [`JMC_NOTES.md`](JMC_NOTES.md) for what was added and how to build and check it. Upstream: [VerifiedQC/ShorTableOptimization](https://github.com/VerifiedQC/ShorTableOptimization).
+> **Interim fork, not the official repository.** This copy proposes banded PhaseProduct / PhaseTripleProduct policies, a planner and a ForShor bridge on top of upstream `361e81e` (adds files only; not merged upstream). See [`PROVENANCE.md`](PROVENANCE.md) for the base and [`docs/CHECKER.md`](docs/CHECKER.md) for how to build and check it. Upstream: [VerifiedQC/ShorTableOptimization](https://github.com/VerifiedQC/ShorTableOptimization).
 
 A benchmark for machine-found, machine-checked interpolation tables.
 
