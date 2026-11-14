@@ -1,5 +1,7 @@
 # Table Generation Benchmark
 
+> **Scope.** This document describes the earlier table-generator format (30 targets, k = 2 to 16), which is not part of the challenge; current submissions are complete PhaseProduct and PhaseTripleProduct policies, described in `README.md`. `leaderboard/config.json` is still read by the verifier and is part of the verification identity, so it stays.
+
 The benchmark is provisional. Its targets and weights can be changed in
 `leaderboard/config.json` as the challenge evolves.
 

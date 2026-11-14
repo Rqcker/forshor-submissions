@@ -1,140 +1,55 @@
-# Agent Guidelines
+# Agent guidelines
 
-This repository is a benchmark for table-generation policies: a Lean submission
-contract whose proofs are the acceptance test, a Python verifier and scoring
-pipeline, an archive of accepted policies composed into a best-known generator,
-and a recursive gate-count planner over the accepted `PhaseProduct` tables.
+This repository checks, prices and publishes submissions to the ForShor challenge. A submission is a complete policy: one Lean file that the trusted verifier kernel-checks,
+whose circuit the v2 resource engine then prices. This file is for agents (and people) changing the repository or preparing a submission. `README.md` is the overview.
 
-## Complete-policy submissions (current website)
+## A submission
 
-A file declaring `namespace PolicySubmission` or `namespace PTPPolicySubmission`
-uses the v2 complete-policy route. Only `TableGeneration/Submission/Policy.lean`
-and the optional `TableGeneration/Submission/summary.tex` (a LaTeX summary for
-people to read: see `docs/POLICY_CI.md`, never compiled) may change. Both modes receive Lean/exact-width verification and resource pricing;
-PhaseProduct enters the PP and full boards, and PhaseTripleProduct enters PTP.
-Use `docs/POLICY_CI.md` and `evaluation/INTAKE_FOR_CI.md` for this route.
+- Only `TableGeneration/Submission/Policy.lean` and the optional `TableGeneration/Submission/summary.tex` (a LaTeX summary for people to read, never compiled) may change in a submission PR.
+- The policy file declares `namespace PolicySubmission` (PhaseProduct, which enters the PhaseProduct and full order-finding boards) or `namespace PTPPolicySubmission`
+  (PhaseTripleProduct). The starter pack on the challenge page prices a policy and generates a file in the right form; `./forshor check` verifies it locally and `./forshor submit` submits it.
+- Validity is the bar: the proofs must compile and the checks must pass. A policy does not have to beat anything to be accepted; the leaderboard ranks what is accepted.
+- The earlier table-generator format (`GeneratorPolicy`) is not part of the challenge. Its code, catalog and archive remain as records; do not extend them.
 
-The generator-policy guidance below describes the retained legacy route
-(`namespace TableGeneration.Submission.Policy`), including its older planner and
-scoring rules. Its statement that PTP has no gate model applies to that legacy
-planner, rather than the v2 policy engine.
+## What must never be executed or trusted
 
-## Code Boundaries
+- Submitted code and every artifact a PR job produces are untrusted. The trusted verifier is the base branch's, never the PR's; source is filtered by `scripts/ci/policy_source.py`
+  before any dependency setup or compilation (the rules are in `docs/POLICY_CI.md`).
+- Publication runs trusted `main` code after verification, with the Google credentials. It resolves the PR and files through GitHub and binds evidence to the exact source and author.
+  PR jobs restore caches; only trusted `main` writes them. Do not add `pull_request_target` or a step that runs PR code with credentials.
 
-- The protected set is `PROTECTED_FILES` in `scripts/verifier.py`, which is
-  authoritative: `TableGeneration.lean`, `TableGeneration/Submission.lean`,
-  `TableGeneration/Basic.lean`, `TableGeneration/Language.lean`,
-  `TableGeneration/Spec.lean`, `TableGeneration/Metrics.lean`,
-  `TableGeneration/Baseline.lean`, `TableGeneration/Policy.lean`,
-  `TableGeneration/BestKnown.lean`,
-  `TableGeneration/RecursiveCost/ArchivedCatalog.lean`,
-  `TableGeneration/Submission/Defs.lean`,
-  `TableGeneration/Submission/Correctness.lean`, `leaderboard/config.json`,
-  `lakefile.lean` and `lean-toolchain`.
-- Submission-facing code lives in `TableGeneration/Submission/`.
-- Submitters implement `GeneratorPolicy` in
-  `TableGeneration/Submission/Policy.lean`; optional helper Lean files go under
-  `TableGeneration/Submission/Policy/`, at any depth, and are imported there. A
-  helper placed directly under `TableGeneration/Submission/` is rejected by the
-  changed-file check.
-- `TableGeneration/Submission/Defs.lean` and `Correctness.lean` are fixed
-  adapters.
+## Rules that keep the live challenge intact
 
-## Verifier Contract
+These are properties of how results are identified. Break one and the next submission fails to publish, or builds cold.
 
-- Preserve the theorem statements checked by `scripts/verifier.py`.
-- A submitted policy bundles its generator, handled targets, and proofs.
-- `submissionHandles mode k = true` identifies the implemented cases; submitted
-  definitions may be general across modes and `k`, or specialized to selected
-  targets with fallback elsewhere.
-- Submission adapters and verifier entry points must match the template.
-- The verifier should reject the constructs listed under "What you may not
-  change" in `README.md`. That list is the single copy; do not restate it here.
-- The verifier should use the base branch's `scripts/verifier.py` in CI.
-- CI should run verifier preflight before installing Lean or building submitted
-  Lean code.
-- Leaderboard scoring should use `leaderboard/config.json`.
-- Keep the concise benchmark contract in `BENCHMARK.md` synchronized with the
-  configured targets, weights, and published result formats.
-- A submission must handle at least one configured target; unhandled targets are
-  skipped and do not receive scores.
-- Successful results and submission source snapshots should be retained on the
-  `submission-results` branch.
-- Unhandled cases use the protected best-known generator; its final fallback is
-  the general generator.
-- Promotion must rebuild the composed generator, repeat trusted checks, and
-  reproduce every promised benchmark metric before it commits to `main`. It may
-  only write the paths `scripts/promote.py` generates; anything else fails the
-  job rather than being pushed.
-
-## Which score you are optimizing
-
-Two scores exist and they do not agree; the better table under one can be the
-worse table under the other. `BENCHMARK.md` states both and why they disagree.
-Decide which one you are working on before you start.
-
-If your goal is the per-target score, optimize operations and layers as
-`BENCHMARK.md` weights them, and stop reading here.
-
-If your goal is gate count:
-
-- Optimize the **child width** first. It is what the planner's cost turns on,
-  because the child width a table reaches governs the whole subtree below it.
-  `nextSignedWidth` in `TableGeneration/RecursiveCost/Model.lean` computes it:
-  a running maximum over a scan of the program's symbolic widths. The
-  transitions are exact and are written out under "Width transitions" in
-  `RECURSIVE_COST_MODEL.md` -- note that `shiftL i n` adds `n` bits, not one,
-  and that `addScaled dst src _ shift` sets `dst` to
-  `1 + max(dst, src + shift)`. The child width is not a function of how large
-  the coefficients in the table look.
-- Do not optimize the per-target score for this. A table that loses its target
-  can still lower the gate count, and the planner will still use it: it plans
-  over accepted tables, not only the champions.
-- Do not buy gates with depth. The gate model charges nothing for layers, so
-  adding sequential stages to save arithmetic would otherwise be free. A table
-  deeper than the current champion at its arity is kept out of the planner's
-  catalogue; `RECURSIVE_COST_MODEL.md` explains that bound.
-- There is no command that prices a table the archive has not accepted. The
-  planner plans over `archivedCandidates`, which `scripts/promote.py` generates
-  from accepted results, so before acceptance the thing to check is the child
-  width, by hand against the transitions above. On a `main` checkout,
-
-      lake env lean --run scripts/tests/RecursiveCostOracle.lean --best-known 2048
-
-  prints the current published plan -- the number to beat, not yours. Its last
-  column is `k:childWidth:policy` for the top-level choice, which is the child
-  width your table has to undercut at that arity.
-
-Only `PhaseProduct` reaches the planner. `PhaseTripleProduct` has no gate model,
-so those targets are scored structurally and never priced in gates.
-
-## Writing a submission
-
-- You are not required to build on the composed generator. A submission is its
-  own `GeneratorPolicy` and may handle any subset of targets.
-  `TableGeneration/BestKnown.lean` is the fallback for targets you do not
-  handle, and is useful as a baseline to measure against, nothing more.
-- You are not required to beat anything to be accepted. Validity is the bar:
-  the proofs must compile. Whether the result is promoted, or used by the
-  planner, is decided afterwards from the measurements.
-- An incorrect table does not compile, so it cannot become a submission.
-  `generatedPoints_valid` and `generate_safe` are proof fields of the same
-  record, both guarded by `handles mode k = true`.
-- `TableGeneration/RecursiveCost/ArchivedCatalog.lean` is generated by
-  `scripts/promote.py`. Do not edit it by hand.
+1. **The epoch.** A model's id is `sha256(model)[:16]`, and the model contains `engineRevision`, the last commit that changed `evaluation/engine/`, and a fingerprint of the engine's data and
+   pricing code. **Any commit that changes any file under `evaluation/engine/`, however small, starts a new epoch**, and the publisher refuses an epoch change. Do not edit that folder in
+   a cleanup or a drive-by fix. Check before pushing, from `evaluation/` in the pinned engine environment:
+   `python -c 'from export_v2 import epoch, canon; print(canon.epoch_of(epoch.model_of()))'`. While the current epoch is live this must print the same id as before your change.
+   A deliberate epoch change is a planned migration with a pause on submissions, not a PR.
+2. **The Lean caches.** The Lean build-cache keys hash `TableGeneration/`, `lakefile.lean`, `lake-manifest.json`, `lean-toolchain` and `evaluation/policy-trees.json` (see
+   `scripts/ci/policy_environment.py`). A change to any of them, even a comment, empties the cache and a cold build can take hours; run the cache-warming workflow and wait for it
+   before accepting submissions. A PR that touches `TableGeneration/Submission/**` also runs the submission verifier on that PR.
+3. **The frozen records.** Do not edit `evaluation/export_v2/evidence-archive/` (its envelopes are hash-chained and carried by the live epoch's published data), the
+   `submission-results` branch, `TableGeneration/Policies/Accepted`, `TableGeneration/BestKnown.lean`, or `leaderboard/` and `BENCHMARK.md` (apart from clarifying notes).
+4. **What the evidence reads.** `PROVENANCE.md` must keep the line ``upstream `main` at `<commit>` ``: the evidence for every submission records that base commit and refuses a tree whose
+   base is not the model's (`evaluation/export_v2/evidence.py`, guarded by `evaluation/export_v2/pytests/test_evidence.py`).
+5. **The verification identity** (`scripts/ci/verification_identity.py`) fingerprints the verifier, the policy checkers, `scripts/leaderboard.py`, `leaderboard/config.json`,
+   `evaluation/policy-trees.json`, `evaluation/intake_v2.py`, `evaluation/export_v2/` and `evaluation/engine/`. Changing them is allowed but means an already verified head is re-verified
+   instead of reusing its receipt. Say so in the PR.
 
 ## Checks
 
-- Run `lake exe cache get` once on a fresh checkout, before the first build:
-  Mathlib is a dependency of the recursive cost model, and compiling it from
-  source instead of fetching it takes hours.
-- Run `lake build TableGeneration` after Lean changes.
-- Run `python3 scripts/test_cost_model_lean.py` after recursive planner
-  changes. It checks the planner against itself -- the array width scan, the
-  dense and sparse planners, the reference candidates and the catalogue.
-  Takes a few minutes.
-- CI runs `scripts/verifier.py` automatically for submission PRs.
-- For local verification while changing the verifier or template, run
-  `python3 scripts/verifier.py --out-dir artifacts`.
-- For local preflight only, run
-  `python3 scripts/verifier.py --out-dir artifacts --preflight-only`.
+Use Python 3.12 with `evaluation/engine/requirements.txt` plus pytest. Run what your change touches; CI runs the first five.
+
+```sh
+python3 -m unittest scripts.test_contributor_cli                # the CLI
+python3 -m unittest discover -s scripts/ci -p 'test_*.py'       # the trusted CI tools and these docs
+python3 scripts/test_policy_verifier.py
+node scripts/test_report_trust.js
+node --test scripts/test_publication.js scripts/test_pr_publication.js scripts/test_policy_publication.js scripts/test_notify_submitters.js scripts/test_submission_citation.js
+cd evaluation && python -m pytest export_v2/pytests -q --runslow    # intake, export and evidence (about 4 minutes)
+```
+
+Lean needs `lake exe cache get` once on a fresh checkout (Mathlib built from source takes hours); how to build and run the checker by hand is in `docs/CHECKER.md`.
+Keep pull requests small, one concern each, and open them as drafts.
