@@ -30,7 +30,7 @@ Result = Tuple[Optional[Dict[str, Any]], Optional[str]]
 
 
 def tree_pins(tree: Path) -> Dict[str, Optional[str]]:
-    """What a Lean tree says about itself: its toolchain, its ForShor pin, and the STO commit its notes say it is based on."""
+    """What a Lean tree says about itself: its toolchain, its ForShor pin, and the STO commit its provenance note (`PROVENANCE.md`) says it is based on."""
     lean = (tree / "lean-toolchain").read_text().strip() if (tree / "lean-toolchain").exists() else None
     pin = None
     manifest = tree / "lake-manifest.json"
@@ -39,10 +39,13 @@ def tree_pins(tree: Path) -> Dict[str, Optional[str]]:
             if package.get("name") in ("Fast_multiplication", "ForShor"):
                 pin = package.get("rev")
     base = None
-    notes = tree / "JMC_NOTES.md"
-    if notes.exists():
-        m = re.search(r"upstream `main` at `([0-9a-f]{7,40})`", notes.read_text())
-        base = m.group(1) if m else None
+    for name in ("PROVENANCE.md", "JMC_NOTES.md"):   # the old name is read too, so a tree that still has it keeps working
+        notes = tree / name
+        if notes.exists():
+            m = re.search(r"upstream `main` at `([0-9a-f]{7,40})`", notes.read_text())
+            if m:
+                base = m.group(1)
+                break
     return {"lean": lean, "forshorPin": pin, "stoBase": base}
 
 

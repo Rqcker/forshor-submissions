@@ -33,13 +33,14 @@ STUB = textwrap.dedent('''
 ''')
 
 
-def make_tree(tmp_path, *, lean=None, pin=None, base="361e81e", stub=STUB):
+def make_tree(tmp_path, *, lean=None, pin=None, base="361e81e", stub=STUB, notes="JMC_NOTES.md"):
     tree = tmp_path / "tree"
     (tree / "scripts").mkdir(parents=True)
     (tree / "lean-toolchain").write_text((lean or MODEL["lean"]) + "\n")
     (tree / "lake-manifest.json").write_text(json.dumps({"packages": [
         {"name": "mathlib", "rev": "x"}, {"name": "Fast_multiplication", "rev": pin or MODEL["forshor"]["pin"]}]}))
-    (tree / "JMC_NOTES.md").write_text(f"- **Base:** upstream `main` at `{base}` (2026-11-03)\n")
+    if notes:
+        (tree / notes).write_text(f"- **Base:** upstream `main` at `{base}` (2026-11-03)\n")
     for name in ("check_banded_policy.py", "check_ptp_policy.py"):
         (tree / "scripts" / name).write_text(stub)
     return tree
@@ -121,6 +122,35 @@ def test_the_store_finds_evidence_by_policy_and_explains_what_is_missing(tmp_pat
 def test_tree_pins_read_a_trees_own_files(tmp_path):
     assert evidence.tree_pins(make_tree(tmp_path)) == {"lean": MODEL["lean"], "forshorPin": MODEL["forshor"]["pin"], "stoBase": "361e81e"}
     assert evidence.tree_pins(tmp_path / "empty") == {"lean": None, "forshorPin": None, "stoBase": None}
+
+
+def test_tree_pins_read_provenance_md_and_prefer_it_to_the_old_notes(tmp_path):
+    only_new = make_tree(tmp_path / "a", notes="PROVENANCE.md", base="abcdef1")
+    assert evidence.tree_pins(only_new)["stoBase"] == "abcdef1"
+    both = make_tree(tmp_path / "b", notes="JMC_NOTES.md", base="1111111")
+    (both / "PROVENANCE.md").write_text("- **Base:** upstream `main` at `2222222` (2026-11-03)\n")
+    assert evidence.tree_pins(both)["stoBase"] == "2222222", "the new file wins when both exist"
+    only_old = make_tree(tmp_path / "c", notes="JMC_NOTES.md", base="3333333")
+    assert evidence.tree_pins(only_old)["stoBase"] == "3333333", "a tree that still has the old notes keeps working"
+
+
+def test_a_tree_with_neither_notes_file_is_refused_with_the_same_words(tmp_path):
+    pins = evidence.tree_pins(make_tree(tmp_path, notes=None))
+    assert pins["stoBase"] is None
+    ran, why = evidence._ran(pins, MODEL)
+    assert ran is None and why.startswith("the tree's STO base (None) is not the model's (")
+
+
+def test_the_repositorys_own_provenance_file_satisfies_the_reader_and_names_the_models_sto_commit(tmp_path):
+    """The guard against deleting or rewording the file the evidence reads: every submission's evidence depends on this line."""
+    from export_v2 import epoch
+    repo = Path(__file__).resolve().parents[3]
+    assert (repo / "PROVENANCE.md").exists(), "PROVENANCE.md is at the repository root"
+    tree = tmp_path / "tree"
+    tree.mkdir()
+    (tree / "PROVENANCE.md").write_text((repo / "PROVENANCE.md").read_text())
+    base = evidence.tree_pins(tree)["stoBase"]
+    assert base and epoch.STO_COMMIT.startswith(base), f"the base line ({base}) is the model's STO commit ({epoch.STO_COMMIT[:9]})"
 
 
 VERIFIED = {"lean": {"status": "policy-verified", "policy_verified": True, "runs": [
