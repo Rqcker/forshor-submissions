@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -179,15 +180,18 @@ def capture_data(google, root):
             if not item["name"].endswith("/"):
                 objects[item["name"]] = item
     objects.update(pinned)
-    entries = []
-    for name, item in sorted(objects.items()):
+    print(json.dumps({"event": "backup_data_inventory", "objects": len(objects)}), flush=True)
+    def download(pair):
+        name, item = pair
         body = google.read(SOURCE, name, item["generation"])
         if len(body) != int(item["size"]):
             raise ValueError("Source object size changed")
         if item.get("md5Hash") and base64.b64encode(hashlib.md5(body).digest()).decode() != item["md5Hash"]:
             raise ValueError("Source object checksum mismatch")
-        entries.append({**write_file(root, name, body), "sourceGeneration": item["generation"],
-                        "sourceCrc32c": item.get("crc32c")})
+        return {**write_file(root, name, body), "sourceGeneration": item["generation"],
+                "sourceCrc32c": item.get("crc32c")}
+    with ThreadPoolExecutor(max_workers=8) as workers:
+        entries = list(workers.map(download, sorted(objects.items())))
     return entries, {"sourceBucket": SOURCE, "publications": check_publication(root)}
 
 
@@ -201,6 +205,7 @@ def git(args, *, env=None):
 
 def capture_repo(component, root, github_token):
     repository = REPOSITORIES[component]
+    print(json.dumps({"event": "backup_repository_started", "repository": repository}), flush=True)
     if not github_token:
         raise ValueError("GH_TOKEN is required for the repository's read-only job token")
     env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_CONFIG_COUNT": "1",
