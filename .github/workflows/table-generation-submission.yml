@@ -34,8 +34,27 @@ jobs:
       queue: max
     permissions:
       contents: read
+      actions: read
+      checks: read
 
     steps:
+      - name: Checkout trusted admission controls
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          path: admission-controls
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: scripts/ci/submission_admission.js
+      - name: Check submission quota before setup
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            await require('./admission-controls/scripts/ci/submission_admission.js').wait({
+              github, context, core, attempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+            });
       - name: Checkout submission
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
