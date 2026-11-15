@@ -511,6 +511,36 @@ class PublicationIdentity(unittest.TestCase):
         with self.assertRaisesRegex(cli.UserError, 'maintainer can rerun its failed publishing job without repeating Lean'):
             cli.publication_result(self.publisher, self.source, None, self.submission, self.verifier)
 
+    def duplicate_receipt(self, **over):
+        found = {'policyId': 'e' * 40, 'login': 'tester', 'pull': 92, 'createdAt': '2026-11-15T14:50:23Z', 'sameParticipant': True}
+        found.update(over)
+        return {'refused': True, 'stage': 'duplicate', 'reason': 'x', 'duplicateOf': found}
+
+    def test_a_repeated_policy_is_reported_as_such_not_as_a_failed_publication(self):
+        self.publisher['conclusion'] = 'failure'
+        with self.assertRaises(cli.UserError) as caught:
+            cli.publication_result(self.publisher, self.source, self.duplicate_receipt(), self.submission, self.verifier)
+        message = str(caught.exception)
+        self.assertIn('already submitted this exact policy', message)
+        self.assertIn('#92', message)
+        self.assertIn('2026-11-15', message)
+        self.assertNotIn('Publication failed', message)
+        self.assertNotIn('rerun', message)
+
+    def test_a_repeat_the_rules_refuse_for_another_participant_does_not_say_you_did_it(self):
+        self.publisher['conclusion'] = 'failure'
+        with self.assertRaises(cli.UserError) as caught:
+            cli.publication_result(self.publisher, self.source, self.duplicate_receipt(sameParticipant=False), self.submission, self.verifier)
+        self.assertIn('already published', str(caught.exception))
+        self.assertNotIn('you already submitted', str(caught.exception))
+
+    def test_a_malformed_duplicate_receipt_falls_back_to_the_ordinary_failure(self):
+        self.publisher['conclusion'] = 'failure'
+        for bad in ({'policyId': 'zz'}, {'pull': 'x'}, {'pull': -1}, {'createdAt': '\x1b[2Jboo'}):
+            with self.subTest(bad=bad):
+                with self.assertRaisesRegex(cli.UserError, 'Publication failed'):
+                    cli.publication_result(self.publisher, self.source, self.duplicate_receipt(**bad), self.submission, self.verifier)
+
     def test_completed_replay_is_a_success_without_a_new_snapshot(self):
         result = cli.publication_result(self.publisher, self.source, {'alreadyPublished': True}, self.submission, self.verifier)
         self.assertEqual(result['stage'], 'published')
