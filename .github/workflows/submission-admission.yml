@@ -1,0 +1,36 @@
+name: Submission admission
+run-name: admission:${{ github.event.workflow_run.id }}:${{ github.event.workflow_run.run_attempt }}
+on:
+  workflow_run:
+    workflows: [Policy submission]
+    # Unlike requested, in_progress also fires for a rerun. With the verifier's
+    # one job, this happens when a global verification slot is actually in use.
+    types: [in_progress]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: forshor-submission-admission
+  cancel-in-progress: false
+  queue: max
+jobs:
+  admit:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Check out trusted quota controls only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            scripts/ci/submission_admission.js
+            scripts/ci/submission-limits.json
+      - name: Admit using trusted workflow history
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const limits = require('./scripts/ci/submission-limits.json');
+            await require('./scripts/ci/submission_admission.js').admit({ github, context, core, limits });
