@@ -108,6 +108,14 @@ test('rerunning a failed metadata workflow cannot erase an earlier approved deci
   assert.equal((await r.call({ active: 1, perHour: 1, perDay: 20 })).allowed, false);
 });
 
+test('completed older admissions still count for the day without requiring source lookups for active work', async () => {
+  const r = rig();
+  r.runs.push(record(999, NOW - HOUR * 2));
+  // No source lookup exists for 999. It cannot still be active after the
+  // verifier's 30-minute deadline, but its admitted attempt remains charged.
+  assert.equal((await r.call()).allowed, true);
+});
+
 test('unavailable/incomplete history fails closed rather than silently becoming an empty counter', async () => {
   const r = rig();
   r.github.rest.actions.listWorkflowRuns = async () => { throw new Error('GitHub unavailable'); };
