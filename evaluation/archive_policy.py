@@ -30,7 +30,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Collection, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import summary_tex  # noqa: E402
@@ -110,11 +110,15 @@ def policy_ids(checkout: Path) -> List[str]:
     return [p["policy_id"] for p in read_index(checkout)["policies"]]
 
 
-def find_duplicates(index: Dict[str, Any], *, digest: str, mode: str, login: str, head_sha: str) -> List[Dict[str, Any]]:
-    """The archived submissions with this policy (same digest and mode), other than `head_sha` itself, oldest first."""
+def find_duplicates(index: Dict[str, Any], *, digest: str, mode: str, login: str, head_sha: str,
+                    published_ids: Optional[Collection[str]] = None) -> List[Dict[str, Any]]:
+    """The archived submissions with this policy (same digest and mode), other than `head_sha` itself, oldest first. The archive is written before the publisher is
+    called, so an entry can exist for a head that was never published; when `published_ids` (the publisher's own list of published heads) is given, only those count."""
     found = []
     for p in index["policies"]:
         if p["digest"] != digest or p["mode"] != mode or p["policy_id"] == head_sha:
+            continue
+        if published_ids is not None and p["policy_id"] not in published_ids:
             continue
         who = str(p["source"].get("github_login") or "")
         found.append({"policyId": p["policy_id"], "login": who, "pull": p["source"].get("pr_number"), "createdAt": p["source"].get("created_at"),
@@ -139,9 +143,10 @@ def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
 
 
 def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str,
-                 summary: Optional[str] = None, repository: str = REPOSITORY, duplicates: Optional[List[Dict[str, Any]]] = None) -> bool:
+                 summary: Optional[str] = None, repository: str = REPOSITORY, duplicates: Optional[List[Dict[str, Any]]] = None,
+                 published_ids: Optional[Collection[str]] = None) -> bool:
     """Write the files and the index entry into the checkout. Returns whether anything changed. Raises `ArchiveRefused` (`DuplicatePolicy` when `DUPLICATE_RULES`
-    refuse a repeat). Repeats that the rules allow are appended to `duplicates`."""
+    refuse a repeat). Repeats that the rules allow are appended to `duplicates`. `published_ids`: see `find_duplicates`."""
     if not HEAD.fullmatch(head_sha):
         raise ArchiveRefused("the head commit is not a 40-hex sha")
     if not source.strip():
@@ -160,7 +165,8 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
         if old["sha256"] != entry["sha256"] or old["digest"] != entry["digest"] or old.get("summarySha256") != entry.get("summarySha256"):
             raise ArchiveRefused(f"{head_sha} is already archived with a different policy")
         return False
-    for repeat in find_duplicates(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha):
+    for repeat in find_duplicates(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha,
+                                   published_ids=published_ids):
         if DUPLICATE_RULES["same_participant" if repeat["sameParticipant"] else "other_participant"] == "refuse":
             raise DuplicatePolicy(repeat)
         if duplicates is not None:
@@ -192,7 +198,8 @@ def _git(checkout: Path, *args: str, env: Optional[Dict[str, str]] = None, check
 
 
 def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str, summary: Optional[str] = None,
-                   token: Optional[str] = None, remote: str = "origin", attempts: int = 4, repository: str = REPOSITORY) -> Dict[str, Any]:
+                   token: Optional[str] = None, remote: str = "origin", attempts: int = 4, repository: str = REPOSITORY,
+                   published_ids: Optional[Collection[str]] = None) -> Dict[str, Any]:
     """Add the policy to `BRANCH` and push, starting each attempt from the branch's current tip (a competing archive push is retried, not merged).
     `checkout` is a clone with `remote`; returns `{"path", "commit", "added", "duplicates"}` (the earlier submissions of the same policy that the rules allowed)."""
     env = _env(token)
@@ -202,7 +209,7 @@ def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, 
         _git(checkout, "checkout", "--detach", "FETCH_HEAD")
         duplicates: List[Dict[str, Any]] = []
         if not write_policy(checkout, v, login=login, pull=pull, head_sha=head_sha, run_id=run_id, source=source, summary=summary, repository=repository,
-                            duplicates=duplicates):
+                            duplicates=duplicates, published_ids=published_ids):
             tip = _git(checkout, "rev-parse", "HEAD").stdout.strip()
             return {"path": f"{DIR}/{head_sha}", "commit": tip, "added": False, "duplicates": []}
         _git(checkout, "add", INDEX_PATH, f"{DIR}/{head_sha}")

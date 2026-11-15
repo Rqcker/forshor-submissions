@@ -467,7 +467,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             token_gh = os.environ["GH_TOKEN"]
             source = ap_.github_source(a.head_sha, token_gh, __import__("publish").request_json)
             summary = ap_.github_summary(a.head_sha, token_gh, __import__("publish").request_json)   # None when the pull request has none
-            return ap_.archive_policy(a.archive, v, login=a.login, pull=a.pull, head_sha=a.head_sha, run_id=a.run_id, source=source, summary=summary, token=token_gh)
+            published = set(request_json(a.publisher_url.rstrip("/") + "/v2/state", token).get("submissionIds", []))   # the heads the publisher has actually published
+            return ap_.archive_policy(a.archive, v, login=a.login, pull=a.pull, head_sha=a.head_sha, run_id=a.run_id, source=source, summary=summary, token=token_gh,
+                                      published_ids=published)
     try:
         if a.publish_from is not None:
             result = publish_verification(json.loads(a.publish_from.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=token, workdir=a.workdir,

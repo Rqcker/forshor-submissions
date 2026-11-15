@@ -411,6 +411,7 @@ def test_the_command_line_archives_with_the_head_sha_the_run_and_the_githubs_cop
     monkeypatch.setattr(archive_policy, "github_source", lambda head, token, req: seen.update(source=(head, token)) or "SRC")
     monkeypatch.setattr(archive_policy, "github_summary", lambda head, token, req: seen.update(summary=(head, token)) or "SUMMARY")
     monkeypatch.setattr(archive_policy, "archive_policy", lambda checkout, v, **kw: seen.update(archive=(checkout, kw)) or {"path": "p", "commit": "c" * 40, "added": True})
+    monkeypatch.setattr(intake_v2, "request_json", lambda url, token, payload=None: seen.update(state_url=url) or {"submissionIds": ["f" * 40, "e" * 40]})
     def publish(v, **kw):
         kw["archive_write"](v)
         return {"published": True}
@@ -422,6 +423,7 @@ def test_the_command_line_archives_with_the_head_sha_the_run_and_the_githubs_cop
     assert code == 0
     assert seen["source"] == ("a" * 40, "gh-token") and seen["summary"] == ("a" * 40, "gh-token"), "the summary is read at the same head commit, with the same token"
     checkout, kw = seen["archive"]
+    assert seen["state_url"] == "http://x/v2/state" and kw["published_ids"] == {"f" * 40, "e" * 40}, "a repeat only counts when the publisher has actually published the earlier head"
     assert checkout == tmp_path / "arch" and kw["source"] == "SRC" and kw["summary"] == "SUMMARY" and kw["head_sha"] == "a" * 40 and kw["run_id"] == "5" and kw["pull"] == 7 and kw["token"] == "gh-token"
     monkeypatch.setattr(intake_v2, "publish_verification", lambda v, **kw: kw["archive_write"](v))
     assert intake_v2.main(["--publish-from", str(verification), "--login", "tester", "--pull", "7", "--publisher-url", "http://x", "--archive", str(tmp_path / "arch")]) == 1, \

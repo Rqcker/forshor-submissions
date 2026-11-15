@@ -328,3 +328,27 @@ def test_the_rule_table_decides(remote, monkeypatch):
     assert refused.value.duplicate_of["sameParticipant"] is False and tip(bare) == before
     monkeypatch.setitem(ap.DUPLICATE_RULES, "same_participant", "allow")
     assert archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2, login="tester")["added"] is True
+
+
+def test_a_policy_that_was_archived_but_never_published_does_not_block_a_retry(remote):
+    """The archive is written before the publisher is called, so a failed publication leaves an archived head with no row. A new commit with the same policy must go through."""
+    bare, clone = remote
+    archive(clone)                                                     # HEAD is archived, and the publisher never published it
+    got = archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2, published_ids={"f" * 40})
+    assert got["added"] is True and got["duplicates"] == []
+
+
+def test_a_published_repeat_is_refused_when_the_published_ids_are_given(remote):
+    bare, clone = remote
+    archive(clone)
+    before = tip(bare)
+    with pytest.raises(ap.DuplicatePolicy) as refused:
+        archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2, published_ids={HEAD, "f" * 40})
+    assert refused.value.duplicate_of["policyId"] == HEAD and tip(bare) == before
+
+
+def test_another_participants_unpublished_copy_is_not_reported_as_a_repeat(remote):
+    _, clone = remote
+    archive(clone, login="other")
+    got = archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2, published_ids=set())
+    assert got["added"] is True and got["duplicates"] == []
