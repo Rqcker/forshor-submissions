@@ -49,6 +49,23 @@ class ArchiveRefused(Exception):
     pass
 
 
+#: What to do when a policy with the same digest (mode and bands) is already archived. "same_participant": the same GitHub login (compared case-insensitively);
+#: "other_participant": anyone else. "refuse" publishes no row and tells the author which earlier submission it repeats; "allow" publishes as usual and the repeat is
+#: only identified (the `duplicates` of the archive result, logged by `intake_v2`). Change `other_participant` to "refuse" to stop others repeating a published policy.
+DUPLICATE_RULES = {"same_participant": "refuse", "other_participant": "allow"}
+
+
+class DuplicatePolicy(ArchiveRefused):
+    """A policy this submission repeats, and a rule that refuses it. `duplicate_of` describes the earlier archived submission."""
+
+    def __init__(self, duplicate_of: Dict[str, Any]):
+        who = "you" if duplicate_of["sameParticipant"] else "another participant"
+        super().__init__(f"{who} already submitted this exact policy as pull request #{duplicate_of['pull']} (commit {duplicate_of['policyId'][:7]}, "
+                         f"{str(duplicate_of['createdAt'])[:10]}); each policy can be published once"
+                         + (" per participant" if duplicate_of["sameParticipant"] else ""))
+        self.duplicate_of = duplicate_of
+
+
 def sha256(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
@@ -93,6 +110,18 @@ def policy_ids(checkout: Path) -> List[str]:
     return [p["policy_id"] for p in read_index(checkout)["policies"]]
 
 
+def find_duplicates(index: Dict[str, Any], *, digest: str, mode: str, login: str, head_sha: str) -> List[Dict[str, Any]]:
+    """The archived submissions with this policy (same digest and mode), other than `head_sha` itself, oldest first."""
+    found = []
+    for p in index["policies"]:
+        if p["digest"] != digest or p["mode"] != mode or p["policy_id"] == head_sha:
+            continue
+        who = str(p["source"].get("github_login") or "")
+        found.append({"policyId": p["policy_id"], "login": who, "pull": p["source"].get("pr_number"), "createdAt": p["source"].get("created_at"),
+                      "sameParticipant": who.lower() == login.lower()})
+    return sorted(found, key=lambda d: (d["createdAt"] or "", d["policyId"]))
+
+
 def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
     """`summary` is the file at the head commit (None: there is none). It must satisfy the rules, and the verification must carry exactly it, in both directions."""
     carried = v.get("summarySource")
@@ -110,8 +139,9 @@ def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
 
 
 def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str,
-                 summary: Optional[str] = None, repository: str = REPOSITORY) -> bool:
-    """Write the files and the index entry into the checkout. Returns whether anything changed. Raises `ArchiveRefused`."""
+                 summary: Optional[str] = None, repository: str = REPOSITORY, duplicates: Optional[List[Dict[str, Any]]] = None) -> bool:
+    """Write the files and the index entry into the checkout. Returns whether anything changed. Raises `ArchiveRefused` (`DuplicatePolicy` when `DUPLICATE_RULES`
+    refuse a repeat). Repeats that the rules allow are appended to `duplicates`."""
     if not HEAD.fullmatch(head_sha):
         raise ArchiveRefused("the head commit is not a 40-hex sha")
     if not source.strip():
@@ -130,6 +160,11 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
         if old["sha256"] != entry["sha256"] or old["digest"] != entry["digest"] or old.get("summarySha256") != entry.get("summarySha256"):
             raise ArchiveRefused(f"{head_sha} is already archived with a different policy")
         return False
+    for repeat in find_duplicates(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha):
+        if DUPLICATE_RULES["same_participant" if repeat["sameParticipant"] else "other_participant"] == "refuse":
+            raise DuplicatePolicy(repeat)
+        if duplicates is not None:
+            duplicates.append(repeat)
     folder = checkout / DIR / head_sha
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "Policy.lean").write_text(source)
@@ -159,20 +194,23 @@ def _git(checkout: Path, *args: str, env: Optional[Dict[str, str]] = None, check
 def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str, summary: Optional[str] = None,
                    token: Optional[str] = None, remote: str = "origin", attempts: int = 4, repository: str = REPOSITORY) -> Dict[str, Any]:
     """Add the policy to `BRANCH` and push, starting each attempt from the branch's current tip (a competing archive push is retried, not merged).
-    `checkout` is a clone with `remote`; returns `{"path", "commit", "added"}`."""
+    `checkout` is a clone with `remote`; returns `{"path", "commit", "added", "duplicates"}` (the earlier submissions of the same policy that the rules allowed)."""
     env = _env(token)
     last = ""
     for _ in range(attempts):
         _git(checkout, "fetch", "--depth=1", remote, BRANCH, env=env)
         _git(checkout, "checkout", "--detach", "FETCH_HEAD")
-        if not write_policy(checkout, v, login=login, pull=pull, head_sha=head_sha, run_id=run_id, source=source, summary=summary, repository=repository):
+        duplicates: List[Dict[str, Any]] = []
+        if not write_policy(checkout, v, login=login, pull=pull, head_sha=head_sha, run_id=run_id, source=source, summary=summary, repository=repository,
+                            duplicates=duplicates):
             tip = _git(checkout, "rev-parse", "HEAD").stdout.strip()
-            return {"path": f"{DIR}/{head_sha}", "commit": tip, "added": False}
+            return {"path": f"{DIR}/{head_sha}", "commit": tip, "added": False, "duplicates": []}
         _git(checkout, "add", INDEX_PATH, f"{DIR}/{head_sha}")
         _git(checkout, "-c", "user.name=forshor-results", "-c", "user.email=forshor-results@users.noreply.github.com", "commit", "-q", "-m",
              f"Archive policy submission {head_sha[:12]} (PR #{pull}, {login})")
         pushed = _git(checkout, "push", remote, f"HEAD:refs/heads/{BRANCH}", env=env, check=False)
         if pushed.returncode == 0:
-            return {"path": f"{DIR}/{head_sha}", "commit": _git(checkout, "rev-parse", "HEAD").stdout.strip(), "added": True}
+            return {"path": f"{DIR}/{head_sha}", "commit": _git(checkout, "rev-parse", "HEAD").stdout.strip(), "added": True,
+                    "duplicates": duplicates}
         last = (pushed.stderr or "").strip().splitlines()[-1:] and (pushed.stderr or "").strip().splitlines()[-1] or "push failed"
     raise RuntimeError(f"could not push the archive after {attempts} attempts: {last[:300]}")

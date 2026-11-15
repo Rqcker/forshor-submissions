@@ -42,8 +42,8 @@ def verification(source=SOURCE, digest="d" * 16, created="2026-11-08T10:00:00Z")
             "leanSource": source, "leanSha256": ap.sha256(source)}
 
 
-def archive(clone, v=None, head=HEAD, source=SOURCE, **kw):
-    return ap.archive_policy(clone, v or verification(), login="tester", pull=7, head_sha=head, run_id="99", source=source, **kw)
+def archive(clone, v=None, head=HEAD, source=SOURCE, login="tester", **kw):
+    return ap.archive_policy(clone, v or verification(), login=login, pull=7, head_sha=head, run_id="99", source=source, **kw)
 
 
 def test_a_policy_is_pushed_with_its_source_and_a_separate_index(remote):
@@ -259,3 +259,72 @@ def test_the_archive_never_runs_anything_for_the_summary(remote, monkeypatch):
     archive(clone, with_summary(), summary=HOSTILE)
     assert started and all(c[0] == "git" for c in started)
     assert not any("write18" in part for c in started for part in c)
+
+
+# ---- the same policy twice: refused for one participant, identified (and allowed) for another
+
+HEAD2 = "cd" * 20
+SOURCE2 = "namespace PolicySubmission\n-- the same policy, other comments\n"
+
+
+def tip(bare):
+    return git(bare, "rev-parse", ap.BRANCH)
+
+
+def test_the_same_participant_cannot_archive_the_same_policy_twice(remote):
+    bare, clone = remote
+    archive(clone)
+    before = tip(bare)
+    with pytest.raises(ap.DuplicatePolicy, match="already submitted") as refused:
+        archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2)
+    assert refused.value.duplicate_of == {"policyId": HEAD, "login": "tester", "pull": 7, "createdAt": "2026-11-08T10:00:00Z", "sameParticipant": True}
+    assert tip(bare) == before, "nothing was pushed"
+
+
+def test_login_case_does_not_make_a_different_participant(remote):
+    _, clone = remote
+    archive(clone)
+    with pytest.raises(ap.DuplicatePolicy):
+        archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2, login="TESTER")
+
+
+def test_another_participant_with_the_same_policy_is_archived_and_identified(remote):
+    bare, clone = remote
+    archive(clone)
+    got = archive(clone, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2, login="other")
+    assert got["added"] is True
+    assert got["duplicates"] == [{"policyId": HEAD, "login": "tester", "pull": 7, "createdAt": "2026-11-08T10:00:00Z", "sameParticipant": False}]
+    index = json.loads(git(bare, "show", f"{ap.BRANCH}:{ap.INDEX_PATH}"))
+    assert [p["policy_id"] for p in index["policies"]] == [HEAD, HEAD2]
+
+
+def test_a_first_submission_has_no_duplicates(remote):
+    _, clone = remote
+    assert archive(clone)["duplicates"] == []
+
+
+def test_the_same_head_is_still_a_no_op_not_a_duplicate(remote):
+    _, clone = remote
+    archive(clone)
+    again = archive(clone)
+    assert again["added"] is False and again["duplicates"] == []
+
+
+def test_the_same_digest_on_another_mode_is_not_a_duplicate(remote):
+    _, clone = remote
+    archive(clone)
+    other = verification(SOURCE2)
+    other["mode"], other["board"] = "triple", "ptp"
+    assert archive(clone, other, head=HEAD2, source=SOURCE2)["added"] is True
+
+
+def test_the_rule_table_decides(remote, monkeypatch):
+    bare, clone = remote
+    archive(clone)
+    before = tip(bare)
+    monkeypatch.setitem(ap.DUPLICATE_RULES, "other_participant", "refuse")
+    with pytest.raises(ap.DuplicatePolicy) as refused:
+        archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2, login="other")
+    assert refused.value.duplicate_of["sameParticipant"] is False and tip(bare) == before
+    monkeypatch.setitem(ap.DUPLICATE_RULES, "same_participant", "allow")
+    assert archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2, login="tester")["added"] is True
