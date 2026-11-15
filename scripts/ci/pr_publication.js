@@ -122,6 +122,31 @@ async function tellPublicationIncomplete({ github, context, core, state, author 
   }
 }
 
+/** The earlier submission a refused duplicate repeats, from the trusted publisher's result; null unless every field is plain (a 40-hex commit, a small positive pull number, a date). */
+function duplicateOf(result) {
+  const d = result?.refused === true && result.stage === 'duplicate' ? result.duplicateOf : null;
+  if (!d || typeof d !== 'object' || !/^[a-f0-9]{40}$/.test(d.policyId) || !Number.isSafeInteger(d.pull) || d.pull < 1
+      || typeof d.createdAt !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(d.createdAt)) return null;
+  return { policyId: d.policyId, pull: d.pull, date: d.createdAt.slice(0, 10), sameParticipant: d.sameParticipant === true };
+}
+
+function readDuplicate() {
+  try { return duplicateOf(JSON.parse(fs.readFileSync('publication-result.json', 'utf8'))); } catch { return null; }
+}
+
+const DUPLICATE_TITLE = { true: 'Not published: you already submitted this policy', false: 'Not published: this policy is already published' };
+
+/** The comment for a policy that repeats an earlier published one. Built only from the validated fields of `duplicateOf`. */
+function duplicateBody(headSha, found, author) {
+  const who = notify.mention(author);
+  const earlier = `pull request #${found.pull} (commit \`${found.policyId.slice(0, 7)}\`, ${found.date})`;
+  return `${notify.markerOf(headSha, 'duplicate')}\n### ${DUPLICATE_TITLE[found.sameParticipant]}\n\n`
+    + (found.sameParticipant
+      ? `${who ? `${who}, ` : ''}this exact policy was already published for you as ${earlier}, so it does not get a second row. Each policy can be published once per participant.\n\n`
+      : `${who ? `${who}, ` : ''}this exact policy was already published as ${earlier}, so it does not get a second row.\n\n`)
+    + 'Nothing is wrong with the policy itself. To publish a different policy, push a changed `Policy.lean` to this pull request or open a new submission pull request. Published results are unchanged.\n';
+}
+
 async function readCheck(github, params, waitForRetry) {
   for (let attempt = 0; ; attempt++) {
     try {
@@ -160,6 +185,18 @@ async function finalize({ github, context, core, outcome,
     if (source.run.conclusion !== 'success') {
       await finishCheck(github, context, state, 'skipped', 'Not run: Lean did not pass',
         `Lean concluded **${source.run.conclusion}**. Fix the table and push to this PR. Published results are unchanged.`);
+      return;
+    }
+    if (outcome === 'failure' && readDuplicate()) {
+      const found = readDuplicate();
+      await finishCheck(github, context, state, 'failure', DUPLICATE_TITLE[found.sameParticipant],
+        `This policy repeats pull request #${found.pull}, so it is not published again. The PR remains open.`);
+      try {
+        await notify.upsert({ github, context, prNumber: state.pr.number, marker: notify.markerOf(state.pr.headSha, 'duplicate'),
+          body: duplicateBody(state.pr.headSha, found, current.user?.login) });
+      } catch (error) {
+        core.warning?.(`Could not post the notification: ${error.message}`);
+      }
       return;
     }
     if (outcome !== 'success') {
@@ -201,4 +238,4 @@ async function finalize({ github, context, core, outcome,
   }
 }
 
-module.exports = { NAME, begin, finalize, receipt, acceptedBody };
+module.exports = { NAME, begin, finalize, receipt, acceptedBody, duplicateOf, duplicateBody };

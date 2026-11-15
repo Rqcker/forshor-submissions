@@ -37,6 +37,13 @@ another website write. Failed/rejected submissions leave the last complete
 snapshot visible. GitHub job summaries distinguish rejection, supersession,
 verification reuse, successful publication and an already-published result.
 
+**Repeated policies.** A policy is identified by its digest (mode and bands; comments, formatting and `summary.tex` do not change it). When the archive
+already holds that digest, `evaluation/archive_policy.py` applies `DUPLICATE_RULES`: by default the **same participant** (same GitHub login, case-insensitive)
+is refused with stage `duplicate`, no row, and a pull-request comment naming the earlier submission, while **another participant** is published normally and the
+repeat is only identified (the `duplicates` of the archive result in `publication-result.json`, and a `duplicate-policy:` line in the publish log). To refuse
+other participants as well, set `DUPLICATE_RULES["other_participant"] = "refuse"`. Only policies the publisher has actually published count (the archive is written first, so an archived head whose publication failed does not block a retry); a rerun of the same head commit is never a repeat. To list repeats already
+published, group `leaderboard/policy-submissions.json` on the `submission-results` branch by `digest`; rows published before this rule stay.
+
 Archive writes rebuild the index from the exact current parent on every
 non-fast-forward retry. Publication conflicts refresh both Google's state and
 the accepted archive, then recalculate one consistent snapshot. Transient

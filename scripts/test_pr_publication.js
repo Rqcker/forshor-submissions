@@ -153,6 +153,48 @@ test('a publisher failure notice is posted once, in place on a retry, and a fail
   });
 }));
 
+const REPEAT = { policyId: 'e'.repeat(40), login: 'contributor', pull: 41, createdAt: '2026-11-10T01:38:00Z', sameParticipant: true };
+const refusal = duplicateOf => ({ refused: true, stage: 'duplicate', reason: 'x', duplicateOf });
+
+test('a policy the author already published: a clear comment, once, no "not your policy" text, a failed check, the PR stays open', () => fixture(async f => {
+  f.write('publication-result.json', refusal(REPEAT));
+  await f.begin(); await f.finish('failure'); await f.begin(); await f.finish('failure');
+  assert.equal(f.comments.length, 1, 'one comment, found again by its marker');
+  const body = f.comments[0].body;
+  assert.match(body, /^<!-- forshor-notify:a{40}:duplicate -->\n### Not published: you already submitted this policy/);
+  assert.match(body, /@contributor, /); assert.match(body, /pull request #41/); assert.match(body, /2026-11-10/); assert.match(body, /eeeeeee/);
+  assert.doesNotMatch(body, /not a verdict|not your policy|re-run/i);
+  assert.equal(f.checks[0].conclusion, 'failure');
+  assert.equal(f.checks[0].output.title, 'Not published: you already submitted this policy');
+  assert.equal(f.pr.state, 'open'); assert.deepEqual(f.errors, []);
+}));
+
+test('a repeat that is not the author\'s own is described without any suggestion that the author did it twice', () => fixture(async f => {
+  f.write('publication-result.json', refusal({ ...REPEAT, login: 'someone', sameParticipant: false }));
+  await f.begin(); await f.finish('failure');
+  assert.match(f.comments[0].body, /^<!-- forshor-notify:a{40}:duplicate -->\n### Not published: this policy is already published/);
+  assert.doesNotMatch(f.comments[0].body, /you already submitted/);
+}));
+
+test('a hostile duplicate refusal puts nothing of its text in a comment and falls back to the publication-incomplete notice', () => fixture(async f => {
+  for (const bad of [{ ...REPEAT, policyId: 'x' }, { ...REPEAT, pull: 1e99 }, { ...REPEAT, pull: -3 }, { ...REPEAT, createdAt: '[x](http://e) @victim' }, null, 'text']) {
+    f.comments.length = 0;
+    f.write('publication-result.json', refusal(bad));
+    await f.begin(); await f.finish('failure');
+    assert.doesNotMatch(f.comments[0]?.body ?? '', /already submitted|already published|http:\/\/e|@victim/, JSON.stringify(bad));
+    assert.match(f.comments[0].body, /Verification could not complete/);
+  }
+}));
+
+test('a failed publication with no duplicate refusal behaves as before', () => fixture(async f => {
+  f.write('publication-result.json', { refused: true, stage: 'mirror', reason: 'x' });
+  await f.begin(); await f.finish('failure');
+  assert.match(f.comments[0].body, /Verification could not complete/);
+  fs.rmSync('publication-result.json'); f.comments.length = 0;
+  await f.begin(); await f.finish('failure');
+  assert.match(f.comments[0].body, /Verification could not complete/);
+}));
+
 test('the accepted comment mentions the author, and only a plain login', () => fixture(async f => {
   await f.begin(); await f.finish();
   assert.match(f.comments[0].body, /^<!-- forshor-publication:a{40} -->\n### Submission accepted and published\n\n@contributor, Lean verification passed/);

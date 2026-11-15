@@ -291,6 +291,11 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, sum
     return out
 
 
+def archive_policy_rules() -> Dict[str, str]:
+    import archive_policy
+    return archive_policy.DUPLICATE_RULES
+
+
 def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, token: str, workdir: Path, head_sha: Optional[str] = None, run_id: Optional[str] = None,
                          archive_commit: Optional[str] = None, archive_view: Optional[Callable[[], Any]] = None,
                          archive_write: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
@@ -370,6 +375,10 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     if archive_write is not None:                               # the policy joins the archive first: the publisher wants its head among the accepted ids
         archived = archive_write(v)
         log(f"archived {archived['path']} on submission-results ({archived['commit'][:12]})" if archived["added"] else f"already archived: {archived['path']}")
+        for repeat in archived.get("duplicates") or []:
+            kind = "same_participant" if repeat["sameParticipant"] else "other_participant"   # a repeat the rules allow (archive_policy.DUPLICATE_RULES): identified here, published like any other
+            log(f"duplicate-policy: same policy as {repeat['policyId'][:12]} by {repeat['login']} (PR #{repeat['pull']}, {str(repeat['createdAt'])[:10]}); "
+                f"published anyway (rule: {kind}={archive_policy_rules()[kind]})")
     result = publish_v2_with_recovery(metadata, model, state_of, price, accepted_now, send)
     if archived is not None:
         result["archive"] = archived
@@ -458,7 +467,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             token_gh = os.environ["GH_TOKEN"]
             source = ap_.github_source(a.head_sha, token_gh, __import__("publish").request_json)
             summary = ap_.github_summary(a.head_sha, token_gh, __import__("publish").request_json)   # None when the pull request has none
-            return ap_.archive_policy(a.archive, v, login=a.login, pull=a.pull, head_sha=a.head_sha, run_id=a.run_id, source=source, summary=summary, token=token_gh)
+            published = set(request_json(a.publisher_url.rstrip("/") + "/v2/state", token).get("submissionIds", []))   # the heads the publisher has actually published
+            return ap_.archive_policy(a.archive, v, login=a.login, pull=a.pull, head_sha=a.head_sha, run_id=a.run_id, source=source, summary=summary, token=token_gh,
+                                      published_ids=published)
     try:
         if a.publish_from is not None:
             result = publish_verification(json.loads(a.publish_from.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=token, workdir=a.workdir,
@@ -480,6 +491,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         code = 0
     except (Refused, ReservedHandle, ModelMismatch) as e:
         result, code = {"refused": True, "stage": getattr(e, "stage", type(e).__name__), "reason": getattr(e, "reason", str(e))}, 1
+    except __import__("archive_policy").DuplicatePolicy as e:
+        result, code = {"refused": True, "stage": "duplicate", "reason": str(e), "duplicateOf": e.duplicate_of}, 1
     except __import__("archive_policy").ArchiveRefused as e:
         result, code = {"refused": True, "stage": "archive", "reason": str(e)}, 1
     except (RetryPublication, RuntimeError, subprocess.SubprocessError, OSError, ValueError, KeyError) as e:

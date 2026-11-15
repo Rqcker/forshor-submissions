@@ -411,6 +411,7 @@ def test_the_command_line_archives_with_the_head_sha_the_run_and_the_githubs_cop
     monkeypatch.setattr(archive_policy, "github_source", lambda head, token, req: seen.update(source=(head, token)) or "SRC")
     monkeypatch.setattr(archive_policy, "github_summary", lambda head, token, req: seen.update(summary=(head, token)) or "SUMMARY")
     monkeypatch.setattr(archive_policy, "archive_policy", lambda checkout, v, **kw: seen.update(archive=(checkout, kw)) or {"path": "p", "commit": "c" * 40, "added": True})
+    monkeypatch.setattr(intake_v2, "request_json", lambda url, token, payload=None: seen.update(state_url=url) or {"submissionIds": ["f" * 40, "e" * 40]})
     def publish(v, **kw):
         kw["archive_write"](v)
         return {"published": True}
@@ -422,10 +423,40 @@ def test_the_command_line_archives_with_the_head_sha_the_run_and_the_githubs_cop
     assert code == 0
     assert seen["source"] == ("a" * 40, "gh-token") and seen["summary"] == ("a" * 40, "gh-token"), "the summary is read at the same head commit, with the same token"
     checkout, kw = seen["archive"]
+    assert seen["state_url"] == "http://x/v2/state" and kw["published_ids"] == {"f" * 40, "e" * 40}, "a repeat only counts when the publisher has actually published the earlier head"
     assert checkout == tmp_path / "arch" and kw["source"] == "SRC" and kw["summary"] == "SUMMARY" and kw["head_sha"] == "a" * 40 and kw["run_id"] == "5" and kw["pull"] == 7 and kw["token"] == "gh-token"
     monkeypatch.setattr(intake_v2, "publish_verification", lambda v, **kw: kw["archive_write"](v))
     assert intake_v2.main(["--publish-from", str(verification), "--login", "tester", "--pull", "7", "--publisher-url", "http://x", "--archive", str(tmp_path / "arch")]) == 1, \
         "archiving without a head sha and run id is refused"
+
+
+REPEAT = {"policyId": "e" * 40, "login": "someone", "pull": 41, "createdAt": "2026-11-10T01:38:00Z", "sameParticipant": False}
+
+
+def test_a_duplicate_policy_is_its_own_refusal_stage_with_the_earlier_submission(monkeypatch, tmp_path):
+    import archive_policy
+    def refuse(v, **kw):
+        raise archive_policy.DuplicatePolicy({**REPEAT, "login": "tester", "sameParticipant": True})
+    monkeypatch.setattr(intake_v2, "publish_verification", refuse)
+    verification, out = tmp_path / "verification.json", tmp_path / "publication-result.json"
+    verification.write_text("{}")
+    code = intake_v2.main(["--publish-from", str(verification), "--login", "tester", "--pull", "7", "--head-sha", "a" * 40, "--run-id", "5", "--publisher-url", "http://x", "--out", str(out)])
+    result = json.loads(out.read_text())
+    assert code == 1 and result["refused"] is True and result["stage"] == "duplicate"
+    assert result["duplicateOf"] == {**REPEAT, "login": "tester", "sameParticipant": True} and "already submitted" in result["reason"]
+
+
+def test_a_repeat_by_another_participant_publishes_and_is_logged(monkeypatch, tmp_path, model, policy_doc):
+    calls, lines = [], []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
+    v = intake_v2.verify_submission(policy_doc, login="tester", tree=tmp_path, workdir=tmp_path / "w", run_mirror_fn=archived_mirror([]), log=lambda s: None)
+    write = lambda verification: {"path": "p", "commit": "c" * 40, "added": True, "duplicates": [REPEAT]}
+    result = intake_v2.publish_verification(v, login="tester", pull=7, url="http://x", token="t", workdir=tmp_path / "w2", head_sha="a" * 40, run_id="1",
+                                            archive_commit="a" * 40, archive_write=write, log=lines.append)
+    assert result["archive"]["duplicates"] == [REPEAT]
+    logged = [x for x in lines if x.startswith("duplicate-policy:")]
+    assert len(logged) == 1 and "eeeeeeeeeeee" in logged[0] and "someone" in logged[0] and "#41" in logged[0] and "other_participant=allow" in logged[0]
+    assert any(isinstance(u, str) and u.endswith("/v2/publish") for u, _ in calls)
 
 
 # ---- the optional summary.tex: data that rides along with a Lean submission and never changes what is verified

@@ -455,9 +455,24 @@ def publication_matches(source, submission, verification):
             and pr.get('headSha') == submission['head'])
 
 
+def repeated_policy(result):
+    """What to tell the author when the publisher refused the policy as a repeat of one already published (None for anything else, including a malformed receipt)."""
+    found = result.get('duplicateOf') if isinstance(result, dict) and result.get('refused') is True and result.get('stage') == 'duplicate' else None
+    if not (isinstance(found, dict) and re.fullmatch(r'[a-f0-9]{40}', str(found.get('policyId', ''))) and type(found.get('pull')) is int and found['pull'] > 0
+            and re.match(r'\d{4}-\d{2}-\d{2}', str(found.get('createdAt', '')))):
+        return None
+    earlier = f"pull request #{found['pull']} (commit {found['policyId'][:7]}, {found['createdAt'][:10]})"
+    if found.get('sameParticipant') is True:
+        return f'Not published: you already submitted this exact policy as {earlier}. Each policy can be published once per participant; nothing is wrong with the policy itself. Submit a different policy.'
+    return f'Not published: this exact policy is already published as {earlier}. Nothing is wrong with the policy itself. Submit a different policy.'
+
+
 def publication_result(run_record, source, result, submission, verification):
     if not publication_matches(source, submission, verification):
         return None
+    repeat = repeated_policy(result)
+    if repeat:
+        raise UserError(repeat)
     if run_record.get('conclusion') != 'success':
         raise UserError(f'Publication failed. Details: {run_record["html_url"]}. A maintainer can rerun its failed publishing job without repeating Lean. Follow recovery with ./forshor status --watch.')
     if not result or (not result.get('alreadyPublished') and not re.fullmatch(r'[a-f0-9]{64}', str(result.get('snapshotId', '')))):
