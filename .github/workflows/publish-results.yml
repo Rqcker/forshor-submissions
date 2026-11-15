@@ -135,6 +135,12 @@ jobs:
       - name: Explain recovery after a failure
         if: failure()
         run: |
+          if grep -q '"stage": "duplicate"' publication-result.json 2>/dev/null; then
+            echo '::notice::Not published: this policy repeats one that is already published. Nothing needs rerunning; the author was told on the pull request.'
+            echo '## Not published: repeated policy' >> "$GITHUB_STEP_SUMMARY"
+            echo 'This exact policy is already published (see the duplicate-policy refusal in publication-result.json). A rerun gives the same answer.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo '::error::Publication failed. The last complete snapshot remains visible. Rerun this Publish Verified Results workflow to reuse verification; do not rerun Lean.'
           echo '## Recovery' >> "$GITHUB_STEP_SUMMARY"
           echo 'Rerun this publication workflow (or its failed job). The source run and attempt stay fixed, accepted verification is reused, and an already completed publication becomes a no-op.' >> "$GITHUB_STEP_SUMMARY"
