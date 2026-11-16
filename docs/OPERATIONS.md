@@ -1,6 +1,6 @@
 # Operations: queues, limits and recovery
 
-What a maintainer needs when a submission is slow, rejected or fails to publish. Moved unchanged from the README (apart from relative links and one name); for the policy route's CI see [POLICY_CI.md](POLICY_CI.md).
+How submissions are queued and limited, and how a slow, rejected or failed publication is handled. For the policy route's CI see [POLICY_CI.md](POLICY_CI.md).
 
 ## Queues and recovery
 
@@ -30,7 +30,7 @@ Scientific configuration changes invalidate reuse; infrastructure-only changes
 do not. Receipt/source identities are cross-checked against the accepted index.
 
 Publication has its own key, which also includes the estimator program and
-dependency lock. Google records completed keys in private state **in the same
+dependency lock. The publisher records completed keys **in the same
 atomic pointer update as the results**. A duplicate or a retry after a lost
 acknowledgement is a no-op, without resource estimation, history changes or
 another website write. Failed/rejected submissions leave the last complete
@@ -45,7 +45,7 @@ other participants as well, set `DUPLICATE_RULES["other_participant"] = "refuse"
 published, group `leaderboard/policy-submissions.json` on the `submission-results` branch by `digest`; rows published before this rule stay.
 
 Archive writes rebuild the index from the exact current parent on every
-non-fast-forward retry. Publication conflicts refresh both Google's state and
+non-fast-forward retry. Publication conflicts refresh both the published state and
 the accepted archive, then recalculate one consistent snapshot. Transient
 transport/storage failures retry up to four times with bounded backoff. The
 planner/Qualtran equations and the website are unchanged.
@@ -71,7 +71,7 @@ Verifier artifacts are retained for 90 days; publication diagnostics for 14.
 Before verification is archived, its source artifact must still exist. After
 archival, modern recovery does not depend on artifact retention. If a queue's 100-job waiting
 limit is reached, GitHub cancels additional arrivals visibly: rerun those runs after
-capacity is available. This is a bounded sprint queue, not an unlimited intake
+capacity is available. This is a bounded queue, not an unlimited intake
 service. Retry exhaustion is a failed job with recovery instructions, never a
 successful workflow that silently lost a result.
 
@@ -85,4 +85,4 @@ python -m unittest discover -s evaluation -p 'test_*.py' # pinned Qualtran envir
 ```
 
 See [public participation and repository protections](PUBLIC_PARTICIPATION.md)
-for the release checklist, fork behavior, limits, and operator checks.
+for fork behavior, limits, and repository protections.

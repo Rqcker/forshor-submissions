@@ -25,7 +25,7 @@ hosted jobs. The first setup can be slow; later checks retain compiled dependenc
 
 ## What local checking means
 
-The CLI fetches main from the fixed company submission repository, checks all
+The CLI fetches main from the fixed upstream submission repository, checks all
 committed and working changes, then prepares a generated checker checkout inside
 the checkout's Git metadata. The verifier, scoring configuration, adapters, and
 scientific model come from the fetched main commit. Only the editable submission
@@ -58,12 +58,12 @@ existing accepted submission instead.
 
 ## Forks and source identity
 
-After `zapatacomputing/forshor-submissions` becomes public, `submit` creates or
-reuses your own GitHub fork and pushes there, even when you are a company
+`submit` creates or
+reuses your own GitHub fork and pushes there, even when you are a
 maintainer. It does not request upstream Write access, rename your remotes, or
-change global Git configuration. A checkout cloned from the company repository
+change global Git configuration. A checkout cloned from the upstream repository
 or from a verified fork is supported. In either case the verifier is fetched
-directly from the fixed company's `main`, never the fork's `main`.
+directly from the upstream `main`, never the fork's `main`.
 
 Your fork must belong to the authenticated GitHub account and be linked to this
 repository. An unrelated repository with the same name is refused. GitHub API
@@ -71,11 +71,8 @@ denials and outages stop the command; they are not treated as a missing fork.
 PR discovery includes the fork owner, and status binds the PR to the recorded
 fork and exact commit. Identically named branches in other forks cannot be reused.
 
-While the repository remains private and company policy disables private forks,
-existing contributors with upstream Write access retain the staging route. A
-read-only user is never silently given Write access or pushed upstream. Public
-fork testing requires the public release or an explicitly authorized private
-fork policy; the CLI does not change repository visibility or company policy.
+A read-only user is never silently given Write access or pushed upstream; the
+CLI does not change repository visibility.
 
 New branch names select one of four fixed verification queues. Manual or older
 branch names use the first queue. This controls scheduling only; every policy
@@ -122,7 +119,7 @@ accepted output from the archive.
 Acceptance produces an archived table and recalculated plans. Eligibility depends
 on the planner's depth bound; champion replacement and new winning metrics are
 separate outcomes. The CLI prints the accepted archive and public dashboard URL.
-It does not collect staging passwords, bypass website authentication, or deploy
+It does not collect passwords, bypass website authentication, or deploy
 frontend code. Contributors refresh the website after publication.
 
 ## State and credentials

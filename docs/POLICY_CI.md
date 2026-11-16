@@ -18,13 +18,13 @@ The verification job is bounded to 30 minutes in total, including setup, ForShor
 
 The trusted `scripts/ci/policy_source.py` filter runs before dependency setup or
 verification reuse. Hosted jobs fetch a separate, sparse `controls` checkout
-from company main because older PR events may retain an earlier scientific
-verifier revision without this filter. Local `./forshor check` runs it from the fetched company
+from upstream main because older PR events may retain an earlier scientific
+verifier revision without this filter. Local `./forshor check` runs it from the fetched upstream
 checker. It applies the existing site-harness restrictions missing from the
 upstream shell gate: no build-time commands, effects, metaprogramming, unproved
 axioms, native proof shortcuts, compiler overrides, or extra imports. It uses
 the existing hardened comment lexer. All 14 archived policy files and shipped
-starter Lean templates passed the filter during MIS-23.
+starter Lean templates passed the filter.
 
 A source refusal updates the trusted preflight result, so the PR receives a
 rejection with its reason and no Lean compilation or Google publication occurs.
@@ -51,55 +51,3 @@ A policy submission may carry a LaTeX summary of what the participant did, in on
 * **File rules** (one definition, `evaluation/summary_tex.py`; a violation is a rejection of the file with a message naming the rule, not a verdict on the policy): a regular file (no symlink, no directory); not empty; at most 100 KiB (102,400 bytes: about twenty-five dense pages, ten times anything worth reading, a tenth of the policy file's own limit); valid UTF-8; no control characters except tab, line feed and carriage return (so no NUL).
 * **Never executed.** **No workflow or script compiles, renders, includes or runs the LaTeX.** TeX can run shell commands (`\write18`) and read files (`\input{/etc/passwd}`), so the file is only ever read as bytes, stored verbatim and shown as text. It cannot change verification: the policy's digest is computed from the policy alone, and the summary is carried beside it.
 * **Flow.** The verify job reads the file from the submission checkout and records `summarySource`, `summarySha256` and `summaryBytes` in `verification.json`. The trusted publish job takes the identity (pull request, head commit, author) from the GitHub API, fetches `summary.tex` at the head commit through the contents API exactly as it does `Policy.lean`, and refuses unless the verification carries the same text, in both directions (a summary on one side only is refused). `evaluation/archive_policy.py` then writes it verbatim to `results/policy-submissions/<head>/summary.tex` on `submission-results`, records `summarySha256` in the index entry, and a re-run is a no-op. The v2 publisher contract and the site are unchanged; a link from the policy dialog to the archived summary is a follow-up.
-
-### Validating the summary live, after the merge
-
-What can be tested before the merge is everything that does not need the default-branch workflows: the unit and trust suites above, the local intake (`evaluation/intake_v2.py --lean-policy ... --summary ... --no-publish`) and the archive round trip against a local bare repository. The pull-request verify job runs the verifier from the PR's **base** commit and the publish and notify workflows (`workflow_run`) run their **default-branch** versions, so until this change is on `main` a hosted run still refuses a `summary.tex`. After the merge, on the staging publisher:
-
-1. Warm the environments as for a normal rehearsal. Open a throwaway PR (a deliberate test handle) with the supplied `seed_pp_S707dd51bf951.Policy.lean` as `Policy.lean` **and** a small `TableGeneration/Submission/summary.tex` (for instance `examples/summary.tex` from the starter pack, plus a line of hostile text such as `\immediate\write18{touch /tmp/x}`).
-2. Expect the verify job to pass, its artifact `verification.json` to carry `summarySha256` and `summaryBytes`, and the step summary to say the summary is kept as text and never compiled. Expect no TeX process in any log.
-3. Expect the publish job to archive `results/policy-submissions/<head>/summary.tex` byte-identical to the PR's file (compare `git show submission-results:...` with the PR's blob), the `leaderboard/policy-submissions.json` entry to carry `summarySha256`, and the policy row to be unchanged from the same PR without the summary (same digest).
-4. Re-run the publish job: expect "already archived", no new commit on `submission-results`.
-5. Negative PRs, one each, with the expected comment from the notifier: `summary.tex` alone (a submission needs a policy), a `notes.tex` beside the pair (names the allowed pair), an oversize file, a file with a NUL byte, a symlink (the summary rule named in plain words).
-
-## Hosted rehearsal
-
-First warm the policy environments on `main`. Open a PR containing only the supplied `seed_pp_S707dd51bf951.Policy.lean` as `TableGeneration/Submission/Policy.lean` (and, once, the same PR with a small `summary.tex` beside it: the archive then holds `summary.tex` and the entry a `summarySha256`). Confirm both PR checks, archived source and evidence, CLI status, and the PhaseProduct/full-board rows. Repeat with the supplied PhaseTripleProduct example. A published row remains in the ledger, so use a deliberate test handle. Test failed verification and publisher retry without replacing the valid snapshot.
-
-Tracking: [QP-436](https://linear.app/zapata-quantum/issue/QP-436), [QP-437](https://linear.app/zapata-quantum/issue/QP-437).
-
-## Temporary cold-build fallback
-
-`Temporary policy cache bootstrap` is manual-only and checks out trusted `main`. It uses the one-job `forshor-bootstrap-20261109` Linux/x64 runner to create the same cache keys as standard hosted verification. It cannot publish results. Ordinary PR verification continues on `ubuntu-24.04`; no repository runner variable changes.
-
-The fallback VM has 8 vCPUs, 32 GiB RAM, a 100 GiB boot disk, no Google service account, and an administrative SSH rule restricted to Google IAP. Its runner registration is ephemeral, and the VM is configured to delete itself after at most two hours. Delete the VM immediately after its job, then remove its IAP firewall rule, dedicated subnet, and network. The workflow has a separate concurrency group so the original hosted bootstrap can complete independently; cancel the remaining bootstrap once one has saved both caches.
-
-The temporary bootstrap uses four Lean threads and preserves trusted local `.lake` files when retrying an interrupted build. PR verification keeps one thread and clean checkouts. Both trees share the one compiled Mathlib download by matching their pinned manifests.
-
-## Hosted results: November 9, 2026
-
-Both supplied starter policies passed the CLI and both GitHub checks, were archived byte-for-byte, and were closed without merging:
-
-* PhaseProduct: [PR #52](https://github.com/zapatacomputing/forshor-submissions/pull/52), head `de4a5a9935e2cd3605c9f6ca2df3b1e6418142fc`, published as `davidleocadio94_sub1` on PP/full.
-* PhaseTripleProduct: [PR #53](https://github.com/zapatacomputing/forshor-submissions/pull/53), head `a18ffa70b4a8a74b0f173a66873f2c0b1b0451a9`, published as `davidleocadio94_sub2` on PTP.
-
-Active epoch: `7a11b2b8b6d68718`. Two-submission snapshot: `9eb7cb213b599a33765e0b619ac9294af8858aa0f20a2db01c3420314d367925`.
-
-The browser passed all 12 board/budget views, both submissions' details, refresh, desktop, and 390px mobile without page errors or horizontal overflow. Both queued submissions were retained. [PR #54](https://github.com/zapatacomputing/forshor-submissions/pull/54) passed structural preflight but failed the deliberately false Lean proof; publication was skipped. Re-running [PP publication](https://github.com/zapatacomputing/forshor-submissions/actions/runs/42716235736) succeeded without changing the snapshot or adding another submission. The ledger still has two completed evaluations and the next participant number is 3. v1 data is unchanged; all five reviewer logins work and anonymous access remains blocked.
-
-### Measured compute
-
-These are measured starter examples on the standard private Ubuntu x64 runner, using trusted caches and one Lean thread. They are not a bound for every k ≤ 8 policy.
-
-| Example | Verification | Publication | Rounded job minutes | Gross CI estimate |
-| --- | --- | --- | --- | --- |
-| PP, one k=3 band | 9m 54s | 53s | 10 + 1 | $0.066 |
-| PTP, one k=4 band | 9m 15s | 64s | 10 + 2 | $0.072 |
-
-Calculated at [GitHub's Linux x64 rate](https://docs.github.com/en/billing/reference/actions-runner-pricing) of $0.006/minute, rounding each job separately. Queue time and the custom publication check consume no extra runner minutes. Estimates precede the organization's included usage, and exclude failed submissions, retries, storage, and one-off bootstrap/debug work. For a similar workload, 1,000 accepted policies imply about $66–72 gross CI compute. The private sprint currently runs one verifier at a time (roughly six of these verifications per hour); production concurrency is a separate setting.
-
-The corrected cold bootstrap took 17m 44s on the temporary 8-vCPU/32-GiB VM with four threads. Warm checker preparation on the first ordinary runner spent 34s fetching/checking dependencies and 10s building ForShor, then 6s/4s for STO; restoring the cache and preparing the runner add time. The temporary VM, IAP rule, subnet, network, and task SSH key were removed. [Self-hosted GitHub compute is free](https://docs.github.com/en/billing/concepts/product-billing/github-actions); that temporary VM's Google charge is separate from the per-submission estimate.
-
-### Public-release boundaries
-
-The tested flow uses collaborators' branches in the company repository. The CLI currently requires that repository as both the base and head, so public fork submissions need a separate integration change. The v2 contract caps each board and the submission index at 2,000 rows; paginate before scaling beyond those caps. These constraints concern submission volume, independently of visitor traffic receiving shared JSON.
