@@ -45,10 +45,16 @@ def _parse(s: str) -> dt.datetime:
 
 
 def already_published(state: Dict[str, Any], metadata: Dict[str, Any]) -> bool:
+    reject_retired(state, metadata["headSha"])
     done = state.get("completedEvaluations", {}).get(metadata["evaluationKey"])
     if done and (done["headSha"] != metadata["headSha"] or str(done["runId"]) != str(metadata["runId"])):
         raise ValueError("Evaluation identity collision")
     return bool(done)
+
+
+def reject_retired(state: Dict[str, Any], head_sha: str) -> None:
+    if head_sha in state.get("retiredSubmissionIds", []):
+        raise ValueError("This submission was retired by an operator; do not replay the prelaunch test")
 
 
 def policy_name(state: Dict[str, Any], login: str) -> str:

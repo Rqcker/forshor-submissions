@@ -65,3 +65,23 @@ class PolicyPublisherTests(unittest.TestCase):
             publish_policy.main()
             args = run.call_args.args[0]
         self.assertNotIn('--summary', args)
+
+class RetiredPolicyTests(unittest.TestCase):
+    def test_retired_head_stops_before_engine_or_archive_work(self):
+        import publish_v2
+        with tempfile.TemporaryDirectory() as temp:
+            old = Path.cwd()
+            try:
+                os.chdir(temp)
+                head = 'a' * 40
+                Path('evaluation-metadata.json').write_text(json.dumps({'kind': 'policy', 'headSha': head, 'evaluationKey': 'c' * 64, 'runId': '123'}))
+                env = {'PUBLISHER_URL': 'https://publisher.example', 'PUBLISHER_TOKEN': 'test-only', 'GITHUB_OUTPUT': 'output.txt'}
+                state = {'epoch': 'ab1f8887b1b50e56', 'retiredSubmissionIds': [head], 'completedEvaluations': {}}
+                with patch.dict(os.environ, env), patch('sys.argv', ['publish_policy.py', '--check']), patch.object(publish, 'request_json', return_value=state), patch('subprocess.run') as run:
+                    with self.assertRaisesRegex(ValueError, 'retired'):
+                        publish_policy.main()
+                    run.assert_not_called()
+                self.assertFalse(Path('publication-result.json').exists())
+                publish_v2.reject_retired(state, 'b' * 40)
+            finally:
+                os.chdir(old)
