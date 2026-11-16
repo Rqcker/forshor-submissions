@@ -23,7 +23,7 @@ consume a new verification admission.
 ## Trust and concurrency
 
 GitHub's `workflow_run: in_progress` event starts **Submission admission** from
-company main when the verification job gets a runner. This event also occurs on
+upstream main when the verification job gets a runner. This event also occurs on
 reruns. Admission jobs are serialized without cancelling earlier decisions.
 They inspect only GitHub API metadata, never the PR checkout or artifacts.
 

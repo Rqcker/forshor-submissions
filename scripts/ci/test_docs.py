@@ -40,9 +40,10 @@ class Docs(unittest.TestCase):
         text = read(ROOT / "README.md")
         self.assertLessEqual(len(text.splitlines()), 150)
         for needle in ("./forshor setup", "./forshor check", "./forshor submit", "TableGeneration/Submission/Policy.lean", "namespace PolicySubmission",
-                       "namespace PTPPolicySubmission", "summary.tex", "docs/OPERATIONS.md", "BENCHMARK.md", "leaderboard/", "MIS-23", "PROVENANCE.md"):
+                       "namespace PTPPolicySubmission", "summary.tex", "docs/OPERATIONS.md", "BENCHMARK.md", "leaderboard/", "https://forshor.ai", "PROVENANCE.md"):
             self.assertIn(needle, text)
         self.assertNotIn("Interim fork", text)
+        self.assertNotRegex(text, r"linear\.app|MIS-\d+|QP-\d+|forshor-site")
 
     def test_agents_writes_down_the_rules_that_keep_the_live_epoch_and_the_caches_intact(self):
         text = read(ROOT / "AGENTS.md")

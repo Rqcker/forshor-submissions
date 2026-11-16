@@ -2,7 +2,7 @@
 
 Where submissions to the ForShor challenge are checked, priced and published. A participant submits a complete **policy**: a recursion that splits a large multiplication into
 smaller ones, with the tables and thresholds that say how. This repository proves the policy correct in Lean, prices the circuit it describes, and publishes its place on the
-leaderboards of the challenge page. Website: https://github.com/zapatacomputing/forshor-site. Public participation: [MIS-23](https://linear.app/zapata-quantum/issue/MIS-23/public-submissions).
+leaderboards of the challenge page. Challenge page and leaderboards: **https://forshor.ai**.
 
 There are two challenges: **PhaseProduct** (scored on one phase product, or on full order finding) and **PhaseTripleProduct**. The challenge page says what is scored and why.
 
@@ -26,9 +26,8 @@ The first setup prepares pinned Lean and prebuilt dependencies, then warms the t
 current edits. `submit` checks freshness, creates or updates a PR, and follows that exact submission through hosted Lean verification, resource estimation, and publication. It
 prints the accepted-source and dashboard links. Refresh the website after publication; acceptance does not guarantee a new winner.
 
-No website account or API key is needed to submit. After the repository becomes public, `submit` creates or reuses your GitHub fork and opens a PR from there; you do not need
-Write access to the company repository. The CLI handles GitHub sign-in when needed. While the repository remains private, existing authorized staging contributors retain their
-current submission route and staging retains its separate password login. See [CLI behavior and recovery](docs/CLI.md) or `./forshor --help`.
+No website account or API key is needed to submit. `submit` creates or reuses your GitHub fork and opens a PR from there; you do not need Write access to this repository. The CLI
+handles GitHub sign-in when needed. See [CLI behavior and recovery](docs/CLI.md) or `./forshor --help`.
 
 ## What you submit
 
@@ -44,7 +43,7 @@ the rest of the policy route's rules are in [docs/POLICY_CI.md](docs/POLICY_CI.m
 1. **Policy submission** runs the trusted base verifier. It prepares the pinned public Lean library and this repository's own tree, kernel-checks the submitted file, checks exact widths and saves `verification.json`. It has no publication credentials.
 2. **Publish Verified Results** runs trusted main code after verification. It resolves the PR and files through GitHub, binds evidence to the exact source and author, then calls the policy intake's publish-from-verification path.
 3. The intake revalidates the evidence, archives the policy and its verification under `submission-results/results/policy-submissions/<head>`, and runs the v2 resource engine (vendored Qualtran **0.8.0.dev0**, `evaluation/engine/requirements.txt`, in its own Python environment).
-4. A short-lived Google identity calls the IAM-protected v2 publisher. It writes immutable snapshots and the private ledger before atomically advancing the dashboard pointer.
+4. The v2 publisher writes immutable result snapshots and a ledger, then atomically advances the dashboard pointer.
 5. The website reads those shared JSON results; publishing data does not redeploy it. The same PR receives **Estimate resources with Qualtran and publish results** and closes without merging only after successful publication.
 
 Trusted main warms separate Lean and Python caches; PR jobs only restore them. Policies are checked against the active model, the **epoch**: a change under `evaluation/engine/` starts a
@@ -57,7 +56,6 @@ new epoch, which is a planned migration, not a routine edit (see [AGENTS.md](AGE
 | [docs/CLI.md](docs/CLI.md) | the contributor CLI: commands, local checking, forks, publication and recovery, state |
 | [docs/POLICY_CI.md](docs/POLICY_CI.md) | the policy route's CI: environments and limits, source restrictions, trusted publication, the optional summary |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | queues, job limits, receipts and how to recover a failed publication |
-| [docs/PUBLIC_PARTICIPATION.md](docs/PUBLIC_PARTICIPATION.md) | repository protections, limits, fork behavior and the release checklist |
 | [docs/CHECKER.md](docs/CHECKER.md) | how the policy check works and how to run it by hand |
 | [PROVENANCE.md](PROVENANCE.md) | the base this repository started from and where the pins that decide a result live |
 | [BENCHMARK.md](BENCHMARK.md), `leaderboard/` | the scoring configuration read by the pricing engine |
