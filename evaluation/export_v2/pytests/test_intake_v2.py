@@ -32,6 +32,31 @@ def policy_doc():
     return json.loads((ARCHIVE / f"{DIGEST}.policy.json").read_text())
 
 
+@pytest.mark.parametrize("size", [77, 256, 257])
+def test_band_limit_before_mirror_and_during_publication(monkeypatch, tmp_path, model, policy_doc, size):
+    doc = copy.deepcopy(policy_doc)
+    doc["bands"] = [dict(copy.deepcopy(doc["bands"][0]), threshold=2 * (size - i)) for i in range(size)]
+    if size <= 256:
+        assert len(intake_v2.normalise(doc)["bands"]) == size
+        return
+    def no_mirror(*a, **kw):
+        pytest.fail("oversized policies must be rejected before the mirror runs")
+    with pytest.raises(intake_v2.Refused, match="at most 256 bands; found 257"):
+        intake_v2.verify_submission(doc, login="tester", tree=tmp_path, workdir=tmp_path / "w", run_mirror_fn=no_mirror)
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, []))
+    v = {"schema": intake_v2.VERIFICATION_SCHEMA, "login": "tester", "model": model, "policy": doc}
+    with pytest.raises(intake_v2.Refused, match="at most 256 bands; found 257"):
+        intake_v2.publish_verification(v, login="tester", pull=7, url="http://x", token="t", workdir=tmp_path / "p")
+
+
+@pytest.mark.parametrize("namespace", ["PolicySubmission", "PTPPolicySubmission"])
+def test_lean_band_limit_before_conversion(monkeypatch, tmp_path, namespace):
+    from export_v2 import engine
+    monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **kw: {"bands": [{}] * 257})
+    with pytest.raises(intake_v2.Refused, match="at most 256 bands; found 257"):
+        intake_v2.policy_from_lean(engine.load(), f"namespace {namespace}\n", tmp_path, tmp_path)
+
+
 def fake_publisher(model, calls, number=1):
     state = {"epoch": "e", "model": model, "baseGeneration": "1", "nextNumbers": {"tester": number}, "completedEvaluations": {}, "submissionIds": ["f" * 40],
              "publication": {"updatedAt": "2026-11-08T00:00:00Z", "snapshotId": "s" * 64}}   # the real /v2/state has no archiveCommit

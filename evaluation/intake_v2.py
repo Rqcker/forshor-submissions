@@ -48,6 +48,7 @@ import summary_tex  # noqa: E402  (the shared rules for the optional summary.tex
 REPO = "zapatacomputing/forshor-submissions"
 MAX_FORSHOR_K = 8           # a submission's bands take 2 <= k <= 8
 MAX_LEAN_BYTES = 1_000_000  # the size limit of the submitted Lean file
+MAX_POLICY_BANDS = 256     # keep in sync with forshor-site's shared results-v2 contract
 
 
 class Refused(Exception):
@@ -58,6 +59,11 @@ class Refused(Exception):
         self.stage, self.reason = stage, reason
 
 
+def check_band_limit(bands: Any) -> None:
+    if isinstance(bands, (list, tuple)) and len(bands) > MAX_POLICY_BANDS:
+        raise Refused("format", f"a policy may contain at most {MAX_POLICY_BANDS} bands; found {len(bands)}")
+
+
 def normalise(policy_doc: Any) -> Dict[str, Any]:
     """The policy the engine prices, as site policy JSON: mode, name, bands (threshold, k, point_order, operations). Anything else is dropped."""
     from export_v2 import engine
@@ -65,6 +71,7 @@ def normalise(policy_doc: Any) -> Dict[str, Any]:
     docs = eng.tables.policy_docs(policy_doc)
     if len(docs) != 1:
         raise Refused("format", f"expected one policy, found {len(docs)}")
+    check_band_limit(docs[0].get("bands"))
     try:
         P = eng.tables.Policy.from_json(docs[0])
     except Exception as e:  # noqa: BLE001
@@ -182,6 +189,7 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
     if forshor_tree is None:
         raise RuntimeError("a Lean policy needs ForShor's build, and no ForShor checkout was given (--forshor-tree)")
     doc = forshor_build(forshor_tree, lean_text, workdir, timeout, kind=kind)
+    check_band_limit(doc.get("bands"))
     if doc.get("negation", "oneQubit") != "oneQubit":
         raise Refused("format", f"the policy asks for negation {doc.get('negation')!r}; the boards price oneQubit only")
     if kind == "pp":
