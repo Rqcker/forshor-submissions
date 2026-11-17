@@ -10,6 +10,38 @@ const lifecycle = require('./ci/pr_publication.js');
 const HEAD = 'a'.repeat(40);
 const context = { repo: { owner: 'zapatacomputing', repo: 'forshor-submissions' } };
 
+test('large archived verification is read by immutable blob id and checked before use', async () => {
+  const { createHash } = require('node:crypto');
+  const value = { proof: 'x'.repeat(1_100_000) };
+  const bytes = Buffer.from(JSON.stringify(value));
+  const sha = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+  const metadata = { type: 'file', encoding: 'none', sha, size: bytes.length };
+  let blob = { encoding: 'base64', content: bytes.toString('base64') };
+  const github = { rest: {
+    repos: { getContent: async params => {
+      assert.equal(params.ref, 'submission-results');
+      return { data: metadata };
+    } },
+    git: { getBlob: async params => {
+      assert.deepEqual(params, { ...context.repo, file_sha: sha });
+      return { data: blob };
+    } },
+  } };
+  assert.deepEqual(await publication.readJson(github, context, 'verification.json'), value);
+  blob = { encoding: 'base64', content: Buffer.from('changed').toString('base64') };
+  await assert.rejects(publication.readJson(github, context, 'verification.json'), /identity mismatch/);
+  metadata.size = 100_000_001;
+  await assert.rejects(publication.readJson(github, context, 'verification.json'), /oversized/);
+});
+
+test('only a missing archive path is a cache miss; a missing identified blob is an error', async () => {
+  const missing = () => { throw Object.assign(new Error('missing'), { status: 404 }); };
+  const github = { rest: { repos: { getContent: missing }, git: { getBlob: missing } } };
+  assert.equal(await publication.readJson(github, context, 'missing.json'), null);
+  github.rest.repos.getContent = async () => ({ data: { type: 'file', encoding: 'none', sha: HEAD, size: 2 } });
+  await assert.rejects(publication.readJson(github, context, 'verification.json'), /missing/);
+});
+
 test('the real archiver generates operations first and merges both policies after a conflict', async () => {
   const root = process.cwd(), directory = fs.mkdtempSync(path.join(os.tmpdir(), 'forshor-full-archive-'));
   const oldRun = process.env.SOURCE_RUN_ID, oldAttempt = process.env.SOURCE_RUN_ATTEMPT;
