@@ -6,6 +6,8 @@ Verification uses trusted base-branch code and full Git history. It builds the p
 
 ## Environments and limits
 
+A policy may contain at most **256 bands**, matching the shared publisher/frontend contract in `forshor-site`. Local `./forshor check` and hosted verification reject larger policies before the mirror runs (for Lean input, after ForShor extracts the policy). Trusted publication enforces the same limit before resource estimation. The submitted Lean file remains limited to 1,000,000 bytes; memory, runtime and publication payload limits still apply independently.
+
 `Warm policy verification environments` builds on trusted `main`, then saves separate ForShor, STO, and Python caches. PR jobs restore only; they never save these caches. The v2 Python environment is separate from the legacy estimator, and uses `evaluation/engine/requirements.txt` with vendored Qualtran. The publisher checkout must include full history so `engineRevision` is the actual last engine change, rather than the shallow checkout's tip.
 
 `POLICY_RUNNER` may name a provisioned Linux runner label. The default is the existing `ubuntu-24.04` private runner. This has 8 GB physical RAM; on disposable GitHub-hosted Linux machines we reclaim unused SDK space, add 8 GiB swap, and use `LEAN_NUM_THREADS=1`. **This does not satisfy a 16 GB physical RAM guarantee.** Hosted measurements must determine whether it is sufficient for the tested policies; larger policies may need a larger runner. Never perform that machine cleanup on a custom runner.
