@@ -21,14 +21,28 @@ function evaluationKey(identity) {
 }
 
 async function readJson(github, context, path) {
+  let data;
   try {
-    const { data } = await github.rest.repos.getContent({ ...context.repo, path, ref: 'submission-results' });
-    if (data.encoding !== 'base64') throw new Error('Expected a versioned archive file');
-    return JSON.parse(Buffer.from(data.content, 'base64').toString());
+    ({ data } = await github.rest.repos.getContent({ ...context.repo, path, ref: 'submission-results' }));
   } catch (error) {
     if (error.status === 404) return null;
     throw error;
   }
+  if (Array.isArray(data) || (data.type && data.type !== 'file')) throw new Error('Expected a versioned archive file');
+  // GitHub omits Contents API payloads above 1 MB. Read the exact blob it identified,
+  // rather than following a download URL or re-reading a branch that may have moved.
+  if (data.encoding === 'none') {
+    if (!sha(data.sha) || !Number.isSafeInteger(data.size) || data.size < 0 || data.size > 100_000_000)
+      throw new Error('Invalid or oversized archive blob');
+    const { data: blob } = await github.rest.git.getBlob({ ...context.repo, file_sha: data.sha });
+    if (blob.encoding !== 'base64' || typeof blob.content !== 'string') throw new Error('Expected a base64 archive blob');
+    const bytes = Buffer.from(blob.content, 'base64');
+    const hash = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+    if (bytes.length !== data.size || hash !== data.sha) throw new Error('Archive blob identity mismatch');
+    return JSON.parse(bytes.toString('utf8'));
+  }
+  if (data.encoding !== 'base64' || typeof data.content !== 'string') throw new Error('Expected a versioned archive file');
+  return JSON.parse(Buffer.from(data.content, 'base64').toString('utf8'));
 }
 
 async function acceptedReceipt(github, context, identity) {
@@ -154,4 +168,4 @@ async function archive({ github, context, core }) {
     .addRaw('\n\nThe publication step can be retried independently of Lean verification.\n').write();
 }
 
-module.exports = { inspect, archive, verificationIdentity, evaluationKey, assertReceipt, sourceEvent };
+module.exports = { inspect, archive, verificationIdentity, evaluationKey, assertReceipt, sourceEvent, readJson };
