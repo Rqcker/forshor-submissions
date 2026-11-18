@@ -1,8 +1,8 @@
 {
-  "comment": "The Lean trees a policy submission is checked in. `./forshor setup` and `./forshor check` build them under .git/forshor, and the policy verifier (scripts/policy_verifier.py) is given them as FORSHOR_TREE and STO_TREE. The STO mirror's tree is this repository itself: its TableGeneration, harness scripts, JMC_NOTES.md and lake-manifest.json are the STO fork's main at 2558595 (sync/sto-fork-2558595), so nothing private is cloned. The ForShor tree is a public clone at the ref below: the pinned 21e129a plus documentation and the PhaseTripleProduct submission files (PR #83); the epoch's pin is unchanged by it.",
+  "comment": "The Lean trees a policy submission is checked in. `./forshor setup` and `./forshor check` build them under .git/forshor, and the policy verifier (scripts/policy_verifier.py) is given them as FORSHOR_TREE and STO_TREE. The STO mirror's tree is this repository itself: its TableGeneration, harness scripts, JMC_NOTES.md and lake-manifest.json are the STO fork's main at 2558595 (sync/sto-fork-2558595), so nothing private is cloned. The ForShor tree is a public clone at the ref below: the pinned 21e129a plus documentation, the PhaseTripleProduct submission files (PR #83) and the run-time extraction's smaller lookup budget with a retry at the former one (PR #85: byte-identical documents on every board policy, 3.5–12x faster); the epoch's pin is unchanged by it.",
   "forshor": {
     "repo": "https://github.com/VerifiedQC/ForShor",
-    "ref": "349849e091fc05a4e80c99ae3511985faf3b8843"
+    "ref": "82e22745092867a444284f225bb2bde70c7f4c3d"
   },
   "sto": {
     "repo": "self",
