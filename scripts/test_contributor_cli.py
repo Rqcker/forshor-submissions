@@ -406,7 +406,7 @@ class ForkRouting(unittest.TestCase):
         with patch.object(cli, 'github_repository', side_effect=[{'private': False}, None, self.FORK]), \
                 patch.object(cli, 'gh_json', return_value={'login': 'participant'}), patch.object(cli, 'run') as run:
             self.assertEqual(cli.submission_repository(Path('.')), self.FORK['full_name'])
-            run.assert_called_once_with(['gh', 'repo', 'fork', cli.REPO, '--clone=false', '--remote=false'])
+            run.assert_called_once_with(['gh', 'repo', 'fork', cli.REPO, '--clone=false'])
 
     def test_an_unrelated_existing_repository_cannot_be_used_or_overwritten(self):
         with patch.object(cli, 'github_repository', side_effect=[{'private': False}, {'fork': False, 'full_name': self.FORK['full_name']}]), \

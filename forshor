@@ -121,7 +121,7 @@ def submission_repository(root):
     name = f'{login}/{REPO.split("/")[1]}'
     details = github_repository(name, missing_ok=True)
     if details is None:
-        run(['gh', 'repo', 'fork', REPO, '--clone=false', '--remote=false'])
+        run(['gh', 'repo', 'fork', REPO, '--clone=false'])
         details = github_repository(name)
     if details.get('full_name', '').lower() != name.lower() or not is_submission_fork(details):
         raise UserError(f'{name} is not your fork of {REPO}. No files were pushed. Use a correctly linked fork.')
