@@ -223,7 +223,9 @@ test('organizer baseline requires the registered account and matching verified s
   for (const [id, title, expected] of [[115955955, 'baseline-gpt', 'baseline-gpt'],
     [115955955, 'baseline-gpt-6.2-sol', 'baseline-gpt-6.2-sol'],
     [115955955, 'baseline-claude-opus-5-5', 'baseline-claude-opus-5-5'],
-    [1, 'baseline-gpt-6.2-sol', undefined], [115955955, 'baseline-claude', undefined]]) {
+    [115955955, 'baseline-gpt-6.2-sol-medium', 'baseline-gpt-6.2-sol-medium'],
+    [115955955, 'baseline-claude-opus-5-5-medium', 'baseline-claude-opus-5-5-medium'],
+    [1, 'baseline-gpt-6.2-sol-medium', undefined], [1, 'baseline-gpt-6.2-sol', undefined], [115955955, 'baseline-claude', undefined]]) {
     const summaryLabel = title === 'baseline-claude' ? 'baseline-gpt' : title;
     carry(f, `Organizer baseline: ${summaryLabel}\n`);
     f.input.github.rest.pulls.get = async () => ({ data: { user: { login: 'contributor', id }, title } });
