@@ -219,10 +219,13 @@ test('recovery from the archive brings the summary back from summary.tex and bin
 }));
 
 test('organizer baseline requires the registered account and matching verified summary', () => fixture(async f => {
-  carry(f, 'Organizer baseline: baseline-gpt\n');
   f.input.github.rest.pulls.listFiles = listing(POLICY_FILE, SUMMARY_FILE);
   for (const [id, title, expected] of [[115955955, 'baseline-gpt', 'baseline-gpt'],
-    [1, 'baseline-gpt', undefined], [115955955, 'baseline-claude', undefined]]) {
+    [115955955, 'baseline-gpt-6.2-sol', 'baseline-gpt-6.2-sol'],
+    [115955955, 'baseline-claude-opus-5-5', 'baseline-claude-opus-5-5'],
+    [1, 'baseline-gpt-6.2-sol', undefined], [115955955, 'baseline-claude', undefined]]) {
+    const summaryLabel = title === 'baseline-claude' ? 'baseline-gpt' : title;
+    carry(f, `Organizer baseline: ${summaryLabel}\n`);
     f.input.github.rest.pulls.get = async () => ({ data: { user: { login: 'contributor', id }, title } });
     await policy.prepare(f.input);
     const metadata = JSON.parse(fs.readFileSync('evaluation-metadata.json'));
