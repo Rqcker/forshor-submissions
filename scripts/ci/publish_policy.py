@@ -39,6 +39,8 @@ def main():
                "--publish-from", "artifacts/verification.json", "--login", metadata["githubLogin"],
                "--pull", str(metadata["pullRequest"]), "--head-sha", metadata["headSha"], "--run-id", metadata["runId"],
                "--publisher-url", url, "--archive", "archive", "--workdir", "policy-publication-work", "--out", "publication-result.json"]
+    if metadata.get("organizerBaseline"):
+        command.extend(["--organizer-baseline", metadata["organizerBaseline"]])
     return subprocess.run(command, cwd=REPO).returncode
 
 

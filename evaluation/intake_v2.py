@@ -305,7 +305,7 @@ def archive_policy_rules() -> Dict[str, str]:
 
 
 def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, token: str, workdir: Path, head_sha: Optional[str] = None, run_id: Optional[str] = None,
-                         archive_commit: Optional[str] = None, archive_view: Optional[Callable[[], Any]] = None,
+                         organizer_baseline: Optional[str] = None, archive_commit: Optional[str] = None, archive_view: Optional[Callable[[], Any]] = None,
                          archive_write: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
                          log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
     """Price and publish a verification (`verify_submission`'s output, possibly produced by another job). No Lean runs here and nothing in `v` is trusted: the policy's digest, the
@@ -376,6 +376,9 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     sent: Dict[str, Any] = {}
 
     def send(payload: Dict[str, Any]) -> Dict[str, Any]:
+        if organizer_baseline:
+            for priced in payload["priced"]:
+                priced["row"]["organizerBaseline"] = organizer_baseline
         sent["payload"] = payload                              # the last attempt is the one that was accepted
         return request_json(url.rstrip("/") + "/v2/publish", token, payload)
 
@@ -422,6 +425,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="verify only (the reserved handle, ForShor's gate and build, the STO mirror, ForShor's check) and write a verification file; nothing is priced, nothing is "
                          "sent, no publisher or token is needed. This is `./forshor check`, and the untrusted half of CI")
     ap.add_argument("--verification-out", type=Path, help="with --no-publish: where to write the verification (default: WORKDIR/verification.json)")
+    ap.add_argument("--organizer-baseline", choices=["baseline-gpt", "baseline-claude"], help="Display identity assigned by trusted publication CI")
     ap.add_argument("--publish-from", type=Path, help="price and publish a verification written by --no-publish (the trusted half of CI): no Lean runs, and everything in it is checked again")
     ap.add_argument("--login", required=True, help="the submitter's GitHub handle (the PR author)")
     ap.add_argument("--pull", type=int, help="the pull request number (not needed with --no-publish)")
@@ -484,7 +488,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if a.publish_from is not None:
             result = publish_verification(json.loads(a.publish_from.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=token, workdir=a.workdir,
                                           head_sha=a.head_sha, run_id=a.run_id, archive_commit=a.archive_commit, archive_view=archive_view,
-                                          archive_write=archive_write)
+                                          archive_write=archive_write, organizer_baseline=a.organizer_baseline)
         elif a.no_publish:
             v = verify_submission(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, summary=summary_text, login=a.login,
                                   url=a.publisher_url, token=token, tree=a.tree, workdir=a.workdir, forshor_tree=a.forshor_tree, stage_timeout=a.stage_timeout,

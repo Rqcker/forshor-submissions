@@ -93,6 +93,9 @@ async function prepare({ github, context, core, run, pr, identity, result, recov
   fs.writeFileSync('artifacts/verification.json', JSON.stringify(verification));
   const evaluationKey = digest(`${pr.headSha}:${receipt.runId}:${pr.number}`);
   fs.writeFileSync('evaluation-metadata.json', JSON.stringify({
+    ...(details.user.id === 115955955 && ['baseline-gpt', 'baseline-claude'].includes(details.title)
+      && summaryHead === `Organizer baseline: ${details.title}\n`
+      ? { organizerBaseline: details.title } : {}),
     kind: 'policy', repository: REPOSITORY, headSha: pr.headSha, runId: receipt.runId,
     githubLogin: login, pullRequestUrl: `https://github.com/${REPOSITORY}/pull/${pr.number}`,
     pullRequest: pr.number, submittedAt: details.created_at, evaluationKey, policyDigest: verification.digest,
