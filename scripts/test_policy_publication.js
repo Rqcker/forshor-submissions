@@ -217,3 +217,16 @@ test('recovery from the archive brings the summary back from summary.tex and bin
   assert.equal(JSON.parse(fs.readFileSync('artifacts/verification.json')).summarySource, HOSTILE);
   assert.equal(JSON.parse(fs.readFileSync('evaluation-metadata.json')).runId, '111');
 }));
+
+test('organizer baseline requires the registered account and matching verified summary', () => fixture(async f => {
+  carry(f, 'Organizer baseline: baseline-gpt\n');
+  f.input.github.rest.pulls.listFiles = listing(POLICY_FILE, SUMMARY_FILE);
+  for (const [id, title, expected] of [[115955955, 'baseline-gpt', 'baseline-gpt'],
+    [1, 'baseline-gpt', undefined], [115955955, 'baseline-claude', undefined]]) {
+    f.input.github.rest.pulls.get = async () => ({ data: { user: { login: 'contributor', id }, title } });
+    await policy.prepare(f.input);
+    const metadata = JSON.parse(fs.readFileSync('evaluation-metadata.json'));
+    assert.equal(metadata.organizerBaseline, expected);
+    assert.equal(metadata.githubLogin, 'contributor');
+  }
+}));
