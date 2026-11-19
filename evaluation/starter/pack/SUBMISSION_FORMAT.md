@@ -32,7 +32,7 @@ The site also reads `{"policy": {...}}` and `{"policies": [...]}` (at most 8 pol
 ### Widths and shift pairs
 
 Widths are derived, never declared: a table's child width at a given operand width is the least width at which every register value the table's program ever holds fits. Both exact-width rules count every
-state the program visits, not only its final one: the STO mirror's `tightWidth` (over every reachable row) and ForShor's `exactSignedWidthOfWidths`. Two consequences follow, and both are intended.
+state the program visits, not only its final one: the policy check's `tightWidth` (over every reachable row) and ForShor's `exactSignedWidthOfWidths`. Two consequences follow, and both are intended.
 
 * **A shift pair can raise a width.** A `shiftL` followed by the matching `shiftR` leaves the register unchanged, but between the two the register holds a larger value, and the rule counts it. For example, a
   `["shiftL", 2, 3]` and `["shiftR", 2, 3]` inserted into a table can make its child width at one size 480 where it was 479. The program's points, result and T count are unchanged. The shift gates themselves cost no T gates
@@ -102,11 +102,11 @@ a Cuccaro adder, `w + 1` clean qubits, `2w - 3` Toffolis): fewer T and about 4,4
 
 | Board | Checker | When it passes, the site shows | What is proved |
 |---|---|---|---|
-| PP | STO policy mirror, `check_banded_policy.py --widths exact` (in the `forshor-submissions` repository, `main`) | the "STO mirror" tag (policy checked in Lean at exact widths) | Every band's table satisfies STO's table contract; the thresholds decrease; the evaluation equals φ·a·b; the register semantics is correct at the exact widths (`correct_tight`); the exact widths are the least overflow-free widths (`exact_ladder` at 2048); the threshold rule holds on the recursion from 2048 (`chain_contracts_tight`, `thresholds_at_target`), and the policy is correct concretely at n = 2048 (`correct_at_target`, `exact_ladder_at_target`). A policy whose thresholds are set too low is rejected at stage `threshold`. |
+| PP | policy check, `check_banded_policy.py --widths exact` (in the `forshor-submissions` repository, `main`) | the policy is listed as checked in Lean at exact widths | Every band's table satisfies the table contract; the thresholds decrease; the evaluation equals φ·a·b; the register semantics is correct at the exact widths (`correct_tight`); the exact widths are the least overflow-free widths (`exact_ladder` at 2048); the threshold rule holds on the recursion from 2048 (`chain_contracts_tight`, `thresholds_at_target`), and the policy is correct concretely at n = 2048 (`correct_at_target`, `exact_ladder_at_target`). A policy whose thresholds are set too low is rejected at stage `threshold`. |
 | PTP | `check_ptp_policy.py --widths exact` of the same repository, against ForShor's `Shor.PTP` | the same tag | The same, for φ·a·b·c (`correct_exact`). The register model is by analogy with PP. In addition (O2, cert `gate_recursion`): for every checked policy and width, a gate-level recursion following the policy exists and is correct through every depth (`PolicyImpl.specOn`), with its census equal to the policy formulas, using the suite's Toffoli+Rz+Toffoli sandwich leaf; since O5 the same gate-level result holds at the exact widths (`gate_recursion_exact`, `gate_recursion_exact_at_target`). The same threshold rule and at-target certificates as PP. Equal-width operands only. |
 | Full run | ForShor `21e129a`, `ShorPolicySubmission` | ForShor policy-verified | C1 to C4 for each band (`decide +kernel`), the sorted thresholds, the exact register widths, and `policy_submission_correct` (circuit-level). |
 
-The PP mirror level is **not circuit-level**: it proves nothing about the gates of the priced Qualtran circuit or of
+The PP policy-check level is **not circuit-level**: it proves nothing about the gates of the priced Qualtran circuit or of
 ForShor's lowering, and it is weaker than "ForShor policy-verified". ForShor's PhaseTripleProduct gate-level result is about
 its own sandwich leaf, not the digital leaf the board prices. No level proves the T
 count. The full run's census is ForShor's IR, matched to the compiled circuit at sampled widths, not proved at
@@ -115,7 +115,7 @@ n = 2048.
 ## 5. Resources
 
 The Lean checks are heavy and the pack contains none of the Lean build trees. Measured on earlier policies (ForShor `21e129a`, one machine): most pass
-the STO mirror in seconds to a few minutes. The mirror's interpreted report stage is the slow part (a PhaseProduct policy whose first band has k = 8 took about 2.4 hours in it, and a PhaseTripleProduct one with a k = 8 first band did not finish it in 12 hours); the hosted check skips that stage (`--fast`, see `harness/LEAN_CHECKS.md`), and the kernel certificate then proves the ladder: such a policy takes about two minutes in the mirror. Keep a first attempt small (k up to 6, few bands). The organisers' own limits for a submission
+the policy check in seconds to a few minutes. The policy check's interpreted report stage is the slow part (a PhaseProduct policy whose first band has k = 8 took about 2.4 hours in it, and a PhaseTripleProduct one with a k = 8 first band did not finish it in 12 hours); the hosted check skips that stage (`--fast`, see `harness/LEAN_CHECKS.md`), and the kernel certificate then proves the ladder: such a policy takes about two minutes in the policy check. Keep a first attempt small (k up to 6, few bands). The organisers' own limits for a submission
 are in the repository's instructions, not here.
 
 ## 6. Sending it
@@ -126,4 +126,4 @@ format is `templates/Policy.lean`, and `starter.py template` writes it for a Pha
 contains with the same engine as `starter.py price`. Whatever you send, quote the `starter.py price` output you got for the same policy as JSON (and, for a full-run policy, the `forshor-doc` output), and name the pack's build date
 (`MANIFEST.json`). The boards' numbers are the ones that count.
 
-A policy that is accepted appears on the boards under your GitHub handle as `<handle>_sub<N>`, N counting your own submissions from 1; the handle `forshor` is reserved. The boards start with the starting policies, built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (named `forshor_sub<N>`), ranked with yours by Q × T, and mark each row "STO mirror" if the policy has been checked in Lean.
+A policy that is accepted appears on the boards under your GitHub handle as `<handle>_sub<N>`, N counting your own submissions from 1; the handle `forshor` is reserved. The boards start with the starting policies, built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (named `forshor_sub<N>`), ranked with yours by Q × T, and mark each row "policy check" if the policy has been checked in Lean.

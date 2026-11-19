@@ -6,17 +6,17 @@ are the ones in the submission repository.
 
 | Submission | Checker | Build tree | Where it comes from |
 |---|---|---|---|
-| PhaseProduct (PP) banded policy, site policy JSON | STO policy mirror, `scripts/check_banded_policy.py --widths exact` | the `forshor-submissions` repository | github.com/zapatacomputing/forshor-submissions, `main` (ForShor pinned at `21e129a`, Lean `v4.36.0-rc1`; its `TableGeneration/` and `scripts/` are the mirror's tree, and `evaluation/policy-trees.json` lists the build targets): `lake exe cache get`, then `lake build TableGeneration` |
+| PhaseProduct (PP) banded policy, site policy JSON | policy check, `scripts/check_banded_policy.py --widths exact` | the `forshor-submissions` repository | github.com/zapatacomputing/forshor-submissions, `main` (ForShor pinned at `21e129a`, Lean `v4.36.0-rc1`; its `TableGeneration/` and `scripts/` are the policy check's tree, and `evaluation/policy-trees.json` lists the build targets): `lake exe cache get`, then `lake build TableGeneration` |
 | PhaseTripleProduct (PTP) banded policy, site policy JSON | `scripts/check_ptp_policy.py --widths exact`, against ForShor's `Shor.PTP` | the same repository | The same tree. `lake build TableGeneration` does **not** build the PhaseTripleProduct modules: build them by name first (`lake build TableGeneration.RecursiveCost.PTP.Census` and the other modules under `TableGeneration/RecursiveCost/PTP/`) or the harness fails at its report stage |
 | Full order finding, the submission file `Policy.lean` (ForShor's `PolicyTemplate` format) | ForShor's own build at `21e129a`: `lake build PolicySubmission forshor_policy_submission`, then `lake exe forshor_policy_submission --balanced` | a ForShor checkout | `VerifiedQC/ForShor`, commit `21e129aeefc0fd1bbb8fa63402f5799af2490788` |
 
-Use a machine with at least 16 GB of memory. Run one or two Lean checks at a time and keep every run under a memory cap (each tree's `scripts/memcap.py`). Measured on earlier policies: most checks take seconds to a few minutes; a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the mirror's interpreted report stage (the same stage as PhaseTripleProduct's: Lean's interpreter never memoises the closures a table's state is built from, so its cost doubles about every ten operations), and the PhaseTripleProduct policy with a k = 8
+Use a machine with at least 16 GB of memory. Run one or two Lean checks at a time and keep every run under a memory cap (each tree's `scripts/memcap.py`). Measured on earlier policies: most checks take seconds to a few minutes; a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the policy check's interpreted report stage (the same stage as PhaseTripleProduct's: Lean's interpreter never memoises the closures a table's state is built from, so its cost doubles about every ten operations), and the PhaseTripleProduct policy with a k = 8
 first band did not finish that stage in 12 hours. Both harnesses now have a `--fast` option (`check_banded_policy.py --widths exact --fast` for PhaseProduct, `check_ptp_policy.py --fast` for PhaseTripleProduct, both in the submissions repository; the hosted check uses it) that skips that interpreted stage: the ladder comes from Python
 and the kernel certificate re-proves it, so a wrong ladder makes the certificate fail. With it a k = 8 PhaseProduct policy that took 2.4 hours in the report stage was accepted in about two minutes, and a PhaseTripleProduct k = 8 policy and a k = 6 baseline in about a minute each, with the same audited theorems; the census and formula numbers of the report (and PhaseProduct's advisory `bands_contract` theorem) are not
 evaluated (they are diagnostics). Give a long run a stage limit (`--timeout`), and set `TMPDIR` to a directory you control: a run that long lost a file in the system temporary directory once.
 A `rejected` record whose reason is a missing object file, a constructor-field error or a missing file in a temporary directory is an infrastructure failure, not a verdict on the policy: fix it and run again.
 
-## 1. PhaseProduct: the STO policy mirror
+## 1. PhaseProduct: the policy check
 
 ```bash
 python starter.py lean-input my_pp_policy.json --out my_pp_policy.lean-input.json   # the checker's input (no widths)
@@ -29,7 +29,7 @@ python3 scripts/memcap.py --cap-gb 8 --timeout 3600 -- \
 Exit 0 means accepted. The record names the stage that failed and why. When the check passes, Lean's kernel has
 proved the following at the exact widths:
 
-* every band's table satisfies STO's table contract, and the thresholds strictly decrease;
+* every band's table satisfies the table contract, and the thresholds strictly decrease;
 * `correct`: the recursive evaluation equals φ·a·b at every width;
 * `correct_tight`: the register semantics at the exact widths gives φ·a·b on operands that fit;
 * `exact_ladder`: the exact ladder at 2048 is the least overflow-free one (Tight.lean);
@@ -53,7 +53,7 @@ python3 scripts/memcap.py --cap-gb 8 --timeout 3600 -- \
     --widths exact --cap-gb 8 --out /tmp/my_ptp_record.json
 ```
 
-The harness checks the same things as the mirror for φ·a·b·c, with ForShor's own `Shor.PTP` statements (`correct`, `correct_exact`, `ladder_exact`,
+The harness checks the same things as the PP policy check for φ·a·b·c, with ForShor's own `Shor.PTP` statements (`correct`, `correct_exact`, `ladder_exact`,
 `exact_minimal`). It also compares its Python exact width with the Lean report.
 
 ForShor's PhaseTripleProduct statements also give gate-level correctness through the full recursion (headline cert `gate_recursion`): for every
@@ -64,7 +64,7 @@ CNOT / And-dagger census equals the policy formulas. Its leaf is the suite's com
 (the board's leaf is Qualtran's, checked by simulation and operator norm in the site's tests, not in Lean). Since O5
 the gate-level result also holds at the exact widths (`gate_recursion_exact`; at n = 2048,
 `gate_recursion_exact_at_target`). The harness applies the same threshold rule and at-target certificates as the
-mirror. It covers equal-width operands only. The qubit formula and the T count are not proved.
+PP policy check. It covers equal-width operands only. The qubit formula and the T count are not proved.
 
 ## 3. Full order finding: ForShor
 

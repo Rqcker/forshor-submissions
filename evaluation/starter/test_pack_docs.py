@@ -6,7 +6,8 @@ from pathlib import Path
 
 STALE = ["FastMultiplication", "qubitCount", "f9adbe9", "10fe620", "run.sh", "probe-scan", "<LIB>", "PTP suite", "ptp-suite", "policy-mirror",
          "November 1 to December 1", "static-layout formula at exact widths", "sto_site",
-         "courtneyjzapata", "port/forshor-21e129a", "ShorTableOptimization_temp", "interim STO fork", "harness/ptp-fast-report"]
+         "courtneyjzapata", "port/forshor-21e129a", "ShorTableOptimization_temp", "interim STO fork", "harness/ptp-fast-report",
+         "STO mirror", "STO policy mirror", "STO's table contract"]   # the participant-facing name is "policy check" (the site dropped "STO" on 2026-11-14)
 ALLOWED = {"harness/policy_to_template.py": ["FastMultiplication", "qubitCount"]}   # a comment saying the old name no longer exists
 pack = Path(sys.argv[1])
 bad = []

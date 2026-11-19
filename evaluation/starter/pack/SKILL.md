@@ -1,6 +1,6 @@
 ---
 name: forshor-challenge-submission
-description: "Use when helping a solver or coding agent take part in the ForShor Challenge with its starter pack: set up the pack, write a banded PhaseProduct or PhaseTripleProduct policy, price it with starter.py (examples, price, forshor-doc, template, lean-input), run the optional Lean checks (STO policy mirror, PhaseTripleProduct harness, ForShor's build), and prepare it for submission. Explains the three boards, the score Q x T, exact widths, the threshold rule, what Lean does and does not certify, the exact trust wording, resource limits, staying current with the leaderboards, and common errors."
+description: "Use when helping a solver or coding agent take part in the ForShor Challenge with its starter pack: set up the pack, write a banded PhaseProduct or PhaseTripleProduct policy, price it with starter.py (examples, price, forshor-doc, template, lean-input), run the optional Lean checks (policy check, PhaseTripleProduct harness, ForShor's build), and prepare it for submission. Explains the three boards, the score Q x T, exact widths, the threshold rule, what Lean does and does not certify, the exact trust wording, resource limits, staying current with the leaderboards, and common errors."
 ---
 
 # ForShor Challenge: Policy Submission
@@ -113,7 +113,7 @@ This is exactly what `starter.py price` calls for the board numbers (about 0.01 
 
 ## Thresholds Must Be Safe
 
-The PP mirror and the PhaseTripleProduct harness apply a **threshold rule**, proved in Lean. On the recursion that the policy actually
+The PP policy check and the PhaseTripleProduct harness apply a **threshold rule**, proved in Lean. On the recursion that the policy actually
 takes from n = 2048, at exact widths, every band applied at width w must have k ≤ w and must make the width strictly
 smaller. A policy whose thresholds are set too low is **rejected at stage `threshold`**. The reason names the band, its
 threshold and k, the width and the exact child width.
@@ -147,7 +147,7 @@ python starter.py forshor-doc /path/to/ForShor/policy.json
 
 The build trees are not in the pack; `harness/LEAN_CHECKS.md` says where they come from and gives the exact commands. In short:
 
-- **PP:** the STO policy mirror, `check_banded_policy.py --widths exact --target-width 2048` (in the `forshor-submissions` repository, `main`: github.com/zapatacomputing/forshor-submissions; `./forshor check` in a clone of it runs the whole check).
+- **PP:** the policy check, `check_banded_policy.py --widths exact --target-width 2048` (in the `forshor-submissions` repository, `main`: github.com/zapatacomputing/forshor-submissions; `./forshor check` in a clone of it runs the whole check).
 - **PTP:** `check_ptp_policy.py --widths exact --target-width 2048` of the same repository, against ForShor's `Shor.PTP`. Build the PhaseTripleProduct modules by name first.
 - **Full run:** ForShor at `21e129a` (VerifiedQC/ForShor). Put your `Policy.lean` at `ForShor/ShorVerification/Submission/PolicyTemplate.lean` (ForShor's name for the file). Then:
 
@@ -161,7 +161,7 @@ The build trees are not in the pack; `harness/LEAN_CHECKS.md` says where they co
 
 Resource rules:
 - Run one or two Lean processes at a time, under a memory cap (each tree's `scripts/memcap.py`); wait while `pgrep -x lean | wc -l` is 2 or more.
-- Some checks are long: a PP policy with a k = 8 first band took about 2.4 hours in the mirror's report stage. Start small (k up to 6, few bands), give a long run a stage limit, and set `TMPDIR` to a directory you control.
+- Some checks are long: a PP policy with a k = 8 first band took about 2.4 hours in the policy check's report stage. Start small (k up to 6, few bands), give a long run a stage limit, and set `TMPDIR` to a directory you control.
 - A `rejected` record about a missing object file, a constructor-field error or a missing file in a temporary directory is an infrastructure failure, not a verdict: fix it and run again.
 - Running a check executes Lean on your machine. For a policy you did not write, use a disposable VM or container.
 
@@ -180,7 +180,7 @@ short public Markdown note: the objective, the starting point (a starting policy
 attempts that did not help), limitations, and the model or harness you used. Leave out private reasoning and secrets.
 
 An accepted policy appears on the boards under the submitter's GitHub handle as `<handle>_sub<N>`, N counting their own submissions from 1 (the handle `forshor` is reserved), ranked by Q × T
-with the starting rows, the starting policies, built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (named `forshor_sub<N>`), and carries an "STO mirror" tag if it has been checked in Lean. It inherits the repository's
+with the starting rows, the starting policies, built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (named `forshor_sub<N>`), and is listed as checked in Lean if it has been. It inherits the repository's
 Apache 2.0 licence. **The boards' numbers are the ones that count:** the site prices the policy again with the same engine.
 
 ## Optional LaTeX Summary
@@ -252,11 +252,11 @@ Use the trust wording below exactly.
 
 **Any Q:** "Q is the live-qubit peak, a formula over the policy's widths, not proved in Lean for this policy." (ForShor has checked it in Lean for the boards' own policies; never say that of yours.)
 
-**PP or PTP that passed the mirror or the PhaseTripleProduct harness:** "Policy Lean-verified at exact widths (STO mirror)" for PP, and "Policy Lean-verified at exact widths (PhaseTripleProduct harness, ForShor's Shor.PTP)" for PTP.
+**PP or PTP that passed the policy check or the PhaseTripleProduct harness:** "Policy Lean-verified at exact widths" for PP, and "Policy Lean-verified at exact widths (PhaseTripleProduct harness, ForShor's Shor.PTP)" for PTP.
 At exact widths, Lean's kernel proved:
 - the register semantics is correct;
 - the exact widths are the least overflow-free widths, and the policy's exact ladder at 2048 is proved;
-- every table satisfies STO's table contract;
+- every table satisfies the table contract;
 - the thresholds decrease, and they pass the threshold rule;
 - the policy is correct concretely at n = 2048 (`correct_at_target`, `exact_ladder_at_target`).
 
