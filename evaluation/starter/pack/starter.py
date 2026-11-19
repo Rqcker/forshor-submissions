@@ -109,6 +109,19 @@ def accept_point_order_alias(x: Any, where: str = "policy") -> Any:
     return out
 
 
+def accepted_policies(docs) -> list:
+    """`Policy.from_json` of each doc (each band's table is checked as it is read), refusing what the boards refuse: no policy, or a
+    policy with no bands (Lean reads `[]` as "not entered"; `Policy.leaf` is the schoolbook baseline). Unlike the engine's
+    `checked_policies` it allows different tables of the same k in different bands, as the boards, ForShor and the STO mirror do."""
+    pols = [tt.Policy.from_json(d) for d in docs]
+    if not pols:
+        raise tt.TableError("no policy in the document")
+    for p in pols:
+        if not p.bands:
+            raise tt.TableError(f"{p.name or p.mode}: no bands (not entered); Policy.leaf is the schoolbook baseline")
+    return pols
+
+
 def load(path: Path) -> tuple:
     text = Path(path).read_text()
     try:
@@ -117,7 +130,7 @@ def load(path: Path) -> tuple:
         raise StarterError(f"{path}: not valid JSON: {e.msg} (line {e.lineno})")
     doc = accept_point_order_alias(doc, str(path))
     try:
-        pols = tt.checked_policies(tt.policy_docs(doc))
+        pols = accepted_policies(tt.policy_docs(doc))
     except tt.TableError as e:
         raise StarterError(f"{path}: not an accepted policy: {e}")
     except (KeyError, TypeError, ValueError) as e:

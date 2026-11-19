@@ -65,7 +65,7 @@ cp templates/pp_policy.json my_policy.json      # or templates/ptp_policy.json
 
 Each band has `threshold`, `k`, `point_order` and `operations` (the site's panel files spell the second key `pointOrder`; `starter.py` accepts either):
 - bands are listed widest first, with thresholds strictly decreasing;
-- there is one table per k;
+- different bands may use different tables of the same k;
 - below the last threshold the leaf is used.
 
 Do not declare widths. The board derives the exact widths, and ignores any declared ladder with a notice. The derived width counts every value the table's program holds, intermediate ones included, so a `shiftL` / `shiftR` pair that makes a register briefly larger raises it, at every size that table serves; the shifts themselves cost no T gates and no qubits, but the wider register is priced. Read the ladder `starter.py price` prints, and see "Widths and shift pairs" in `SUBMISSION_FORMAT.md`.

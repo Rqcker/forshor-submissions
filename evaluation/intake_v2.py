@@ -354,7 +354,8 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     if printed is not None and not str(printed.get("schema", "")).startswith("forshor.ptp-"):
         forshor = forshor_record(eng, P, printed, model["forshor"]["pin"])
     elif printed is not None:
-        if [(b.threshold, b.table.k) for b in policy_from_ptp_document(eng, printed).bands] != [(b.threshold, b.table.k) for b in P.bands]:
+        # threshold, k and the table itself, band by band (as `forshor_record` does for PhaseProduct): two tables of one k are told apart
+        if [(b.threshold, b.table.k, b.table.digest) for b in policy_from_ptp_document(eng, printed).bands] != [(b.threshold, b.table.k, b.table.digest) for b in P.bands]:
             raise Refused("forshor", "the bands ForShor printed are not the submitted bands")
     head_sha = head_sha or hashlib.sha1(digest.encode()).hexdigest()
     run_id = run_id or str(int(dt.datetime.now(dt.timezone.utc).timestamp()))
