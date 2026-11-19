@@ -89,12 +89,33 @@ def declared_width_keys(doc: Any) -> List[str]:
     return sorted(found)
 
 
+def accept_point_order_alias(x: Any, where: str = "policy") -> Any:
+    """Return a copy of `x` in which every `pointOrder` key is spelled `point_order`.
+
+    The site's panel files (`policyJson`) spell a band's key `pointOrder`; the engine and this pack's format spell it
+    `point_order`. Both are accepted so a policy downloaded from the site prices as it is. A band that carries both
+    spellings with different values is refused, because the pack cannot know which one is meant.
+    """
+    if isinstance(x, list):
+        return [accept_point_order_alias(v, where) for v in x]
+    if not isinstance(x, dict):
+        return x
+    out = {k: accept_point_order_alias(v, where) for k, v in x.items()}
+    if "pointOrder" in out:
+        camel = out.pop("pointOrder")
+        if "point_order" in out and out["point_order"] != camel:
+            raise StarterError(f"{where}: a band has both `pointOrder` and `point_order` with different values; keep one")
+        out.setdefault("point_order", camel)
+    return out
+
+
 def load(path: Path) -> tuple:
     text = Path(path).read_text()
     try:
         doc = json.loads(text)
     except json.JSONDecodeError as e:
         raise StarterError(f"{path}: not valid JSON: {e.msg} (line {e.lineno})")
+    doc = accept_point_order_alias(doc, str(path))
     try:
         pols = tt.checked_policies(tt.policy_docs(doc))
     except tt.TableError as e:

@@ -63,12 +63,12 @@ Start from a template:
 cp templates/pp_policy.json my_policy.json      # or templates/ptp_policy.json
 ```
 
-Each band has `threshold`, `k`, `point_order` and `operations`:
+Each band has `threshold`, `k`, `point_order` and `operations` (the site's panel files spell the second key `pointOrder`; `starter.py` accepts either):
 - bands are listed widest first, with thresholds strictly decreasing;
 - there is one table per k;
 - below the last threshold the leaf is used.
 
-Do not declare widths. The board derives the exact widths, and ignores any declared ladder with a notice.
+Do not declare widths. The board derives the exact widths, and ignores any declared ladder with a notice. The derived width counts every value the table's program holds, intermediate ones included, so a `shiftL` / `shiftR` pair that makes a register briefly larger raises it, at every size that table serves; the shifts themselves cost no T gates and no qubits, but the wider register is priced. Read the ladder `starter.py price` prints, and see "Widths and shift pairs" in `SUBMISSION_FORMAT.md`.
 
 Price it (a few seconds for PP/PTP, longer with the full run):
 
@@ -109,7 +109,7 @@ Q = fr.live_peak_qubits(P, 2048)                       # the board's Q
 score = Q * T
 ```
 
-This is exactly what `starter.py price` calls for the board numbers (about 0.01 s a policy), so the two agree. The full-run price is slower (`site_engine.fullalg.price_full`). Tables to start from are in `engine/data` and in the policies of the boards (the page's data, `/results/v2/dashboard.json`, names each row's panel file, whose `policyJson` has the bands). Re-price the final policy with `starter.py price` before you report it.
+This is exactly what `starter.py price` calls for the board numbers (about 0.01 s a policy), so the two agree. The full-run price is slower (`site_engine.fullalg.price_full`). Tables to start from are in `engine/data` and in the policies of the boards (the page's data, `/results/v2/dashboard.json`, names each row's panel file, whose `policyJson` has the bands, with `pointOrder` for `point_order`; `starter.py` accepts both spellings). Re-price the final policy with `starter.py price` before you report it.
 
 ## Thresholds Must Be Safe
 

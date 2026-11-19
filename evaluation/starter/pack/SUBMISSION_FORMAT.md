@@ -21,13 +21,27 @@ One JSON object (UTF-8, at most 2,000,000 bytes):
 | `bands` | At least one band, widest first. Thresholds are non-negative integers and strictly decrease. A band serves every width w ≥ its threshold that is below the previous band's threshold. Below the last threshold, the leaf is used. |
 | one table per k | Two bands with the same k must use the same table. |
 | `k` | 2 ≤ k ≤ 8 for a submission. A PP table evaluates at 2k − 1 points, a PTP table at 3k − 2. The boards price a policy of any k, but a submission takes 2 ≤ k ≤ 8 for both PP and PTP (section 2). |
-| `point_order` | The order in which the program consumes the points: `"z"` (an integer), `"1/m"` or `"-1/m"`, `"inf"`. Distinct and unisolvent. |
+| `point_order` | The order in which the program consumes the points: `"z"` (an integer), `"1/m"` or `"-1/m"`, `"inf"`. Distinct and unisolvent. The site's panel files (`policyJson`) spell this key `pointOrder`; `starter.py` accepts either spelling (a band that carries both with different values is refused). |
 | `operations` | `["addScaled", dst, src, sign, shift]` (sign +1 or −1, dst ≠ src), `["negate", i]`, `["shiftL", i, n]`, `["shiftR", i, n]` (exact division only), `["phaseProduct", i]`, on registers 0 to k − 1. The program consumes the points in order, restores the registers, and satisfies the exact Toom-Cook identity. |
-| widths | **Do not declare widths.** The board derives the exact widths and prices at them. Any `declared_ladder`, `ladder`, `widths`, `child_width` (and similar) is ignored, with a notice. It is never passed to Lean (`starter.py lean-input` drops it). |
+| widths | **Do not declare widths.** The board derives the exact widths and prices at them. Any `declared_ladder`, `ladder`, `widths`, `child_width` (and similar) is ignored, with a notice. It is never passed to Lean (`starter.py lean-input` drops it). The derived width of a table is the least width at which every value the program ever holds fits, **intermediate values included**, so a `shiftL` / `shiftR` pair that makes a register briefly larger raises it (see "Widths and shift pairs" below). |
 | `negation` | Optional: `"oneQubit"` (ForShor's default, `Shor.NegationMethod`) or `"scratch"`. The boards, and this pack, price every policy under `oneQubit`. A policy that asks for `scratch` is **refused by `starter.py`** (a number for it would be wrong), and its meaning is in section 3. |
 | `name` | Optional, at most 200 characters. Other keys are ignored. |
 
 The site also reads `{"policy": {...}}` and `{"policies": [...]}` (at most 8 policies per file).
+
+### Widths and shift pairs
+
+Widths are derived, never declared: a table's child width at a given operand width is the least width at which every register value the table's program ever holds fits. Both exact-width rules count every
+state the program visits, not only its final one: the STO mirror's `tightWidth` (over every reachable row) and ForShor's `exactSignedWidthOfWidths`. Two consequences follow, and both are intended.
+
+* **A shift pair can raise a width.** A `shiftL` followed by the matching `shiftR` leaves the register unchanged, but between the two the register holds a larger value, and the rule counts it. For example, a
+  `["shiftL", 2, 3]` and `["shiftR", 2, 3]` inserted into a table can make its child width at one size 480 where it was 479. The program's points, result and T count are unchanged. The shift gates themselves cost no T gates
+  and no qubits (the full-run pricing charges them nothing; the PP and PTP board engine charges `n` CNOTs, which are Clifford). The register is allocated at the derived width, so a wider derived width is priced as a
+  wider register. This is how a policy can choose a width above the minimum its points allow, for instance to make the next level divide evenly.
+* **Widths follow the table, not the band.** The derived width depends only on the table and the operand width, so the same pair can change the child width at every size that table serves (some of them may not move), not only at one band's threshold.
+  Read the ladder that `starter.py price` prints for every width the policy uses.
+
+Declaring widths directly (for instance, any width at or above the exact one) is not supported: a declared ladder is ignored with a notice.
 
 ## 2. The submission file `Policy.lean` (and the full order-finding board)
 
