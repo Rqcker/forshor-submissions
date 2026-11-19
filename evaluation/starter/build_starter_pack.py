@@ -12,6 +12,8 @@ and nothing else: NO archive table, DP-library table, seeded planner policy or S
   * engine/: `evaluation/engine` minus tests/, cache/, bytecode AND minus every archive table (`data/` keeps only `kmy_tables/`; the library's
     loaders find no archive, and `personal_tables/tables.json` is an empty list, so they return nothing). The repository's own engine is untouched.
     The vendored Qualtran tree is included: Qualtran imports bloqs lazily;
+  * engine_wording.json: exact passages of the pack's engine copy that the published pack words differently (no repository or project name; "policy check" for "STO mirror"), applied after
+    the scrubs; the build stops if one is missing, because the engine's text moved;
   * the starting policies, written from the pack's own engine (the planner's optimum over exactly the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) at n = 2048, delta = 0.01, canonical):
     examples/starting_pp.policy.json, starting_ptp.policy.json, declared_ladder_ignored.policy.json, templates/pp_policy.json and ptp_policy.json (with their `*.lean-input.json`), and the
     submission files examples/starting_pp.Policy.lean and starting_ptp.Policy.lean (`starter.py template`) and templates/ptp.Policy.lean (the same PhaseTripleProduct file under the
@@ -124,6 +126,27 @@ def scrub_archive_ids(pack: Path) -> int:
             f.write_text(new, encoding="utf-8")
             changed += 1
     return changed
+
+
+WORDING = Path(__file__).resolve().parent / "engine_wording.json"
+
+
+def reword_engine(pack: Path) -> int:
+    """Apply `engine_wording.json` to the pack's engine copy: the published pack names no repository or project and calls the Lean policy check "policy check", while
+    `evaluation/engine` (epoch-locked, so not edited) still carries the older wording. Each passage must be present; a missing one stops the build, because it means the
+    engine's text moved and the wording file must be updated, not that the wording can be skipped. Returns the number of passages applied."""
+    passages = json.loads(WORDING.read_text(encoding="utf-8"))["rewordings"]
+    missing = []
+    for p in passages:
+        f = pack / "engine" / p["file"]
+        text = f.read_text(encoding="utf-8")
+        if p["old"] not in text:
+            missing.append(f"{p['file']}: {p['old'][:80]!r}")
+            continue
+        f.write_text(text.replace(p["old"], p["new"]), encoding="utf-8")
+    if missing:
+        raise SystemExit("evaluation/starter/engine_wording.json no longer matches the engine's text; update it (passages not found):\n  " + "\n  ".join(missing))
+    return len(passages)
 
 
 def scrub_paths(pack: Path) -> int:
@@ -270,6 +293,7 @@ def main() -> int:
     shutil.copytree(SRC, pack)
     copy_engine(pack / "engine")
     print(f"local paths scrubbed in {scrub_paths(pack)} files; archive ids scrubbed from {scrub_archive_ids(pack)} engine source files")
+    print(f"engine wording: {reword_engine(pack)} passages reworded")
     origins = {"pack": "evaluation/starter/pack (hand-written)", "engine": f"evaluation/engine at {git('rev-parse', '--short', 'HEAD')} (tests, caches excluded)"}
 
     run = lambda *c: subprocess.run([a.python, str(pack / "starter.py"), *c], cwd=pack, check=True, capture_output=True, text=True)
