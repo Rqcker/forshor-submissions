@@ -93,7 +93,7 @@ async function prepare({ github, context, core, run, pr, identity, result, recov
   fs.writeFileSync('artifacts/verification.json', JSON.stringify(verification));
   const evaluationKey = digest(`${pr.headSha}:${receipt.runId}:${pr.number}`);
   fs.writeFileSync('evaluation-metadata.json', JSON.stringify({
-    ...(details.user.id === 115955955 && ['baseline-gpt', 'baseline-claude', 'baseline-gpt-6.2-sol', 'baseline-claude-opus-5-5', 'baseline-gpt-6.2-sol-medium', 'baseline-claude-opus-5-5-medium'].includes(details.title)
+    ...(details.user.id === 358585423 && ['baseline-gpt', 'baseline-claude', 'baseline-gpt-6.2-sol', 'baseline-claude-opus-5-5', 'baseline-gpt-6.2-sol-medium', 'baseline-claude-opus-5-5-medium'].includes(details.title)
       && summaryHead === `Organizer baseline: ${details.title}\n`
       ? { organizerBaseline: details.title } : {}),
     kind: 'policy', repository: REPOSITORY, headSha: pr.headSha, runId: receipt.runId,
