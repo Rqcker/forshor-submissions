@@ -215,7 +215,7 @@ end PolicySubmission
 def accepted_policies(docs) -> list:
     """`Policy.from_json` of each doc (each band's table is checked as it is read), refusing what the boards refuse: no policy, or a
     policy with no bands (Lean reads `[]` as "not entered"; `Policy.leaf` is the schoolbook baseline). Unlike the engine's
-    `checked_policies` it allows different tables of the same k in different bands, as the boards, ForShor and the STO mirror do."""
+    `checked_policies` it allows different tables of the same k in different bands, as the boards and both Lean checks do."""
     pols = [tt.Policy.from_json(d) for d in docs]
     if not pols:
         raise tt.TableError("no policy in the document")
