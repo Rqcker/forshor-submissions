@@ -9,7 +9,7 @@ is not a submission. There are three boards, each ranked separately by **Q × T*
 
 | Board | What you submit | How it is priced | What Lean certifies |
 |---|---|---|---|
-| PhaseProduct (PP), Q × T of one phase product at n = 2048 | a banded PP policy (site policy JSON) | Python (Qualtran costing) at the **exact** widths, which the board derives | the policy's tables and thresholds, through the STO policy mirror |
+| PhaseProduct (PP), Q × T of one phase product at n = 2048 | a banded PP policy (site policy JSON) | Python (Qualtran costing) at the **exact** widths, which the board derives | the policy's tables and thresholds, through the policy check |
 | PhaseTripleProduct (PTP), the same for a triple product | a banded PTP policy (site policy JSON) | Python (Qualtran costing) at exact widths, digital triple-product leaf | the policy's tables and thresholds at exact widths, through the PhaseTripleProduct harness (ForShor's `Shor.PTP`); ForShor also proves a gate-level recursion following the policy correct, at the scan and at the exact widths (O2, O5; with the suite's own Toffoli+Rz+Toffoli sandwich leaf, not the board's digital leaf) |
 | Full order finding, Q × T (single-run T) of Shor's order-finding circuit at n = 2048 | a PP policy (site policy JSON; submitted as the Lean file `Policy.lean`) | the IR ForShor prints under `--balanced`, priced exactly: exact register widths, the balanced split for unequal operands, m2048, Step 4 `cmpLtNW`, 4095 modular multiplications | ForShor's own build (`21e129a`) (`ShorPolicySubmission`, C1 to C4 by `decide +kernel`, `policy_submission_correct`) |
 
@@ -86,19 +86,19 @@ vendored unchanged.
 
 See `harness/LEAN_CHECKS.md`. The Lean build trees are not in the pack. In short:
 
-* PP: `python starter.py lean-input my_pp_policy.json`, then the STO policy mirror (`check_banded_policy.py --widths exact`), which is in the `forshor-submissions` repository
-  (github.com/zapatacomputing/forshor-submissions, `main`): its `TableGeneration/` and `scripts/` are the mirror's tree. `./forshor check` in a clone of it builds the trees and runs the whole check for you.
+* PP: `python starter.py lean-input my_pp_policy.json`, then the policy check (`check_banded_policy.py --widths exact`), which is in the `forshor-submissions` repository
+  (github.com/zapatacomputing/forshor-submissions, `main`): its `TableGeneration/` and `scripts/` are the policy check's tree. `./forshor check` in a clone of it builds the trees and runs the whole check for you.
 * PTP: the same input, then `check_ptp_policy.py --widths exact` of the same repository (against ForShor's `Shor.PTP`).
 * Full run: ForShor at the pinned commit `21e129a` (VerifiedQC/ForShor). Your `Policy.lean` goes to
   `ForShor/ShorVerification/Submission/PolicyTemplate.lean` for the check (ForShor's own name for the file). Then:
   `lake exe cache get`, `lake build PolicySubmission forshor_policy_submission`, then
   `lake exe forshor_policy_submission --balanced > policy.json` and `python starter.py forshor-doc policy.json`.
 
-The PP mirror and the PhaseTripleProduct harness reject a policy whose thresholds are set too low (stage `threshold`): on the
+The PP policy check and the PhaseTripleProduct harness reject a policy whose thresholds are set too low (stage `threshold`): on the
 recursion the policy takes from n = 2048 at exact widths, every band applied at width w must have k ≤ w and must
 shrink the width. `price` prints the exact ladder, so you can see this before submitting.
 
-These checks are heavy: a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the mirror's report stage. Start small.
+These checks are heavy: a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the policy check's report stage. Start small.
 How to send a policy is in `SUBMISSION_FORMAT.md`, section 6: the pack prices and prepares it, it does not submit it.
 
 ## What the numbers assume
@@ -111,7 +111,7 @@ How to send a policy is in `SUBMISSION_FORMAT.md`, section 6: the pack prices an
 * Q is the live-qubit peak (`SUBMISSION_FORMAT.md` section 3), the score is Q × T. A negation is priced with ForShor's explicit counts (the complement plus a
   one-ancilla increment: Toffoli `12w - 28` for even `w`, `10w - 18` for odd, with its CNOTs and X gates), under ForShor's default method `oneQubit`.
 * PP and PTP boards: every child at the exact width, meaning the least width at which every reachable register value
-  and child operand fits (floor limbs). ShorTableOptimization's `exact_width` (Lean Tight.lean) and the PhaseTripleProduct exact-width function (ForShor's `Shor.PTP`, mirrored in `forshor-submissions`) are vendored verbatim. Python matching Lean is cross-checked, not proved.
+  and child operand fits (floor limbs). the `exact_width` function (Lean Tight.lean) and the PhaseTripleProduct exact-width function (ForShor's `Shor.PTP`, mirrored in `forshor-submissions`) are vendored verbatim. Python matching Lean is cross-checked, not proved.
 * Full run: ForShor's native structure (ForShor `21e129a`), with Step 4 `cmpLtNW` and Lean's work width (2347 bits at n = 2048, m = 2^150 − 3).
   Exact register widths: each table's child width is ForShor's `exactSignedWidthOfWidths`, max(tight, 1 + the widest
   initial chunk). The balanced split: Steps 1, 2 and 5 are padded to 2348 × 2348, and Step 4's 2348 × 4399 product

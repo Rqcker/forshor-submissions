@@ -16,7 +16,7 @@
         a PP site policy written as the submission file, TableGeneration/Submission/Policy.lean (ForShor's PolicyTemplate format). The imports name
         ForShor's Lean library, `ForShor`. `--forshor` checks it against your ForShor checkout.
     python starter.py lean-input POLICY.json [--out policy.lean-input.json]
-        the input document of the STO policy mirror (PP) / the PhaseTripleProduct harness (PTP) Lean checkers.
+        the input document of the policy check (PP) / the PhaseTripleProduct harness (PTP) Lean checkers.
     python starter.py examples [--check]
         price every example; --check compares with the pinned outputs in examples/expected/.
 
@@ -63,7 +63,7 @@ IGNORED_WIDTHS_NOTICE = ("This policy declares a width ladder or widths ({keys})
 QUBITS_LABEL = fr.QUBITS_LABEL_PEAK
 BOARD_SNAPSHOT = EXAMPLES / "board_snapshot.json"
 TRUST = ("T counted in Python (Qualtran), not proved in Lean; Q is the live-qubit peak, a formula over the policy's widths, not a Lean-proved "
-         "count for your own policy. Lean certifies a policy's tables, thresholds and widths: through the STO policy mirror for PhaseProduct, "
+         "count for your own policy. Lean certifies a policy's tables, thresholds and widths: through the policy check for PhaseProduct, "
          "and through ForShor's PhaseTripleProduct checks for PhaseTripleProduct; for the full run through ForShor's own check. "
          "The full-run census comes from ForShor's IR, matched to the compiled circuit at sampled widths, not proved at n = 2048.")
 
@@ -126,7 +126,7 @@ def load(path: Path) -> tuple:
 
 
 def ladder(P: tt.Policy, n: int) -> List[Dict[str, Any]]:
-    """Level by level: width, k, table id (STO archive id, DP id, KMY id, or "pasted"). As the site's frontier."""
+    """Level by level: width, k, table id (archive id, DP id, KMY id, or "pasted"). As the site's frontier."""
     origin = lib.table_origin()
     rows, w = [], n
     for T in tt.chain_for(P, n):
@@ -299,7 +299,7 @@ def forshor_doc(path: Path, delta: float = DEFAULT_DELTA) -> Dict[str, Any]:
 
 # ------------------------------------------------------------------------------------------- Lean inputs
 def lean_input(path: Path) -> Dict[str, Any]:
-    """The STO mirror / PhaseTripleProduct harness input: mode, name, bands {threshold, k, point_order, operations} (as the site's
+    """The policy check / PhaseTripleProduct harness input: mode, name, bands {threshold, k, point_order, operations} (as the site's
     harness/sto_policy_verify.to_mirror; nothing else is copied, so a declared ladder never reaches Lean)."""
     doc, pols = load(path)
     if len(pols) != 1:
@@ -461,7 +461,7 @@ def main(argv=None) -> int:
     g3 = a3.add_mutually_exclusive_group()
     g3.add_argument("--lib", choices=("ForShor",), help="ForShor's Lean library name (ForShor; the only one at the pinned commit)")
     g3.add_argument("--forshor", type=Path, help="your ForShor checkout; the library name is read off it")
-    a4 = sub.add_parser("lean-input", help="the STO mirror / PhaseTripleProduct harness input document")
+    a4 = sub.add_parser("lean-input", help="the policy check / PhaseTripleProduct harness input document")
     a4.add_argument("policy", type=Path)
     a4.add_argument("--out")
     a5 = sub.add_parser("examples", help="price every example (--check: compare with examples/expected/)")

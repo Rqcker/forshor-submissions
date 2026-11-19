@@ -1,0 +1,325 @@
+{
+ "comment": "Exact passages of the pack's engine copy that the published pack words differently from evaluation/engine (the repository, the epoch-locked source, is not changed): no repository or project name, 'policy check' for 'STO mirror', 'an optimal search' for dynamic programming. build_starter_pack.py applies each rewording to the pack's copy after the other scrubs and stops if a passage is missing, so a change to the engine's text fails the build instead of silently dropping the wording. Derived on 2026-11-19 from the pack published on 2026-11-12 (forshor-site 15beb79).",
+ "rewordings": [
+  {
+   "file": "forshor_qualtran/mirrors/width.py",
+   "old": "    scan. An independent implementation of the rule engine 1 takes from ShorTableOptimization's `exact_width`.\"\"\"\n",
+   "new": "    scan. An independent implementation of the rule engine 1 takes from the `exact_width` function.\"\"\"\n"
+  },
+  {
+   "file": "forshor_qualtran/sto_policy.py",
+   "old": "\"\"\"From a ShorTableOptimization policy to a Lean-To-Qualtran `PhasePolicy` (PhaseProduct mode).\n",
+   "new": "\"\"\"From an archive policy to a Lean-To-Qualtran `PhasePolicy` (PhaseProduct mode).\n"
+  },
+  {
+   "file": "forshor_qualtran/sto_policy.py",
+   "old": "ShorTableOptimization (`tcost` format, `Policy.to_json`, archived `operations.json` targets) writes a\n",
+   "new": "The table archive (`tcost` format, `Policy.to_json`, archived `operations.json` targets) writes a\n"
+  },
+  {
+   "file": "forshor_qualtran/sto_policy.py",
+   "old": "(`table_catalog.point_from_sto` / `op_from_sto`; the catalog comes from STO). `table_catalog.checked`\n",
+   "new": "(`table_catalog.point_from_sto` / `op_from_sto`; the catalog comes from the table archive). `table_catalog.checked`\n"
+  },
+  {
+   "file": "forshor_qualtran/table_catalog.py",
+   "old": "    \"\"\"Convert a ShorTableOptimization point to a ForShor point dict. The input can be the archive spelling\n",
+   "new": "    \"\"\"Convert an archive point to a ForShor point dict. The input can be the archive spelling\n"
+  },
+  {
+   "file": "forshor_qualtran/table_catalog.py",
+   "old": "    \"\"\"Convert a ShorTableOptimization operation array (`[\"addScaled\", dst, src, +-1 | bool, shift]`, ...)\n",
+   "new": "    \"\"\"Convert an archive operation array (`[\"addScaled\", dst, src, +-1 | bool, shift]`, ...)\n"
+  },
+  {
+   "file": "site_engine/crosscheck.py",
+   "old": "of Stage 13, ShorTableOptimization's `exact_width` / the PTP suite's `ptp_tight_width` in engine 1 and the LowGateIR\n",
+   "new": "of Stage 13, the `exact_width` function / the PTP suite's `ptp_tight_width` in engine 1 and the LowGateIR\n"
+  },
+  {
+   "file": "site_engine/frontier.py",
+   "old": "                                \"child operand fits, over the floor-limb box (ShorTableOptimization exact_width / PTP \"\n",
+   "new": "                                \"child operand fits, over the floor-limb box (the table archive exact_width / PTP \"\n"
+  },
+  {
+   "file": "site_engine/library.py",
+   "old": "\"\"\"The table and policy library of the site: STO archive submissions, the 18 Lean-extracted accepted policies,\nthe STO reference policies and the DP library. All of it is read from engine/data (copied from\n",
+   "new": "\"\"\"The table and policy library of the site: archive submissions, the 18 Lean-extracted accepted policies,\nthe reference policies and the DP library. All of it is read from engine/data (copied from\n"
+  },
+  {
+   "file": "site_engine/library.py",
+   "old": "    `sto_submitted` holds the records that `harness/sto_verify.py --install` wrote: Lean-verified by STO's verifier\n",
+   "new": "    `sto_submitted` holds the records that `harness/sto_verify.py --install` wrote: Lean-verified by the verifier\n"
+  },
+  {
+   "file": "site_engine/library.py",
+   "old": "    \"\"\"STO's reference PP and PTP policies exactly as STO ships them (scripts/fixtures/reference_policies.json of STO;\n",
+   "new": "    \"\"\"the reference PP and PTP policies exactly as they ship (scripts/fixtures/reference_policies.json of STO;\n"
+  },
+  {
+   "file": "site_engine/library.py",
+   "old": "    \"\"\"The site's STO reference policies: STO's own tables, thresholds moved to the exact widths\n    (`at_exact_thresholds`). STO's shipped thresholds: `sto_reference_policies`.\"\"\"\n",
+   "new": "    \"\"\"The site's reference policies: its own tables, thresholds moved to the exact widths\n    (`at_exact_thresholds`). the shipped thresholds: `sto_reference_policies`.\"\"\"\n"
+  },
+  {
+   "file": "site_engine/library.py",
+   "old": "    \"\"\"DP-library tables that the Lean kernel or STO's full verifier checked (replay-only tables excluded).\"\"\"\n",
+   "new": "    \"\"\"DP-library tables that the Lean kernel or the full verifier checked (replay-only tables excluded).\"\"\"\n"
+  },
+  {
+   "file": "site_engine/policy_view.py",
+   "old": "            return {\"id\": sid, \"kind\": \"STO archive\", \"status\": \"accepted (Lean-extracted)\" if s.accepted else \"archived\",\n",
+   "new": "            return {\"id\": sid, \"kind\": \"archive\", \"status\": \"accepted (Lean-extracted)\" if s.accepted else \"archived\",\n"
+  },
+  {
+   "file": "site_engine/policy_view.py",
+   "old": "                   \"ShorTableOptimization's exact_width (Lean Tight.lean: the least overflow-free width, never above the \"\n",
+   "new": "                   \"the exact_width function (Lean Tight.lean: the least overflow-free width, never above the \"\n"
+  },
+  {
+   "file": "site_engine/seed_policies.py",
+   "old": "  STO mirror `./run.sh sto-policy --seeds --install` (harness/sto_policy_verify.py, PP and PTP until Stage 12) ran every\n             seed through ShorTableOptimization's policy mirror at scanned widths (`seed_sto_mirror_runs.json`, kept as\n",
+   "new": "  policy check `./run.sh sto-policy --seeds --install` (harness/sto_policy_verify.py, PP and PTP until Stage 12) ran every\n             seed through the policy check at scanned widths (`seed_sto_mirror_runs.json`, kept as\n"
+  },
+  {
+   "file": "site_engine/seed_policies.py",
+   "old": "    \"\"\"The Stage 11 scanned-width STO mirror pin (history).\"\"\"\n",
+   "new": "    \"\"\"The Stage 11 scanned-width policy check pin (history).\"\"\"\n"
+  },
+  {
+   "file": "site_engine/seed_policies.py",
+   "old": "    \"sto-mirror\": \"STO policy mirror, --widths exact: policy.check (STO's table contract per band, thresholds decrease) and \"\n",
+   "new": "    \"sto-mirror\": \"policy check, --widths exact: policy.check (the table contract per band, thresholds decrease) and \"\n"
+  },
+  {
+   "file": "site_engine/seed_policies.py",
+   "old": "        \"lean_verified\": lean[\"policy_verified\"],          # ForShor policy-verified only (never the STO mirror)\n",
+   "new": "        \"lean_verified\": lean[\"policy_verified\"],          # ForShor policy-verified only (never the policy check)\n"
+  },
+  {
+   "file": "site_engine/seeded_board.py",
+   "old": "\"\"\"The seeded policy records on the boards (PLAN_v2 Stage 11, STO mirror): `submitted.seeded()` priced LIVE.\n",
+   "new": "\"\"\"The seeded policy records on the boards (PLAN_v2 Stage 11, policy check): `submitted.seeded()` priced LIVE.\n"
+  },
+  {
+   "file": "site_engine/seeded_board.py",
+   "old": "Lean-verified at exact widths (STO mirror / PTP suite), or tables only), its table trust (live, `trust.of_digests`), its provenance and the\n",
+   "new": "Lean-verified at exact widths (policy check / PTP suite), or tables only), its table trust (live, `trust.of_digests`), its provenance and the\n"
+  },
+  {
+   "file": "site_engine/seeded_board.py",
+   "old": "              \"note\": \"benchmark: STO's fixed reference policy, not a submission; not ranked\"},\n",
+   "new": "              \"note\": \"benchmark: the fixed reference policy, not a submission; not ranked\"},\n"
+  },
+  {
+   "file": "site_engine/seeded_board.py",
+   "old": "            f\"{counts['forshor']} ForShor policy-verified, {counts['sto-mirror']} policy Lean-verified at exact widths (STO mirror / PTP suite) \"\n",
+   "new": "            f\"{counts['forshor']} ForShor policy-verified, {counts['sto-mirror']} policy Lean-verified at exact widths (policy check / PTP suite) \"\n"
+  },
+  {
+   "file": "site_engine/seeded_board.py",
+   "old": "             \"ladder_str\": ref[\"ladder_str\"], \"note\": \"benchmark: STO's fixed reference policy, priced live; not ranked\"},\n",
+   "new": "             \"ladder_str\": ref[\"ladder_str\"], \"note\": \"benchmark: the fixed reference policy, priced live; not ranked\"},\n"
+  },
+  {
+   "file": "site_engine/seeded_board.py",
+   "old": "                     f\"{levels['sto-mirror']} policy Lean-verified at exact widths (STO mirror / PTP suite) only, {levels['tables']} tables only.\")\n",
+   "new": "                     f\"{levels['sto-mirror']} policy Lean-verified at exact widths (policy check / PTP suite) only, {levels['tables']} tables only.\")\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "          through `harness/sto_verify.py`, a DP-library table with status kernel (Lean kernel) or full_verifier (STO's\n",
+   "new": "          through `harness/sto_verify.py`, a DP-library table with status kernel (Lean kernel) or full_verifier (the table archive's\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "  ci      Lean-verified by STO's CI when it was submitted (archived result on `submission-results`); the tables are\n",
+   "new": "  ci      Lean-verified by the table archive's CI when it was submitted (archived result on `submission-results`); the tables are\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "  sto-mirror  Policy Lean-verified at exact widths (STO mirror / PTP suite): PP through the ShorTableOptimization\n",
+   "new": "  sto-mirror  Policy Lean-verified at exact widths (policy check / PTP suite): PP through the the table archive\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "              since Stage 13: the kernel checked STO's table contract per band, the thresholds, the exact ladder at 2048,\n",
+   "new": "              since Stage 13: the kernel checked the table contract per band, the thresholds, the exact ladder at 2048,\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "              2026-10-28 (was \"Policy algebra Lean-verified (STO mirror)\"); the level key `sto-mirror` is unchanged.\n",
+   "new": "              2026-10-28 (was \"Policy algebra Lean-verified (policy check)\"); the level key `sto-mirror` is unchanged.\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "TABLE_MIRROR_PIN = lib.DATA / \"table_sto_mirror_runs.json\"   # per-table STO mirror runs (Stage 12, decision A)\n",
+   "new": "TABLE_MIRROR_PIN = lib.DATA / \"table_sto_mirror_runs.json\"   # per-table policy check runs (Stage 12, decision A)\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "    \"\"\"digest -> pinned per-table STO mirror run (`harness/sto_table_verify.py`), with `status`: `accepted` (promotes the\n",
+   "new": "    \"\"\"digest -> pinned per-table policy check run (`harness/sto_table_verify.py`), with `status`: `accepted` (promotes the\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "    \"\"\"Tables whose own one-band STO mirror run passed (kernel-checked STO table contract): level `lean`.\"\"\"\n",
+   "new": "    \"\"\"Tables whose own one-band policy check run passed (kernel-checked STO table contract): level `lean`.\"\"\"\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "    every one of its tables is `lean` by content (another lean source, or its own STO mirror run); otherwise `ci`:\n    Lean-verified by STO's CI when submitted, replay-checked here.\"\"\"\n",
+   "new": "    every one of its tables is `lean` by content (another lean source, or its own policy check run); otherwise `ci`:\n    Lean-verified by the table archive's CI when submitted, replay-checked here.\"\"\"\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "    promoted |= table_mirror_digests()            # tables kernel-checked by their own one-band STO mirror run\n",
+   "new": "    promoted |= table_mirror_digests()            # tables kernel-checked by their own one-band policy check run\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "    `use_table_mirror=False` ignores the per-table STO mirror pin (the level the other checkers give).\"\"\"\n",
+   "new": "    `use_table_mirror=False` ignores the per-table policy check pin (the level the other checkers give).\"\"\"\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "    \"sto-ci\": \"STO CI (archived result)\",\n",
+   "new": "    \"sto-ci\": \"archive CI (archived result)\",\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "    \"sto-mirror\": \"STO mirror, one-band PolicyTable.check (kernel-replayed)\",\n",
+   "new": "    \"sto-mirror\": \"policy check, one-band PolicyTable.check (kernel-replayed)\",\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "        return f\"Tables Lean-verified ({c['ci']} of {n} by STO CI archive)\", \"ok\"\n",
+   "new": "        return f\"Tables Lean-verified ({c['ci']} of {n} by archive CI archive)\", \"ok\"\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "                \"policy mirror (the kernel reduced PolicyTable.check, which is STO's table contract, and the modules were \"\n",
+   "new": "                \"policy mirror (the kernel reduced PolicyTable.check, which is the table contract, and the modules were \"\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "        \"ci\": \"Lean-verified by STO's CI when it was submitted (archived result). Replay-checked here; not re-extracted \"\n              \"from Lean, and not (yet) run through the STO mirror.\",\n",
+   "new": "        \"ci\": \"Lean-verified by the table archive's CI when it was submitted (archived result). Replay-checked here; not re-extracted \"\n              \"from Lean, and not (yet) run through the policy check.\",\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "    \"sto-mirror\": \"Policy Lean-verified at exact widths (STO mirror / PTP suite)\",\n",
+   "new": "    \"sto-mirror\": \"Policy Lean-verified at exact widths (policy check / PTP suite)\",\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "        \"sto-mirror\": \"Policy Lean-verified at exact widths (STO mirror / PTP suite): Lean's kernel checked, at the \"\n",
+   "new": "        \"sto-mirror\": \"Policy Lean-verified at exact widths (policy check / PTP suite): Lean's kernel checked, at the \"\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "                      \"satisfies STO's table contract, and that the thresholds decrease; the recursive evaluation equals \"\n",
+   "new": "                      \"satisfies the table contract, and that the thresholds decrease; the recursive evaluation equals \"\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "                      \"ShorTableOptimization's policy mirror, PhaseTripleProduct by the PTP suite. It is not a \"\n",
+   "new": "                      \"the policy check, PhaseTripleProduct by the PTP suite. It is not a \"\n"
+  },
+  {
+   "file": "site_engine/trust.py",
+   "old": "                    \"widths, which ForShor does not check (the STO mirror run covers the exact widths: register semantics, \"\n",
+   "new": "                    \"widths, which ForShor does not check (the policy check run covers the exact widths: register semantics, \"\n"
+  },
+  {
+   "file": "tcost/README.md",
+   "old": "`tcost` prices a ShorTableOptimization recursion policy by the Qualtran gate counts of the\n",
+   "new": "`tcost` prices a recursion policy by the Qualtran gate counts of the\n"
+  },
+  {
+   "file": "tcost/README.md",
+   "old": "`tcount` branch of STO, where this T is the leaderboard score; upstream `main` has no such\n",
+   "new": "`tcount` branch of the table archive, where this T is the leaderboard score; upstream `main` has no such\n"
+  },
+  {
+   "file": "tcost/README.md",
+   "old": "python -m tcost.tcount --lean <ShorTableOptimization checkout> --mode PhaseProduct --k 3 [--k 5 ...] [--delta 0.01 | --eps 1e-12] [--n 2048]\n",
+   "new": "python -m tcost.tcount --lean <table-archive checkout> --mode PhaseProduct --k 3 [--k 5 ...] [--delta 0.01 | --eps 1e-12] [--n 2048]\n"
+  },
+  {
+   "file": "tcost/README.md",
+   "old": "| Quantity | ForShor / ShorTableOptimization | Lean-To-Qualtran | here |\n",
+   "new": "| Quantity | ForShor / the table archive | Lean-To-Qualtran | here |\n"
+  },
+  {
+   "file": "tcost/README.md",
+   "old": "  set of tables, by dynamic programming over compiled closed forms. Its composed counts equal\n",
+   "new": "  set of tables, by an optimal search over compiled closed forms. Its composed counts equal\n"
+  },
+  {
+   "file": "tcost/__init__.py",
+   "old": "\"\"\"tcost — a Qualtran cost model of gate counts for ShorTableOptimization tables and recursion policies.\n",
+   "new": "\"\"\"tcost — a Qualtran cost model of gate counts for archive tables and recursion policies.\n"
+  },
+  {
+   "file": "tcost/exact/SOURCES.json",
+   "old": "   \"source\": \"ShorTableOptimization-policy-mirror/scripts/exact_width.py\",\n",
+   "new": "   \"source\": \"the policy-check project/scripts/exact_width.py\",\n"
+  },
+  {
+   "file": "tcost/exact/SOURCES.json",
+   "old": "   \"source\": \"ShorTableOptimization-ptp-suite/scripts/ptp_exact_width.py\",\n",
+   "new": "   \"source\": \"the PTP suite/scripts/ptp_exact_width.py\",\n"
+  },
+  {
+   "file": "tcost/exact/SOURCES.json",
+   "old": " \"python_equals_lean\": \"cross-checked, not proved: equal on 34 policies at their ladders (ShorTableOptimization-policy-mirror/runs/exact_crosscheck_2048.json) and on every seed Lean run of Stage 13 (engine/data/forshor_submitted/seed_exact_runs.json)\"\n",
+   "new": " \"python_equals_lean\": \"cross-checked, not proved: equal on 34 policies at their ladders (the policy-check project/runs/exact_crosscheck_2048.json) and on every seed Lean run of Stage 13 (engine/data/forshor_submitted/seed_exact_runs.json)\"\n"
+  },
+  {
+   "file": "tcost/exact/__init__.py",
+   "old": "PhaseProduct: `exact_width.exact_width` (vendored from ShorTableOptimization-policy-mirror, Lean Tight.lean).\nPhaseTripleProduct: `ptp_exact_width.ptp_tight_width` (vendored from ShorTableOptimization-ptp-suite, Lean PTP/Exact.lean).\n",
+   "new": "PhaseProduct: `exact_width.exact_width` (vendored from the policy-check project, Lean Tight.lean).\nPhaseTripleProduct: `ptp_exact_width.ptp_tight_width` (vendored from the PTP suite, Lean PTP/Exact.lean).\n"
+  },
+  {
+   "file": "tcost/exact/exact_width.py",
+   "old": "`ops` is the site/STO band list: [\"addScaled\",dst,src,±1,shift], [\"shiftL\"|\"shiftR\",reg,m],\n",
+   "new": "`ops` is the site/archive band list: [\"addScaled\",dst,src,±1,shift], [\"shiftL\"|\"shiftR\",reg,m],\n"
+  },
+  {
+   "file": "tcost/exact/exact_width.py",
+   "old": "  * tightWidth_le_childWidth: it never exceeds STO's scan nextSignedWidth n n ops.\n",
+   "new": "  * tightWidth_le_childWidth: it never exceeds the scan nextSignedWidth n n ops.\n"
+  },
+  {
+   "file": "tcost/lean.py",
+   "old": "\"\"\"Read formally verified tables out of a built ShorTableOptimization checkout, safely.\n",
+   "new": "\"\"\"Read formally verified tables out of a built table-archive checkout, safely.\n"
+  },
+  {
+   "file": "tcost/tables.py",
+   "old": "#: padding). \"scan\": STO's `nextSignedWidth` scan, the labelled cross-check and the full order-finding run's rule.\n",
+   "new": "#: padding). \"scan\": the `nextSignedWidth` scan, the labelled cross-check and the full order-finding run's rule.\n"
+  },
+  {
+   "file": "tcost/tables.py",
+   "old": "            # benchmark sets the points that it admits. The Lean spec of ShorTableOptimization limits them to 0,\n",
+   "new": "            # benchmark sets the points that it admits. The Lean spec of the table archive limits them to 0,\n"
+  },
+  {
+   "file": "tcost/tables.py",
+   "old": "        ShorTableOptimization's `exact_width` (Lean Tight.lean `PolicyTable.tightWidth`); PhaseTripleProduct: the PTP\n",
+   "new": "        the `exact_width` function (Lean Tight.lean `PolicyTable.tightWidth`); PhaseTripleProduct: the PTP\n"
+  },
+  {
+   "file": "tcost/tcount.py",
+   "old": "    # tables proved by Lean in a built ShorTableOptimization checkout (`lake build` done):\n",
+   "new": "    # tables proved by Lean in a built table-archive checkout (`lake build` done):\n"
+  },
+  {
+   "file": "tcost/tcount.py",
+   "old": "    src.add_argument(\"--lean\", help=\"built ShorTableOptimization checkout: extract the verified generate mode k\")\n",
+   "new": "    src.add_argument(\"--lean\", help=\"built table-archive checkout: extract the verified generate mode k\")\n"
+  }
+ ]
+}
