@@ -65,6 +65,14 @@ def main():
         path.write_text(json.dumps({**printed, "submitted_readout": "semiclassical"}))
         run("forshor-doc", path, "--json", out, error="not supported by the coherent pricing route")
         assert not out.exists(), "refused price wrote a result"
+        for key, error in (
+            ("submitted_design", "compiled submitted_design metadata is not supported by the coherent pricing route"),
+            ("submitted_full_run", "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"),
+        ):
+            for value in (None, "malformed", {"modmul": "split_compare"}):
+                path.write_text(json.dumps({**printed, "submitted_readout": "coherent", key: value}))
+                run("forshor-doc", path, "--json", out, error=error)
+                assert not out.exists(), (key, value, "refused price wrote a result")
         path.write_text(json.dumps({**printed, "negation": "scratch"}))
         run("forshor-doc", path, error="the policy asks for negation 'scratch'")
         for delta in ("nan", "inf", "0", "1"):

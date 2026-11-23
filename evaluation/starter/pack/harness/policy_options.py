@@ -13,6 +13,8 @@ def check_no_full_run_export(document):
 
 def check_coherent_export(document):
     check_no_full_run_export(document)
+    if "submitted_design" in document:
+        raise ValueError("compiled submitted_design metadata is not supported by the coherent pricing route")
     if "readout" in document or document.get("submitted_readout", "coherent") != "coherent":
         raise ValueError("the compiled readout choice is not supported by the coherent pricing route")
 

@@ -4,11 +4,15 @@ Lean decides whether a policy is correct; `starter.py` only prices it. The three
 pack**: each needs its own Lean + Mathlib build tree (several GB, tens of minutes to build). You can run them yourself if you have the trees; the organisers' checks of a submitted policy
 are the ones in the submission repository.
 
+Once installed, the pack's pricing and template commands work offline without sign-in. The separate `./forshor check` command uses GitHub sign-in and fetches the trusted submissions base, then runs Lean locally without submitting. For manual builds, use the trusted base's `evaluation/policy-trees.json`: its `sto_build` targets are for the submissions tree and its `forshor.ref` is the operational VerifiedQC/ForShor pin. The frozen model pin `21e129a` in the pack's manifest describes pricing, not the verifier checkout.
+
 | Submission | Checker | Build tree | Where it comes from |
 |---|---|---|---|
-| PhaseProduct (PP) banded policy, site policy JSON | policy check, `scripts/check_banded_policy.py --widths exact` | the `forshor-submissions` repository | github.com/zapatacomputing/forshor-submissions, `main` (ForShor pinned at `21e129a`, Lean `v4.36.0-rc1`; its `TableGeneration/` and `scripts/` are the policy check's tree, and `evaluation/policy-trees.json` lists the build targets): `lake exe cache get`, then `lake build TableGeneration` |
-| PhaseTripleProduct (PTP) banded policy, site policy JSON | `scripts/check_ptp_policy.py --widths exact`, against ForShor's `Shor.PTP` | the same repository | The same tree. `lake build TableGeneration` does **not** build the PhaseTripleProduct modules: build them by name first (`lake build TableGeneration.RecursiveCost.PTP.Census` and the other modules under `TableGeneration/RecursiveCost/PTP/`) or the harness fails at its report stage |
-| Full order finding, the submission file `Policy.lean` (ForShor's `PolicyTemplate` format) | ForShor's own build at `21e129a`: `lake build PolicySubmission forshor_policy_submission`, then `lake exe forshor_policy_submission --balanced` | a ForShor checkout | `VerifiedQC/ForShor`, commit `21e129aeefc0fd1bbb8fa63402f5799af2490788` |
+| PhaseProduct (PP) banded policy, site policy JSON | policy check, `scripts/check_banded_policy.py --widths exact` | the `forshor-submissions` repository | trusted `main`: `lake exe cache get`, then `lake build` with the `sto_build` targets from `evaluation/policy-trees.json` |
+| PhaseTripleProduct (PTP) banded policy, site policy JSON | `scripts/check_ptp_policy.py --widths exact`, against ForShor's `Shor.PTP` | the same repository | the same `sto_build` targets include the PTP planner and axiom audit; use those targets, not just `lake build TableGeneration` |
+| PP or PTP submission file `Policy.lean` | ForShor's own build (sections 3 and 4 below) | a disposable ForShor checkout | `VerifiedQC/ForShor` at `forshor.ref` from the trusted base |
+
+Both PP and PTP submissions allow up to 256 bands, each with `2 ≤ k ≤ 8`.
 
 Use a machine with at least 16 GB of memory. Run one or two Lean checks at a time and keep every run under a memory cap (each tree's `scripts/memcap.py`). Measured on earlier policies: most checks take seconds to a few minutes; a PhaseProduct policy with a k = 8 first band took about 2.4 hours in the policy check's interpreted report stage (the same stage as PhaseTripleProduct's: Lean's interpreter never memoises the closures a table's state is built from, so its cost doubles about every ten operations), and the PhaseTripleProduct policy with a k = 8
 first band did not finish that stage in 12 hours. Both harnesses now have a `--fast` option (`check_banded_policy.py --widths exact --fast` for PhaseProduct, `check_ptp_policy.py --fast` for PhaseTripleProduct, both in the submissions repository; the hosted check uses it) that skips that interpreted stage: the ladder comes from Python
@@ -46,7 +50,7 @@ Quot.sound}, and the statements are pinned.
 
 ```bash
 python starter.py lean-input my_ptp_policy.json --out my_ptp_policy.lean-input.json
-cp -cR /path/to/forshor-submissions /tmp/ptp_work          # the checker writes into its tree: use a copy (built, PTP modules included)
+cp -R /path/to/forshor-submissions /tmp/ptp_work           # use a new destination and a tree built with the PTP targets above
 cd /tmp/ptp_work
 python3 scripts/memcap.py --cap-gb 8 --timeout 3600 -- \
   python3 scripts/check_ptp_policy.py /abs/path/my_ptp_policy.lean-input.json --target-width 2048 \
@@ -66,10 +70,10 @@ the gate-level result also holds at the exact widths (`gate_recursion_exact`; at
 `gate_recursion_exact_at_target`). The harness applies the same threshold rule and at-target certificates as the
 PP policy check. It covers equal-width operands only. The qubit formula and the T count are not proved.
 
-## 3. Full order finding: ForShor
+## 3. PhaseProduct and full order finding: ForShor
 
 ```bash
-F=/path/to/ForShor                       # VerifiedQC/ForShor at 21e129aeefc0fd1bbb8fa63402f5799af2490788; first time: lake exe cache get
+F=/path/to/ForShor                       # disposable checkout at the operational pin above; first time: lake exe cache get
 python starter.py template my_pp_policy.json --out Policy.lean --forshor $F   # or by hand (templates/Policy.lean)
 cp Policy.lean $F/ForShor/ShorVerification/Submission/PolicyTemplate.lean   # ForShor's name for the file
 cd $F
@@ -98,14 +102,12 @@ is priced by `starter.py forshor-doc` on upstream's IR, the board's labelled cro
 
 Running a check executes Lean on your machine. For code you do not trust, use a disposable VM or container.
 
-## The PhaseTripleProduct submission file (ForShor)
+## 4. PhaseTripleProduct: ForShor
 
-A PhaseTripleProduct `Policy.lean` (`namespace PTPPolicySubmission`, `templates/ptp.Policy.lean`) is built by ForShor like the PhaseProduct one, with its own library and
-executable. They are in ForShor `main` from `349849e` (PR #83: `PTPPolicyTemplate.lean`, `PTPPolicyCheck.lean`, `PTPPolicyMain.lean` and two lakefile entries),
-not in the pinned `21e129a`, which they change nothing in:
+A PhaseTripleProduct `Policy.lean` (`namespace PTPPolicySubmission`, `templates/ptp.Policy.lean`) is built by ForShor like the PhaseProduct one, with its own library and executable. Use the same operational pin, not the frozen model checkout:
 
 ```bash
-F=/path/to/ForShor            # ForShor main at 349849e or later, built (lake exe cache get, then lake build)
+F=/path/to/ForShor            # disposable checkout at the operational pin above; first time: lake exe cache get
 python starter.py template my_ptp_policy.json --out Policy.lean --forshor $F
 cp Policy.lean $F/ForShor/ShorVerification/Submission/PTPPolicyTemplate.lean   # ForShor's name for the file
 cd $F
@@ -115,4 +117,4 @@ lake build PTPPolicySubmission forshor_ptp_policy_submission && lake exe forshor
 
 The build kernel-checks the table contract, the strict decrease of the thresholds and the exact-width threshold rule from 2048 (`decide +kernel`) and audits the axioms;
 a bad table, a threshold that breaks the rule or an attribute that reaches compiled code makes it fail. Measured: a policy with bands k = 8 and k = 4 builds in about 25 seconds.
-The executable prints the bands, the negation method and the benchmark width; there is no IR for a PhaseTripleProduct policy (the boards price it in the results engine).
+The executable prints the bands, the negation method and the benchmark width. It is not a full-run IR and is not an input to `starter.py forshor-doc`; price the PTP table JSON with `starter.py price`.

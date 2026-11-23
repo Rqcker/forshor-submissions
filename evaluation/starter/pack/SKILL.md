@@ -6,8 +6,9 @@ description: "Use when helping a solver or coding agent take part in the ForShor
 # ForShor Challenge: Policy Submission
 
 Use this skill to write, price and submit a policy for the ForShor Challenge from a terminal. The challenge is fixed:
-n = 2048, δ = 0.01, three boards. There is no login and no challenge argument. Every command runs from the root of
-the unpacked starter pack (`starter.py`, `engine/`, `templates/`, `examples/`, `harness/`, `SUBMISSION_FORMAT.md`).
+n = 2048, δ = 0.01, three boards. Once installed, run `starter.py` commands offline without a login from the unpacked pack
+(`starter.py`, `engine/`, `templates/`, `examples/`, `harness/`, `SUBMISSION_FORMAT.md`). In contrast, `./forshor check` and
+`./forshor submit` run from the submissions checkout and use GitHub sign-in. `check` fetches the trusted base and checks locally; it does not submit anything.
 
 A submission is a **full policy**: Toom-Cook tables plus the width thresholds that choose among them. A bare table,
 or tables without thresholds, is not a submission. Read `SUBMISSION_FORMAT.md` before writing anything. Its rules are
@@ -39,8 +40,8 @@ Every board is ranked by the score **Q × T** (qubits times T count, lower is be
 
 | Board | You submit | T and Q |
 |---|---|---|
-| PhaseProduct (PP) | a banded PP policy, site policy JSON | T of one phase product at the exact widths the board derives; Q the peak of one product |
-| PhaseTripleProduct (PTP) | a banded PTP policy, site policy JSON | T of one triple product at exact widths (digital triple-product leaf); Q the peak of one triple product |
+| PhaseProduct (PP) | a banded PP policy in `Policy.lean` | T of one phase product at the exact widths the board derives; Q the peak of one product |
+| PhaseTripleProduct (PTP) | a banded PTP policy in `Policy.lean` | T of one triple product at exact widths (digital triple-product leaf); Q the peak of one triple product |
 | Full order finding | a PP policy: the board prices any k; **submitted as the Lean file `Policy.lean`** (bands k ≤ 8), which ForShor builds (the `ForShor` tag) | single-run T of Shor's order-finding circuit on the IR ForShor prints under `--balanced`; Q its peak (12,890 base registers plus the policy's extra) |
 
 A PP policy enters both the PP board and the full run. They often prefer different policies: price both.
