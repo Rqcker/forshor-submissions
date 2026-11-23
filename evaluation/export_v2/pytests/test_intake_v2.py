@@ -240,6 +240,37 @@ def test_a_lean_policy_that_asks_for_something_the_boards_do_not_price_is_refuse
         intake_v2.policy_from_lean(eng, "namespace PolicySubmission", None, tmp_path)
 
 
+@pytest.mark.parametrize("bands,reason", [([], "at least one band"), ([{"k": 9, "threshold": 42}], "threshold 42 has k = 9")])
+def test_unsupported_lean_bands_name_the_rule_before_table_conversion(monkeypatch, tmp_path, bands, reason):
+    monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **k: {"bands": bands})
+    with pytest.raises(intake_v2.Refused, match=reason) as err:
+        intake_v2.policy_from_lean(None, "namespace PolicySubmission", tmp_path, tmp_path)
+    assert err.value.stage == "format"
+
+
+@pytest.mark.parametrize("step,reason", [("build", "Lean build"), ("exe", "circuit extraction")])
+def test_forshor_timeout_is_incomplete_not_a_failed_proof(monkeypatch, tmp_path, step, reason):
+    tree = tmp_path / "source"
+    template = tree / "ForShor/ShorVerification/Submission/PolicyTemplate.lean"
+    template.parent.mkdir(parents=True)
+    template.write_text("-- test template\n")
+    work = tmp_path / "work"
+    work.mkdir()
+    real_run = intake_v2.subprocess.run
+
+    def process(args, **kwargs):
+        if args[:2] == ["lake", step]:
+            raise intake_v2.subprocess.TimeoutExpired(args, 1)
+        if args[0] in {"lake", "bash"}:
+            return intake_v2.subprocess.CompletedProcess(args, 0)
+        return real_run(args, **kwargs)
+
+    monkeypatch.setattr(intake_v2.subprocess, "run", process)
+    with pytest.raises(intake_v2.Refused, match=reason) as err:
+        intake_v2.forshor_build(tree, "namespace PolicySubmission", work, timeout=1)
+    assert err.value.stage == "timeout"
+
+
 def test_the_lexical_gate_refuses_before_anything_is_built(tmp_path):
     tree = tmp_path / "forshor"
     (tree / "ForShor" / "ShorVerification" / "Submission").mkdir(parents=True)

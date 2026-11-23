@@ -227,14 +227,28 @@ class WorkingFiles(unittest.TestCase):
     def test_full_check_rejects_a_preflight_only_success(self):
         artifacts = self.root / 'artifacts/forshor/verification'
         artifacts.mkdir(parents=True)
-        (artifacts / 'table-generation-submission-result.json').write_text(json.dumps({'status': 'success', 'phase': 'preflight'}))
+        outcome = artifacts / 'table-generation-submission-result.json'
+        outcome.write_text(json.dumps({'status': 'success', 'phase': 'full'}))
         # Pre-create the trusted clone and let check snapshot real edited files.
         cache = self.root / '.git/fake-checker'
         subprocess.run(['git', 'clone', '--quiet', str(self.root), str(cache)], check=True)
         (self.root / cli.POLICY).write_text('edited policy\n')
         with patch.object(cli, 'authenticate'), patch.object(cli, 'lean_environment', return_value={}), \
-                patch.object(cli, 'prepare', return_value=cache), patch.object(cli, 'logged'):
+                patch.object(cli, 'prepare', return_value=cache), patch.object(cli, 'logged') as logged:
+            def write_preflight(*args):
+                self.assertFalse(outcome.exists(), 'an old full success must not be reused')
+                outcome.write_text(json.dumps({'status': 'success', 'phase': 'preflight'}))
+
+            logged.side_effect = write_preflight
             with self.assertRaisesRegex(cli.UserError, 'Full verification'):
+                cli.check(self.root, self.base)
+            def report_failure(*args):
+                outcome.write_text(json.dumps({'status': 'failure', 'phase': 'full', 'checks': [
+                    {'name': 'threshold', 'status': 'failure', 'details': 'band at width 16 does not shrink'}]}))
+                raise cli.UserError('failed; see log')
+
+            logged.side_effect = report_failure
+            with self.assertRaisesRegex(cli.UserError, 'threshold: band at width 16 does not shrink.*summary.md'):
                 cli.check(self.root, self.base)
         self.assertNotIn('checked', cli.read_state(self.root))
         self.assertEqual((self.root / cli.POLICY).read_text(), 'edited policy\n')
@@ -582,6 +596,7 @@ class VerificationFeedback(unittest.TestCase):
             ('timeout', 'stage deadline', 'Stopped: time limit reached'),
             ('cert', 'killed: timeout 900 s', 'Stopped: time limit reached'),
             ('cert', 'type mismatch', 'Proof check failed'),
+            ('format', 'a policy needs at least one band', 'format check: a policy needs at least one band'),
         ):
             with self.subTest(stage=stage, detail=detail):
                 result = {'status': 'failure', 'checks': [{'name': stage, 'status': 'failure', 'details': detail}]}

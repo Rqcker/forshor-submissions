@@ -77,6 +77,26 @@ class PolicyVerifier(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("not a verdict", result["checks"][-1]["details"])
 
+    def test_a_crashed_intake_cannot_reuse_the_previous_success(self):
+        self.write(PP)
+        self.assertEqual(self.run_pv()[0], 0)
+        code = pv.run(self.repo, self.out, get_changed_files=lambda _: (True, [pv.SUBMISSION], "Compared base...head."),
+                      env={"FORSHOR_TREE": str(self.tmp / "forshor")}, intake=[sys.executable, "-c", "raise SystemExit(2)"])
+        result = json.loads((self.out / "table-generation-submission-result.json").read_text())
+        self.assertEqual((code, result["status"], result["verification"]), (1, "failure", None))
+        self.assertIn("no usable result (exit 2)", result["checks"][-1]["details"])
+        self.assertFalse((self.out / "verification.json").exists())
+
+    def test_success_receipt_from_a_failed_process_is_not_accepted(self):
+        self.write(PP)
+        command = stub(self.tmp, {"verified": True, "policy": {"digest": "a" * 64, "mode": "PhaseProduct", "bands": 1}})
+        script = Path(command[1])
+        script.write_text(script.read_text().replace("sys.exit(0 if o.get('verified') else 1)", "sys.exit(2)"))
+        code = pv.run(self.repo, self.out, get_changed_files=lambda _: (True, [pv.SUBMISSION], "Compared base...head."),
+                      env={"FORSHOR_TREE": str(self.tmp / "forshor")}, intake=command)
+        self.assertEqual(code, 1)
+        self.assertFalse((self.out / "verification.json").exists())
+
     def test_only_the_submission_file_may_change(self):
         self.write(PP)
         for extra in ("TableGeneration/Submission/Policy/Helper.lean", "lakefile.lean", "README.md"):
@@ -98,6 +118,12 @@ class PolicyVerifier(unittest.TestCase):
         self.assertIn("Stopped: memory limit reached", summary)
         self.assertIn("This is not a verdict on your policy", summary)
         self.assertIn("We're working towards supporting submissions that need more memory", summary)
+
+    def test_timeout_is_not_a_verdict_in_the_shared_summary(self):
+        self.write(PP)
+        code, result = self.run_pv({"refused": True, "stage": "timeout", "reason": "circuit extraction reached its time limit"})
+        self.assertEqual((code, result["checks"][-1]["name"]), (1, "timeout"))
+        self.assertIn("Stopped: time limit reached.** This is not a verdict", (self.out / "table-generation-summary.md").read_text())
 
     def test_the_trusted_environment_must_be_prepared(self):
         self.write(PP)

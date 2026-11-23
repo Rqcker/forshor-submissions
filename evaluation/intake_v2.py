@@ -160,13 +160,19 @@ def forshor_build(forshor_tree: Path, template: str, workdir: Path, timeout: int
     if gate.returncode != 0:
         raise Refused("lexical", "ForShor's lexical gate refused the file: " + (gate.stdout + gate.stderr)[-500:].strip())
     log = workdir / "forshor.log"
-    with open(log, "w") as out:
-        built = subprocess.run(["lake", "build", *targets], cwd=tree, stdout=out, stderr=subprocess.STDOUT, timeout=timeout)
+    try:
+        with open(log, "w") as out:
+            built = subprocess.run(["lake", "build", *targets], cwd=tree, stdout=out, stderr=subprocess.STDOUT, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise Refused("timeout", f"ForShor's Lean build reached its {timeout:g}s time limit. This is not a verdict on the policy.") from None
     if built.returncode != 0:
         text = log.read_text()
         errors = [line for line in text.splitlines() if "error" in line.lower()]          # Lean's own error lines, not the tail of a long build log
         raise Refused("forshor", "ForShor's build of the policy template failed: " + ("\n".join(errors[:6]) or text[-500:])[:900])
-    printed = subprocess.run(["lake", "exe", *exe], cwd=tree, capture_output=True, text=True, timeout=timeout)
+    try:
+        printed = subprocess.run(["lake", "exe", *exe], cwd=tree, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise Refused("timeout", f"ForShor's circuit extraction and checks reached their {timeout:g}s time limit. This is not a verdict on the policy.") from None
     if printed.returncode != 0:
         raise Refused("forshor", "ForShor's check refused the policy: " + (printed.stderr or printed.stdout)[-500:])
     return json.loads(printed.stdout)
@@ -189,7 +195,13 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
     if forshor_tree is None:
         raise RuntimeError("a Lean policy needs ForShor's build, and no ForShor checkout was given (--forshor-tree)")
     doc = forshor_build(forshor_tree, lean_text, workdir, timeout, kind=kind)
-    check_band_limit(doc.get("bands"))
+    bands = doc["bands"]
+    check_band_limit(bands)
+    if not bands:
+        raise Refused("format", "a policy needs at least one band; the bare leaf is not a submission")
+    for band in bands:
+        if not 2 <= band["k"] <= MAX_FORSHOR_K:
+            raise Refused("format", f"band at threshold {band['threshold']} has k = {band['k']}; submissions take 2 <= k <= {MAX_FORSHOR_K}")
     if doc.get("negation", "oneQubit") != "oneQubit":
         raise Refused("format", f"the policy asks for negation {doc.get('negation')!r}; the boards price oneQubit only")
     if kind == "pp":
@@ -199,8 +211,6 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
         P = policy_from_document(eng, doc)
     else:
         P = policy_from_ptp_document(eng, doc)
-    if not P.bands or any(not 2 <= b.table.k <= MAX_FORSHOR_K for b in P.bands):
-        raise Refused("format", f"every band takes 2 <= k <= {MAX_FORSHOR_K}")
     return P.to_json(), doc
 
 

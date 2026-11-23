@@ -24,6 +24,11 @@ The PR comment and CLI distinguish these from proof failures. The memory message
 **We're working towards supporting submissions that need more memory.** See [CLI.md](CLI.md)
 for queue status and notification behavior.
 
+The verifier clears earlier intake results and accepts success only when this run exits successfully
+and writes a new verification receipt. On an invalid policy, `./forshor check` shows the failed
+check and its reason; the GitHub run summary and PR comment use the same verifier result. If intake
+could not run or wrote no usable result, that is an incomplete verification, not a failed proof.
+
 ## Source restrictions before compilation
 
 The trusted `scripts/ci/policy_source.py` filter runs before dependency setup or

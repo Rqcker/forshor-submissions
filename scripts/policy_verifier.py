@@ -92,6 +92,8 @@ def summary(result: Dict[str, Any]) -> str:
     if any(c["name"] == "memory" and c["status"] != "success" for c in result["checks"]):
         lines += ["**Stopped: memory limit reached.** This is not a verdict on your policy.",
                   "We're working towards supporting submissions that need more memory.", ""]
+    if any(c["name"] == "timeout" and c["status"] != "success" for c in result["checks"]):
+        lines += ["**Stopped: time limit reached.** This is not a verdict on your policy.", ""]
     pol = result.get("policy")
     if pol:
         lines += [f"Policy `{pol['digest'][:12]}`: {pol['mode']}, {pol['bands']} band(s). STO mirror: accepted. ForShor: "
@@ -108,6 +110,11 @@ def run(repo: Path, out_dir: Path, *, get_changed_files: Callable[[Path], Tuple[
     env = dict(os.environ if env is None else env)
     repo, out_dir = Path(repo).resolve(), Path(out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
+    result_path = out_dir / "intake-result.json"
+    receipt_path = out_dir / "verification.json"
+    # Local checks reuse the output directory; only this invocation's artifacts count.
+    result_path.unlink(missing_ok=True)
+    receipt_path.unlink(missing_ok=True)
     first, files = changed_files_and_list(get_changed_files, repo)
     checks: List[Dict[str, str]] = [first]
     policy = None
@@ -124,24 +131,33 @@ def run(repo: Path, out_dir: Path, *, get_changed_files: Callable[[Path], Tuple[
         else:
             cmd = intake or [env.get("ENGINE_PYTHON") or sys.executable, str(HERE.parent / "evaluation" / "intake_v2.py")]
             cmd = cmd + ["--lean-policy", str(repo / SUBMISSION), "--login", env.get("TABLE_GEN_LOGIN") or "local-check", "--no-publish", "--tree", sto, "--forshor-tree", forshor,
-                         "--workdir", str(out_dir / "work"), "--verification-out", str(out_dir / "verification.json"), "--out", str(out_dir / "intake-result.json")]
+                         "--workdir", str(out_dir / "work"), "--verification-out", str(receipt_path), "--out", str(result_path)]
             if summary_data is not None:
                 cmd += ["--summary", str(repo / SUMMARY)]
             if env.get("POLICY_STAGE_TIMEOUT"):
                 cmd += ["--stage-timeout", env["POLICY_STAGE_TIMEOUT"]]
             if env.get("POLICY_MIRROR_TIMEOUT"):
                 cmd += ["--mirror-timeout", env["POLICY_MIRROR_TIMEOUT"]]
-            with open(out_dir / "policy-verifier.log", "w") as log:
-                proc = subprocess.run(cmd, cwd=repo, env=env, stdout=log, stderr=subprocess.STDOUT)
             try:
-                got = json.loads((out_dir / "intake-result.json").read_text())
-            except (OSError, ValueError):
-                got = {"failed": True, "error": f"the intake wrote no result (exit {proc.returncode}); see policy-verifier.log"}
+                with open(out_dir / "policy-verifier.log", "w") as log:
+                    proc = subprocess.run(cmd, cwd=repo, env=env, stdout=log, stderr=subprocess.STDOUT)
+            except OSError as error:
+                got = {"failed": True, "error": f"could not start intake: {error}"}
+            else:
+                try:
+                    got = json.loads(result_path.read_text())
+                except (OSError, ValueError):
+                    got = None
+                if not isinstance(got, dict):
+                    got = {"failed": True, "error": f"the intake wrote no usable result (exit {proc.returncode}); see policy-verifier.log"}
+                elif got.get("verified") and (proc.returncode or not receipt_path.is_file() or not isinstance(got.get("policy"), dict)
+                        or not all(key in got["policy"] for key in ("digest", "mode", "bands"))):
+                    got = {"failed": True, "error": f"the intake reported success without a successful run and complete verification (exit {proc.returncode}); see policy-verifier.log"}
             carried = None
             if got.get("verified") and summary_data is not None:   # the verification must carry exactly the file that was checked, or it is not published
                 try:
-                    carried = json.loads((out_dir / "verification.json").read_text()).get("summarySha256")
-                except (OSError, ValueError):
+                    carried = json.loads(receipt_path.read_text()).get("summarySha256")
+                except (OSError, ValueError, AttributeError):
                     carried = None
                 if carried != summary_tex.sha256(summary_data):
                     got = {"failed": True, "error": "the verification does not carry the summary that was checked"}
@@ -153,6 +169,8 @@ def run(repo: Path, out_dir: Path, *, get_changed_files: Callable[[Path], Tuple[
             else:
                 checks.append(check("verification", False, "the verification could not complete (a tool failed, not a verdict on the policy): " + str(got.get("error") or "")[:900]))
     ok = all(c["status"] == "success" for c in checks)
+    if not ok:
+        receipt_path.unlink(missing_ok=True)
     result = {"schema_version": 1, "challenge": CHALLENGE, "kind": "policy", "phase": "preflight" if preflight else "full", "status": "success" if ok else "failure", "checks": checks,
               "policy": policy, "verification": "verification.json" if ok and not preflight else None,
               "summary": {"sha256": summary_tex.sha256(summary_data), "bytes": len(summary_data)} if summary_data is not None else None}
