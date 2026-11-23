@@ -65,7 +65,7 @@ cp templates/pp_policy.json my_policy.json      # or templates/ptp_policy.json
 
 Each band has `threshold`, `k`, `point_order` and `operations` (the site's panel files spell the second key `pointOrder`; `starter.py` accepts either):
 - bands are listed widest first, with thresholds strictly decreasing;
-- different bands may use different tables of the same k;
+- different bands may use different tables of the same k; a submission may have up to 256 bands;
 - below the last threshold the leaf is used.
 
 Do not declare widths. The board derives the exact widths, and ignores any declared ladder with a notice. The derived width counts every value the table's program holds, intermediate ones included, so a `shiftL` / `shiftR` pair that makes a register briefly larger raises it, at every size that table serves; the shifts themselves cost no T gates and no qubits, but the wider register is priced. Read the ladder `starter.py price` prints, and see "Widths and shift pairs" in `SUBMISSION_FORMAT.md`.
@@ -171,9 +171,16 @@ Read `SUBMISSION_FORMAT.md` section 6 first. **This pack prices a policy and pre
 `zapatacomputing/forshor-submissions` (private during the sprint; the challenge page's **Participate** dialog has the commands), and its instructions win over this file.
 Once the repository is public, `./forshor submit` creates or reuses the participant's GitHub fork and opens the PR against `zapatacomputing/forshor-submissions/main`; participants do not need upstream Write access. While private, existing authorized staging contributors retain their current route.
 
-Its CLI (`./forshor setup`, `./forshor check`, `./forshor submit`) takes a Lean `GeneratorPolicy` in `TableGeneration/Submission/Policy.lean`. The route by which a policy
-JSON reaches the boards is not part of this pack. If the repository's instructions do not say how to send the policy JSON you wrote, tell the user that and stop: do not guess a
-route or invent a command.
+Copy the generated Lean policy to `TableGeneration/Submission/Policy.lean` in the submission checkout. The CLI accepts a
+`ShorPolicySubmission` (PhaseProduct) or `PTPPolicy` (PhaseTripleProduct), not the pricing JSON. The current full order-finding
+path uses coherent readout, exact QFT, and Ross–Selinger synthesis. Leave those defaults in place; the current pack and hosted checker
+do not offer readout or synthesis opt-ins.
+
+Run `./forshor check` before `./forshor submit`. Pricing and template generation are not proof checks. When checking fails, read the
+failed stage and reason, then `artifacts/forshor/verification/table-generation-summary.md` for details. On GitHub, open the
+**Verify submission with Lean** check and its run summary or PR comment; `./forshor status` also follows the hosted check.
+If a policy or file rule failed, fix that rule and rerun the check. A time or memory stop is not a verdict on the policy;
+see the run details before changing it. A publication failure after a green verification is a separate issue.
 
 What you can always give the user: the policy file, the `starter.py price` output (and, for a full-run policy, the `forshor-doc` output), the pack's build date (`MANIFEST.json`) and a
 short public Markdown note: the objective, the starting point (a starting policy, a leaderboard policy or a template), what you changed, the exact commands, the prices with exact ladders (including
