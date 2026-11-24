@@ -18,6 +18,8 @@ python evaluation/starter/test_pack_point_order_alias.py <dir>/forshor-challenge
                                                                                                # `pointOrder` (the site's spelling) and `point_order` price identically
 python evaluation/starter/test_pack_validation.py <dir>/forshor-challenge-starter --python <python>
                                                                                                # defaults, allowed pricing corners and clean submission/format refusals
+python evaluation/starter/test_pack_multi_table_same_k.py <dir>/forshor-challenge-starter --python <python>
+                                                                                               # PR #132's 11-table policy prices to its published numbers; a broken k = 7 table is refused
 python evaluation/starter/test_pack_matches_seed.py <dir>/forshor-challenge-starter.zip <epoch-input.json> --python <python>
                                                                                               # the unzipped pack prices every policy of a results seed to the boards' T and Q
 ```
