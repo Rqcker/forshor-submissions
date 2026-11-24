@@ -40,16 +40,18 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
     The policy is priced at the exact widths the boards use.
 
     `design` is the compiled full-run QFT design (`full_run_design.design_of`), or None for no design at all, which is the
-    engine's default and reproduces every published price byte for byte: with None the full-run pricer is called with exactly
-    the arguments it was called with before this parameter existed, not with `design=None`. `pricer` replaces
-    `fullalg.price_full` (a test seam).
+    engine's default and reproduces every published price byte for byte: the full-run pricer is ALWAYS called with exactly
+    the arguments it was called with before this parameter existed, not with `design=None`, and with None nothing else
+    happens either. `pricer` replaces `fullalg.price_full` (a test seam).
 
     A design is NEVER passed to the full-run pricer. Lane WM qualified the design axis as an out-of-engine OVERLAY
     (`qft_overlay.project`, constructing in-epoch `ReferenceQFT` with a Coppersmith `k_max` band) precisely because any edit
     to `evaluation/engine` -- including an additive `design=` parameter, including a comment -- moves `dataFingerprint` and
     `engineRevision` and so the epoch (`qft_overlay` module docstring: appending one comment line to `site_engine/fullalg.py`
-    moves ab1f8887b1b50e56 to d3bda33d5ddd5dca). So the engine prices the coherent reference exactly as it always did and the
-    design is applied on top of that frozen result, mirroring the `measured` readout hook directly above."""
+    moves ab1f8887b1b50e56 to d3bda33d5ddd5dca). So the engine prices the coherent reference exactly as it always did, the
+    design is applied on top of that frozen result -- mirroring the `measured` readout hook directly above -- and the
+    overlay's answer is reported as `view["full"]["qft"]`. `fullalg.price_full` has no `design` parameter and must not grow
+    one."""
     eng = engine.load()
     delta = DELTA_VALUES[delta_key]
     P = policy.with_widths("exact")

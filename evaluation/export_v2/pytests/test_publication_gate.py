@@ -301,23 +301,59 @@ def test_a_malformed_full_run_selection_is_refused(selection, measured, publishe
 
 
 def test_without_the_converter_a_full_run_key_keeps_its_standing_refusal(measured, publisher, monkeypatch, tmp_path):
-    """RETAINED, and the seam's own safety: on a checkout with no converter the compiled key is refused exactly as
-    before -- the same anchor sentence -- and is never priced as the reference pipeline.
+    """RETAINED, and the seam's own safety: a compiled full-run key is never priced as the reference pipeline --
+    with the converter absent OR present. Both branches of `compiled_full_run` are pinned here.
 
     Integration 2026-11-24 (lane XE): WJ's refusal specificity appends the CAUSE after a colon, and documents the
     leading sentence (`policy_options.FULL_RUN_ROUTE`) as the anchor the rest of the repository matches as a PREFIX.
     This assertion was byte-equality against a base that had no cause clause; it now matches the anchor the same way
-    `starter/test_pack_validation.py` does. What is refused, and that nothing is priced, are unchanged."""
-    assert intake_v2.compiled_full_run({intake_v2.FULL_RUN_KEY: {"profile": "quotient-exact"}}) == (None, None)
+    `starter/test_pack_validation.py` does.
+
+    RE-POINTED, wave 2 (lane XF) -- HANDOFF 1. WQ wrote this test to pin behaviour on a checkout that has NO
+    `export_v2.full_run_design`; wave 2 BRINGS that converter (WP), so the unconditional
+    `compiled_full_run(...) == (None, None)` assertion no longer described this tree. Rather than delete the
+    coverage, the two branches are now pinned separately and both still refuse, for different reasons:
+
+      * CONVERTER ABSENT (`ImportError` branch, `intake_v2.py:247-249`) -- still reachable, still shipped, so still
+        tested, by hiding the module. The selection falls through to `check_no_full_run_export` and is refused with
+        WJ's anchor-plus-cause message. This is WQ's original assertion, unchanged.
+      * CONVERTER PRESENT (this tree) -- the converter rules on the selection FIRST, at `intake_v2.py:605`, and
+        refuses `quotient-exact` BY NAME on WR's topology gate: every one of the seven non-reference profiles
+        selects a non-reference multiplier topology (`quotient_stream` or `split_compare`) that `qft_overlay`
+        cannot honour, because it substitutes QFT sites into the engine's frozen REFERENCE census. The refusal is
+        now MORE specific, not less: it names the topology instead of only the profile.
+
+    Either way nothing is priced -- `build_measured_request` fails the test if reached, and `publisher.sent` stays
+    empty. What ships for a design is the EXPLICIT per-family design on the reference topology, never a profile
+    label; `intake_v2.py:278-280`'s source gate (G3) stays closed, so no route accepts a full-run source at all."""
     v = qualify(measured, publisher, monkeypatch, tmp_path)
-    monkeypatch.setattr(request, "build_measured_request", lambda *a, **kw: pytest.fail("no converter, no price"))
+    monkeypatch.setattr(request, "build_measured_request", lambda *a, **kw: pytest.fail("refused, so nothing is priced"))
     printed = {**deepcopy(v["printed"]), intake_v2.FULL_RUN_KEY: {"schema": SELECTION_SCHEMA, "profile": "quotient-exact"}}
-    with pytest.raises(intake_v2.Refused) as refusal:
-        publish({**deepcopy(v), "printed": printed}, tmp_path, qualified_in_run=True)
+
+    # --- the converter-absent branch: hiding the module makes `from export_v2 import full_run_design` raise.
+    # Both the package ATTRIBUTE and the `sys.modules` entry must go: `from export_v2 import full_run_design`
+    # resolves the attribute first and only falls back to importing the submodule, where `None` forces ImportError.
+    with monkeypatch.context() as hidden:
+        hidden.delattr(export_v2, "full_run_design", raising=False)
+        hidden.setitem(sys.modules, "export_v2.full_run_design", None)
+        assert intake_v2.compiled_full_run({intake_v2.FULL_RUN_KEY: {"profile": "quotient-exact"}}) == (None, None)
+        with pytest.raises(intake_v2.Refused) as absent:
+            publish({**deepcopy(v), "printed": printed}, tmp_path, qualified_in_run=True)
     from policy_options import FULL_RUN_ROUTE
     assert FULL_RUN_ROUTE == "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"
-    assert refusal.value.reason.startswith(FULL_RUN_ROUTE)
-    assert refusal.value.reason == f"{FULL_RUN_ROUTE}: the export selects the full-run profile 'quotient-exact'"
+    assert absent.value.reason.startswith(FULL_RUN_ROUTE)
+    assert absent.value.reason == f"{FULL_RUN_ROUTE}: the export selects the full-run profile 'quotient-exact'"
+
+    # --- the converter-present branch, which is this tree: refused by name, on the topology.
+    with pytest.raises(intake_v2.Refused) as present:
+        publish({**deepcopy(v), "printed": printed}, tmp_path, qualified_in_run=True)
+    assert present.value.reason == (
+        "full-run selection 'quotient-exact' selects the multiplier topology 'quotient_stream', which this chain "
+        "cannot price. `qft_overlay` prices the QFT band only: its families are ['data', 'work', 'scratch', "
+        "'exponent'], it has no topology parameter, and it substitutes banded QFT sites into the engine's frozen "
+        "REFERENCE census. The multiplier drives both the T cost and the qubit base, so pricing a "
+        "'quotient_stream' run on reference-topology numbers would report the reference price as if the topology "
+        "had been honoured. It is reported, never priced as the reference default")
     assert publisher.sent == []
 
 

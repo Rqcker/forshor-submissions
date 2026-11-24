@@ -28,12 +28,22 @@ WO's threading -- the signature, the 1e-2 guard, the full-board guard, the refus
 `request._build_request` -- and routed the design to the overlay instead. `test_the_chain_never_asks_the_engine_
 for_a_design` pins that, so nobody re-adds the engine-side call.
 
-TWO GATES REFUSE, NOT ONE. `full_run_design` converts three of the seven profiles, but `qft_overlay` then
-refuses two of those three, because they ask for `backend: "catalytic"` on a QFT family and the catalytic arm
-re-prices every rotation in the run and adds a shared catalyst register -- a second axis, not a QFT band.
-Only `quotient-exact` prices today, and `quotient-exact` is BY CONSTRUCTION the engine's own price. So the
-merged chain is complete and fail-closed, but it cannot yet produce a DIFFERENTIATED full-run price at all.
-`test_only_quotient_exact_prices_today` states that as a fact rather than leaving it to be discovered.
+EVERY PROFILE LABEL REFUSES; THE EXPLICIT DESIGN IS WHAT SHIPS (integration wave 2, lane XF).
+`full_run_design` once converted three of the seven profiles to a bare per-family mapping. Lane WR found
+that this DROPPED the multiplier topology: all seven non-reference profiles select `modmul` =
+`quotient_stream` or `split_compare` (`audit_native_fullrun.py:25-30`, QFT-SURFACE-MAPPING.md section 1.1),
+the topology drives both the T cost (`policy_design.py:139-142`) and the qubit base (`:160-162`), and
+`qft_overlay.project` substitutes QFT sites into the engine's frozen REFERENCE census and has no topology
+parameter at all. Converting a profile therefore priced a quotientStream run on reference-topology numbers
+-- reporting the reference price as if the option had been honoured, the one silent default this release
+forbids. WR's TOPOLOGY GATE refuses it instead, by name.
+
+The owner has DROPPED quotient customization from this release (deferred), so this is settled policy, not a
+gap: every `quotient-*` and every `split-*` profile label REFUSES. What ships is the EXPLICIT per-family
+design on the reference topology (`full_run_design`'s second path, `Design.json`'s wire shape), which
+prices any combination of the four QFT families. The tests below that need a real design to thread are
+therefore stated against the explicit path; `test_every_profile_label_refuses_and_the_explicit_design_prices`
+states the position as a fact rather than leaving it to be discovered.
 """
 import copy
 import json
@@ -53,13 +63,19 @@ POLICY = DATA / "real/1bc92ac6e1e82ba3.policy.json"
 HEAD_PANELS = {"full": "998ad142a47fae05466541a3a92e0851cb86bac91876ce409ec4a98b3e0b19e3",
                "pp": "c83bf7a532a639d1b16d2e1e9b86b26e2bef36e8db96137e2d259a72d527179f"}
 
-#: Priced here (QFT families only, no catalytic arm).
-PRICES = ("quotient-exact",)
-#: Converted by `full_run_design`, then refused by `qft_overlay`: `backend: "catalytic"` on a QFT family.
-REFUSED_BY_OVERLAY = ("quotient-catalytic", "quotient-banded-data-catalytic-work")
-#: Refused by `full_run_design` itself: they select a rotation or phase-product backend, not a QFT.
+#: REFUSED ON THEIR MULTIPLIER TOPOLOGY (lane WR's gate). These three name only QFT families, so they once
+#: converted; they select `modmul: quotient_stream`, which `qft_overlay` cannot honour, so they refuse by name.
+REFUSED_BY_TOPOLOGY = ("quotient-exact", "quotient-catalytic", "quotient-banded-data-catalytic-work")
+#: Refused by `full_run_design` itself: they select a rotation or phase-product backend, not a QFT. Two of
+#: these also select `split_compare`; they are refused on the selector, which is checked first.
 REFUSED_BY_DESIGN = ("quotient-fallback-data-catalytic-work", "quotient-step2-fallback",
                      "split-step4-kicks", "split-step2-fallback-step4-kicks")
+#: No profile label prices in this release. Kept as an explicit empty tuple so the fact is stated, not implied.
+PRICES = ()
+
+#: The per-family choices the explicit path carries, in `QftChoice.json`'s shape (`Gate5Design.lean:39-44`).
+RS_EXACT = {"backend": "ross_selinger", "target": "exact"}
+BANDED = {"backend": "ross_selinger", "target": "approximate", "max_error": "25e-5"}
 
 #: The compiled document the verifier prints for a non-reference profile: the measured (semiclassical) schema,
 #: because `PolicyMain.lean:444-447` refuses a full-run selection unless the saved readout IS semiclassical,
@@ -72,6 +88,18 @@ def document(profile=None):
     if profile is not None:
         doc["submitted_full_run"] = {"schema": "forshor.full-run-selection/v1", "profile": profile}
     return doc
+
+
+def explicit_document(qft, modmul="reference"):
+    """The compiled document carrying an EXPLICIT per-family design BODY -- `full_run_design`'s second path,
+    in `Gate5Design.Design.json`'s wire shape, inside the envelope the recorded exports already use.
+
+    This is the path that prices in this release. Every profile LABEL refuses on its multiplier topology
+    (lane WR), so the chain tests that need a design to thread drive it from here instead."""
+    return {"schema": MEASURED_SCHEMA, "submitted_readout": "semiclassical",
+            "submitted_full_run": {"schema": "forshor.full-run-selection/v1",
+                                   "design": {"schema": "forshor.design-local/v1",
+                                              "modmul": modmul, "qft": qft}}}
 
 
 def design_from(doc):
@@ -99,18 +127,23 @@ def panel(view, epoch_id, board):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("profile", PRICES)
-def test_a_compiled_document_prices_a_panel_carrying_a_qft_projection(policy, epoch_id, profile):
+@pytest.mark.parametrize("qft", [{"data": BANDED}, {"work": BANDED}, {"data": BANDED, "work": RS_EXACT}],
+                         ids=["data-banded", "work-banded", "data-banded-work-exact"])
+def test_a_compiled_document_prices_a_panel_carrying_a_qft_projection(policy, epoch_id, qft):
     """THE DELIVERABLE. Start at the verifier's compiled document, end at a panel whose full-run price carries
     a `qft` projection, through all four production steps.
 
+    RE-POINTED (wave 2, lane XF): this was parametrized over `PRICES`, the profile labels that used to
+    convert. WR's topology gate refuses every label, so the deliverable is exercised over EXPLICIT
+    reference-topology designs instead -- which is both what ships and a strictly wider test, since the
+    explicit path prices arbitrary per-family combinations rather than three fixed ones.
+
     Fails if the hook at `pricing.py:52-54` is reverted (then `view["full"]` has no `qft` and the panel has
-    none either), if `mapping.full_run_of` stops carrying `qft`, or if either WO step stops converting."""
-    doc = document(profile)
-    assert doc["submitted_full_run"]["profile"] == profile
+    none either), if `mapping.full_run_of` stops carrying `qft`, or if either conversion step stops working."""
+    doc = explicit_document(qft)
 
     selection = full_run_design.selection_of(doc)
-    assert selection == {"schema": "forshor.full-run-selection/v1", "profile": profile}
+    assert selection["design"]["modmul"] == "reference"
     design = full_run_design.design_of(selection)
     assert design is not None and set(design) <= set(qft_overlay.FAMILIES)
 
@@ -126,23 +159,41 @@ def test_a_compiled_document_prices_a_panel_carrying_a_qft_projection(policy, ep
 
 
 @pytest.mark.slow
-def test_quotient_exact_is_bit_identical_to_the_no_selection_baseline(policy, epoch_id):
+def test_an_all_exact_design_is_bit_identical_to_the_no_selection_baseline(policy, epoch_id):
     """THE REGRESSION GUARD. `target: "exact"` means "leave this family's QFT exactly as the engine priced it"
     (k_max = None, no substitution), never "substitute the exact ladder" -- lane WM measured that substituting
     the exact Draper ladder at w = 4095 takes (37_598_400, 178_191) to (33_533_953, 8_289_333), a 14.8x
-    rotation-driven blow-up in T. If `qft_overlay.project` ever starts substituting on an exact target, or if
-    `full_run_design` stops emitting `target: "exact"` for `quotient-exact`, this test goes red.
+    rotation-driven blow-up in T. If `qft_overlay.project` ever starts substituting on an exact target this
+    test goes red.
 
-    Four statements, strongest last: the projection declares itself the identity; its census is the SAME float
-    as the engine's own; the priced panel differs from the baseline panel in NOTHING except the added `qft`
-    evidence block; and with that block removed the panel bytes are the recorded 792464f hash exactly.
+    RE-POINTED (wave 2, lane XF). This drove `quotient-exact`, which WR's topology gate now refuses. The
+    guard it encodes is about the EXACT TARGET, not about that label, so it is restated over an all-exact
+    EXPLICIT design and nothing is lost -- both halves are now checked, at the two layers that own them:
 
-    The last two are the honest form of "bit-identical" once a panel can carry the projection at all: no PRICE
-    moves, and the only new bytes are an evidence block that says nothing was substituted. A plain hash compare
-    could not distinguish "nothing moved" from "two things moved and cancelled"."""
-    baseline = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"])
-    priced = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"],
-                                 design=design_from(document("quotient-exact")))
+      1. THE CONVERTER collapses an all-exact design to None ("exact means untouched": a design in which no
+         family asks for an approximate target asks for nothing at all), so the request takes the engine's
+         untouched default path and the panels are the recorded 792464f bytes exactly.
+      2. THE OVERLAY, driven through the production hook with that same all-exact mapping handed to
+         `price_views` directly -- which is what the converter would have passed before the collapse --
+         still reports `identity: True`, substitutes nothing, and reproduces the engine's census as the
+         SAME float; and the priced panel differs from the baseline panel in NOTHING except the added
+         `qft` evidence block. This is the assertion that actually pins the no-substitution rule; the
+         collapse above would otherwise hide a regression in it.
+
+    That last point is the honest form of "bit-identical" once a panel can carry the projection at all: no
+    PRICE moves, and the only new bytes are an evidence block saying nothing was substituted. A plain hash
+    compare could not distinguish "nothing moved" from "two things moved and cancelled".
+    """
+    all_exact = {"data": RS_EXACT, "work": RS_EXACT}
+
+    # 1. the converter: all-exact asks for nothing, so the default path and the recorded bytes.
+    assert design_from(explicit_document(all_exact)) is None
+    baseline = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"], design=None)
+    assert "qft" not in baseline["full"]["full"]
+
+    # 2. the overlay, through the production hook: the mapping is still the identity, so the collapse
+    #    above hides nothing.
+    priced = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"], design=all_exact)
     engine_price, projection = baseline["full"]["full"], priced["full"]["full"]["qft"]
 
     assert projection["identity"] is True and projection["substituted"] == []
@@ -201,37 +252,56 @@ def test_a_refused_selection_prices_nothing_and_builds_no_request(monkeypatch, p
         request._build_request({}, full_run=full_run_design.selection_of(document(profile)), **args)
 
 
-@pytest.mark.slow
-@pytest.mark.parametrize("profile", REFUSED_BY_OVERLAY)
-def test_the_catalytic_profiles_convert_then_refuse_at_the_overlay_naming_the_family(policy, profile):
-    """THE SECOND GATE, and the lane's main finding. These two profiles pass `full_run_design` -- they name only
-    QFT families -- and are then refused by `qft_overlay.parse_design`, which does not price `backend:
-    "catalytic"`: the catalytic closed form re-prices every rotation in the run and adds a shared catalyst
-    register, so honouring it as Ross-Selinger would be a silent default. Fails if either lane starts pricing
-    the catalytic arm without qualifying that second axis, or if the refusal stops naming the family."""
-    design = design_from(document(profile))
-    assert design is not None
-    assert any(choice["backend"] == "catalytic" for choice in design.values())
-    with pytest.raises(qft_overlay.QftOverlayRefused) as caught:
-        pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"], design=design)
+@pytest.mark.parametrize("profile", REFUSED_BY_TOPOLOGY)
+def test_the_three_qft_only_profiles_refuse_on_their_multiplier_topology(profile):
+    """LANE WR'S GATE, and wave 2's headline resolution. These three name only QFT families, so they once
+    converted to a bare per-family mapping -- silently dropping the `modmul: quotient_stream` they also
+    select. The topology drives both the T cost and the qubit base, and `qft_overlay` substitutes into the
+    engine's frozen REFERENCE census, so that conversion priced a quotientStream run on reference numbers.
+
+    The refusal must NAME the profile and the topology. Fails if the gate is weakened to let a profile label
+    price again -- which is exactly what wave 2 refused to do to keep two catalytic tests green."""
+    with pytest.raises(ValueError) as caught:
+        design_from(document(profile))
     message = str(caught.value)
-    assert "catalytic" in message
-    assert any(f"QFT family {family!r}" in message for family in design), "the refusal must name the family"
+    assert profile in message, "a refusal that does not name the profile is not actionable"
+    assert "quotient_stream" in message
+    assert full_run_design.PROFILE_TOPOLOGY[profile] == "quotient_stream"
 
 
-def test_only_quotient_exact_prices_today(policy=None):
-    """The release-decision fact, kept as an assertion so it cannot rot: of the seven compiled profiles, six
-    refuse -- four at `full_run_design`, two at `qft_overlay` -- and the one that prices is the identity. The
-    merged chain is complete and fail-closed, but it cannot yet produce a differentiated full-run price.
-    Fails the moment a lane wires the catalytic arm or the out-of-scope selectors, which is the signal that
-    this statement needs rewriting."""
-    assert set(full_run_design.PROFILES) == {"reference", *PRICES, *REFUSED_BY_OVERLAY, *REFUSED_BY_DESIGN}
-    assert set(full_run_design.QFT_ONLY) == {*PRICES, *REFUSED_BY_OVERLAY}
-    for profile in REFUSED_BY_OVERLAY:
-        with pytest.raises(qft_overlay.QftOverlayRefused):
-            qft_overlay.parse_design(design_from(document(profile)))
-    plan = qft_overlay.parse_design(design_from(document("quotient-exact")))
-    assert plan and all(target == "exact" for _backend, target, _max_error in plan.values())
+def test_every_profile_label_refuses_and_the_explicit_design_prices(policy=None):
+    """THE RELEASE-DECISION FACT, kept as an assertion so it cannot rot.
+
+    REWRITTEN in wave 2 (lane XF), from `test_only_quotient_exact_prices_today`. That test said six of the
+    seven profiles refuse and the one that prices is the identity. The position now: ALL SEVEN refuse -- the
+    four selector profiles at `full_run_design`'s `BEYOND_QFT` check, the three QFT-only ones at WR's
+    topology gate -- and `reference` alone converts, to None. Quotient customization is DROPPED from this
+    release by owner decision, deferred; what ships is the explicit per-family design on the reference
+    topology, which prices arbitrary combinations of the four QFT families.
+
+    Fails the moment a profile label starts converting again, which is the signal to rewrite this."""
+    assert set(full_run_design.PROFILES) == {"reference", *REFUSED_BY_TOPOLOGY, *REFUSED_BY_DESIGN}
+    assert set(full_run_design.QFT_ONLY) == set(REFUSED_BY_TOPOLOGY)
+    assert PRICES == (), "no profile label prices in this release"
+
+    # Every non-reference label refuses; `reference` is the only one that converts, and it converts to None.
+    for profile in (*REFUSED_BY_TOPOLOGY, *REFUSED_BY_DESIGN):
+        with pytest.raises(ValueError):
+            design_from(document(profile))
+    assert design_from(document("reference")) is None
+    assert design_from(document()) is None
+
+    # Every profile label selects a non-reference topology; `reference` names none at all. This is WHY they
+    # all refuse, stated once, from the converter's own table.
+    assert all(full_run_design.PROFILE_TOPOLOGY[p] in ("quotient_stream", "split_compare")
+               for p in (*REFUSED_BY_TOPOLOGY, *REFUSED_BY_DESIGN))
+    assert full_run_design.PROFILE_TOPOLOGY["reference"] is None
+
+    # And the explicit reference-topology path does price: an approximate target converts to a real design.
+    design = design_from(explicit_document({"data": BANDED}))
+    assert design == {"data": BANDED}
+    plan = qft_overlay.parse_design(design)
+    assert plan and all(target == "approximate" for _backend, target, _max_error in plan.values())
 
 
 # ------------------------------------------------------------------ the engine is never asked for a design
@@ -277,7 +347,10 @@ def test_the_chain_never_asks_the_engine_for_a_design(monkeypatch):
 
     monkeypatch.setattr(pricing.engine, "load", lambda: Eng)
     monkeypatch.setattr(qft_overlay, "project", lambda P, full, design: seen.append(copy.deepcopy(design)) or {"ok": True})
-    design = design_from(document("quotient-exact"))
+    # RE-POINTED (wave 2): driven from the EXPLICIT reference-topology design, since WR's topology gate
+    # refuses every profile label. What is pinned -- the design reaches the overlay and the engine's pricer
+    # is called exactly as it was at 792464f -- is unchanged.
+    design = design_from(explicit_document({"data": BANDED}))
     views = pricing.price_views(FakePolicy(), "t", "1e-2", ["full"], design=design)
 
     assert calls == [{"detail": True}], "the full-run pricer is called exactly as it was at 792464f"
@@ -297,4 +370,5 @@ def test_a_design_is_refused_at_every_delta_but_1e_2_so_a_publish_request_cannot
             return self
 
     with pytest.raises(ValueError, match="delta 1e-2"):
-        pricing.price_views(FakePolicy(), "t", delta, ["full"], design=design_from(document("quotient-exact")))
+        pricing.price_views(FakePolicy(), "t", delta, ["full"],
+                            design=design_from(explicit_document({"data": BANDED})))
