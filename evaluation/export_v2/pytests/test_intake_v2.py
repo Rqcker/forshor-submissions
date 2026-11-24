@@ -297,6 +297,10 @@ def test_forshor_record_needs_the_printed_bands_to_be_the_submitted_bands_and_th
     with pytest.raises(intake_v2.Refused) as e:
         intake_v2.forshor_record(eng, eng.tables.Policy.from_json(other), doc, model["forshor"]["pin"])
     assert "not the submitted bands" in e.value.reason
+    # Census C10: the same sentence is raised again when the PhaseTripleProduct publisher re-checks its bands, so it
+    # must say which document and which moment. Production change that would fail this: dropping either parenthetical.
+    assert e.value.reason.startswith("the bands ForShor printed are not the submitted bands")   # the anchor, still a prefix
+    assert "PhaseProduct" in e.value.reason and "PhaseTripleProduct" not in e.value.reason, e.value.reason
 
 
 def test_the_command_line_maps_outcomes_to_exit_codes(monkeypatch, tmp_path, policy_doc):
@@ -344,8 +348,16 @@ def test_a_lean_policy_that_asks_for_something_the_boards_do_not_price_is_refuse
     eng = engine.load()
     base = json.loads(DROPIN.read_text())
     monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **k: dict(base, negation="scratch"))
-    with pytest.raises(intake_v2.Refused, match="oneQubit only"):
+    with pytest.raises(intake_v2.Refused, match="oneQubit only") as compiled:
         intake_v2.policy_from_lean(eng, "namespace PolicySubmission", tmp_path, tmp_path)
+    # Census C4: policy_options.check_table_options raises the byte-identical sentence for the submitted table JSON.
+    # Production change that would fail this: dropping the parenthetical that names the compiled Lean export.
+    from policy_options import check_table_options
+    with pytest.raises(ValueError) as table_json:
+        check_table_options({"negation": "scratch"})
+    assert compiled.value.reason.startswith(str(table_json.value)), (compiled.value.reason, str(table_json.value))
+    assert compiled.value.reason != str(table_json.value), "the two routes shared one message (census C4)"
+    assert "compiled Lean export" in compiled.value.reason, compiled.value.reason
     with pytest.raises(intake_v2.Refused, match="larger than"):
         intake_v2.policy_from_lean(eng, "x" * (intake_v2.MAX_LEAN_BYTES + 1), tmp_path, tmp_path)
     with pytest.raises(RuntimeError, match="--forshor-tree"):

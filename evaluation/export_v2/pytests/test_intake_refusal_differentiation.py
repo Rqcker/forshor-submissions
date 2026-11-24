@@ -132,3 +132,42 @@ def test_the_canonical_explicit_default_is_still_accepted(refuse, selector, defa
     refuse(f"{NAMESPACE}def {selector} : Shor.{type_name} := {default}\nend PolicySubmission\n")
     refuse(f"{NAMESPACE}def points := #[1, 2, 3]\nend PolicySubmission\n")
     refuse(f"-- {selector}\n/- {selector} -/\n{NAMESPACE}end PolicySubmission\n")
+# --- C14: `lean_kind` says which of the two namespace mistakes it saw ---------------------------
+
+@pytest.mark.parametrize("source,seen", [
+    ("namespace PolicySubmission\nnamespace PTPPolicySubmission\n", "both"),
+    ("def points := #[1, 2, 3]\n", "neither"),
+])
+def test_the_namespace_refusal_says_whether_it_saw_both_or_neither(source, seen):
+    # Production change that would fail this: dropping the "declares both/neither" clause from
+    # intake_v2.lean_kind. Zero namespaces is a missing declaration, two is a duplicated one -- the
+    # participant edits a different line for each. Census C14.
+    reason = refusal(intake_v2.lean_kind, source).reason
+    assert reason.startswith("the Lean file must declare exactly one of `namespace PolicySubmission`"), reason
+    assert reason.rstrip(".").endswith(seen), reason
+
+
+def test_exactly_one_namespace_is_still_accepted():
+    # Production change that would fail this: any change to lean_kind that moves the accept/refuse
+    # boundary rather than only the reason. Both boards must still resolve.
+    assert intake_v2.lean_kind("namespace PolicySubmission\n") == "pp"
+    assert intake_v2.lean_kind("namespace PTPPolicySubmission\n") == "ptp"
+
+
+# --- C11: `readout qualification only supports PhaseProduct` came from two sites ----------------
+
+def test_the_readout_qualification_board_refusal_says_which_entry_refused(tmp_path):
+    # Production change that would fail this: reverting either parenthetical on the two
+    # "readout qualification only supports PhaseProduct" refusals (intake_v2.py's ForShor-build
+    # entry and its intake entry). They were byte-identical, so an operator reading a refused run
+    # could not tell whether the board was wrong at the build or at intake. Census C11.
+    # The anchor stays the PREFIX; test_readout_overlay.py matches on it.
+    ANCHOR = "readout qualification only supports PhaseProduct"
+    at_intake = refusal(lambda: intake_v2.policy_from_lean(None, "namespace PTPPolicySubmission\n", tmp_path,
+                                                           tmp_path, qualify_readout=True)).reason
+    at_build = refusal(lambda: intake_v2.forshor_build(tmp_path, "namespace PTPPolicySubmission\n", tmp_path / "b",
+                                                       kind="ptp", qualify_readout=True)).reason
+    for reason in (at_intake, at_build):
+        assert reason.startswith(ANCHOR), reason
+    assert at_intake != at_build, (at_intake, at_build)
+    assert "intake" in at_intake[len(ANCHOR):] and "build" in at_build[len(ANCHOR):]

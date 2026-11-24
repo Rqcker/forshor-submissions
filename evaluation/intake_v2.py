@@ -142,7 +142,7 @@ def forshor_record(eng, P, doc: Dict[str, Any], pin: str) -> Dict[str, Any]:
     t_policy = float(fa.price_full(P, 2048, DEFAULT_DELTA, detail=False, rule=rule)["T"])
     ir_agrees = t_document == t_policy
     if not bands_agree:
-        raise Refused("forshor", "the bands ForShor printed are not the submitted bands")
+        raise Refused("forshor", "the bands ForShor printed are not the submitted bands (the PhaseProduct document ForShor printed at the ForShor check)")
     if not ir_agrees:
         raise Refused("forshor", f"ForShor's own IR prices to {t_document!r} T, the policy to {t_policy!r} T")
     return {"verified": True, "bandsAgree": True, "irPriceAgrees": True, "claim": FORSHOR_CLAIM, "forshorCommit": pin}
@@ -161,7 +161,11 @@ def lean_kind(lean_text: str) -> str:
     pp = re.search(r"^\s*namespace\s+PolicySubmission\b", lean_text, re.M)
     ptp = re.search(r"^\s*namespace\s+PTPPolicySubmission\b", lean_text, re.M)
     if bool(pp) == bool(ptp):
-        raise Refused("format", "the Lean file must declare exactly one of `namespace PolicySubmission` (PhaseProduct) and `namespace PTPPolicySubmission` (PhaseTripleProduct)")
+        # Which of the two mistakes it is decides the edit: a file with neither is missing the declaration, a file with
+        # both has to drop one. One message for the two sent half the participants to the wrong line (census C14).
+        raise Refused("format", "the Lean file must declare exactly one of `namespace PolicySubmission` (PhaseProduct) and "
+                                "`namespace PTPPolicySubmission` (PhaseTripleProduct); this file declares "
+                                + ("both" if pp else "neither"))
     return "ptp" if ptp else "pp"
 
 
@@ -236,7 +240,7 @@ def _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_reado
     if qualify_readout:
         from export_v2.readout_overlay import VERIFIER_PIN
         if kind != "pp":
-            raise Refused("format", "readout qualification only supports PhaseProduct")
+            raise Refused("format", "readout qualification only supports PhaseProduct (asked for at the ForShor build)")
         actual = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=forshor_tree, text=True).strip()
         dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=forshor_tree, text=True)
         if actual != VERIFIER_PIN or dirty:
@@ -308,7 +312,7 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
     kind = lean_kind(lean_text)
     refuse_unqualified_primitive(lean_text)
     if qualify_readout and kind != "pp":
-        raise Refused("format", "readout qualification only supports PhaseProduct")
+        raise Refused("format", "readout qualification only supports PhaseProduct (asked for at intake)")
     if not qualify_readout:
         refuse_unqualified_design(lean_text)
     if forshor_tree is None:
@@ -326,7 +330,7 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
         if not 2 <= band["k"] <= MAX_FORSHOR_K:
             raise Refused("format", f"band at threshold {band['threshold']} has k = {band['k']}; submissions take 2 <= k <= {MAX_FORSHOR_K}")
     if doc.get("negation", "oneQubit") != "oneQubit":
-        raise Refused("format", f"the policy asks for negation {doc.get('negation')!r}; the boards price oneQubit only")
+        raise Refused("format", f"the policy asks for negation {doc.get('negation')!r}; the boards price oneQubit only (from the compiled Lean export, not the submitted table JSON)")
     if kind == "pp":
         from site_engine import fullalg as fa
         if fa.doc_width_rule(doc) != "exact":
@@ -583,7 +587,7 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     elif printed is not None:
         # threshold, k and the table itself, band by band (as `forshor_record` does for PhaseProduct): two tables of one k are told apart
         if [(b.threshold, b.table.k, b.table.digest) for b in policy_from_ptp_document(eng, printed).bands] != [(b.threshold, b.table.k, b.table.digest) for b in P.bands]:
-            raise Refused("forshor", "the bands ForShor printed are not the submitted bands")
+            raise Refused("forshor", "the bands ForShor printed are not the submitted bands (the PhaseTripleProduct document in the verification, re-checked at publication)")
     head_sha = head_sha or hashlib.sha1(digest.encode()).hexdigest()
     run_id = run_id or str(int(dt.datetime.now(dt.timezone.utc).timestamp()))
     submitted_at = _now()
