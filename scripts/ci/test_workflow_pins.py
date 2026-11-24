@@ -14,11 +14,7 @@ FULL_SHA = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+@[0-9a-f]{40}")
 
 # action reference -> why it is still a tag. Resolve each from the Actions run log ("Download action repository 'x@tag' (SHA:...)") or the action's
 # releases, pin it with the tag in a trailing comment, and delete the entry.
-UNRESOLVED = {
-    "actions/checkout@v7": "no run log or local pin names the SHA behind this tag",
-    "actions/cache/save@v4": "no run log or local pin names the SHA behind this tag",
-    "actions/cache/restore@v4": "no run log or local pin names the SHA behind this tag",
-}
+UNRESOLVED = {}
 
 
 def references():

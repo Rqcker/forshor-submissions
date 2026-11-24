@@ -25,12 +25,12 @@ runs:
         clean: ${{ inputs.preserve-builds != 'true' }}
         persist-credentials: false
     - id: forshor
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: policy-forshor/.lake
         key: policy-forshor-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.config.outputs.forshor_hash }}
     - id: sto
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: verifier/.lake
         key: policy-sto-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.config.outputs.sto_hash }}
@@ -46,13 +46,13 @@ runs:
         echo "TMPDIR=$RUNNER_TEMP/forshor-policy-work" >> "$GITHUB_ENV"
     - name: Save trusted ForShor cache
       if: inputs.save-cache == 'true' && steps.forshor.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: policy-forshor/.lake
         key: ${{ steps.forshor.outputs.cache-primary-key }}
     - name: Save trusted STO cache
       if: inputs.save-cache == 'true' && steps.sto.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: verifier/.lake
         key: ${{ steps.sto.outputs.cache-primary-key }}

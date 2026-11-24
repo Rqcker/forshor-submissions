@@ -178,7 +178,7 @@ jobs:
       # the submission checkout, so a fork cannot steer which cache it gets.
       - name: Restore Lean dependency cache
         if: steps.reuse.outputs.reused != 'true' && steps.format.outputs.kind == 'table'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .lake/packages
           key: lake-packages-${{ runner.os }}-${{ hashFiles('verifier/lake-manifest.json', 'verifier/lean-toolchain') }}
@@ -209,7 +209,7 @@ jobs:
 
       - name: Restore Lean build cache
         if: steps.reuse.outputs.reused != 'true' && steps.format.outputs.kind == 'table'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .lake/build
           key: lake-build-${{ runner.os }}-${{ hashFiles('verifier/lean-toolchain', 'verifier/lakefile.lean', 'verifier/lake-manifest.json', 'verifier/TableGeneration.lean', 'verifier/TableGeneration/**/*.lean') }}
