@@ -54,6 +54,13 @@ MAX_FORSHOR_K = 8           # a submission's bands take 2 <= k <= 8
 MAX_LEAN_BYTES = 1_000_000  # the size limit of the submitted Lean file
 MAX_POLICY_BANDS = 256     # keep in sync with forshor-site's shared results-v2 contract
 
+#: The mirror stages that are a RESOURCE STOP, not a verdict: they raise `Incomplete` (exit 2 with a stage and the
+#: not-a-verdict sentence), never `Refused`, and never reach `write_receipt`. Keep in sync with the stages
+#: `scripts/memcap.py:limit_rejection` can return (`memory`, `timeout`) plus the `timeout` the harnesses report for
+#: their own `subprocess.TimeoutExpired` (`scripts/check_banded_policy.py:429-431`, `scripts/check_ptp_policy.py`).
+#: A new resource stop the harness names differently would otherwise be reported as a refusal of the policy.
+INCOMPLETE_STAGES = ("memory", "timeout")
+
 
 class Refused(Exception):
     """The submission was examined and does not qualify. `stage` names the check, `reason` says why."""
@@ -355,6 +362,20 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, sum
                                   stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, log)
 
 
+def _run_mirror_or_incomplete(run, policy_json, board, tree, out_dir, **kw):
+    """`run_mirror`, with its outer wall-clock stop reported as `Incomplete` rather than as a bare exception.
+
+    `run_mirror` re-raises `subprocess.TimeoutExpired` (`export_v2/evidence.py:205-207`), which would otherwise escape
+    `verify_submission` and be caught by the CLI's `subprocess.SubprocessError` arm: exit 2 with no stage and without
+    the not-a-verdict sentence, i.e. indistinguishable in class from a `KeyError` bug. A resource stop is INCOMPLETE,
+    never a refusal and never a pass, so the outer limit must agree with the harness's own stage timeout, which already
+    maps to `Incomplete` through `INCOMPLETE_STAGES`. The exit code and the accept/refuse split are unchanged."""
+    try:
+        return run(policy_json, board, tree, out_dir, **kw)
+    except subprocess.TimeoutExpired:
+        raise Incomplete("timeout", f"the Lean mirror reached its {kw['timeout']:g}s wall-clock limit") from None
+
+
 def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree, workdir, forshor_tree,
                        stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, log):
     from export_v2 import engine, epoch
@@ -397,14 +418,15 @@ def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree
         else:
             require_coherent_export(printed)
     log(f"policy {digest[:12]} ({policy_json['mode']}, {len(policy_json['bands'])} bands): the Lean mirror at exact widths ...")
-    envelope = (run_mirror_fn or run_mirror)(policy_json, board, tree, workdir / "evidence", timeout=mirror_timeout, python=python, stage_timeout=stage_timeout, fast=True)   # `fast`: skip the interpreted report stage, see run_mirror
+    envelope = _run_mirror_or_incomplete(run_mirror_fn or run_mirror, policy_json, board, tree, workdir / "evidence",
+                                         timeout=mirror_timeout, python=python, stage_timeout=stage_timeout, fast=True)   # `fast`: skip the interpreted report stage, see run_mirror
     mirror, why = stomirror_from_envelope(envelope, policy_json, model, board)
     if mirror is None:
         rec = envelope.get("record", {})
         rej = rec.get("rejection") or {}
         stage = rej.get("stage") or "mirror"
         reason = f"{rej.get('reason') or why}: {str(rej.get('detail') or '')[:400]}".strip(": ")
-        if stage in ("memory", "timeout"):
+        if stage in INCOMPLETE_STAGES:
             raise Incomplete(stage, reason)
         raise Refused(stage, reason)
     log("  accepted by the STO mirror")

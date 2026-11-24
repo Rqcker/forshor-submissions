@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from threading import Event
@@ -186,6 +187,48 @@ def test_inner_mirror_resource_stop_is_incomplete_and_leaves_no_receipt(tmp_path
     got = json.loads(result.read_text())
     assert got["failed"] and got["stage"] == stage and "not a verdict" in got["error"]
     assert "refused" not in got and not receipt.exists()
+
+
+def test_the_outer_mirror_wall_clock_limit_is_incomplete_and_leaves_no_receipt(tmp_path, monkeypatch, policy_doc):
+    # Production change that would fail this: removing intake_v2._run_mirror_or_incomplete's
+    # `except subprocess.TimeoutExpired` wrapper around the run_mirror call. run_mirror re-raises
+    # TimeoutExpired (export_v2/evidence.py:205-207), so without the wrapper it escapes
+    # verify_submission and is caught by the CLI's `subprocess.SubprocessError` arm at the bottom
+    # of main(), which reports {"failed": true, "error": "TimeoutExpired: ..."} with NO stage and
+    # without Incomplete's "not a verdict" sentence -- a resource stop indistinguishable in class
+    # from a KeyError bug. Census finding F2.
+    from export_v2 import evidence
+    policy = tmp_path / "policy.json"
+    policy.write_text(json.dumps(policy_doc))
+    receipt, result = tmp_path / "receipt.json", tmp_path / "result.json"
+    monkeypatch.delenv("PUBLISHER_URL", raising=False)
+
+    def timed_out(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=["check_banded_policy.py"], timeout=kwargs["timeout"])
+
+    monkeypatch.setattr(evidence, "run_mirror", timed_out)
+    assert intake_v2.main(["--policy", str(policy), "--no-publish", "--login", "tester", "--tree", str(tmp_path),
+                           "--workdir", str(tmp_path / "work"), "--mirror-timeout", "11",
+                           "--verification-out", str(receipt), "--out", str(result)]) == 2
+    got = json.loads(result.read_text())
+    assert got["failed"] and got["stage"] == "timeout", got           # a stage, like every other resource stop
+    assert "not a verdict" in got["error"], got                       # Incomplete's sentence, so it is not read as a verdict
+    assert "11" in got["error"], got                                  # the limit it reached
+    assert "TimeoutExpired" not in got["error"], got                  # not an unlabelled exception name
+    assert "refused" not in got and not receipt.exists()              # never a refusal, never a success receipt
+
+
+def test_the_outer_mirror_timeout_raises_incomplete_out_of_verify_submission(tmp_path, policy_doc):
+    # Production change that would fail this: the same wrapper, checked at the library boundary
+    # rather than through the CLI -- verify_submission itself must not leak subprocess.TimeoutExpired.
+    def timed_out(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=["check_banded_policy.py"], timeout=kwargs["timeout"])
+
+    with pytest.raises(intake_v2.Incomplete) as stop:
+        intake_v2.verify_submission(policy_doc, login="tester", tree=tmp_path, workdir=tmp_path / "w",
+                                    run_mirror_fn=timed_out, mirror_timeout=5, log=lambda s: None)
+    assert stop.value.stage == "timeout"
+    assert not isinstance(stop.value, intake_v2.Refused), "a resource stop is never a refusal"
 
 
 def test_an_overlapping_cli_attempt_cannot_replace_the_active_receipt_or_result(tmp_path, monkeypatch):
