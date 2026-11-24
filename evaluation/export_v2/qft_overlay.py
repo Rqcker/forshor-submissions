@@ -546,4 +546,27 @@ def project(policy, coherent, design=None):
         "qubitsNote": "the engine's frozen peak and layout plus catalystQubits. Banding only REMOVES "
                       "phase-product workspace, so the frozen totals stay an upper bound for it and "
                       "are not re-derived; the shared catalyst register is added because it is not.",
+        # THE QUBIT HOOK (integration wave 2, lane XF). `mapping.ranked_price_of` overlays onto the row
+        # every key of `mapping.SHOWN` == ("T", "qubits") that the projection offers, and documents the
+        # `qubits` key as "the hook that lets that arm land without publishing a qubit count nobody
+        # modelled" -- written for exactly this arm. But the arm reports its qubits as `qubitsPeak` and
+        # `qubitsUpperBound`, NOT as `qubits`, so the hook never fired: measured on the merged tree, a
+        # catalytic design ranked at the engine's 44930 while the projection's own bound was 44972, i.e.
+        # charge 2 (the shared catalyst register, "live for the whole run", feeding the ranked Q x T) did
+        # not reach the ledger row at all. The generalisation was inert for the one projection it was
+        # generalised for.
+        #
+        # So the projection names `qubits` -- and only when a catalyst actually exists, which is exactly
+        # when the engine's frozen total stops being an upper bound. A band-only projection still offers
+        # no `qubits`, so the engine's number is ranked for it, which is what `ranked_price_of` argues for
+        # (banding can only LOWER the count). No edit to `mapping.py` is needed; this closes WY's hook
+        # through WY's own mechanism.
+        #
+        # THE VALUE IS THE PEAK, not the layout total. `ranked_price_of` overlays onto the PANEL's
+        # full-run block, where `mapping.full_run_of:130` sets `"qubits": f["qubits_peak"]` and carries
+        # the layout total separately as `qubitsLayout`. `readout_overlay.py:151` follows the same
+        # convention for the other overlay. Offering `coherent["qubits"]` (the layout total) here instead
+        # would have substituted a layout total into a peak field and moved the ranked count from 13406 to
+        # 44972 on the measured policy -- a 3.4x misreport, in the wrong unit.
+        **({"qubits": peak} if catalyst_qubits else {}),
     }

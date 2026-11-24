@@ -104,8 +104,22 @@ REQUEST_ROWS = {
     "full-1e-6": "7748513e3fc7cc81119230cf96ca107fcbb1c64bf84945c8ee1b2b7855c91f94",
 }
 
-PRICED_PROFILE = "quotient-exact"
 MEASURED_SCHEMA = "forshor.policy-submission-semiclassical/v1"
+
+#: RE-POINTED (integration wave 2, lane XF). This file was written when `quotient-exact` was the one
+#: selection that converted, and its design was the identity by construction. Two things moved underneath it:
+#:
+#:   * lane WR's TOPOLOGY GATE refuses every profile LABEL (all seven select a non-reference `modmul`), so
+#:     `selection("quotient-exact")` no longer converts at all; and
+#:   * "exact means untouched" now collapses an all-exact EXPLICIT design to None, so no converting design
+#:     is the identity any more -- the identity-and-converting combination was only ever reachable through
+#:     the label this release refuses.
+#:
+#: So the design driven here is an EXPLICIT reference-topology one naming the catalytic backend. That is
+#: exactly the substitution this file's own `_differentiated` seam anticipated ("lane WX is making the
+#: catalytic arm priceable; when it lands this seam can be replaced by a real differentiated design"), so the
+#: plumbing is now exercised against a design that REALLY moves the ranked price rather than a scaled fake.
+PRICED_DESIGN_QFT = {"data": {"backend": "catalytic", "target": "approximate", "max_error": "25e-5"}}
 
 
 def document(profile=None):
@@ -115,8 +129,21 @@ def document(profile=None):
     return doc
 
 
+def explicit_document(qft=None, modmul="reference"):
+    """A compiled document carrying an EXPLICIT per-family design body on the reference topology."""
+    return {"schema": MEASURED_SCHEMA, "submitted_readout": "semiclassical",
+            "submitted_full_run": {"schema": "forshor.full-run-selection/v1",
+                                   "design": {"schema": "forshor.design-local/v1", "modmul": modmul,
+                                              "qft": PRICED_DESIGN_QFT if qft is None else qft}}}
+
+
 def selection(profile):
     return full_run_design.selection_of(document(profile))
+
+
+def priced_selection(qft=None):
+    """The selection this file drives: an explicit reference-topology design that converts AND prices."""
+    return full_run_design.selection_of(explicit_document(qft))
 
 
 @pytest.fixture(scope="module")
@@ -173,7 +200,7 @@ def no_design_request(policy_json):
 
 @pytest.fixture(scope="module")
 def design_request(policy_json):
-    return request._build_request(policy_json, full_run=selection(PRICED_PROFILE), **_request_args(policy_json))
+    return request._build_request(policy_json, full_run=priced_selection(), **_request_args(policy_json))
 
 
 @pytest.mark.slow
@@ -249,36 +276,66 @@ def test_the_recorded_panel_hashes_still_price_at_792464f(policy, epoch_id):
 
 @pytest.mark.slow
 def test_the_1e_2_full_row_is_ranked_on_the_qft_projection(design_request):
-    """OBSTACLE 2, at the real price. The 1e-2 full row's T is the PROJECTION's T, not the panel's own, and the
-    qubits stay the engine's number because the projection prices T only and declares the engine's layout total
-    an upper bound. With `quotient-exact` the two Ts are the same float by construction, so this test states
-    the WIRING (the row reads the projection) and the seam test below states that it MOVES."""
+    """OBSTACLE 2, at the real price. The 1e-2 full row's T and qubits are the PROJECTION's, not the panel's
+    own engine numbers.
+
+    RE-POINTED (integration wave 2, lane XF). This asserted `identity is True` and that the row hashed to the
+    no-design row, because the only design that converted was `quotient-exact` -- the engine's own number by
+    construction -- so the test could state the WIRING but not that it MOVES. The design driven here is now a
+    real catalytic one (lane WX), so the wiring is exercised against a price that genuinely differs and the
+    assertions are strictly stronger: the row does not merely read the projection, it reads a DIFFERENT
+    number from the panel's. The no-design row remains pinned byte-for-byte, at every delta and on both
+    boards, by `test_a_request_without_a_design_is_byte_identical_to_792464f_end_to_end`.
+
+    This also pins the QUBIT HOOK. `ranked_price_of` overlays each key of `SHOWN` the projection offers, and
+    the catalytic arm charges a shared catalyst register that is live for the whole run, so the ranked qubits
+    must be the projection's -- the engine's frozen total is no longer an upper bound once a register is
+    added to it. Fails if the arm stops naming `qubits`, which is what made charge 2 reach the ledger."""
     item = _by_key(design_request)[f"full-{mapping.DESIGN_DELTA}"]
     full_run, row = item["panel"]["fullRun"], item["row"]
     projection = full_run["qft"]
-    assert projection["identity"] is True
-    assert row["T"] == projection["T"] == full_run["T"]
-    assert row["qubits"] == full_run["qubits"]
+
+    assert projection["identity"] is False, "a catalytic design is not the engine's own price"
+    assert row["T"] == projection["T"], "the ranked T is the projection's"
+    assert row["T"] != full_run["T"], "and it is NOT the panel's own engine price"
+
+    # charge 2 reaches the row: the catalyst register is in the ranked qubit count. The ranked field is a
+    # PEAK (`full_run_of:130` sets the panel's `qubits` from `qubits_peak`), so the projection offers the
+    # peak-plus-catalyst and the layout total stays alongside it as `qubitsLayout`.
+    assert projection["catalystQubits"] > 0
+    assert row["qubits"] == projection["qubits"] == projection["qubitsPeak"]
+    assert row["qubits"] == full_run["qubits"] + projection["catalystQubits"]
     assert projection["qubitsUpperBound"] >= row["qubits"], "the overlay's bound must cover the ranked qubits"
+
     assert canon.sha256_hex(item["panel"]) != REQUEST_PANELS[f"full-{mapping.DESIGN_DELTA}"], \
         "the panel gains the projection evidence block"
-    assert canon.sha256_hex(row) == REQUEST_ROWS[f"full-{mapping.DESIGN_DELTA}"], \
-        "an identity projection ranks to the identical row"
+    assert canon.sha256_hex(row) != REQUEST_ROWS[f"full-{mapping.DESIGN_DELTA}"], \
+        "a differentiated projection must NOT rank to the no-design row"
 
 
 # --------------------------------------------------------------- the seam: a projection that really differs
 
 
 def _differentiated(factor=0.5):
-    """THE SEAM. The real projection with its T scaled, so the plumbing is exercised against a design that
-    WOULD move the ranked price. Needed because the only design that prices today is `quotient-exact`, which is
-    by construction the engine's own number (lane WX is making the catalytic arm priceable; when it lands this
-    seam can be replaced by a real differentiated design). The shape stays the production shape: every other
-    field is whatever `qft_overlay.project` really returned."""
+    """THE SEAM. The real projection with its T scaled, so the plumbing is exercised against a KNOWN
+    displacement of the ranked price.
+
+    Wave 2 note (lane XF): this seam was written because "the only design that prices today is
+    `quotient-exact`, which is by construction the engine's own number". That is no longer so -- the design
+    driven here is a real catalytic one that differentiates on its own (lane WX), which is the replacement
+    this docstring anticipated. The seam is KEPT anyway, because it does something the real design cannot:
+    it displaces T by an exactly known factor, so the test can assert the ranked price tracks the projection
+    QUANTITATIVELY rather than merely differing from the engine's.
+
+    Because the unscaled projection is no longer equal to the engine's own T, the pre-scaling value is
+    recorded on the block; the assertions below are stated against that rather than against the engine's T.
+    The shape otherwise stays the production shape: every other field is whatever `qft_overlay.project`
+    really returned."""
     real = qft_overlay.project
 
     def fake(policy, coherent, design=None):
         projection = dict(real(policy, coherent, design))
+        projection["seamUnscaledT"] = projection["T"]
         projection["T"] = projection["T"] * factor
         projection["seam"] = "differentiated-for-test"
         return projection
@@ -294,7 +351,7 @@ def test_a_differentiated_projection_moves_the_ranked_price_and_nothing_else(mon
     Fails if `row_of` goes back to `full.get("readout", full)` (the row's T is then the panel's T, not the
     projection's), and fails if the ranked price is taken by replacing the panel rather than overlaying it."""
     monkeypatch.setattr(qft_overlay, "project", _differentiated())
-    priced = _by_key(request._build_request(policy_json, full_run=selection(PRICED_PROFILE),
+    priced = _by_key(request._build_request(policy_json, full_run=priced_selection(),
                                             **_request_args(policy_json)))
     item = priced[f"full-{mapping.DESIGN_DELTA}"]
     full_run, row, projection = item["panel"]["fullRun"], item["row"], item["panel"]["fullRun"]["qft"]
@@ -302,9 +359,12 @@ def test_a_differentiated_projection_moves_the_ranked_price_and_nothing_else(mon
     assert projection["seam"] == "differentiated-for-test"
     assert row["T"] == projection["T"], "the ranked T is the projection's"
     assert row["T"] != full_run["T"], "a differentiated projection must not rank at the engine's price"
-    assert row["T"] == pytest.approx(full_run["T"] * 0.5)
-    assert full_run["T"] == full_run["qft"]["T"] * 2, "the engine's own panel price is untouched beside it"
-    assert row["qubits"] == full_run["qubits"] and row["ladderLabel"] == full_run["ladderLabel"]
+    assert row["T"] == pytest.approx(projection["seamUnscaledT"] * 0.5), "the ranked T tracks the scaling"
+    assert projection["seamUnscaledT"] != full_run["T"], \
+        "the real catalytic projection already differs from the engine's own T, before the seam scales it"
+    # The catalytic arm adds its shared register to the ranked peak (charge 2); the ladder is untouched.
+    assert row["qubits"] == full_run["qubits"] + projection["catalystQubits"]
+    assert row["ladderLabel"] == full_run["ladderLabel"]
 
     for key in REQUEST_PANELS:
         if key == f"full-{mapping.DESIGN_DELTA}":
@@ -401,7 +461,7 @@ def test_the_pricer_refuses_a_measured_readout_and_a_design_in_the_same_call():
 
     with pytest.raises(ValueError, match="do not compose"):
         pricing.price_views(FakePolicy(), "t", "1e-2", ["full"], measured=True,
-                            design=full_run_design.design_of(selection(PRICED_PROFILE)))
+                            design=full_run_design.design_of(priced_selection()))
 
 
 # --------------------------------------------------------------- the design is scoped, not filtered
@@ -420,12 +480,12 @@ def test_the_request_asks_for_a_design_at_1e_2_only_and_asks_as_it_always_did_el
                                                                  "T": 1, "qubits": 1, "ladderLabel": "l"})
     monkeypatch.setattr(mapping, "row_of", lambda panel, **kw: {"T": 1})
     mirror = {"verdict": "accepted"}
-    request._build_request(policy_json, full_run=selection(PRICED_PROFILE), model=epoch_module.model_of(),
+    request._build_request(policy_json, full_run=priced_selection(), model=epoch_module.model_of(),
                            store=SimpleNamespace(stomirror=lambda *a: (mirror, None)), head_sha=HEAD_SHA,
                            pull_number=1, github_login="t", run_id="1", submitted_at="x", evaluated_at="y",
                            archive_commit="b" * 40, accepted_ids=[], evaluation_key="e", base_generation="1",
                            number=1)
-    design = full_run_design.design_of(selection(PRICED_PROFILE))
+    design = full_run_design.design_of(priced_selection())
     assert [delta for delta, _ in seen] == list(mapping.DELTA_KEYS)
     assert dict(seen) == {"1e-2": {"design": design}, "3e-4": {}, "1e-4": {}, "1e-6": {}}
 
@@ -443,7 +503,7 @@ def test_price_views_still_refuses_a_design_at_a_delta_it_is_not_qualified_at(de
 
     with pytest.raises(ValueError, match="delta 1e-2"):
         pricing.price_views(FakePolicy(), "t", delta, ["full"],
-                            design=full_run_design.design_of(selection(PRICED_PROFILE)))
+                            design=full_run_design.design_of(priced_selection()))
 
 
 # --------------------------------------------------------------- a refusal still prices and builds nothing
@@ -466,13 +526,31 @@ def test_a_refused_selection_still_prices_nothing_and_builds_nothing(monkeypatch
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("profile", ["quotient-catalytic", "quotient-banded-data-catalytic-work"])
-def test_an_overlay_refusal_still_stops_the_whole_request(policy_json, profile):
-    """The second gate reaches the request too: a profile `full_run_design` converts and `qft_overlay` refuses
+def test_an_overlay_refusal_still_stops_the_whole_request(monkeypatch, policy_json):
+    """The second gate reaches the request too: a design that converts and that `qft_overlay` then refuses
     must abort the publish request, not fall back to a design-free four-delta price. Fails if scoping the
-    design to 1e-2 were implemented as a try/except that skips the panel the overlay refused."""
-    with pytest.raises(qft_overlay.QftOverlayRefused, match="catalytic"):
-        request._build_request(policy_json, full_run=selection(profile), **_request_args(policy_json))
+    design to 1e-2 were implemented as a try/except that skips the panel the overlay refused.
+
+    RE-POINTED (integration wave 2, lane XF), and the refusal is now INJECTED rather than provoked. This was
+    parametrized over the two catalytic profile labels, on the basis that they converted at
+    `full_run_design` and were refused at `qft_overlay`. Both halves of that moved: WR's topology gate means
+    they no longer convert (which is covered by
+    `test_a_refused_selection_still_prices_nothing_and_builds_nothing`), and WX's arm means `catalytic` is no
+    longer refused at the overlay at all -- it is priced. Those were the only inputs that reached an overlay
+    refusal from a valid selection; measured on the merged tree, every family and every `max_error` tried
+    prices, with the catalyst width b landing in [41, 42] against a qualified range of [4, 126]. The
+    overlay's surviving refusals are defensive (epoch drift, a census it cannot reproduce, a width shared
+    between families) and are not reachable from a well-formed design on this policy.
+
+    So the refusal is injected at the overlay boundary, which is precisely what this test is about: that it
+    PROPAGATES out of `_build_request` rather than being swallowed into a design-free price. The conditions
+    under which the overlay refuses are `test_qft_overlay.py`'s subject, not this file's."""
+    def refuse(policy, coherent, design=None):
+        raise qft_overlay.QftOverlayRefused("QFT family 'data': injected overlay refusal")
+
+    monkeypatch.setattr(qft_overlay, "project", refuse)
+    with pytest.raises(qft_overlay.QftOverlayRefused, match="injected overlay refusal"):
+        request._build_request(policy_json, full_run=priced_selection(), **_request_args(policy_json))
 
 
 def test_the_ranked_projection_did_not_change_the_evidence_shape():
