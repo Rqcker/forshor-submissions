@@ -430,6 +430,69 @@ def test_row_of_ranks_a_full_board_on_the_projection_without_the_engine():
                           pull_request_url=None, submission_id=None, detail="d")["T"] == ENGINE_FULL["T"]
 
 
+#: `rowFields` in forshor-site `src/contracts/results-v2.ts:194-207`, which `rowSchema` spreads into a Zod
+#: `z.strictObject` -- so a row carrying any key not named here is REJECTED by the site, not ignored.
+#: `organizerBaseline` is `.optional()` and is set by the planner, not by `row_of`; `rank` is added by the
+#: publisher after ranking ("A ledger row (no rank)").
+SITE_ROW_FIELDS = {"rowId", "origin", "organizerBaseline", "name", "T", "qubits", "ladder", "ladderLabel",
+                   "createdAt", "pullRequestUrl", "submissionId", "trust", "detail"}
+
+
+def test_the_row_names_no_design_and_no_readout_because_the_site_contract_has_no_field_for_either():
+    """THE ROW/DESIGN SEAM (lane XD's finding), settled in integration wave 2 by lane XF.
+
+    XD found that `forshor_bot/leaderboard.py:_design` reads a design off the published ROW while `row_of`
+    copies no design key onto it, so the bot can never see a design-bearing row. The proposed fix was to add
+    the design identity to the row, "mirroring how the row already carries what it needs for `readout`".
+
+    IT MUST NOT BE ADDED, and this test is the record of why. Established from the code on both sides:
+
+      1. `rowSchema` is `z.strictObject({...rowFields, rank})` (results-v2.ts:209-215). A Zod strictObject
+         REJECTS unrecognised keys. `rowFields` (:194-207) names no `design` and no `readout`. So adding
+         either to `row_of` would make EVERY published row fail the contract lane XB pinned -- not just
+         design-bearing ones.
+      2. There is no key-shaped precedent to mirror. The row carries what it needs for `readout` NOT as a
+         key but through `ranked_price_of`, which substitutes the readout's own T and qubits into the row's
+         existing `T` / `qubits` fields. `row_of` has never copied a `readout` key, and the site has no
+         field for one.
+      3. The bot cannot read it from the panel either: the panel's `fullRun` is itself a strictObject whose
+         only optional price is `readout` (:408-412) and which has NO `qft` key at all. A design-bearing
+         panel is unpublishable for the same reason a design-bearing row would be.
+
+    So the absent-key branch of the bot's `_design` (absent means `reference`, which is statable) is always
+    the correct answer, because a design-bearing row cannot be published at all -- intake refuses the
+    compiled `submitted_full_run` key outright and the source gate at `intake_v2.py:278-280` stays closed.
+    `_design` is already fail-closed for anything else: an unrecognised design is kept verbatim and NOT
+    stated, rather than read as the default.
+
+    WHAT DID CHANGE, and why this guard now matters more than the comment it replaces. The bot justifies
+    itself partly on "the ranked price at mapping.py:234 still reads `readout`, never `qft`". That is now
+    STALE: lane WY's `ranked_price_of` does read `qft` (the owner's Tier 2 ruling), so a design-bearing
+    panel's row WOULD silently carry the projection's T and qubits with nothing on the row naming the
+    design -- exactly the "announce an option's score as if it were the plain one" harm the bot guards
+    against. The only things preventing it are the intake refusals and the absent site field, so this test
+    pins the field set executably instead of leaving it to a comment that has already drifted once.
+
+    Fails if `row_of` grows a `design` or `readout` key -- which would break the site contract -- or any
+    other key the site does not accept."""
+    for full in ({**ENGINE_FULL, "qft": {"T": 4.0, "qubits": 11}},
+                 {**ENGINE_FULL, "readout": {**ENGINE_FULL, "T": 5.0, "qubits": 12}},
+                 dict(ENGINE_FULL)):
+        panel = {"rowId": HEAD_SHA, "fullRun": full, "verification": {"stoMirror": None, "forshorPolicy": None}}
+        row = mapping.row_of(panel, origin="submission", name="t", created_at="x", pull_request_url=None,
+                             submission_id=None, detail="d")
+        assert "design" not in row, "the site's rowSchema is a strictObject with no design field"
+        assert "readout" not in row, "nor a readout field; the readout reaches the row as T and qubits"
+        assert set(row) <= SITE_ROW_FIELDS, sorted(set(row) - SITE_ROW_FIELDS)
+
+    # And the overlays reach the row the only way they can: by moving the row's own ranked numbers.
+    design_row = mapping.row_of(
+        {"rowId": HEAD_SHA, "fullRun": {**ENGINE_FULL, "qft": {"T": 4.0, "qubits": 11}},
+         "verification": {"stoMirror": None, "forshorPolicy": None}},
+        origin="submission", name="t", created_at="x", pull_request_url=None, submission_id=None, detail="d")
+    assert (design_row["T"], design_row["qubits"]) == (4.0, 11)
+
+
 def test_a_readout_and_a_design_together_refuse_rather_than_pick_a_precedence():
     """WS found that the two overlays do not compose, and the code says why: each re-derives the WHOLE run's
     census from the same frozen coherent result and returns a FINAL price rather than a census patch, the

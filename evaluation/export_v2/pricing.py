@@ -35,7 +35,9 @@ def _fix_bands_used(view: Dict[str, Any]) -> None:
 
 
 def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], *, measured: bool = False,
-                design: Optional[Dict[str, Any]] = None, pricer: Optional[Callable[..., Any]] = None) -> Dict[str, Dict[str, Any]]:
+                design: Optional[Dict[str, Any]] = None, pricer: Optional[Callable[..., Any]] = None,
+                primitive: Optional[Dict[str, Any]] = None,
+                preparation: Optional[Any] = None) -> Dict[str, Dict[str, Any]]:
     """Views for a `tcost` Policy at one delta: 'pp' or 'ptp' is the single-product view; 'full' adds the whole run's pricing.
     The policy is priced at the exact widths the boards use.
 
@@ -51,7 +53,14 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
     moves ab1f8887b1b50e56 to d3bda33d5ddd5dca). So the engine prices the coherent reference exactly as it always did, the
     design is applied on top of that frozen result -- mirroring the `measured` readout hook directly above -- and the
     overlay's answer is reported as `view["full"]["qft"]`. `fullalg.price_full` has no `design` parameter and must not grow
-    one."""
+    one.
+
+    `primitive` is the compiled `submitted_primitive` selector (lane XA) and `preparation` its attested catalyst words,
+    for the STANDALONE B2/B3 primitive on the single-product boards. Both default to None, and with None the
+    single-product branch is the call it has always been -- no key is added to the view, so every panel ever published is
+    byte-identical. Like `measured` and `design`, the primitive is priced OUTSIDE the engine, by
+    `primitive_overlay.project`, on top of the frozen default view; the engine's own default price in that view is not
+    touched, which is what lets XA's baseline digest stand unmoved."""
     eng = engine.load()
     delta = DELTA_VALUES[delta_key]
     P = policy.with_widths("exact")
@@ -98,6 +107,14 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
             if P.mode != want:
                 raise ValueError(f"a {P.mode} policy does not belong on the {board} board")
             view = eng.policy_view.view(P, N, delta, title)
+            if primitive:
+                # LANE XA's HOOK, applied in integration wave 2. The same shape as the two full-board hooks
+                # above: the engine prices the default exactly as it always did, and the overlay is applied
+                # ON TOP of that frozen view, so a request naming no primitive is byte-identical. The
+                # overlay prices the standalone B2/B3 primitive on the single-product boards only, which is
+                # why the hook is here and not in the `full` branch.
+                from .primitive_overlay import project
+                view["primitive"] = project(P, view, primitive, preparation=preparation)
             view["tables"] = _all_tables(eng, P)
             _fix_bands_used(view)
             out[board] = view

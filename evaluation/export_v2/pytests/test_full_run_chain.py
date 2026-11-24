@@ -466,3 +466,70 @@ def test_a_design_is_refused_at_every_delta_but_1e_2(delta):
     with pytest.raises(ValueError, match="delta 1e-2"):
         pricing.price_views(FakePolicy(), "t", delta, ["full"],
                             design=design_from(explicit_document({"data": BANDED})))
+
+
+# ------------------------------------------------- the QFT design and a Step 2 fallback share one budget
+
+
+def test_a_qft_design_and_a_step_2_fallback_cannot_be_asked_for_together(policy=None):
+    """HANDOFF 2 from integration wave 1, settled in wave 2 (lane XF). WT's sampled Step 2 B3 fallback
+    (`export_v2/sampled_fallback.py`) merges without textual conflict -- it adds only new files -- but it
+    overlaps this chain SEMANTICALLY, because both re-divide the same run-wide synthesis pool
+    `sto_currency.ROTATION_FRACTION * delta` (measured: ROTATION_FRACTION = 0.5, so the pool is 1/200 at
+    delta 1e-2). Establishing the relationship from the code, rather than settling it by merge order:
+
+    1. WT DOES NOT TAKE ITS OWN SHARE. `sampled_fallback.py` contains no reference to `sto_currency`,
+       `ROTATION_FRACTION`, `rotation_eps` or `ts_per_rotation`. It receives `eps` -- "the per-site
+       half-diamond" -- as a PARAMETER from its caller, and its `budget_seconds` is a wall-clock budget,
+       not an error budget. It also has no production caller anywhere in the tree: `cost_policy_fallback`
+       and `price_step2_budgeted` are referenced only by `test_sampled_fallback.py`. So there is no live
+       composition today, and WT cannot double-spend on its own.
+
+    2. BUT THE POOL HAS NO SLACK, so a second spender WOULD double-spend. The overlay partitions the pool
+       EXACTLY over the whole rotation census: the catalytic arm takes `deltaArm = pool * R_cat / R_total`
+       and the survivors keep the engine's unchanged eps, which satisfies
+       `R_synth * (pool / R_total) + deltaArm == pool` (measured on the real engine at delta 1e-2:
+       R_total 3802591380 = R_cat 350171640 + R_synth 3452419740, and the identity holds to a residual of
+       -8.7e-19). Every rotation in the run is already allocated. Step 2's phase-product rotations are part
+       of that same census, so pricing them a SECOND time against their own per-site eps would charge the
+       same budget twice and hand the submission free error -- the same defect the catalytic arm's own
+       docstring refuses ("would spend the catalysed rotations' slices twice ... and would hand catalysis
+       free error").
+
+    3. SO THE COMBINATION IS REFUSED, and already was, by name, at three independent places. This test pins
+       all three together with the reason, so none can be relaxed without confronting the arithmetic above.
+       It is the same call lane WY made for readout + design, for the same reason: two methods that each
+       re-divide one nonlinear budget cannot be composed by picking a precedence.
+    """
+    import re
+    from pathlib import Path as _Path
+
+    # 1. WT reads none of the currency, and nothing in production calls it.
+    source = _Path(qft_overlay.__file__).parent.joinpath("sampled_fallback.py").read_text()
+    for name in ("sto_currency", "ROTATION_FRACTION", "rotation_eps", "ts_per_rotation"):
+        assert name not in source, f"sampled_fallback now reads {name}: the budgets may no longer be independent"
+    production = [p for p in _Path(qft_overlay.__file__).parent.glob("*.py")
+                  if p.name not in ("sampled_fallback.py",)]
+    for path in production:
+        text = path.read_text()
+        assert "sampled_fallback" not in text, \
+            f"{path.name} now calls the sampled fallback: the double-spend analysis above must be redone"
+
+    # 2. The profile that selects a Step 2 fallback is refused by name, at the design step.
+    with pytest.raises(ValueError) as profile_refusal:
+        design_from(document("quotient-step2-fallback"))
+    assert "step2 := fallback" in str(profile_refusal.value)
+
+    # 3. An explicit design naming a phase-product step is refused, naming the step.
+    for step in ("step1", "step2", "step4", "step5"):
+        body = {"schema": "forshor.design-local/v1", "modmul": "reference",
+                "qft": {"data": BANDED}, "phase_product": {step: {"backend": "fallback"}}}
+        with pytest.raises(ValueError) as explicit_refusal:
+            full_run_design.design_of({"schema": "forshor.full-run-selection/v1", "design": body})
+        assert step in str(explicit_refusal.value)
+
+    # 4. And the overlay refuses the selector fields outright, so neither path can reach a price.
+    assert qft_overlay.OUT_OF_SCOPE == ("step2", "step4")
+    for field in qft_overlay.OUT_OF_SCOPE:
+        with pytest.raises(qft_overlay.QftOverlayRefused, match=re.escape(field)):
+            qft_overlay.parse_design({"data": BANDED, field: {"backend": "fallback"}})
