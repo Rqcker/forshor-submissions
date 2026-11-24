@@ -396,6 +396,36 @@ class RefusalDifferentiation(unittest.TestCase):
         self.assertIn('unsupported import/header', reason)
         self.assertEqual(self.AT_LINE.search(reason)[1], '2')
 
+    # --- F5: the message promised a rule the gate does not enforce -----------------------------
+
+    def test_several_approved_modules_on_one_import_line_are_still_accepted(self):
+        # Production change that would fail this: ENFORCING "one import command per line" by adding a
+        # len(modules) test to validate. Census finding F5: the gate has only ever tested membership,
+        # so this source is accepted today, and refusing it would change the ACCEPTED SET -- out of
+        # scope for a differentiation lane. The message was corrected instead; this test is what makes
+        # the correction the honest half of that choice.
+        validate('import ForShor.ShorVerification.Framework.Policy '
+                 'ForShor.ShorVerification.Submission.Decide\n'
+                 'namespace PolicySubmission\ndef points := #[1, 2, 3]\nend PolicySubmission\n')
+
+    def test_the_import_message_does_not_promise_a_rule_that_is_not_checked(self):
+        # Production change that would fail this: restoring "one import command per line" to
+        # IMPORT_REFUSAL without also enforcing it. A participant reading that clause would rewrite a
+        # file that was never refused for that reason, and would not learn which module was wrong.
+        # Census finding F5.
+        from policy_source import IMPORT_REFUSAL
+        self.assertNotIn('one import command per line', IMPORT_REFUSAL)
+        self.assertTrue(IMPORT_REFUSAL.startswith('Policy.lean imports must be the approved template modules'))
+
+    def test_an_unapproved_module_beside_an_approved_one_still_names_the_unapproved_one(self):
+        # Production change that would fail this: dropping the per-module report when several modules
+        # share a line. This is the case the gate DOES check, and the one the corrected message
+        # describes.
+        reason = self.reason(source(imports='import ForShor.ShorVerification.Framework.Policy '
+                                            'ForShor.OtherModule\n'))
+        self.assertIn('ForShor.OtherModule', reason)
+        self.assertNotIn('ForShor.ShorVerification.Framework.Policy,', reason)
+
 
 if __name__ == '__main__':
     unittest.main()

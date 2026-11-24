@@ -131,3 +131,50 @@ def test_absent_and_non_dict_documents_are_untouched():
     check_no_full_run_export({"schema": "forshor.policy-submission/v1"})
     check_no_full_run_export(None)
     check_no_full_run_export("not a document")
+
+
+# --- F1: a non-dict compiled document was a CRASH, not a refusal -------------------------------
+
+@pytest.mark.parametrize("document", [None, "not a document", 7, [], True])
+def test_a_compiled_document_that_is_not_an_object_is_refused_not_crashed(document):
+    # Production change that would fail this: removing the isinstance guard at the top of
+    # policy_options.check_coherent_export. `"submitted_design" in document` raises TypeError for
+    # None/int and `.get` raises AttributeError for a str/list, and intake's require_legacy_export
+    # catches only ValueError -- so intake reported {"failed": true, "error": "TypeError: ..."},
+    # exit 2, an INFRASTRUCTURE fault, for a document it had examined and would not price. Census
+    # finding F1. Reachable whenever the Lean executable prints a bare JSON scalar, which
+    # json.loads accepts.
+    with pytest.raises(ValueError) as refusal:
+        check_coherent_export(document)
+    reason = str(refusal.value)
+    assert COHERENT_ANCHOR in reason, reason                     # the anchor, so intake stages it as `format`
+    assert type(document).__name__ in reason, reason             # what ForShor actually printed
+    assert "JSON object" in reason, reason                       # what the route needs instead
+
+
+def test_the_non_dict_refusal_does_not_leak_a_python_exception_class():
+    # Production change that would fail this: re-raising the TypeError/AttributeError wrapped rather
+    # than refusing. A participant must not be shown a Python traceback type as the verdict.
+    for name in ("TypeError", "AttributeError"):
+        with pytest.raises(ValueError) as refusal:
+            check_coherent_export(None)
+        assert name not in str(refusal.value)
+
+
+def test_a_real_coherent_document_is_still_accepted():
+    # Production change that would fail this: a guard that also rejects well-formed documents. F1
+    # converts a CRASH into a refusal; it must not move the boundary for anything else. An empty
+    # object and an explicitly coherent export were accepted before and must stay accepted.
+    check_coherent_export({})
+    check_coherent_export({"schema": "forshor.policy-submission/v1"})
+    check_coherent_export({"schema": "forshor.policy-submission/v1", "submitted_readout": "coherent"})
+
+
+def test_the_full_run_route_still_passes_a_non_dict_through():
+    # Production change that would fail this: putting the F1 guard in check_no_full_run_export too.
+    # That function is a key-presence test reached from four routes (census C1), and refusing a
+    # non-dict there WOULD change the accepted set of the readout-qualification route, which is out
+    # of scope. F1 is fixed only where the crash was.
+    check_no_full_run_export(None)
+    check_no_full_run_export("not a document")
+    check_no_full_run_export(7)

@@ -116,7 +116,13 @@ def without_default_selectors(text):
 # here changes which sources are accepted or refused.
 SHIPPED_FULL_RUN_FORM = 'def submittedFullRunDesign : Shor.FullRunDesign := .reference'
 FULL_RUN_REFUSAL = 'submittedFullRunDesign requires dedicated nonpublishing full-run qualification'
-IMPORT_REFUSAL = 'Policy.lean imports must be the approved template modules, one import command per line'
+#: Finding F5: this used to end "one import command per line", a rule the gate has never enforced -- `import A B` with
+#: both modules approved is accepted, because `validate` only tests membership and never `len(modules)`. Enforcing the
+#: promise would refuse sources that are accepted today, which is a change to the accepted set and out of scope here,
+#: so the message is corrected to what the gate actually checks: every module named on an `import` line, however many
+#: there are, must be an approved template module, and every `import` must be in the header. The leading clause
+#: ("imports must be the approved template modules") is the anchor other code matches on and is unchanged.
+IMPORT_REFUSAL = 'Policy.lean imports must be the approved template modules, in the file\'s header'
 
 #: Per selector: the shipped declaration, the noun for a non-default value, the noun for the default, the route that
 #: does qualify it, and the pattern that recognises the default VALUE. `evaluation/intake_v2.py` classifies

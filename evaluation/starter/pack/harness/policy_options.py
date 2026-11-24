@@ -27,6 +27,14 @@ def check_no_full_run_export(document):
 
 def check_coherent_export(document):
     check_no_full_run_export(document)
+    # Finding F1: `submitted_design in document` raised TypeError for a non-dict and `.get` raised AttributeError,
+    # and `require_legacy_export` catches only ValueError, so intake reported {"failed": true} exit 2 -- an
+    # infrastructure fault -- for a document it had examined and would not price. A document that is not an object is
+    # refused here, in the same class as every other thing this route will not price. `check_no_full_run_export` keeps
+    # its key-presence test and still passes a non-dict through, so the full-run route's accepted set is untouched.
+    if not isinstance(document, dict):
+        raise ValueError(f"the compiled export {COHERENT_ROUTE}: ForShor printed {type(document).__name__} where a "
+                         "policy document was expected; this route reads a JSON object")
     if "submitted_design" in document:
         raise ValueError(f"compiled submitted_design metadata {COHERENT_ROUTE}")
     if "readout" in document:
