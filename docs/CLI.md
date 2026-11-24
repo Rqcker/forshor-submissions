@@ -40,6 +40,32 @@ submitted without a policy, and nothing else may accompany the pair), and
 `submit` commits it with the policy when it exists. The CLI never compiles or
 renders it. `status` is unchanged.
 
+## Circuit-design options
+
+`check` applies the same design-option rules as the hosted check, so a selector
+that will be refused on submission is refused locally first. The options are
+declared in the submission's Lean source only: a design key in the table policy
+JSON (`readout`, `qft`, `modmul`, `synthesis`, `phase_product`, or a
+`submitted*` name) is refused whatever its value, with *table policy JSON cannot
+select circuit design options (…); use the supported Lean policy interface*.
+
+Only the default design is submittable for a score: coherent readout, the exact
+logical QFT, Ross-Selinger synthesis and one-qubit negation. Leaving
+`submittedDesign`, `submittedPrimitive` and `submittedFullRunDesign` out of the
+file gives exactly that, and an explicit default declaration is identical to
+omission. Everything else those three names can say — measured readout, the
+standalone primitives, and the seven non-default full-run profiles — is a local
+qualification route: it is attested and priced locally, it is not accepted by
+hosted intake, and it gets no score. The refusals name the selector
+(*submittedDesign is not enabled for ordinary submissions; it requires local
+readout qualification*, *submittedPrimitive requires separate nonpublishing
+primitive qualification*, *submittedFullRunDesign requires dedicated
+nonpublishing full-run qualification*), and a qualified readout receipt offered
+to the publisher is refused with *qualified readout receipts are local only;
+publishing is not enabled*. The full option matrix, with all eight full-run
+profiles and the options that have no selector at all, is in the participant
+starter pack: `evaluation/starter/pack/SUBMISSION_FORMAT.md`, section 2.
+
 A local snapshot commit is made only inside the generated checker so the trusted
 changed-file check has concrete base/head identities. `check` leaves your original
 branch, index and source commits alone. A successful receipt includes the fetched

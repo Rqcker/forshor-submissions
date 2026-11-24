@@ -16,7 +16,7 @@ Everything a table submitter owns, a policy submitter owns once per band:
 
 | | what to write, per band |
 |---|---|
-| `k` | the number of limb registers, `1 < k ≤ 6` |
+| `k` | the number of limb registers; a submission takes `2 ≤ k ≤ 8` |
 | `pts` | the interpolation points, in the order the checkpoints consume them |
 | `ops` | the table |
 | `setup` | the `ShorLoweringSetup` record, with C1–C4 proved |
@@ -36,11 +36,22 @@ plus, optionally, one option on the policy:
 Then run
 
 ```bash
-lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
+lake build PolicySubmission forshor_policy_submission
+lake exe forshor_policy_submission --balanced > policy.json
 ```
 
 and if the build is green the policy is admissible. Nothing outside this file
-is edited.
+is edited. `--balanced` is what the full order-finding board prices: it implies
+exact register widths and prints the balanced IR templates. Without it the
+document is ForShor's default width scan, which is the board's labelled
+cross-check and not the board's own IR.
+
+The circuit-design selectors (`submittedDesign`, `submittedPrimitive`,
+`submittedFullRunDesign`) are deliberately absent from this template. Omitting
+them is the design a submission for a score uses; writing a default out in full
+is identical to omitting it, and every other value is a local, nonpublishing
+qualification route. See `SUBMISSION_FORMAT.md` section 2, "The design options,
+in three tiers".
 
 ## What `sorted` is, and why it is the only new obligation
 
