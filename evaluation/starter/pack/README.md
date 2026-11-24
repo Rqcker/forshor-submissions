@@ -25,7 +25,7 @@ Rotations are priced with Ross–Selinger, 3.075 log2(1/ε) + 0.86 T at ε = 0.5
 | `SUBMISSION_FORMAT.md` | The rules a submission must meet. Read this first. |
 | `SKILL.md` | The same workflow, written for AI agents (Claude and others). |
 | `starter.py` | `price`, `forshor-doc`, `template`, `lean-input`, `examples` (see below). |
-| `templates/` | `pp_policy.json` and `ptp_policy.json` (site policy JSON; both price as they stand), their Lean-checker inputs `*.lean-input.json`, `ptp.Policy.lean` (the PhaseTripleProduct submission file, from ForShor's `PTPPolicyTemplate.lean`) and `Policy.lean` (the PhaseProduct submission file: ForShor's shipped template, with the submission limits this challenge applies — `2 ≤ k ≤ 8`, the `--balanced` document the board prices, and a pointer to the design-option tiers). |
+| `templates/` | `pp_policy.json` and `ptp_policy.json` (site policy JSON; both price as they stand), their Lean-checker inputs `*.lean-input.json`, `ptp.Policy.lean` (the PhaseTripleProduct submission file, from ForShor's `PTPPolicyTemplate.lean`) and `Policy.lean` (the PhaseProduct submission file: ForShor's shipped template, with the submission limits this challenge applies — `2 ≤ k ≤ 8`, the `--balanced` document the board prices, and a pointer to the design options). |
 | `examples/` | The starting policies (built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024)), as site policy JSON and as submission files (`starting_pp`, `starting_ptp`), ForShor `21e129a`'s printed documents for its own shipped template (a format example, and the cross-check at scanned widths), a policy with a declared ladder (ignored, with a notice), `board_snapshot.json` (the starting rows of the boards) and `expected/*.json` (the pinned outputs `python starter.py examples --check` compares with). |
 | `harness/LEAN_CHECKS.md` | How to run the Lean checks. The build trees are not in the pack; the file says where they come from. |
 | `harness/policy_to_template.py` | The site's converter from a PP policy to a ForShor template (used by `starter.py template`). |
@@ -60,11 +60,11 @@ python starter.py examples --check     # prices every example and compares with 
   `oneQubit` only, and `starter.py` refuses a policy that asks for `scratch`.
 * **Circuit-design options** (readout, QFT, rotation-synthesis backend, modular multiplier, the per-step phase backends)
   are declared in the Lean file, **never in the table policy JSON** — a JSON design key is refused whatever its value. They
-  come in three tiers, listed in full in `SUBMISSION_FORMAT.md` section 2, "The design options, in three tiers":
-  **tier 1** is submittable for a score (the default design, whether left out or written out in full, plus several tables of
-  the same `k` per width band); **tier 2** — measured readout, the standalone primitives, the 7 non-default full-run
-  profiles — is attested and priced locally, is not accepted by hosted intake and gets **no score**; **tier 3** has no typed
-  selector at all. Read the tier before writing a selector, so a submission is not wasted.
+  are listed in full in `SUBMISSION_FORMAT.md` section 2, "The design options, and which of them can be submitted":
+  the **default design** is submittable for a score (whether left out or written out in full, plus several tables of
+  the same `k` per width band); **measured readout, the standalone synthesis primitives and any non-default full-run
+  design** are attested and priced locally, are not accepted by hosted intake and get **no score**; anything else has no
+  typed selector at all. Read an option's status before writing a selector, so a submission is not wasted.
 
 ## 3. Price it
 

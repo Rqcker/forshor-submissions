@@ -51,7 +51,7 @@ The circuit-design selectors (`submittedDesign`, `submittedPrimitive`,
 them is the design a submission for a score uses; writing a default out in full
 is identical to omitting it, and every other value is a local, nonpublishing
 qualification route. See `SUBMISSION_FORMAT.md` section 2, "The design options,
-in three tiers".
+and which of them can be submitted".
 
 ## What `sorted` is, and why it is the only new obligation
 
