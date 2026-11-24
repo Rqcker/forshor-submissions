@@ -6,17 +6,39 @@ DESIGN_KEYS = {"readout", "submittedDesign", "submitted_design", "submitted_read
                "phase_product", "synthesis", "synthesis_backend"}
 
 
+# A refusal has to say WHICH cause refused, because the causes need different participant actions:
+# an unsupported-but-valid request belongs on another route, a malformed one has to be rewritten.
+# The leading sentence of each message is the anchor the rest of the repository matches on and
+# never changes; the cause follows it after a colon. Nothing here changes what is refused.
+COHERENT_ROUTE = "is not supported by the coherent pricing route"
+#: Readouts a dedicated local route qualifies (never published). Anything else is a participant error.
+QUALIFIED_READOUTS = ("semiclassical",)
+
+
 def check_no_full_run_export(document):
     if isinstance(document, dict) and "submitted_full_run" in document:
-        raise ValueError("compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification")
+        selected = document["submitted_full_run"]
+        profile = selected.get("profile") if isinstance(selected, dict) else None
+        cause = (f"the export selects the full-run profile {profile!r}" if isinstance(profile, str)
+                 else "the export carries a `submitted_full_run` key with no profile")
+        raise ValueError("compiled submitted_full_run metadata requires dedicated nonpublishing full-run "
+                         f"qualification: {cause}")
 
 
 def check_coherent_export(document):
     check_no_full_run_export(document)
     if "submitted_design" in document:
-        raise ValueError("compiled submitted_design metadata is not supported by the coherent pricing route")
-    if "readout" in document or document.get("submitted_readout", "coherent") != "coherent":
-        raise ValueError("the compiled readout choice is not supported by the coherent pricing route")
+        raise ValueError(f"compiled submitted_design metadata {COHERENT_ROUTE}")
+    if "readout" in document:
+        raise ValueError(f"the compiled readout choice {COHERENT_ROUTE}: the export carries a legacy `readout` key; "
+                         "this route reads the compiled `submitted_readout` instead")
+    selected = document.get("submitted_readout", "coherent")
+    if selected != "coherent":
+        cause = ("it is qualified only by the local readout-qualification route, which does not publish"
+                 if selected in QUALIFIED_READOUTS else
+                 "it is not a readout mode this release offers; the coherent route prices 'coherent' only")
+        raise ValueError(f"the compiled readout choice {COHERENT_ROUTE}: the export selects "
+                         f"submitted_readout {selected!r} and {cause}")
 
 
 def check_table_options(document):
