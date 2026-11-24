@@ -9,6 +9,13 @@ BOARDS = ("full", "pp", "ptp")
 DELTA_KEYS = ("1e-2", "3e-4", "1e-4", "1e-6")
 DELTA_VALUES = {"1e-2": 0.01, "3e-4": 3e-4, "1e-4": 1e-4, "1e-6": 1e-6}
 
+#: The one delta the full-run QFT design surface is qualified at (`QFT-SURFACE-MAPPING.md` section 1). A publish request
+#: prices all four of `DELTA_KEYS`; the design applies to THIS panel and the other three are priced as the design-free
+#: panels of the same policy that they are -- the same policy at a different precision, which is what every published
+#: panel is -- rather than refusing the whole request. `pricing.price_views` and `request._build_request` share this name
+#: so the scope is stated once.
+DESIGN_DELTA = "1e-2"
+
 
 def ladder_of(label: str) -> List[Dict[str, Optional[int]]]:
     """'2048:8 -> 279:3 -> 35:leaf' -> [{width, k}], with k None for the base case."""
@@ -110,9 +117,9 @@ def full_run_of(view: Raw, lean_peak: Any = False) -> Raw:
         "T": f["T"], "TBase": f["T_base"], "rotations": f["rotations"], "tPerRotation": f["T_per_rotation"], "eps": f["eps"],
         **({"readout": f["readout"]} if "readout" in f else {}),
         # Same shape as `readout` directly above: present only when `price_views` was given a full-run design, so every
-        # panel priced without one -- which is every panel ever published -- is byte-identical. The projection is carried
-        # as evidence beside the engine's own price; it does NOT replace it (`price` at :229 still reads `readout`, not
-        # `qft`), because a full-run design is a nonpublishing qualification.
+        # panel priced without one -- which is every panel ever published -- is byte-identical. The panel keeps the
+        # engine's own coherent price in `T` beside it; which of the two a BOARD shows is `ranked_price_of`, and since
+        # the owner's Tier 2 ruling that is the projection's T, exactly as it is `readout`'s for the measured route.
         **({"qft": f["qft"]} if "qft" in f else {}),
         "toffoli": f["toffoli"], "clifford": f["clifford"], "cnot": f["cnot"],
         "qubits": f["qubits_peak"], "qubitsLayout": f["qubits_layout"], "peakExtra": f["peak_extra"],
@@ -226,12 +233,48 @@ def trust_of(verification: Raw) -> Raw:
             "cost": "python-not-proved-in-lean"}
 
 
+def ranked_price_of(full: Raw) -> Raw:
+    """The numbers a full-run board shows: the overlay's price when a panel carries one, the engine's own otherwise.
+
+    `readout` replaces T and qubits outright, because `readout_overlay.project` returns both for the measured circuit.
+    `qft` prices T ONLY: `qft_overlay.project` states that it does not re-derive a qubit count and that the engine's
+    frozen layout total is a sound UPPER bound on the banded run's qubits (banding removes a QFT's phase-product
+    workspace), so the ranked qubits stays the engine's own number and only T comes from the projection. With neither
+    key this returns the panel's own full-run block unchanged -- the object itself -- which is what every published row
+    was built from.
+
+    THE TWO OVERLAYS DO NOT COMPOSE, and the combination is refused rather than ranked on a guessed precedence. Each
+    re-derives the WHOLE run's census from the same frozen coherent result and returns a FINAL price, not a census
+    patch; the synthesis rate `sto_currency.ts_per_rotation(delta, R)` is nonlinear in the rotation total, so two
+    finals cannot be combined into one; and on the exponent register they make contradictory claims about the SAME
+    site -- the semiclassical readout deletes the exponent QFT (`readout_overlay.py:132-138`, `base -= iqft.base`)
+    while a design bands it (`qft_overlay.FAMILY_WIDTH["exponent"]`). The shipped intake gate reaches the same
+    conclusion from the other end: `policy_options.check_no_full_run_export` refuses a compiled document that carries
+    `submitted_full_run` at all, and both measured entry points in `request.py` run it before converting a selection,
+    so the pair has never had a defined price anywhere in this pipeline. Ranking the readout would silently drop the
+    design the submission asked for; ranking the projection would publish a coherent-census price for a measured
+    circuit. `pricing.price_views` refuses the same pair one step earlier, so nothing is priced either."""
+    if "readout" in full and "qft" in full:
+        raise ValueError(
+            "a full-run panel carries both a measured readout and a QFT design projection: the two overlays do not "
+            "compose (each re-prices the whole run from the same frozen coherent census and returns a final price, the "
+            "per-rotation synthesis rate is nonlinear in the rotation total, and on the exponent register the readout "
+            "removes the very QFT a design bands), so the ranked price is refused, not guessed")
+    if "readout" in full:
+        return full["readout"]
+    if "qft" in full:
+        # T from the projection, every other shown number from the engine's panel: the projection is the price now
+        # (the owner's Tier 2 ruling), exactly as `readout` is for the measured route, but it prices T alone.
+        return {**full, "T": full["qft"]["T"]}
+    return full
+
+
 def row_of(panel: Raw, *, origin: str, name: str, created_at: str, pull_request_url: Optional[str], submission_id: Optional[str],
            detail: str) -> Raw:
     """A ledger row (no rank): the numbers a board shows, taken from the panel they came from."""
     full = panel["fullRun"]
     label = full["ladderLabel"] if full else panel["ladderLabel"]
-    price = full.get("readout", full) if full else panel
+    price = ranked_price_of(full) if full else panel
     return {
         "rowId": panel["rowId"], "origin": origin, "name": name, "T": price["T"],
         "qubits": price["qubits"], "ladder": ladder_of(label), "ladderLabel": label,

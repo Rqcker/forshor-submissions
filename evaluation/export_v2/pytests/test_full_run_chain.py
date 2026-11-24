@@ -10,6 +10,11 @@ This is lane WP's deliverable: the join of lane WO (`full_run_design`, the `desi
       -> qft_overlay.project            (the hook at pricing.py:52-54, mirroring `measured` at :48-51)
       -> mapping.panel_of               (the panel carries `qft` beside the engine's own price)
 
+Lane WY then removed the two structural obstacles this chain still ran into -- a design-bearing publish request
+raised partway through its four-delta loop, and the projection was never the ranked price. See
+`test_design_price_plumbing.py`; the chain tests below are unchanged except where they stated an obstacle as a
+permanent fact.
+
 WHAT THIS LANE FOUND, and what these tests therefore pin
 --------------------------------------------------------------------------------------------------
 The two lanes were written against DIFFERENT contracts and only one of them landed:
@@ -286,10 +291,13 @@ def test_the_chain_never_asks_the_engine_for_a_design(monkeypatch):
 
 
 @pytest.mark.parametrize("delta", ["3e-4", "1e-4", "1e-6"])
-def test_a_design_is_refused_at_every_delta_but_1e_2_so_a_publish_request_cannot_price_one(delta):
-    """WO's guard, restated as the chain fact it implies: `request._build_request` prices all four deltas, so a
-    design that survives both gates still cannot complete a publish request. A full-run design is a
-    nonpublishing qualification. Fails if the 1e-2 guard in `price_views` is relaxed."""
+def test_a_design_is_refused_at_every_delta_but_1e_2(delta):
+    """WO's guard, still a guard. When this lane wrote it, `request._build_request` passed the design at all
+    four deltas, so this refusal fired partway through the pricing loop and a design-bearing document could not
+    complete a publish request at all -- the STRUCTURAL obstacle lane WY then removed by scoping the design to
+    `mapping.DESIGN_DELTA` in the request and leaving this guard exactly as it is. It stays a precondition on
+    the caller rather than a silent drop; `test_design_price_plumbing.py` pins the scoping and the byte
+    identity of the other three panels. Fails if the 1e-2 guard in `price_views` is relaxed."""
     class FakePolicy:
         mode, bands = "PhaseProduct", ()
 
