@@ -174,15 +174,34 @@ def _without_default_selectors(source: str) -> str:
     return without_default_selectors(strip_lean_comments(source))
 
 
+def _selector_cause(residual: str, selector: str) -> tuple:
+    """(line, cause) for the first remaining mention of `selector`, in the source gate's three cause classes.
+
+    The classifier is `scripts/ci/policy_source.py`'s, as the recogniser above is, so the CI source gate, this intake
+    and the publisher re-check cannot disagree about WHICH cause refused: a non-default selection is a valid request on
+    the wrong route, a mis-written default only has to be rewritten, and a bare mention has to be deleted. Those are
+    three different participant actions. Classification happens after the refusal is decided and changes nothing about
+    which sources are refused."""
+    sys.path.insert(0, str(HERE.parent))
+    from scripts.ci.policy_source import selector_cause
+    return selector_cause(residual, selector)
+
+
 def refuse_unqualified_design(source: str) -> None:
     """The old verifier would otherwise compile a new declaration and ignore it."""
-    if re.search(r"(?<![\w'])submittedDesign(?![\w'])", _without_default_selectors(source)):
-        raise Refused("format", "submittedDesign is not enabled for ordinary submissions; it requires local readout qualification")
+    residual = _without_default_selectors(source)
+    if re.search(r"(?<![\w'])submittedDesign(?![\w'])", residual):
+        number, cause = _selector_cause(residual, "submittedDesign")
+        raise Refused("format", "submittedDesign is not enabled for ordinary submissions; it requires local readout "
+                                f"qualification: line {number}, {cause}")
 
 
 def refuse_unqualified_primitive(source: str) -> None:
-    if re.search(r"(?<![\w'])submittedPrimitive(?![\w'])", _without_default_selectors(source)):
-        raise Refused("format", "submittedPrimitive requires separate nonpublishing primitive qualification")
+    residual = _without_default_selectors(source)
+    if re.search(r"(?<![\w'])submittedPrimitive(?![\w'])", residual):
+        number, cause = _selector_cause(residual, "submittedPrimitive")
+        raise Refused("format", "submittedPrimitive requires separate nonpublishing primitive qualification: "
+                                f"line {number}, {cause}")
 
 
 def check_legacy_full_run_source(source: str) -> None:

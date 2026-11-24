@@ -117,33 +117,60 @@ def without_default_selectors(text):
 SHIPPED_FULL_RUN_FORM = 'def submittedFullRunDesign : Shor.FullRunDesign := .reference'
 FULL_RUN_REFUSAL = 'submittedFullRunDesign requires dedicated nonpublishing full-run qualification'
 IMPORT_REFUSAL = 'Policy.lean imports must be the approved template modules, one import command per line'
-_SHIPPED_FULL_RUN_FORM_RULE = ('one public `def` at column 0 directly inside `namespace PolicySubmission`, with the '
-                               'repo type, the value on the same line, nothing continuing it on the next line, no '
-                               'attribute or modifier line before it, and declared exactly once')
-_DEFAULT_FULL_RUN_VALUE = re.compile(rf"(?:\.|{_SHOR}FullRunDesign\.)reference(?![\w'])")
-_SELECTOR_DECLARATION = re.compile(
+
+#: Per selector: the shipped declaration, the noun for a non-default value, the noun for the default, the route that
+#: does qualify it, and the pattern that recognises the default VALUE. `evaluation/intake_v2.py` classifies
+#: `submittedDesign` and `submittedPrimitive` through `selector_cause` below, so these three rows are the one place
+#: the source gate, the hosted intake and the publisher re-check agree about what each selector means.
+_SELECTOR_CAUSES = {
+    'submittedFullRunDesign': (SHIPPED_FULL_RUN_FORM, 'full-run design', 'full run',
+                               'only the dedicated nonpublishing full-run harness qualifies a full run (it never publishes)',
+                               re.compile(rf"(?:\.|{_SHOR}FullRunDesign\.)reference(?![\w'])")),
+    'submittedPrimitive': ('def submittedPrimitive : Shor.PrimitiveSynthesis := .rossSelinger', 'primitive synthesis',
+                           'Ross-Selinger primitive synthesis',
+                           'only the separate nonpublishing primitive-qualification harness qualifies a primitive synthesis (it never publishes)',
+                           re.compile(rf"(?:\.|{_SHOR}PrimitiveSynthesis\.)rossSelinger(?![\w'])")),
+    'submittedDesign': ('def submittedDesign : Shor.SubmissionDesign := { readout := .coherent }', 'submission design',
+                        'coherent readout design',
+                        'only the local readout-qualification route qualifies a readout design (it never publishes)',
+                        re.compile(r"(?:\.|(?:Shor\.)?Readout\.)coherent(?![\w'])")),
+}
+_SELECTOR_TOKEN = {name: re.compile(rf"(?<![\w']){name}(?![\w'])") for name in _SELECTOR_CAUSES}
+_SELECTOR_DECLARATION = {name: re.compile(
     r"^[ \t]*(?:@\[[^\]]*\][ \t]*|(?:private|protected|noncomputable|unsafe|partial|nonrec|scoped|local)[ \t]+)*"
-    r"(?:def|abbrev|instance|structure|inductive)[ \t]+submittedFullRunDesign(?![\w'])(?P<rest>.*)$")
+    rf"(?:def|abbrev|instance|structure|inductive)[ \t]+{name}(?![\w'])(?P<rest>.*)$") for name in _SELECTOR_CAUSES}
 
 
-def _full_run_cause(residual):
-    """(line number, cause) for the first `submittedFullRunDesign` left after the explicit default is consumed.
+def _shipped_form_rule(selector):
+    """The clause that says what the shipped form is, naming the board namespace(s) Lean reads the selector in."""
+    boards = _DEFAULT_FORMS[selector][1]
+    where = (f'`namespace {boards[0]}`' if len(boards) == 1
+             else ' or '.join(f'`namespace {board}`' for board in boards))
+    return (f'one public `def` at column 0 directly inside {where}, with the repo type, the value on the same line, '
+            'nothing continuing it on the next line, no attribute or modifier line before it, and declared exactly once')
 
-    `residual` is comment-stripped, default-stripped source; both transformations preserve the line count, so the
-    number is the participant's own line. Three classes, three actions: qualify elsewhere, rewrite, or delete."""
-    found = FULL_RUN_SELECTOR.search(residual)
+
+def selector_cause(residual, selector='submittedFullRunDesign'):
+    """(line number, cause) for the first `selector` left after its explicit default declaration is consumed.
+
+    Part of the intake contract: `evaluation/intake_v2.py` imports this to classify `submittedDesign` and
+    `submittedPrimitive` with the same three classes this gate uses for `submittedFullRunDesign`, so the two cannot
+    disagree about which cause refused. `residual` is comment-stripped, default-stripped source; both transformations
+    preserve the line count, so the number is the participant's own line. Three classes, three participant actions:
+    qualify elsewhere, rewrite, or delete. Nothing here decides whether a source is refused -- only why."""
+    shipped, value_noun, default_noun, route, default_value = _SELECTOR_CAUSES[selector]
+    found = _SELECTOR_TOKEN[selector].search(residual)
     number = residual.count('\n', 0, found.start()) + 1
-    declaration = _SELECTOR_DECLARATION.match(residual.split('\n')[number - 1])
+    declaration = _SELECTOR_DECLARATION[selector].match(residual.split('\n')[number - 1])
     if declaration is None:
         return number, ('the name is used here but does not declare a selector, and an ordinary submission may not '
                         'mention it at all; remove the mention')
     rest = declaration['rest']
     value = rest.split(':=', 1)[1].strip() if ':=' in rest else ''
-    if value and not _DEFAULT_FULL_RUN_VALUE.search(value):
-        return number, (f'this declaration selects the non-default full-run design `{value}`, and only the dedicated '
-                        'nonpublishing full-run harness qualifies a full run (it never publishes)')
-    return number, (f'this declaration selects the default full run, but not in the shipped form '
-                    f'`{SHIPPED_FULL_RUN_FORM}` ({_SHIPPED_FULL_RUN_FORM_RULE}); rewrite it, or omit it, and the '
+    if value and not default_value.search(value):
+        return number, (f'this declaration selects the non-default {value_noun} `{value}`, and {route}')
+    return number, (f'this declaration selects the default {default_noun}, but not in the shipped form '
+                    f'`{shipped}` ({_shipped_form_rule(selector)}); rewrite it, or omit it, and the '
                     'ordinary route accepts the policy')
 
 
@@ -151,7 +178,7 @@ def check_no_full_run_selector(text):
     """Reject the selector token in comment-stripped source, except the explicit default `.reference` declaration."""
     residual = without_default_selectors(text)
     if FULL_RUN_SELECTOR.search(residual):
-        number, cause = _full_run_cause(residual)
+        number, cause = selector_cause(residual, 'submittedFullRunDesign')
         raise ValueError(f'{FULL_RUN_REFUSAL}: line {number}, {cause}')
 
 
