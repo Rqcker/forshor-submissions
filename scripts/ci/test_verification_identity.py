@@ -68,6 +68,31 @@ class VerificationIdentityTests(unittest.TestCase):
             git("commit", "-q", "--no-gpg-sign", "-m", "Update only the imported guard")
             self.assertNotEqual(identity(root, "a" * 40)["fingerprint"], before["fingerprint"])
 
+    def test_committed_policy_source_gate_controls_receipt_reuse(self):
+        # Production change that would fail this: dropping scripts/ci/policy_source.py from INPUTS. Since W8 that module decides, through
+        # without_default_selectors, whether intake refuses or accepts a selector token, so a change to it must re-verify already-verified heads.
+        with tempfile.TemporaryDirectory(prefix="receipt-identity-") as d:
+            root = Path(d)
+
+            def git(*args):
+                subprocess.run([
+                    "git", "-c", "core.hooksPath=/dev/null", "-c", "user.name=Local Test",
+                    "-c", "user.email=local-test@example.invalid", *args], cwd=root, check=True,
+                    stdout=subprocess.DEVNULL)
+
+            git("init", "-q")
+            gate = root / "scripts/ci/policy_source.py"
+            gate.parent.mkdir(parents=True)
+            gate.write_text("# initial source gate\n")
+            git("add", "--", "scripts")
+            git("commit", "-q", "--no-gpg-sign", "-m", "Initial source gate")
+            before = identity(root, "a" * 40)
+            gate.write_text("# updated source gate\n")
+            self.assertEqual(identity(root, "a" * 40), before)      # uncommitted edits never move the fingerprint
+            git("add", "--", str(gate.relative_to(root)))
+            git("commit", "-q", "--no-gpg-sign", "-m", "Update only the source gate")
+            self.assertNotEqual(identity(root, "a" * 40)["fingerprint"], before["fingerprint"])
+
     def test_exact_accepted_receipt_skips_verification(self):
         expected = identity(Path('.'), 'a' * 40)
         receipt = {**expected, 'runId': '123', 'runAttempt': 1, 'pullRequest': 1}
