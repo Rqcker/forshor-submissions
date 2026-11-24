@@ -28,12 +28,14 @@ WO's threading -- the signature, the 1e-2 guard, the full-board guard, the refus
 `request._build_request` -- and routed the design to the overlay instead. `test_the_chain_never_asks_the_engine_
 for_a_design` pins that, so nobody re-adds the engine-side call.
 
-TWO GATES REFUSE, NOT ONE. `full_run_design` converts three of the seven profiles, but `qft_overlay` then
-refuses two of those three, because they ask for `backend: "catalytic"` on a QFT family and the catalytic arm
-re-prices every rotation in the run and adds a shared catalyst register -- a second axis, not a QFT band.
-Only `quotient-exact` prices today, and `quotient-exact` is BY CONSTRUCTION the engine's own price. So the
-merged chain is complete and fail-closed, but it cannot yet produce a DIFFERENTIATED full-run price at all.
-`test_only_quotient_exact_prices_today` states that as a fact rather than leaving it to be discovered.
+THE CHAIN NOW DIFFERENTIATES (lane WX). `full_run_design` converts three of the seven profiles, and all
+three now price. Two of them ask for `backend: "catalytic"` on a QFT family, which `qft_overlay` used to
+refuse as "a second axis"; WX priced that axis -- the arm's own proportional share of the run-wide synthesis
+pool, the shared catalyst register charged to Q, and `catalyst_prep_T` as a separate unconditional charge --
+so they produce a price that DIFFERS from the engine's own. `quotient-exact` remains BY CONSTRUCTION the
+engine's own price, which is what makes it the bit-identity guard. `test_three_profiles_price_and_four_refuse`
+states the current position as a fact rather than leaving it to be discovered; the four remaining profiles
+select a rotation or phase-product backend and still refuse at `full_run_design`, by name.
 """
 import copy
 import json
@@ -53,10 +55,11 @@ POLICY = DATA / "real/1bc92ac6e1e82ba3.policy.json"
 HEAD_PANELS = {"full": "998ad142a47fae05466541a3a92e0851cb86bac91876ce409ec4a98b3e0b19e3",
                "pp": "c83bf7a532a639d1b16d2e1e9b86b26e2bef36e8db96137e2d259a72d527179f"}
 
-#: Priced here (QFT families only, no catalytic arm).
+#: Priced on the Ross-Selinger currency with no construction substituted: the identity, by construction.
 PRICES = ("quotient-exact",)
-#: Converted by `full_run_design`, then refused by `qft_overlay`: `backend: "catalytic"` on a QFT family.
-REFUSED_BY_OVERLAY = ("quotient-catalytic", "quotient-banded-data-catalytic-work")
+#: `backend: "catalytic"` on a QFT family. These were refused at `qft_overlay` until lane WX priced the
+#: catalytic arm; they now price, and are the only profiles that produce a DIFFERENTIATED full-run price.
+CATALYTIC_PROFILES = ("quotient-catalytic", "quotient-banded-data-catalytic-work")
 #: Refused by `full_run_design` itself: they select a rotation or phase-product backend, not a QFT.
 REFUSED_BY_DESIGN = ("quotient-fallback-data-catalytic-work", "quotient-step2-fallback",
                      "split-step4-kicks", "split-step2-fallback-step4-kicks")
@@ -116,7 +119,7 @@ def test_a_compiled_document_prices_a_panel_carrying_a_qft_projection(policy, ep
 
     views = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"], design=design)
     projection = views["full"]["full"]["qft"]
-    assert projection["pricingRule"] == qft_overlay.RULE == "coppersmith-banded-qft-v1"
+    assert projection["pricingRule"] == qft_overlay.RULE == "qft-design-axis-v2"
     assert projection["epoch"] == qft_overlay.EPOCH == "ab1f8887b1b50e56"
     assert projection["ruleSha256"] == qft_overlay.rule_fingerprint()
     assert set(projection["families"]) == set(design)
@@ -202,36 +205,54 @@ def test_a_refused_selection_prices_nothing_and_builds_no_request(monkeypatch, p
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("profile", REFUSED_BY_OVERLAY)
-def test_the_catalytic_profiles_convert_then_refuse_at_the_overlay_naming_the_family(policy, profile):
-    """THE SECOND GATE, and the lane's main finding. These two profiles pass `full_run_design` -- they name only
-    QFT families -- and are then refused by `qft_overlay.parse_design`, which does not price `backend:
-    "catalytic"`: the catalytic closed form re-prices every rotation in the run and adds a shared catalyst
-    register, so honouring it as Ross-Selinger would be a silent default. Fails if either lane starts pricing
-    the catalytic arm without qualifying that second axis, or if the refusal stops naming the family."""
+@pytest.mark.parametrize("profile", CATALYTIC_PROFILES)
+def test_the_catalytic_profiles_price_a_differentiated_full_run(policy, epoch_id, profile):
+    """THE RELEASE DELIVERABLE, and what this test USED to assert. Both of these profiles were refused at
+    `qft_overlay.parse_design` as "a second axis"; lane WX priced that axis, so they now reach a real price
+    through the same four production steps. Each must differ from the engine's own price, must carry a
+    catalyst block with all three of its charges, and must charge the shared register to Q.
+
+    Fails if the catalytic arm is reverted (back to a refusal, or to the Ross-Selinger default), if the
+    catalyst register stops being charged to the qubit total, or if the panel stops carrying the block."""
     design = design_from(document(profile))
     assert design is not None
     assert any(choice["backend"] == "catalytic" for choice in design.values())
-    with pytest.raises(qft_overlay.QftOverlayRefused) as caught:
-        pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"], design=design)
-    message = str(caught.value)
-    assert "catalytic" in message
-    assert any(f"QFT family {family!r}" in message for family in design), "the refusal must name the family"
+
+    views = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"], design=design)
+    full, projection = views["full"]["full"], views["full"]["full"]["qft"]
+    catalyst = projection["catalyst"]
+
+    assert projection["identity"] is False
+    assert projection["T"] != full["T"], "a catalytic design must not price at the engine's own number"
+    assert projection["catalysed"] == sorted(f for f, c in design.items() if c["backend"] == "catalytic")
+    # All three charges present and nonzero.
+    assert catalyst["b"] >= qft_overlay.B_MIN and catalyst["deltaArm"] > 0.0      # its own budget share
+    assert catalyst["registerQubits"] == catalyst["b"]                            # the shared register
+    assert projection["qubitsPeak"] == full["qubits_peak"] + catalyst["b"]
+    assert catalyst["prepT"] > 0.0                                               # the prep allowance
+    assert catalyst["T"] == catalyst["cellsT"] + catalyst["prepT"]
+    assert projection["rotationsCatalysed"] > 0
+
+    built = panel(views["full"], epoch_id, "full")
+    assert built["fullRun"]["qft"] == projection, "the panel must carry the projection the pricer produced"
 
 
-def test_only_quotient_exact_prices_today(policy=None):
-    """The release-decision fact, kept as an assertion so it cannot rot: of the seven compiled profiles, six
-    refuse -- four at `full_run_design`, two at `qft_overlay` -- and the one that prices is the identity. The
-    merged chain is complete and fail-closed, but it cannot yet produce a differentiated full-run price.
-    Fails the moment a lane wires the catalytic arm or the out-of-scope selectors, which is the signal that
-    this statement needs rewriting."""
-    assert set(full_run_design.PROFILES) == {"reference", *PRICES, *REFUSED_BY_OVERLAY, *REFUSED_BY_DESIGN}
-    assert set(full_run_design.QFT_ONLY) == {*PRICES, *REFUSED_BY_OVERLAY}
-    for profile in REFUSED_BY_OVERLAY:
-        with pytest.raises(qft_overlay.QftOverlayRefused):
-            qft_overlay.parse_design(design_from(document(profile)))
+def test_three_profiles_price_and_four_refuse(policy=None):
+    """The release-decision fact, kept as an assertion so it cannot rot. REWRITTEN by lane WX: it used to say
+    six of the seven profiles refuse and the one that prices is the identity, so the chain "cannot yet produce
+    a DIFFERENTIATED full-run price at all". It now can. Three profiles price -- `quotient-exact` (the
+    identity, by construction) and the two catalytic ones (differentiated) -- and the four that select a
+    rotation or phase-product backend still refuse at `full_run_design`, by name.
+
+    Fails the moment the out-of-scope selectors are wired, which is the signal to rewrite this again."""
+    assert set(full_run_design.PROFILES) == {"reference", *PRICES, *CATALYTIC_PROFILES, *REFUSED_BY_DESIGN}
+    assert set(full_run_design.QFT_ONLY) == {*PRICES, *CATALYTIC_PROFILES}
+    for profile in CATALYTIC_PROFILES:
+        plan = qft_overlay.parse_design(design_from(document(profile)))
+        assert plan and any(backend == "catalytic" for backend, _t, _m in plan.values())
     plan = qft_overlay.parse_design(design_from(document("quotient-exact")))
     assert plan and all(target == "exact" for _backend, target, _max_error in plan.values())
+    assert all(backend == "ross_selinger" for backend, _t, _m in plan.values())
 
 
 # ------------------------------------------------------------------ the engine is never asked for a design

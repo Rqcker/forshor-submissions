@@ -22,8 +22,25 @@ BASELINE_ROTATIONS = 5180402331
 EXACT = {"backend": "ross_selinger", "target": "exact"}
 
 
+CATALYTIC_EXACT = {"backend": "catalytic", "target": "exact"}
+
+
 def _approx(max_error="1e-6", backend="ross_selinger"):
     return {"backend": backend, "target": "approximate", "max_error": max_error}
+
+
+#: `overlay.project(policy, full, {f: CATALYTIC_EXACT for f in FAMILIES})` -- the headline differentiated
+#: price. Every one of these is a closed form of the baseline above plus `catalysis/spec.py`; see
+#: `test_the_catalytic_headline_price_is_differentiated_and_pinned` for the derivation of each.
+CAT_ALL_T = 2104470524231.6128
+CAT_ALL_ROTATIONS_CATALYSED = 4102025031           # data 65950*8190 + work 78134*8190
+CAT_ALL_ROTATIONS_SYNTHESISED = 1078377300         # + scratch 178376*16380 + exponent 178191*1
+CAT_ALL_B = 42
+CAT_ALL_CELLS_T = 672732105084                     # R_cat * AND_T * (b - 1) = R_cat * 4 * 41
+CAT_ALL_PREP_T = 2820.6100827013543
+CAT_ALL_QUBITS_PEAK = 13538                        # 13496 + 42
+BASELINE_QUBITS_PEAK = 13496
+BASELINE_QUBITS_LAYOUT = 47474
 
 
 @pytest.fixture(scope="module")
@@ -151,6 +168,256 @@ def test_the_like_for_like_crosscheck_uses_the_engines_own_float_association(pri
         overlay.project(policy, full, {family: _approx("1e-6")})
 
 
+# --------------------------------------------------------------------------- the catalytic backend
+
+
+@pytest.fixture(scope="module")
+def cspec():
+    """`l2q_full.catalysis.spec`, importable only after `engine.load()` puts `fullalg` on the path."""
+    engine.load()
+    from l2q_full.catalysis import spec
+    return spec
+
+
+def test_the_four_closed_forms_are_pure_and_live_where_the_brief_says(cspec):
+    """PRE-REQUISITE, verified rather than assumed. The catalytic arm is priceable from `export_v2`
+    only because its four inputs are pure closed forms of their arguments -- no cache, no word bank, no
+    certified table lookup -- so calling them cannot read engine state that the epoch does not cover.
+    Each is checked against its own documented formula here; if any grows a cache or a table, these
+    equalities break and the arm must be refused again."""
+    assert cspec.AND_T == 4                                                      # spec.py:549
+    for R, dc in ((1, 1e-3), (5_180_402_331, 3.955e-3), (10**12, 1e-6)):         # spec.py:410
+        assert cspec.per_site_b(R, dc) == max(4, math.ceil(math.log2(math.pi * R / dc)))
+        assert cspec.per_site_b(R, dc) == cspec.per_site_b(R, dc)                # no memo drift
+    for b in (4, 21, 42, 126):
+        assert cspec.mixing_diamond_max(b) == 2.0 * math.pi ** 2 * 4.0 ** -b     # spec.py:603
+        lone = cspec.other_site_cost(b, mixing=False)                            # spec.py:719
+        assert (lone.route, lone.ands, lone.err_diamond) == ("K", b - 1, 0.0)
+        assert lone.err_op == math.pi * 2.0 ** -b                                # "turn unknown -> worst case"
+        assert cspec.other_site_cost(b).err_diamond == cspec.mixing_diamond_max(b)
+        m = b - 3                                                                # spec.py:736
+        assert cspec.catalyst_prep_T(b, 1e-6) == m * cspec.ross_selinger_t(1e-6 / m) + 1.0
+
+
+@pytest.mark.slow
+def test_the_catalytic_headline_price_is_differentiated_and_pinned(priced, cspec):
+    """THE RELEASE HEADLINE. A catalytic design must produce a price DIFFERENT from the default, and
+    every term of it must be the engine's or `catalysis/spec.py`'s own closed form -- not a constant
+    chosen to make a number move. Reverting `project`'s catalytic arm (so `backend: "catalytic"` is
+    refused again, or priced at the Ross-Selinger default) fails this test first."""
+    policy, full = priced
+    out = overlay.project(policy, full, {f: CATALYTIC_EXACT for f in overlay.FAMILIES})
+    cat = out["catalyst"]
+
+    # DIFFERENTIATED: the whole point of the release.
+    assert out["T"] != full["T"]
+    assert out["T"] == CAT_ALL_T
+    assert out["identity"] is False and out["catalysed"] == sorted(overlay.FAMILIES)
+
+    # The census is UNCHANGED -- `target: "exact"` substitutes no construction. Only the currency moved.
+    assert out["TBase"] == full["T_base"] == BASELINE_T_BASE
+    assert out["rotations"] == full["rotations"] == BASELINE_ROTATIONS
+    assert out["tPerRotation"] == full["T_per_rotation"]
+
+    # Every term, re-derived here from the engine and the spec.
+    assert cat["b"] == CAT_ALL_B == cspec.per_site_b(cat["rotationsCatalysed"], cat["deltaCells"])
+    assert out["rotationsCatalysed"] == CAT_ALL_ROTATIONS_CATALYSED
+    assert out["rotationsSynthesised"] == CAT_ALL_ROTATIONS_SYNTHESISED
+    assert out["rotationsSynthesised"] + out["rotationsCatalysed"] == out["rotations"]
+    assert cat["andsPerSite"] == cspec.other_site_cost(cat["b"], mixing=False).ands == CAT_ALL_B - 1
+    assert cat["cellsT"] == CAT_ALL_CELLS_T == out["rotationsCatalysed"] * cspec.AND_T * cat["andsPerSite"]
+    assert cat["prepT"] == CAT_ALL_PREP_T == cspec.catalyst_prep_T(cat["b"], cat["prepBudget"])
+    assert out["T"] == out["TBase"] + out["rotationsSynthesised"] * out["tPerRotation"] \
+        + cat["cellsT"] + cat["prepT"]
+
+
+@pytest.mark.slow
+def test_the_catalyst_register_is_charged_to_the_qubit_count(priced):
+    """SUB-PROBLEM 2. The catalytic arm adds a SHARED b-qubit phase-gradient catalyst that is live for
+    the whole run, and Q feeds the ranked Q x T. A T-only catalytic price would understate Q and so
+    understate the product. Deleting `catalystQubits` from the qubit totals -- reporting the engine's
+    frozen layout as if the register were free -- fails this."""
+    policy, full = priced
+    out = overlay.project(policy, full, {f: CATALYTIC_EXACT for f in overlay.FAMILIES})
+    b = out["catalyst"]["b"]
+    assert out["catalystQubits"] == b == CAT_ALL_B
+    assert full["qubits_peak"] == BASELINE_QUBITS_PEAK and full["qubits"] == BASELINE_QUBITS_LAYOUT
+    assert out["qubitsPeak"] == BASELINE_QUBITS_PEAK + b == CAT_ALL_QUBITS_PEAK
+    assert out["qubitsUpperBound"] == BASELINE_QUBITS_LAYOUT + b
+    assert out["qubitsPeak"] > full["qubits_peak"]              # the delta is real, not cosmetic
+    assert out["qubitTimesT"] == out["qubitsPeak"] * out["T"]
+    assert out["qubitTimesT"] > full["qubits_peak"] * full["T"]
+
+
+@pytest.mark.slow
+def test_one_shared_register_serves_every_catalytic_family(priced):
+    """The catalyst is SHARED (one `PhaseGradientState(b)` restored after every kick), not one register
+    per family. Charging b per catalytic family would scale the qubit delta with the number of families
+    and fails this: one family and four families pay the same register."""
+    policy, full = priced
+    one = overlay.project(policy, full, {"exponent": CATALYTIC_EXACT})
+    four = overlay.project(policy, full, {f: CATALYTIC_EXACT for f in overlay.FAMILIES})
+    assert one["catalystQubits"] == four["catalystQubits"] == four["catalyst"]["b"]
+    assert one["qubitsPeak"] == four["qubitsPeak"]
+    assert one["catalyst"]["families"] == ["exponent"]
+    assert four["catalyst"]["families"] == sorted(overlay.FAMILIES)
+    assert one["T"] != four["T"]                      # the T side still differentiates them
+
+
+@pytest.mark.slow
+def test_the_catalytic_arm_takes_its_own_share_of_the_run_wide_synthesis_budget(priced, cspec):
+    """SUB-PROBLEM 1. Catalysis REPLACES Ross-Selinger for the rotations it covers, so it must be
+    charged its own share of the one run-wide synthesis pool (`sto_currency.ROTATION_FRACTION * delta`
+    = 1/200 at delta = 1e-2), not be handed free error. The partition is exact: the pool is divided
+    evenly over the rotation census exactly as `sto_currency.rotation_eps` divides it, and the
+    catalysed rotations take the slices that were theirs. Two failures this catches:
+      * giving the arm no budget at all (catalysis for free), and
+      * re-dividing the pool over the SURVIVING rotations only, which spends the catalysed rotations'
+        slices twice -- once on the survivors' eps and once on the catalyst's b."""
+    policy, full = priced
+    out = overlay.project(policy, full, {f: CATALYTIC_EXACT for f in overlay.FAMILIES})
+    cat = out["catalyst"]
+    eng = engine.load()
+    pool = eng.fullalg.sc.ROTATION_FRACTION * full["delta"]
+    assert pool == 1.0 / 200.0                                   # DELTA / 2 at delta = 1e-2
+    assert cat["pool"] == pool
+
+    # The arm's share is its rotations' share of the census, and nothing else.
+    assert cat["deltaArm"] == pool * out["rotationsCatalysed"] / out["rotations"]
+    assert 0.0 < cat["deltaArm"] < pool
+    # The survivors keep the engine's OWN per-rotation eps, unchanged. This is what makes it a
+    # partition rather than a re-division: no rotation's slice is spent twice.
+    assert out["tPerRotation"] == full["T_per_rotation"]
+    assert out["epsSynthesised"] == full["eps"] == eng.fullalg.sc.rotation_eps(full["delta"], out["rotations"])
+    spent = out["rotationsSynthesised"] * out["epsSynthesised"] + cat["deltaArm"]
+    assert spent == pytest.approx(pool, rel=1e-12)
+    # And the arm really is spent: prep + cells exhaust it, and the charged error fits inside it.
+    assert cat["prepBudget"] + cat["deltaCells"] == pytest.approx(cat["deltaArm"], rel=1e-12)
+    assert 0.0 < cat["errOpCharged"] <= cat["deltaCells"]
+
+
+@pytest.mark.slow
+def test_catalytic_is_not_priced_on_ross_selinger_currency(priced):
+    """THE SILENT DEFAULT THE RELEASE RULE FORBIDS. The catalysed rotations must cost
+    `AND_T * (b - 1)` T each (Ands into the catalyst), NOT `tPerRotation` T each. At this policy the
+    two differ by a wide margin in the EXPENSIVE direction -- 164 T per catalysed site against the
+    engine's 123.596 T per synthesised rotation -- so an overlay that quietly kept the Ross-Selinger
+    rate would report a CHEAPER price than the truth, which is the exact failure mode."""
+    policy, full = priced
+    out = overlay.project(policy, full, {f: CATALYTIC_EXACT for f in overlay.FAMILIES})
+    cat = out["catalyst"]
+    rs_rate, cat_rate = out["tPerRotation"], cat["tPerSite"]
+    assert cat_rate == 4 * (cat["b"] - 1) == 164
+    assert rs_rate == pytest.approx(123.59639006403667)
+    assert cat_rate != rs_rate
+    would_have_been_rs = out["rotationsCatalysed"] * rs_rate
+    assert cat["cellsT"] != would_have_been_rs
+    assert cat["cellsT"] > would_have_been_rs                 # catalysis is DEARER here, and we say so
+    assert out["T"] > full["T"]
+
+
+@pytest.mark.slow
+def test_the_catalyst_preparation_is_a_separate_unconditional_charge(priced, cspec):
+    """SUB-PROBLEM 3. `catalyst_prep_T` is a separately certified gradient-preparation allowance: the
+    b - 3 genuine ZPow rotations of `PhaseGradientState(b)` plus its 1 T, synthesised against the arm's
+    own prep share. It is charged whenever a catalyst exists, even though the kicks themselves are
+    priced as Ands and even when the rounding they do is free. Making prep conditional -- on the band,
+    on inexactness, on anything -- fails this, as does folding it into `cellsT`."""
+    policy, full = priced
+    for design in ({f: CATALYTIC_EXACT for f in overlay.FAMILIES},
+                   {"exponent": CATALYTIC_EXACT},
+                   {"data": _approx("25e-5", backend="catalytic")}):
+        cat = overlay.project(policy, full, design)["catalyst"]
+        assert cat["prepT"] > 0.0
+        assert cat["prepT"] == cspec.catalyst_prep_T(cat["b"], cat["prepBudget"])
+        assert cat["T"] == cat["cellsT"] + cat["prepT"] and cat["cellsT"] != cat["T"]
+        assert cat["prepBudget"] == overlay.PREP_FRACTION * cat["deltaArm"]
+        assert cat["prepRotations"] == cat["b"] - 3
+
+
+@pytest.mark.slow
+def test_the_deterministic_arm_is_the_conservative_one(priced, cspec):
+    """The overlay charges the DETERMINISTIC round-to-nearest error (`other_site_cost(b, mixing=False)`,
+    operator norm pi 2^-b per site), which is the metric the engine's delta is stated in and the metric
+    `per_site_b` budgets. The mixed arm (D5) would be cheaper in error and so admit a smaller b, but it
+    buys that with classical randomness and reports a diamond/TV bound instead. Switching the overlay
+    to `mixing=True` without re-deriving the b rule would charge the budget in the wrong metric; this
+    pins that the arm actually chosen is the worst case of the two."""
+    policy, full = priced
+    cat = overlay.project(policy, full, {f: CATALYTIC_EXACT for f in overlay.FAMILIES})["catalyst"]
+    assert cat["mixing"] is False
+    assert cat["errOpCharged"] == cat["rotationsCatalysed"] * math.pi * 2.0 ** -cat["b"]
+    assert cat["errMixedTV"] == cat["rotationsCatalysed"] * 0.5 * cspec.mixing_diamond_max(cat["b"])
+    assert cat["errOpCharged"] > cat["errMixedTV"]             # deterministic is the upper bound
+
+
+@pytest.mark.slow
+def test_an_exact_target_with_a_catalytic_backend_leaves_the_construction_untouched(priced):
+    """The owner's two axes are ORTHOGONAL: `target` chooses the construction, `backend` chooses the
+    currency its rotations are synthesised in. So `catalytic` + `exact` must leave the family's native
+    `PolicyQFT` template exactly as the engine built it -- no `ReferenceQFT`, no band -- and move only
+    the currency. Substituting the exact ladder here costs 14.8x T and fails this."""
+    policy, full = priced
+    out = overlay.project(policy, full, {f: CATALYTIC_EXACT for f in overlay.FAMILIES})
+    assert out["substituted"] == []                     # no construction was replaced
+    assert out["TBase"] == full["T_base"] and out["rotations"] == full["rotations"]
+    for family in overlay.FAMILIES:
+        record = out["families"][family]
+        assert record["target"] == "exact" and record["backend"] == "catalytic"
+        assert record["kMax"] is None and record["banded"] is False
+        assert record["realization"].startswith("unchanged:")
+        assert record["currency"] == "catalytic"
+
+
+@pytest.mark.slow
+def test_the_four_axis_combinations_all_price_and_all_differ(priced):
+    """The release ships an AXIS, so all four corners of exact/approximate x ross_selinger/catalytic
+    must price, and they must price differently. A collapse of any corner onto another -- the backend
+    ignored, or the target ignored -- fails this."""
+    policy, full = priced
+    corners = {
+        ("ross_selinger", "exact"): {"work": EXACT},
+        ("ross_selinger", "approximate"): {"work": _approx("25e-5")},
+        ("catalytic", "exact"): {"work": CATALYTIC_EXACT},
+        ("catalytic", "approximate"): {"work": _approx("25e-5", backend="catalytic")},
+    }
+    prices = {k: overlay.project(policy, full, d)["T"] for k, d in corners.items()}
+    assert prices[("ross_selinger", "exact")] == full["T"]        # the identity corner
+    assert len(set(prices.values())) == 4, prices
+
+
+@pytest.mark.slow
+def test_catalysis_prices_the_rotations_that_survive_banding(priced):
+    """COMPOSITION. When a family is both banded and catalytic, the catalyst must price the band's
+    rotation count, not the native template's: banding happens first and removes rotations the
+    catalyst then never sees. Catalysing the pre-band count would over-charge the arm and fails this."""
+    policy, full = priced
+    banded_only = overlay.project(policy, full, {"work": _approx("25e-5")})
+    both = overlay.project(policy, full, {"work": _approx("25e-5", backend="catalytic")})
+    record = both["families"]["work"]
+    # Same construction, same census: banding is unaffected by the currency choice.
+    assert (both["TBase"], both["rotations"]) == (banded_only["TBase"], banded_only["rotations"])
+    assert record["banded"] is True and record["currency"] == "catalytic"
+    assert both["rotationsCatalysed"] == record["bandedRotations"] * record["count"]
+    assert both["rotationsCatalysed"] < record["exactRotations"] * record["count"]
+    assert both["T"] != banded_only["T"]
+
+
+@pytest.mark.slow
+def test_b_depends_on_the_run_wide_census_not_on_how_much_is_catalysed(priced, cspec):
+    """A PROPERTY OF THE PARTITION, pinned because it is the check that the share is proportional. Each
+    catalysed site is allotted the same slice pool / R_total that the engine allots each rotation, so
+    the per-site requirement pi 2^-b <= slice -- and hence b -- is set by the run-wide census alone and
+    is identical whether one family or four are catalysed. If b ever varies with the catalysed count at
+    a FIXED census, the arm is no longer taking exactly its own share."""
+    policy, full = priced
+    bs = {tuple(sorted(d)): overlay.project(policy, full, d)["catalyst"]["b"]
+          for d in ({"exponent": CATALYTIC_EXACT}, {"data": CATALYTIC_EXACT},
+                    {"data": CATALYTIC_EXACT, "work": CATALYTIC_EXACT},
+                    {f: CATALYTIC_EXACT for f in overlay.FAMILIES})}
+    assert set(bs.values()) == {CAT_ALL_B}, bs
+
+
 # --------------------------------------------------------------------------- the precision band
 
 
@@ -200,16 +467,41 @@ def test_an_unrecognised_backend_is_refused_and_names_the_family_and_the_value()
     assert "reported, not priced at the default" in str(error.value)
 
 
-def test_the_catalytic_backend_is_reported_not_priced_as_ross_selinger():
-    """The catalytic closed form exists in `catalysis/spec.py` (per_site_b:410, other_site_cost:719,
-    mixing_diamond_max:603, catalyst_prep_T:736 -- all pure, no cache, no word bank) but it re-prices
-    every rotation in the run and adds a catalyst register, which is a separate axis. Making the
-    overlay accept `catalytic` and price it on the Ross-Selinger currency would be exactly the silent
-    default the release rule forbids, and fails this."""
+def test_the_catalytic_backend_parses_rather_than_refusing():
+    """WAS a refusal (lane WM: "a second axis"). It is now PRICED -- the three sub-problems are handled
+    in `project`: the arm takes its own proportional share of the synthesis pool, the shared catalyst
+    register is charged to Q, and `catalyst_prep_T` is a separate unconditional charge. `parse_design`
+    must therefore accept the backend on every family and on both targets. The pricing itself is pinned
+    by `test_the_catalytic_headline_price_is_differentiated_and_pinned`."""
+    assert overlay.parse_design({"exponent": _approx("1e-6", backend="catalytic")}) == \
+        {"exponent": ("catalytic", "approximate", "1e-6")}
+    assert overlay.parse_design({f: CATALYTIC_EXACT for f in overlay.FAMILIES}) == \
+        {f: ("catalytic", "exact", None) for f in overlay.FAMILIES}
+
+
+@pytest.mark.slow
+def test_a_catalytic_family_with_no_rotations_to_catalyse_is_refused(priced, monkeypatch):
+    """FAIL CLOSED, naming the family and the value. A catalyst exists only to absorb rotations; a
+    request to catalyse a family that contributes none has no priceable arm, and must be reported
+    rather than priced as the untouched default."""
+    policy, full = priced
+    monkeypatch.setattr(overlay, "_catalysed_rotations", lambda *a, **kw: 0)
     with pytest.raises(overlay.QftOverlayRefused) as error:
-        overlay.parse_design({"exponent": _approx("1e-6", backend="catalytic")})
+        overlay.project(policy, full, {"exponent": CATALYTIC_EXACT})
     assert "exponent" in str(error.value) and "catalytic" in str(error.value)
-    assert "ross_selinger" in str(error.value)
+    assert "0 rotations" in str(error.value)
+
+
+@pytest.mark.slow
+def test_a_catalyst_wider_than_the_specs_own_range_is_refused(priced, monkeypatch):
+    """FAIL CLOSED. `catalysis.budget.choose_b` searches b in [4, 126]; a budget so tight that
+    `per_site_b` lands outside that range is outside the qualified closed form, so the overlay reports
+    it instead of extrapolating. Raising `B_MAX` past the spec's own cap fails this."""
+    policy, full = priced
+    monkeypatch.setattr(overlay, "B_MAX", 8)
+    with pytest.raises(overlay.QftOverlayRefused) as error:
+        overlay.project(policy, full, {"exponent": CATALYTIC_EXACT})
+    assert "exponent" in str(error.value) and "42" in str(error.value) and "[4, 8]" in str(error.value)
 
 
 def test_an_unrecognised_target_is_refused():

@@ -1,4 +1,4 @@
-"""Coppersmith-banded QFT pricing for the compiled QFT design axis, using the frozen coherent engine.
+"""The compiled QFT design axis -- construction band x synthesis backend -- priced on the frozen coherent engine.
 
 Local qualification only: this module does not grant publication authority, and it is NOT an epoch
 input. It lives outside `evaluation/engine` for the same reason `pricing._all_tables` does -- so that
@@ -39,6 +39,62 @@ makes the all-exact design bit-identical to today's price, and it is what `qft.p
 default `None` keeps the exact full ladder, "the previous behaviour, unchanged". Only an `approximate`
 target substitutes anything.
 
+TWO ORTHOGONAL AXES, per family (owner ruling 2026-11-24). `target` chooses the CONSTRUCTION
+(`exact` = the engine's native `PolicyQFT` template untouched, `approximate` = a Coppersmith-banded
+`ReferenceQFT`); `backend` chooses the CURRENCY its surviving rotations are paid in (`ross_selinger` =
+the engine's own synthesis law, `catalytic` = merged catalysis). All four corners price, and all four
+price differently. The quotient/split PROFILE customization is not part of this release (deferred),
+which is why no topology or `modmul` field appears anywhere below.
+
+THE CATALYTIC ARM, and the three things that make it harder than a band
+-----------------------------------------------------------------------------------------------------
+Catalysis replaces Ross-Selinger for the rotations it covers: instead of synthesising each rotation to
+operator-norm tolerance eps, every rotation site becomes an ADDITION of its rounded turn into one
+shared `PhaseGradientState(b)` catalyst, which is restored afterwards. The overlay reads only
+`(rotation-free T, rotation count)` from `cost_conventions.split` -- it has no per-site turn, no row
+geometry, no resolution -- so the ONLY sound price for a catalysed site is
+`spec.other_site_cost(b)`'s "turn unknown -> worst case": one `CtrlAddConstIntoCatalyst(b, k)` of
+`b - 1` Ands, at `spec.AND_T` = 4 T each. That is an upper bound on every site the engine could have
+been pricing, including the merged twiddle rows that would in fact be cheaper.
+
+Three charges, all three priced here. Pricing catalytic on Ross-Selinger currency, or omitting any of
+these, would be the silent default the release rule forbids:
+
+  1. ITS OWN SHARE OF THE RUN-WIDE SYNTHESIS BUDGET. There is one pool, `ROTATION_FRACTION * delta`
+     (`sto_currency.py`: 0.5 * delta, = 1/200 at delta = 1e-2), and the engine divides it EVENLY over
+     the run's rotation census (`sto_currency.rotation_eps(delta, R) = 0.5 delta / R`). The catalytic
+     arm takes exactly the slices belonging to the rotations it absorbs:
+
+         deltaArm = pool * R_catalysed / R_total
+
+     and the surviving Ross-Selinger rotations keep the engine's OWN unchanged per-rotation eps. The
+     sum is exactly the pool: `R_synth * (pool / R_total) + deltaArm == pool`. This is a PARTITION, not
+     a re-division. Re-dividing the pool over the survivors only (`ts_per_rotation(delta, R_total -
+     R_catalysed)`) would spend the catalysed rotations' slices twice -- once widening the survivors'
+     eps and again buying the catalyst's b -- and would hand catalysis free error.
+     A consequence worth knowing: because the share is proportional, `pi R_cat / deltaCells` is
+     independent of R_cat, so b is set by the run-wide census and delta alone and is the same whether
+     one family or four are catalysed. One shared register, one b, one prep charge.
+
+  2. THE SHARED CATALYST REGISTER IS CHARGED TO Q. The b-qubit gradient is live for the whole run and Q
+     feeds the ranked Q x T, so a T-only catalytic price would be wrong. `qubitsPeak` and
+     `qubitsUpperBound` both carry `+ catalystQubits`, and `qubitTimesT` is reported so the product is
+     not left to the reader. The register is SHARED across catalytic families, so it is charged once.
+
+  3. `catalyst_prep_T` IS A SEPARATE, UNCONDITIONAL CHARGE. Preparing the gradient is a separately
+     certified allowance -- the `b - 3` genuine ZPow rotations of `PhaseGradientState(b)` plus its 1 T,
+     Ross-Selinger-synthesised against the arm's own prep share (`PREP_FRACTION` of `deltaArm`, the
+     `prep_fraction` of the spec's own `choose_b_v1`). It is charged whenever a catalyst exists, even
+     though the kicks are paid in Ands and even when the rounding they perform is free.
+
+WHICH ERROR METRIC. The overlay charges the DETERMINISTIC arm, `other_site_cost(b, mixing=False)`:
+operator-norm `pi 2^-b` per site. That is the metric the engine's delta is stated in (an RS tolerance
+is an operator-norm tolerance) and it is exactly the bound `spec.per_site_b` inverts
+(`R pi 2^-b <= deltaCells`). The mixed arm (D5) would admit a smaller b, but it buys that with a
+classical draw per kick and reports a diamond/TV bound instead -- a different metric. For every
+b >= 2 the deterministic charge is the larger, so the arm taken here is the worst case of the two; the
+receipt reports both so the choice is visible.
+
 SCOPE. QFT families only: `data`, `work`, `scratch`, `exponent`. `step2 := fallback` and
 `step4 := selectiveKick` are fields of the same compiled selector record but are not symbolic,
 deterministic or closed-form -- they need certified word banks -- and are explicitly out of scope; a
@@ -58,7 +114,7 @@ from .canon import epoch_of
 from .mapping import DELTA_VALUES
 
 EPOCH = "ab1f8887b1b50e56"
-RULE = "coppersmith-banded-qft-v1"
+RULE = "qft-design-axis-v2"
 
 #: The QFT register families this overlay prices, and the layout width each one's QFT site runs at
 #: (`site_engine/fullalg.py:187-199` `_site_label`: "QFT on data+1", "QFT on work", "Step 4 cmpLtNW:
@@ -71,6 +127,35 @@ TARGETS = ("exact", "approximate")
 
 #: Selector fields of the same compiled record that this overlay must not price (see SCOPE above).
 OUT_OF_SCOPE = ("step2", "step4")
+
+#: The share of the catalytic arm's error budget spent preparing the gradient rather than rounding
+#: turns into it. This is the spec's OWN number: the `prep_fraction` default of
+#: `catalysis/spec.py:393 choose_b_v1`, which splits a catalytic budget the same way.
+PREP_FRACTION = 1e-3
+#: The catalyst width range the spec itself qualifies: `choose_b_v1` searches `b` in [4, 126], and
+#: `per_site_b` floors at 4. A budget that lands `b` outside this is outside the certified closed form
+#: and is REFUSED, not extrapolated.
+B_MIN = 4
+B_MAX = 126
+
+
+def _catalysis_spec():
+    """`l2q_full.catalysis.spec`, the in-epoch reference specification for merged catalysis.
+
+    Importable only once `engine.load()` has put `fullalg` on `sys.path`, exactly as `project` already
+    imports `l2q_full.bloqs.qft.ReferenceQFT`. READING engine modules does not move the epoch; only
+    committing a change under `evaluation/engine` does. Everything used from it -- `AND_T`,
+    `per_site_b`, `other_site_cost`, `mixing_diamond_max`, `catalyst_prep_T`, `ross_selinger_t` -- is a
+    pure closed form of its arguments: no cache, no certified word bank, no table lookup. That is the
+    whole reason this arm can be priced from `export_v2` at all, and `test_the_four_closed_forms_are_
+    pure_and_live_where_the_brief_says` re-derives each one rather than trusting the claim."""
+    engine.load()
+    try:
+        from l2q_full.catalysis import spec
+    except ImportError as error:                     # pragma: no cover - the vendored tree always has it
+        _refuse(f"backend 'catalytic' needs the in-epoch l2q_full.catalysis.spec, which did not "
+                f"import ({error}); the arm is reported as unpriced, never priced as 'ross_selinger'")
+    return spec
 
 #: `max_error` arrives as the exact string form the compiled selector emits: `<units>e-<scale>`, both
 #: non-negative decimal integers, e.g. "1e-6" or "25e-9". Nothing else is accepted -- not a float, not
@@ -206,18 +291,11 @@ def parse_design(design):
                      f"QFT family {family!r}: target 'exact' takes no 'max_error' (got "
                      f"{dict(value).get('max_error')!r}); an exact QFT has no band")
             max_error = None
-        # The catalytic arm is qualified as a closed form in `l2q_full/catalysis/spec.py`
-        # (`per_site_b:410`, `other_site_cost:719`, `mixing_diamond_max:603`, `catalyst_prep_T:736` --
-        # all pure, no cache and no word bank), but honouring it is a SECOND axis: it replaces
-        # Ross-Selinger for the whole run's rotations, needs its own share of the budget to choose the
-        # catalyst width b, and adds a shared catalyst register to the qubit count. None of that is
-        # this overlay's band. Refused rather than silently priced at the Ross-Selinger default.
-        _require(backend != "catalytic",
-                 f"QFT family {family!r}: backend 'catalytic' is not wired into this overlay. The "
-                 f"closed form exists (catalysis/spec.py per_site_b, other_site_cost, "
-                 f"mixing_diamond_max, catalyst_prep_T) but it re-prices every rotation in the run and "
-                 f"adds a catalyst register, which is a separate axis from the QFT band; pricing it as "
-                 f"{BACKENDS[0]!r} would be a silent default, so it is reported instead")
+        # `backend: "catalytic"` IS honoured, on both targets (lane WX; it was refused here as "a
+        # second axis" before the three charges in the module docstring were priced). The axes are
+        # orthogonal: `target` picks the construction, `backend` picks the currency. The arm itself can
+        # still refuse at pricing time -- a family with no rotations to catalyse, or a catalyst width
+        # outside the spec's qualified range -- and does so by name.
         out[family] = (backend, target, max_error)
     return out
 
@@ -249,13 +327,98 @@ def _family_sites(fa, coherent, families):
     return out
 
 
+def _catalysed_rotations(family, site, banded):
+    """The rotation count the catalyst must absorb for one family.
+
+    It is the count AFTER any band substitution: banding happens first and removes rotations the
+    catalyst then never sees, so catalysing the native template's count would over-charge the arm."""
+    _w, count, _row, exact, band = site
+    return int((band.rot if family in banded else exact.rot) * count)
+
+
+def _catalytic_arm(cs, sc, families, r_catalysed, rotations, delta):
+    """Price the shared catalytic arm: choose b from the arm's own share of the synthesis pool, then
+    charge the worst-case kicks, the gradient preparation, and the register. See the module docstring's
+    three numbered charges; every number below is `catalysis/spec.py`'s or `sto_currency`'s own."""
+    named = sorted(families)
+    _require(rotations >= r_catalysed,
+             f"QFT families {named}: the catalytic arm absorbs {r_catalysed} rotations but the run's "
+             f"census is only {rotations}")
+
+    # CHARGE 1: the arm's own proportional share of the ONE run-wide synthesis pool.
+    pool = sc.ROTATION_FRACTION * float(delta)
+    delta_arm = pool * r_catalysed / rotations
+    prep_budget = PREP_FRACTION * delta_arm
+    delta_cells = delta_arm - prep_budget
+    _require(0.0 < delta_cells < 1.0,
+             f"QFT families {named}: the catalytic arm's share of the synthesis pool is "
+             f"{delta_arm!r}, leaving {delta_cells!r} for turn rounding, which is not a usable "
+             f"error budget; the arm is reported rather than priced")
+
+    b = int(cs.per_site_b(r_catalysed, delta_cells))
+    _require(B_MIN <= b <= B_MAX,
+             f"QFT families {named}: backend 'catalytic' needs a catalyst width b = {b}, outside the "
+             f"range [{B_MIN}, {B_MAX}] that catalysis/spec.py qualifies (choose_b_v1); it is reported, "
+             f"not extrapolated")
+
+    # The worst-case price of ONE catalysed site: the turn is unknown to this overlay, so a lone
+    # `CtrlAddConstIntoCatalyst(b, k)` of `b - 1` Ands at AND_T = 4 T each (spec.py:719, :549).
+    lone = cs.other_site_cost(b, mixing=False)
+    t_per_site = int(cs.AND_T) * int(lone.ands)
+    cells_t = r_catalysed * t_per_site
+    err_op = r_catalysed * lone.err_op
+    _require(err_op <= delta_cells,
+             f"QFT families {named}: a catalyst of width {b} rounds {r_catalysed} turns to a total "
+             f"operator-norm error {err_op!r}, which exceeds its budget {delta_cells!r}")
+
+    # CHARGE 3: gradient preparation, charged because a catalyst exists -- not because anything rounded.
+    # `catalyst_prep_T` synthesises its `b - 3` genuine ZPow rotations at `prep_budget / (b - 3)` each and
+    # `ross_selinger_t` requires that to be a tolerance in (0, 1). It always is here (`prep_budget` is at
+    # most `PREP_FRACTION * pool`), but a budget that broke it would raise a bare `ValueError` out of the
+    # engine rather than a named refusal, so it is checked and named first.
+    prep_rotations = max(0, b - 3)
+    _require(prep_rotations >= 1 and 0.0 < prep_budget / prep_rotations < 1.0,
+             f"QFT families {named}: a catalyst of width {b} would prepare {prep_rotations} rotations "
+             f"against a prep budget of {prep_budget!r}, which is not a usable per-rotation tolerance")
+    prep_t = float(cs.catalyst_prep_T(b, prep_budget))
+    _require(prep_t > 0.0,
+             f"QFT families {named}: catalyst_prep_T({b}, {prep_budget!r}) is {prep_t!r}; a catalyst "
+             f"that costs nothing to prepare has not been priced")
+    return {
+        "backend": "catalytic", "families": named,
+        "spec": "l2q_full/catalysis/spec.py (AND_T:549, per_site_b:410, mixing_diamond_max:603, "
+                "other_site_cost:719, catalyst_prep_T:736)",
+        "b": b, "bRule": "per_site_b(R, deltaCells) = max(4, ceil(log2(pi R / deltaCells)))",
+        # CHARGE 2: the shared register, charged ONCE however many families are catalytic.
+        "registerQubits": b,
+        "registerNote": "one shared PhaseGradientState(b), live for the whole run and restored after "
+                        "every kick; charged once, not per family",
+        "rotationsCatalysed": r_catalysed,
+        "andsPerSite": int(lone.ands), "tPerSite": t_per_site,
+        "cellsT": cells_t, "prepT": prep_t, "T": cells_t + prep_t,
+        "prepRotations": prep_rotations,
+        "pool": pool, "deltaArm": delta_arm, "prepBudget": prep_budget, "deltaCells": delta_cells,
+        "mixing": False,
+        "errOpCharged": err_op,
+        "errMixedTV": r_catalysed * 0.5 * cs.mixing_diamond_max(b),
+        "metricNote": "deterministic round-to-nearest, operator norm pi 2^-b per site -- the metric the "
+                      "engine's delta is stated in and the bound per_site_b inverts. The mixed (D5) "
+                      "arm's TV bound is reported beside it and is the smaller of the two, so this is "
+                      "the worst case.",
+        "realization": "spec.other_site_cost(b, mixing=False): turn unknown -> worst case, one "
+                       "CtrlAddConstIntoCatalyst(b, k) per catalysed rotation site. An upper bound on "
+                       "every site the engine could have been pricing, merged twiddle rows included.",
+    }
+
+
 def project(policy, coherent, design=None):
     """Price `policy`'s run with the QFT design axis applied to the frozen coherent result.
 
-    `design=None`, an all-exact design, and a design whose families are all absent or None are
-    BIT-IDENTICAL to `coherent`: nothing is substituted, the rotation total is unchanged, so the budget
-    re-division returns the same rate and `base + rotations * rate` is the same float expression the
-    engine evaluated. Only an `approximate` target substitutes a banded `ReferenceQFT`.
+    `design=None`, an all-exact Ross-Selinger design, and a design whose families are all absent or
+    None are BIT-IDENTICAL to `coherent`: nothing is substituted, no arm is opened, the rotation total
+    is unchanged, so the budget re-division returns the same rate and `base + rotations * rate` is the
+    same float expression the engine evaluated. An `approximate` target substitutes a banded
+    `ReferenceQFT`; a `catalytic` backend re-prices that family's surviving rotations on the catalyst.
     """
     eng = engine.load()
     fa = eng.fullalg
@@ -270,25 +433,29 @@ def project(policy, coherent, design=None):
              "QFT overlay requires the current exact reference price")
     _require("parts" in coherent and coherent["parts"],
              "QFT overlay needs the per-part census; price with detail=True")
+    _require("qubits_peak" in coherent and "qubits" in coherent,
+             "QFT overlay restates a qubit total (the catalyst register is charged to it), so it needs "
+             "the coherent result's own `qubits_peak` and `qubits`")
 
     plan = parse_design(design)
     banded = {f: v for f, v in plan.items() if v[1] == "approximate"}
+    catalytic = {f: v for f, v in plan.items() if v[0] == "catalytic"}
+    touched = sorted(set(banded) | set(catalytic))
     delta = coherent["delta"]
     base = int(coherent["T_base"])
     rotations = int(coherent["rotations"])
-    families = {}
+    families, sites = {}, {}
 
-    if banded:
+    if touched:
         lp = fa.to_l2q_full(policy, "exact")
         spec = fa.HEADLINE.with_(negate=coherent["negate"])
         from l2q_full.bloqs.qft import ReferenceQFT
 
-        for family, (w, count, row) in _family_sites(fa, coherent, banded).items():
-            backend, _target, max_error = banded[family]
-            eta = parse_max_error(family, max_error)
-            k = int(aqft_k_max(w, eta))
+        for family, (w, count, row) in _family_sites(fa, coherent, touched).items():
             # The engine's own price for this site, recomputed from the in-epoch bloq and cross-checked
             # against the frozen part row -- the like-for-like check `readout_overlay.py:135` makes.
+            # It is made for every TOUCHED family, catalytic-exact ones included: the catalyst's
+            # rotation count comes from this split, so it must reproduce the census too.
             exact = fa.cc.split(fa.pr.PolicyQFT(lp, w, spec))
             # Scale with the engine's own `TCost.scale` and recombine in the engine's own association
             # (`fullalg.parts`: `sc_ = split(bloq).scale(k)`, then `T = sc_.base + sc_.rot * tpr`).
@@ -300,41 +467,83 @@ def project(policy, coherent, design=None):
                      f"QFT family {family!r}: the coherent part at width {w} disagrees with the exact "
                      f"cost split of PolicyQFT({w}); the overlay will not substitute into a census it "
                      f"cannot reproduce")
-            band = fa.cc.split(ReferenceQFT(w, k_max=k))
-            base += (band.base - exact.base) * count
-            rotations += (band.rot - exact.rot) * count
-            families[family] = {
-                "width": w, "count": count, "backend": backend, "target": "approximate",
-                "maxError": max_error, "eta": eta, "kMax": k,
-                "banded": bool(k < w - 1),
-                "exactTBase": int(exact.base), "exactRotations": int(exact.rot),
-                "bandedTBase": int(band.base), "bandedRotations": int(band.rot),
-                "realization": "ReferenceQFT(w, k_max) -- Coppersmith-banded Draper ladder, textbook, "
-                               "NOT the Lean lowerQFT term; it REPLACES the native PolicyQFT template "
-                               "at this site, so the delta is construction + band, not band alone",
-            }
+            band = None
+            if family in banded:
+                backend, _target, max_error = banded[family]
+                eta = parse_max_error(family, max_error)
+                k = int(aqft_k_max(w, eta))
+                band = fa.cc.split(ReferenceQFT(w, k_max=k))
+                base += (band.base - exact.base) * count
+                rotations += (band.rot - exact.rot) * count
+                families[family] = {
+                    "width": w, "count": count, "backend": backend, "target": "approximate",
+                    "currency": backend, "maxError": max_error, "eta": eta, "kMax": k,
+                    "banded": bool(k < w - 1),
+                    "exactTBase": int(exact.base), "exactRotations": int(exact.rot),
+                    "bandedTBase": int(band.base), "bandedRotations": int(band.rot),
+                    "realization": "ReferenceQFT(w, k_max) -- Coppersmith-banded Draper ladder, "
+                                   "textbook, NOT the Lean lowerQFT term; it REPLACES the native "
+                                   "PolicyQFT template at this site, so the delta is construction + "
+                                   "band, not band alone",
+                }
+            sites[family] = (w, count, row, exact, band)
     for family, (backend, target, max_error) in plan.items():
         if target == "exact":
             families[family] = {"width": int(FAMILY_WIDTH[family](coherent["widths"])), "backend": backend,
-                                "target": "exact", "maxError": None, "eta": None, "kMax": None,
-                                "banded": False,
+                                "target": "exact", "currency": backend, "maxError": None, "eta": None,
+                                "kMax": None, "banded": False,
+                                "count": sites[family][1] if family in sites else None,
+                                "exactRotations": int(sites[family][3].rot) if family in sites else None,
                                 "realization": "unchanged: the engine's native PolicyQFT template, the "
                                                "exact full ladder (qft.py:446 default k_max=None)"}
 
     _require(base >= 0 and rotations >= 0,
              f"QFT overlay produced a negative census (T_base={base}, rotations={rotations})")
+
+    # The CURRENCY axis. The rate below is the engine's own -- the pool divided evenly over the census
+    # -- and the surviving Ross-Selinger rotations keep it unchanged; the catalytic arm takes exactly
+    # the slices of the rotations it absorbs. Charge 1 of the module docstring.
     rate = fa.sc.ts_per_rotation(delta, rotations) if rotations else 0.0
+    eps = fa.sc.rotation_eps(delta, rotations) if rotations else None
+    arm, r_catalysed = None, 0
+    if catalytic:
+        cs = _catalysis_spec()
+        for family in sorted(catalytic):
+            n = _catalysed_rotations(family, sites[family], set(banded))
+            _require(n >= 1,
+                     f"QFT family {family!r}: backend 'catalytic' asks for a catalyst on a family that "
+                     f"contributes 0 rotations for it to absorb, so there is no arm to price; it is "
+                     f"reported, not priced as the untouched default")
+            r_catalysed += n
+        arm = _catalytic_arm(cs, fa.sc, catalytic, r_catalysed, rotations, delta)
+    synthesised = int(rotations) - int(r_catalysed)
+
+    # When nothing is catalysed, `synthesised == rotations` and this is the identical float expression
+    # the engine evaluated -- which is what keeps the default path bit-identical.
+    total = base + synthesised * rate
+    if arm is not None:
+        total += arm["T"]
+    catalyst_qubits = int(arm["registerQubits"]) if arm is not None else 0
+    peak = int(coherent["qubits_peak"]) + catalyst_qubits
     return {
-        "mode": "coppersmith-banded-qft", "pricingRule": RULE, "ruleSha256": rule_fingerprint(),
+        "mode": "qft-design-axis", "pricingRule": RULE, "ruleSha256": rule_fingerprint(),
         "epoch": EPOCH, "kMaxSource": k_max_source(),
-        "T": base + rotations * rate, "TBase": int(base), "rotations": int(rotations),
-        "tPerRotation": rate, "eps": fa.sc.rotation_eps(delta, rotations) if rotations else None,
-        "families": families, "substituted": sorted(banded),
-        "identity": not banded,
+        "T": total, "TBase": int(base), "rotations": int(rotations),
+        "rotationsSynthesised": synthesised, "rotationsCatalysed": int(r_catalysed),
+        "tPerRotation": rate, "eps": eps, "epsSynthesised": eps,
+        "families": families, "substituted": sorted(banded), "catalysed": sorted(catalytic),
+        "catalyst": arm,
+        "identity": not banded and not catalytic,
+        "tNote": "T = TBase + rotationsSynthesised * tPerRotation + catalyst.T (catalyst.T = 0 when no "
+                 "family is catalytic, and then rotationsSynthesised == rotations)",
         # Banding removes a QFT's phase-product workspace, so the frozen layout is a sound UPPER bound
-        # on the banded run's qubits. The overlay prices T only and does not restate a qubit count it
-        # has not modelled.
-        "qubitsUpperBound": coherent["qubits"],
-        "qubitsNote": "T only; the banded ladder needs no phase-product workspace, so the engine's "
-                      "layout total is an upper bound and is not re-derived here",
+        # on the banded run's qubits. The catalyst register is a real ADDITION to both totals and is
+        # charged: it is live for the whole run and Q feeds the ranked Q x T (charge 2).
+        "catalystQubits": catalyst_qubits,
+        "qubitsPeak": peak,
+        "qubitsUpperBound": coherent["qubits"] + catalyst_qubits,
+        "qubitTimesT": peak * total,
+        "qubitsNote": "the engine's frozen peak and layout plus catalystQubits. Banding only REMOVES "
+                      "phase-product workspace, so the frozen totals stay an upper bound for it and "
+                      "are not re-derived; the shared catalyst register is added because it is not.",
     }
