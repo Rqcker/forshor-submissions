@@ -585,23 +585,48 @@ def archive_policy_rules() -> Dict[str, str]:
 def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, token: str, workdir: Path, head_sha: Optional[str] = None, run_id: Optional[str] = None,
                          organizer_baseline: Optional[str] = None, archive_commit: Optional[str] = None, archive_view: Optional[Callable[[], Any]] = None,
                          archive_write: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None, qualified_in_run: bool = False,
+                         origin: Optional[Any] = None,
                          log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
     """Price and publish a verification (`verify_submission`'s output, possibly produced by another job). No Lean runs here and nothing in `v` is trusted: the policy's digest, the
     mirror's envelope (against this checkout's model and the policy), the printed document and ForShor's record are all checked again, and the handle and epoch against the live
-    publisher. Raises `Refused`, `ReservedHandle`, `ModelMismatch`."""
-    from export_v2 import engine, epoch, request
+    publisher. Raises `Refused`, `ReservedHandle`, `ModelMismatch`.
+
+    `origin` (an `export_v2.receipt_origin.ReceiptOrigin`) is how a receipt this process did NOT produce establishes a
+    trusted origin: the publisher re-derives the verification identity from its own checkout and re-fetches the
+    artifact the receipt's `ciVerification` stamp names. Without one, the receipt route refuses a qualified readout
+    exactly as before."""
+    from export_v2 import engine, epoch, receipt_origin, request
     from export_v2.canon import policy_digest
     from export_v2.evidence import EvidenceStore
     from export_v2.readout_overlay import MEASURED_SCHEMA
     printed = v.get("printed")
     # Owner decision 2026-11-24: the blanket refusal here was a conservative default while readout qualification was
     # pending. It exists now, so a qualified measured document THIS RUN's trusted verifier produced is priced on the
-    # measured path below. What does NOT change: a qualification that arrives inside a receipt is still refused.
-    # Hosted intake takes its inputs from the trusted GitHub run and the publisher, never from a receipt the submitter
-    # supplies, so only `run_intake` -- which just ran the verifier itself -- sets `qualified_in_run`.
+    # measured path below (`qualified_in_run`, set only by `run_intake`, which just ran the verifier itself).
+    #
+    # Lane XH: production publishes through `--publish-from`, where `qualified_in_run` is false by construction, so the
+    # refusal below also closed the ONLY route production uses. A receipt still vouches for nothing -- but it no longer
+    # has to. `scripts/ci/policy_publication.js:96-98` already stamps the trusted `ciVerification` receipt into the
+    # file this route is handed, and `receipt_origin.establish` turns that stamp into a proof by re-deriving the
+    # verification identity HERE and re-fetching the artifact it names: the COMPARISON authorises, never the receipt.
+    # So the standing rule is kept in spirit and sharpened -- the inputs come from the trusted GitHub run (the
+    # artifact) and this checkout (the fingerprint), and a receipt that is not that artifact is refused by name.
     measured = isinstance(printed, dict) and printed.get("schema") == MEASURED_SCHEMA
-    if ("localReadoutQualification" in v or measured) and not qualified_in_run:
-        raise Refused("format", "qualified readout receipts are local only; publishing is not enabled")
+    trusted_origin = None
+    if "localReadoutQualification" in v or measured:
+        if not qualified_in_run and origin is None:
+            raise Refused("format", "qualified readout receipts are local only; publishing is not enabled")
+        if not qualified_in_run:
+            try:
+                trusted_origin = receipt_origin.establish(v, head_sha=head_sha, run_id=run_id, pull=pull, origin=origin)
+            except receipt_origin.OriginMismatch as error:
+                raise Refused("origin", str(error)) from error
+            except receipt_origin.OriginUnavailable as error:
+                # The trusted artifact did not answer. That is the publisher's fault, not the policy's: stage
+                # `publisher` is in `scripts/ci/notify_submitters.js` LIMIT_STAGES, reported as incomplete/limits.
+                raise Incomplete("publisher", str(error)) from error
+            log(f"  trusted origin: artifact {trusted_origin['artifact']} of run {trusted_origin['runId']} "
+                f"attempt {trusted_origin['runAttempt']}, at this checkout's verification fingerprint")
     selection, design = compiled_full_run(printed) if measured else (None, None)
     if isinstance(printed, dict):
         # The route picks the checker, as `policy_from_lean` already does at the compile step: a measured export
