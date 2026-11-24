@@ -22,7 +22,8 @@ INPUTS = ["TableGeneration", "TableGeneration.lean", "scripts/verifier.py",
           "scripts/check_ptp_policy.py", "scripts/exact_width.py", "scripts/ptp_exact_width.py",
           "scripts/memcap.py", "scripts/tree_copy.py", "scripts/PTPPolicyReport.lean", "scripts/BandedPolicyReport.lean",
           "scripts/policy_json_to_lean.py", "scripts/ptp_policy_json_to_lean.py",
-          "evaluation/policy-trees.json", "evaluation/intake_v2.py", "evaluation/export_v2", "evaluation/engine"]
+          "evaluation/policy-trees.json", "evaluation/intake_v2.py", "evaluation/starter/pack/harness/policy_options.py",
+          "evaluation/export_v2", "evaluation/engine"]
 
 
 def identity(root: Path, head: str) -> dict:
