@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from threading import Event
@@ -188,6 +189,48 @@ def test_inner_mirror_resource_stop_is_incomplete_and_leaves_no_receipt(tmp_path
     assert "refused" not in got and not receipt.exists()
 
 
+def test_the_outer_mirror_wall_clock_limit_is_incomplete_and_leaves_no_receipt(tmp_path, monkeypatch, policy_doc):
+    # Production change that would fail this: removing intake_v2._run_mirror_or_incomplete's
+    # `except subprocess.TimeoutExpired` wrapper around the run_mirror call. run_mirror re-raises
+    # TimeoutExpired (export_v2/evidence.py:205-207), so without the wrapper it escapes
+    # verify_submission and is caught by the CLI's `subprocess.SubprocessError` arm at the bottom
+    # of main(), which reports {"failed": true, "error": "TimeoutExpired: ..."} with NO stage and
+    # without Incomplete's "not a verdict" sentence -- a resource stop indistinguishable in class
+    # from a KeyError bug. Census finding F2.
+    from export_v2 import evidence
+    policy = tmp_path / "policy.json"
+    policy.write_text(json.dumps(policy_doc))
+    receipt, result = tmp_path / "receipt.json", tmp_path / "result.json"
+    monkeypatch.delenv("PUBLISHER_URL", raising=False)
+
+    def timed_out(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=["check_banded_policy.py"], timeout=kwargs["timeout"])
+
+    monkeypatch.setattr(evidence, "run_mirror", timed_out)
+    assert intake_v2.main(["--policy", str(policy), "--no-publish", "--login", "tester", "--tree", str(tmp_path),
+                           "--workdir", str(tmp_path / "work"), "--mirror-timeout", "11",
+                           "--verification-out", str(receipt), "--out", str(result)]) == 2
+    got = json.loads(result.read_text())
+    assert got["failed"] and got["stage"] == "timeout", got           # a stage, like every other resource stop
+    assert "not a verdict" in got["error"], got                       # Incomplete's sentence, so it is not read as a verdict
+    assert "11" in got["error"], got                                  # the limit it reached
+    assert "TimeoutExpired" not in got["error"], got                  # not an unlabelled exception name
+    assert "refused" not in got and not receipt.exists()              # never a refusal, never a success receipt
+
+
+def test_the_outer_mirror_timeout_raises_incomplete_out_of_verify_submission(tmp_path, policy_doc):
+    # Production change that would fail this: the same wrapper, checked at the library boundary
+    # rather than through the CLI -- verify_submission itself must not leak subprocess.TimeoutExpired.
+    def timed_out(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=["check_banded_policy.py"], timeout=kwargs["timeout"])
+
+    with pytest.raises(intake_v2.Incomplete) as stop:
+        intake_v2.verify_submission(policy_doc, login="tester", tree=tmp_path, workdir=tmp_path / "w",
+                                    run_mirror_fn=timed_out, mirror_timeout=5, log=lambda s: None)
+    assert stop.value.stage == "timeout"
+    assert not isinstance(stop.value, intake_v2.Refused), "a resource stop is never a refusal"
+
+
 def test_an_overlapping_cli_attempt_cannot_replace_the_active_receipt_or_result(tmp_path, monkeypatch):
     source, second = tmp_path / "first.lean", tmp_path / "second.lean"
     source.write_bytes(b"namespace PolicySubmission\r\n-- first\r\n")
@@ -254,6 +297,10 @@ def test_forshor_record_needs_the_printed_bands_to_be_the_submitted_bands_and_th
     with pytest.raises(intake_v2.Refused) as e:
         intake_v2.forshor_record(eng, eng.tables.Policy.from_json(other), doc, model["forshor"]["pin"])
     assert "not the submitted bands" in e.value.reason
+    # Census C10: the same sentence is raised again when the PhaseTripleProduct publisher re-checks its bands, so it
+    # must say which document and which moment. Production change that would fail this: dropping either parenthetical.
+    assert e.value.reason.startswith("the bands ForShor printed are not the submitted bands")   # the anchor, still a prefix
+    assert "PhaseProduct" in e.value.reason and "PhaseTripleProduct" not in e.value.reason, e.value.reason
 
 
 def test_the_command_line_maps_outcomes_to_exit_codes(monkeypatch, tmp_path, policy_doc):
@@ -301,8 +348,16 @@ def test_a_lean_policy_that_asks_for_something_the_boards_do_not_price_is_refuse
     eng = engine.load()
     base = json.loads(DROPIN.read_text())
     monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **k: dict(base, negation="scratch"))
-    with pytest.raises(intake_v2.Refused, match="oneQubit only"):
+    with pytest.raises(intake_v2.Refused, match="oneQubit only") as compiled:
         intake_v2.policy_from_lean(eng, "namespace PolicySubmission", tmp_path, tmp_path)
+    # Census C4: policy_options.check_table_options raises the byte-identical sentence for the submitted table JSON.
+    # Production change that would fail this: dropping the parenthetical that names the compiled Lean export.
+    from policy_options import check_table_options
+    with pytest.raises(ValueError) as table_json:
+        check_table_options({"negation": "scratch"})
+    assert compiled.value.reason.startswith(str(table_json.value)), (compiled.value.reason, str(table_json.value))
+    assert compiled.value.reason != str(table_json.value), "the two routes shared one message (census C4)"
+    assert "compiled Lean export" in compiled.value.reason, compiled.value.reason
     with pytest.raises(intake_v2.Refused, match="larger than"):
         intake_v2.policy_from_lean(eng, "x" * (intake_v2.MAX_LEAN_BYTES + 1), tmp_path, tmp_path)
     with pytest.raises(RuntimeError, match="--forshor-tree"):

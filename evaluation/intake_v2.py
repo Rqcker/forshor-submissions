@@ -54,6 +54,13 @@ MAX_FORSHOR_K = 8           # a submission's bands take 2 <= k <= 8
 MAX_LEAN_BYTES = 1_000_000  # the size limit of the submitted Lean file
 MAX_POLICY_BANDS = 256     # keep in sync with forshor-site's shared results-v2 contract
 
+#: The mirror stages that are a RESOURCE STOP, not a verdict: they raise `Incomplete` (exit 2 with a stage and the
+#: not-a-verdict sentence), never `Refused`, and never reach `write_receipt`. Keep in sync with the stages
+#: `scripts/memcap.py:limit_rejection` can return (`memory`, `timeout`) plus the `timeout` the harnesses report for
+#: their own `subprocess.TimeoutExpired` (`scripts/check_banded_policy.py:429-431`, `scripts/check_ptp_policy.py`).
+#: A new resource stop the harness names differently would otherwise be reported as a refusal of the policy.
+INCOMPLETE_STAGES = ("memory", "timeout")
+
 
 class Refused(Exception):
     """The submission was examined and does not qualify. `stage` names the check, `reason` says why."""
@@ -135,7 +142,7 @@ def forshor_record(eng, P, doc: Dict[str, Any], pin: str) -> Dict[str, Any]:
     t_policy = float(fa.price_full(P, 2048, DEFAULT_DELTA, detail=False, rule=rule)["T"])
     ir_agrees = t_document == t_policy
     if not bands_agree:
-        raise Refused("forshor", "the bands ForShor printed are not the submitted bands")
+        raise Refused("forshor", "the bands ForShor printed are not the submitted bands (the PhaseProduct document ForShor printed at the ForShor check)")
     if not ir_agrees:
         raise Refused("forshor", f"ForShor's own IR prices to {t_document!r} T, the policy to {t_policy!r} T")
     return {"verified": True, "bandsAgree": True, "irPriceAgrees": True, "claim": FORSHOR_CLAIM, "forshorCommit": pin}
@@ -154,7 +161,11 @@ def lean_kind(lean_text: str) -> str:
     pp = re.search(r"^\s*namespace\s+PolicySubmission\b", lean_text, re.M)
     ptp = re.search(r"^\s*namespace\s+PTPPolicySubmission\b", lean_text, re.M)
     if bool(pp) == bool(ptp):
-        raise Refused("format", "the Lean file must declare exactly one of `namespace PolicySubmission` (PhaseProduct) and `namespace PTPPolicySubmission` (PhaseTripleProduct)")
+        # Which of the two mistakes it is decides the edit: a file with neither is missing the declaration, a file with
+        # both has to drop one. One message for the two sent half the participants to the wrong line (census C14).
+        raise Refused("format", "the Lean file must declare exactly one of `namespace PolicySubmission` (PhaseProduct) and "
+                                "`namespace PTPPolicySubmission` (PhaseTripleProduct); this file declares "
+                                + ("both" if pp else "neither"))
     return "ptp" if ptp else "pp"
 
 
@@ -167,15 +178,34 @@ def _without_default_selectors(source: str) -> str:
     return without_default_selectors(strip_lean_comments(source))
 
 
+def _selector_cause(residual: str, selector: str) -> tuple:
+    """(line, cause) for the first remaining mention of `selector`, in the source gate's three cause classes.
+
+    The classifier is `scripts/ci/policy_source.py`'s, as the recogniser above is, so the CI source gate, this intake
+    and the publisher re-check cannot disagree about WHICH cause refused: a non-default selection is a valid request on
+    the wrong route, a mis-written default only has to be rewritten, and a bare mention has to be deleted. Those are
+    three different participant actions. Classification happens after the refusal is decided and changes nothing about
+    which sources are refused."""
+    sys.path.insert(0, str(HERE.parent))
+    from scripts.ci.policy_source import selector_cause
+    return selector_cause(residual, selector)
+
+
 def refuse_unqualified_design(source: str) -> None:
     """The old verifier would otherwise compile a new declaration and ignore it."""
-    if re.search(r"(?<![\w'])submittedDesign(?![\w'])", _without_default_selectors(source)):
-        raise Refused("format", "submittedDesign is not enabled for ordinary submissions; it requires local readout qualification")
+    residual = _without_default_selectors(source)
+    if re.search(r"(?<![\w'])submittedDesign(?![\w'])", residual):
+        number, cause = _selector_cause(residual, "submittedDesign")
+        raise Refused("format", "submittedDesign is not enabled for ordinary submissions; it requires local readout "
+                                f"qualification: line {number}, {cause}")
 
 
 def refuse_unqualified_primitive(source: str) -> None:
-    if re.search(r"(?<![\w'])submittedPrimitive(?![\w'])", _without_default_selectors(source)):
-        raise Refused("format", "submittedPrimitive requires separate nonpublishing primitive qualification")
+    residual = _without_default_selectors(source)
+    if re.search(r"(?<![\w'])submittedPrimitive(?![\w'])", residual):
+        number, cause = _selector_cause(residual, "submittedPrimitive")
+        raise Refused("format", "submittedPrimitive requires separate nonpublishing primitive qualification: "
+                                f"line {number}, {cause}")
 
 
 def check_legacy_full_run_source(source: str) -> None:
@@ -210,7 +240,7 @@ def _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_reado
     if qualify_readout:
         from export_v2.readout_overlay import VERIFIER_PIN
         if kind != "pp":
-            raise Refused("format", "readout qualification only supports PhaseProduct")
+            raise Refused("format", "readout qualification only supports PhaseProduct (asked for at the ForShor build)")
         actual = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=forshor_tree, text=True).strip()
         dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=forshor_tree, text=True)
         if actual != VERIFIER_PIN or dirty:
@@ -282,7 +312,7 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
     kind = lean_kind(lean_text)
     refuse_unqualified_primitive(lean_text)
     if qualify_readout and kind != "pp":
-        raise Refused("format", "readout qualification only supports PhaseProduct")
+        raise Refused("format", "readout qualification only supports PhaseProduct (asked for at intake)")
     if not qualify_readout:
         refuse_unqualified_design(lean_text)
     if forshor_tree is None:
@@ -300,7 +330,7 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
         if not 2 <= band["k"] <= MAX_FORSHOR_K:
             raise Refused("format", f"band at threshold {band['threshold']} has k = {band['k']}; submissions take 2 <= k <= {MAX_FORSHOR_K}")
     if doc.get("negation", "oneQubit") != "oneQubit":
-        raise Refused("format", f"the policy asks for negation {doc.get('negation')!r}; the boards price oneQubit only")
+        raise Refused("format", f"the policy asks for negation {doc.get('negation')!r}; the boards price oneQubit only (from the compiled Lean export, not the submitted table JSON)")
     if kind == "pp":
         from site_engine import fullalg as fa
         if fa.doc_width_rule(doc) != "exact":
@@ -355,6 +385,20 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, sum
                                   stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, log)
 
 
+def _run_mirror_or_incomplete(run, policy_json, board, tree, out_dir, **kw):
+    """`run_mirror`, with its outer wall-clock stop reported as `Incomplete` rather than as a bare exception.
+
+    `run_mirror` re-raises `subprocess.TimeoutExpired` (`export_v2/evidence.py:205-207`), which would otherwise escape
+    `verify_submission` and be caught by the CLI's `subprocess.SubprocessError` arm: exit 2 with no stage and without
+    the not-a-verdict sentence, i.e. indistinguishable in class from a `KeyError` bug. A resource stop is INCOMPLETE,
+    never a refusal and never a pass, so the outer limit must agree with the harness's own stage timeout, which already
+    maps to `Incomplete` through `INCOMPLETE_STAGES`. The exit code and the accept/refuse split are unchanged."""
+    try:
+        return run(policy_json, board, tree, out_dir, **kw)
+    except subprocess.TimeoutExpired:
+        raise Incomplete("timeout", f"the Lean mirror reached its {kw['timeout']:g}s wall-clock limit") from None
+
+
 def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree, workdir, forshor_tree,
                        stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, log):
     from export_v2 import engine, epoch
@@ -397,14 +441,15 @@ def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree
         else:
             require_coherent_export(printed)
     log(f"policy {digest[:12]} ({policy_json['mode']}, {len(policy_json['bands'])} bands): the Lean mirror at exact widths ...")
-    envelope = (run_mirror_fn or run_mirror)(policy_json, board, tree, workdir / "evidence", timeout=mirror_timeout, python=python, stage_timeout=stage_timeout, fast=True)   # `fast`: skip the interpreted report stage, see run_mirror
+    envelope = _run_mirror_or_incomplete(run_mirror_fn or run_mirror, policy_json, board, tree, workdir / "evidence",
+                                         timeout=mirror_timeout, python=python, stage_timeout=stage_timeout, fast=True)   # `fast`: skip the interpreted report stage, see run_mirror
     mirror, why = stomirror_from_envelope(envelope, policy_json, model, board)
     if mirror is None:
         rec = envelope.get("record", {})
         rej = rec.get("rejection") or {}
         stage = rej.get("stage") or "mirror"
         reason = f"{rej.get('reason') or why}: {str(rej.get('detail') or '')[:400]}".strip(": ")
-        if stage in ("memory", "timeout"):
+        if stage in INCOMPLETE_STAGES:
             raise Incomplete(stage, reason)
         raise Refused(stage, reason)
     log("  accepted by the STO mirror")
@@ -542,7 +587,7 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     elif printed is not None:
         # threshold, k and the table itself, band by band (as `forshor_record` does for PhaseProduct): two tables of one k are told apart
         if [(b.threshold, b.table.k, b.table.digest) for b in policy_from_ptp_document(eng, printed).bands] != [(b.threshold, b.table.k, b.table.digest) for b in P.bands]:
-            raise Refused("forshor", "the bands ForShor printed are not the submitted bands")
+            raise Refused("forshor", "the bands ForShor printed are not the submitted bands (the PhaseTripleProduct document in the verification, re-checked at publication)")
     head_sha = head_sha or hashlib.sha1(digest.encode()).hexdigest()
     run_id = run_id or str(int(dt.datetime.now(dt.timezone.utc).timestamp()))
     submitted_at = _now()

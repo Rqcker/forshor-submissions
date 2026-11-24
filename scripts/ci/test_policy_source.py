@@ -1,6 +1,7 @@
 import unittest
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -221,6 +222,209 @@ class ExplicitDefaults(unittest.TestCase):
         semi = source('def submittedDesign : Shor.SubmissionDesign where\n  readout := .semiclassical')
         self.assertEqual(policy_source.default_selectors(semi)[1], {})
         self.assertIn('submittedDesign', policy_source.default_selectors(semi)[0])
+
+
+class RefusalDifferentiation(unittest.TestCase):
+    """A source refusal must name WHICH cause refused it.
+
+    Owner priority 2026-11-24: differentiating incorrect policies from correct ones is the
+    priority. One message over several causes cannot tell a PARTICIPANT ERROR (rewrite the file)
+    from an UNSUPPORTED-BUT-VALID request (use the dedicated nonpublishing route), and those need
+    different participant actions. Census and the full cause enumeration:
+    ForShor_Integration/readiness/pre-push/REFUSAL-CENSUS.md, collisions C5, C6, C7, C8.
+
+    Matching is on anchored, class-level patterns naming the CAUSE, never on incidental wording.
+    Nothing here changes what is accepted or refused: every source below was refused before too.
+    """
+
+    #: The anchors the rest of the repository matches on; a rewording must keep them intact.
+    #: ForShor_Integration/readiness/pre-push/bind_native_split_mirror.py:72 asserts the first.
+    FULL_REFUSAL = ExplicitDefaults.FULL_REFUSAL
+    IMPORT_REFUSAL = ExplicitDefaults.IMPORT_REFUSAL
+
+    #: Cause classes for the full-run selector (policy_source.py:check_no_full_run_selector).
+    UNSUPPORTED = re.compile(r'selects the non-default full-run design')
+    WRONG_FORM = re.compile(r'not in the shipped form')
+    MENTION = re.compile(r'does not declare a selector')
+    #: Cause classes for the import rule (policy_source.py:validate).
+    IMPORT_AFTER_HEADER = re.compile(r'an `import` after the header')
+    IMPORT_NO_MODULE = re.compile(r'an `import` with no module name')
+    IMPORT_FULL_RUN = re.compile(r'only together with the explicit default')
+    IMPORT_UNKNOWN = re.compile(r'is not an approved template module')
+    #: Always present once a cause is named, so triage can go straight to the line.
+    AT_LINE = re.compile(r'\bline (\d+)\b')
+
+    def reason(self, text, **kwargs):
+        with self.assertRaises(ValueError) as refused:
+            validate(text, **kwargs)
+        return str(refused.exception)
+
+    def classes(self, reason):
+        return {name for name in ('UNSUPPORTED', 'WRONG_FORM', 'MENTION') if getattr(self, name).search(reason)}
+
+    # --- C5: one message for 3 cause classes and 20+ forms -----------------------------------
+
+    def test_a_non_default_profile_is_sent_to_the_dedicated_harness_and_names_the_value(self):
+        # Production change that would fail this: collapsing check_no_full_run_selector's cause
+        # classification back into the single old message. A named profile is a VALID request on
+        # the wrong route, so the participant must be sent to the dedicated nonpublishing harness
+        # rather than told to rewrite a declaration that is already well formed.
+        for value in ('.quotientExact', '.quotientCatalytic', '.splitStep4Kicks',
+                      'Shor.FullRunDesign.quotientExact', '.referenceX', 'default', '0'):
+            with self.subTest(value=value):
+                reason = self.reason(source(f'def submittedFullRunDesign : Shor.FullRunDesign := {value}',
+                                            imports=FULL_IMPORT))
+                self.assertIn(self.FULL_REFUSAL, reason)
+                self.assertEqual(self.classes(reason), {'UNSUPPORTED'}, reason)
+                self.assertIn(value, reason)
+                self.assertRegex(reason, self.AT_LINE)
+
+    def test_the_default_written_the_wrong_way_is_told_to_rewrite_it_not_to_qualify_it(self):
+        # Production change that would fail this: reporting the mis-written default as a non-default
+        # selection (or as a bare mention). The value IS the default here, so the participant must
+        # rewrite the declaration in the shipped form; sending them to the qualification harness
+        # would waste a nonpublishing run on a policy the ordinary route already accepts.
+        for label, text in {
+            'private': source('private ' + FULL, imports=FULL_IMPORT),
+            'protected': source('protected ' + FULL, imports=FULL_IMPORT),
+            'abbrev': source(FULL.replace('def ', 'abbrev '), imports=FULL_IMPORT),
+            'indented': source('  ' + FULL, imports=FULL_IMPORT),
+            'declared twice': source(FULL, FULL, imports=FULL_IMPORT),
+            'decoy namespace': source(FULL, namespace='Decoy', imports=FULL_IMPORT),
+            'nested namespace': source(FULL, namespace='PolicySubmission.Inner', imports=FULL_IMPORT),
+            'ptp board': source(FULL, namespace='PTPPolicySubmission', imports=FULL_IMPORT),
+            'attribute line before': source('@[reducible]', FULL, imports=FULL_IMPORT),
+            'modifier line before': source('private', FULL, imports=FULL_IMPORT),
+            'wrong type': source(FULL.replace('Shor.FullRunDesign', 'Nat'), imports=FULL_IMPORT),
+            'no type': source('def submittedFullRunDesign := Shor.FullRunDesign.reference', imports=FULL_IMPORT),
+            'continued on the next line': source(FULL, '  |> fun _ => Shor.FullRunDesign.quotientExact',
+                                                 imports=FULL_IMPORT),
+            'value on the next line': source(FULL.replace(':= .reference', ':=\n  .reference'), imports=FULL_IMPORT),
+        }.items():
+            with self.subTest(label):
+                reason = self.reason(text)
+                self.assertIn(self.FULL_REFUSAL, reason)
+                self.assertEqual(self.classes(reason), {'WRONG_FORM'}, reason)
+                self.assertIn('def submittedFullRunDesign : Shor.FullRunDesign := .reference', reason)
+                self.assertRegex(reason, self.AT_LINE)
+
+    def test_a_bare_mention_is_told_to_delete_it(self):
+        # Production change that would fail this: classifying a use of the name as a declaration.
+        # Neither rewriting a declaration nor qualifying a full run is the right action here: the
+        # participant has to remove the mention.
+        for label, text in {
+            'used elsewhere': source(FULL, 'def alias := submittedFullRunDesign', imports=FULL_IMPORT),
+            'in a theorem statement': source(FULL, 'theorem t : submittedFullRunDesign = .reference := rfl',
+                                             imports=FULL_IMPORT),
+            'no declaration at all': source('def alias := submittedFullRunDesign'),
+        }.items():
+            with self.subTest(label):
+                reason = self.reason(text)
+                self.assertIn(self.FULL_REFUSAL, reason)
+                self.assertEqual(self.classes(reason), {'MENTION'}, reason)
+                self.assertRegex(reason, self.AT_LINE)
+
+    def test_the_reported_line_is_the_line_the_participant_has_to_edit(self):
+        # Production change that would fail this: dropping the line number, or computing it on the
+        # raw source instead of the comment-stripped, default-stripped text (comments and a consumed
+        # explicit default must not shift it). Line 1 is the Policy import, 2 the FullRunDesign
+        # import, 3 the namespace, 4 the comment, 5 the offending declaration.
+        text = ('import ForShor.ShorVerification.Framework.Policy\n' + FULL_IMPORT
+                + 'namespace PolicySubmission\n'
+                + '/- a comment\n   spanning lines -/\n'
+                + 'def submittedFullRunDesign : Shor.FullRunDesign := .quotientExact\n'
+                + 'def points := #[1, 2, 3]\nend PolicySubmission\n')
+        self.assertEqual(self.AT_LINE.search(self.reason(text))[1], '6')
+
+    def test_the_three_full_run_cause_classes_never_share_a_message(self):
+        # Production change that would fail this: any rewording that makes two classes produce the
+        # same string again. This asserts the absence of the collision itself (census C5).
+        reasons = [self.reason(text) for text in (
+            source(FULL.replace('.reference', '.quotientExact'), imports=FULL_IMPORT),
+            source('private ' + FULL, imports=FULL_IMPORT),
+            source('def alias := submittedFullRunDesign'))]
+        self.assertEqual(len(set(reasons)), 3, reasons)
+
+    # --- C7: one message for 4 import causes ---------------------------------------------------
+
+    def test_each_import_cause_is_named_separately(self):
+        # Production change that would fail this: collapsing validate's import branch back into one
+        # message. The FullRunDesign import is an unsupported-but-valid request (it is accepted with
+        # the explicit default, and by the dedicated harness); an unknown module, a missing module
+        # name and a misplaced import are three different participant errors.
+        for label, text, expected in (
+            ('full-run module', source(imports=FULL_IMPORT), 'IMPORT_FULL_RUN'),
+            ('unknown module', source(imports='import ForShor.OtherModule\n'), 'IMPORT_UNKNOWN'),
+            ('two modules, one unknown',
+             source(imports='import ForShor.ShorVerification.Framework.Policy ForShor.OtherModule\n'),
+             'IMPORT_UNKNOWN'),
+            ('no module name', 'import\n' + SAFE, 'IMPORT_NO_MODULE'),
+            ('after the header', SAFE + 'import ForShor.ShorVerification.Framework.Policy\n', 'IMPORT_AFTER_HEADER'),
+        ):
+            with self.subTest(label):
+                reason = self.reason(text)
+                self.assertIn(self.IMPORT_REFUSAL, reason)
+                self.assertRegex(reason, self.AT_LINE)
+                named = {name for name in ('IMPORT_AFTER_HEADER', 'IMPORT_NO_MODULE', 'IMPORT_FULL_RUN',
+                                           'IMPORT_UNKNOWN') if getattr(self, name).search(reason)}
+                self.assertEqual(named, {expected}, reason)
+
+    def test_the_unknown_module_is_named_in_the_refusal(self):
+        # Production change that would fail this: dropping the module name from the import message.
+        # Without it a participant with several imports cannot tell which one is unapproved.
+        self.assertIn('ForShor.OtherModule', self.reason(source(imports='import ForShor.OtherModule\n')))
+
+    # --- C6 / C8: hash commands, escaped identifiers, header ------------------------------------
+
+    def test_hash_commands_and_escaped_identifiers_are_told_apart(self):
+        # Production change that would fail this: putting the `#` check and the guillemet check back
+        # under one message. They are different edits, and the hash branch must keep the
+        # "build-time commands" wording that test_contributor_cli.py and the CI test assert.
+        hashed = self.reason(SAFE + '#eval 1\n')
+        escaped = self.reason(SAFE + 'def \u00abx\u00bb := 1\n')
+        self.assertIn('build-time commands', hashed)
+        self.assertNotIn('build-time commands', escaped)
+        self.assertRegex(escaped, r'escaped identifier')
+        self.assertNotEqual(hashed, escaped)
+        for reason in (hashed, escaped):
+            self.assertRegex(reason, self.AT_LINE)
+
+    def test_the_header_refusal_names_the_line_it_refused(self):
+        # Production change that would fail this: dropping the line number from the header message.
+        # "unsupported import/header" alone does not say which line is not a header command.
+        reason = self.reason('import ForShor.ShorVerification.Framework.Policy\nnot_a_header_command\n')
+        self.assertIn('unsupported import/header', reason)
+        self.assertEqual(self.AT_LINE.search(reason)[1], '2')
+
+    # --- F5: the message promised a rule the gate does not enforce -----------------------------
+
+    def test_several_approved_modules_on_one_import_line_are_still_accepted(self):
+        # Production change that would fail this: ENFORCING "one import command per line" by adding a
+        # len(modules) test to validate. Census finding F5: the gate has only ever tested membership,
+        # so this source is accepted today, and refusing it would change the ACCEPTED SET -- out of
+        # scope for a differentiation lane. The message was corrected instead; this test is what makes
+        # the correction the honest half of that choice.
+        validate('import ForShor.ShorVerification.Framework.Policy '
+                 'ForShor.ShorVerification.Submission.Decide\n'
+                 'namespace PolicySubmission\ndef points := #[1, 2, 3]\nend PolicySubmission\n')
+
+    def test_the_import_message_does_not_promise_a_rule_that_is_not_checked(self):
+        # Production change that would fail this: restoring "one import command per line" to
+        # IMPORT_REFUSAL without also enforcing it. A participant reading that clause would rewrite a
+        # file that was never refused for that reason, and would not learn which module was wrong.
+        # Census finding F5.
+        from policy_source import IMPORT_REFUSAL
+        self.assertNotIn('one import command per line', IMPORT_REFUSAL)
+        self.assertTrue(IMPORT_REFUSAL.startswith('Policy.lean imports must be the approved template modules'))
+
+    def test_an_unapproved_module_beside_an_approved_one_still_names_the_unapproved_one(self):
+        # Production change that would fail this: dropping the per-module report when several modules
+        # share a line. This is the case the gate DOES check, and the one the corrected message
+        # describes.
+        reason = self.reason(source(imports='import ForShor.ShorVerification.Framework.Policy '
+                                            'ForShor.OtherModule\n'))
+        self.assertIn('ForShor.OtherModule', reason)
+        self.assertNotIn('ForShor.ShorVerification.Framework.Policy,', reason)
 
 
 if __name__ == '__main__':
