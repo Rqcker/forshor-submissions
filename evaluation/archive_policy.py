@@ -127,8 +127,13 @@ def find_duplicates(index: Dict[str, Any], *, digest: str, mode: str, login: str
 
 
 def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head_sha: str,
-                         readout: str, published_ids: Collection[str]) -> Optional[str]:
-    """Local planner, not called by the live archive writer. Return a prior primitive ID, if any.
+                         readout: str, published_ids: Optional[Collection[str]] = None,
+                         mode: str = "PhaseProduct") -> Optional[str]:
+    """How this participant's own earlier archived copies of this policy bear on it. Return a prior primitive ID, if any.
+
+    Raises `DuplicatePolicy` for a repeat with the same readout. `mode` is the
+    board mode to compare on; readout designs exist for PhaseProduct only, but
+    `write_policy` asks about every mode it archives, so the same refusal holds.
 
     Take only visible records into account. Legacy records omit both circuit
     and board metadata and mean coherent readout with a primitive result.
@@ -138,7 +143,7 @@ def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head
         raise ArchiveRefused("unknown readout design")
     records = {p["policy_id"]: p for p in index["policies"]}
     primitive = None
-    for previous in find_duplicates(index, digest=digest, mode="PhaseProduct", login=login, head_sha=head_sha,
+    for previous in find_duplicates(index, digest=digest, mode=mode, login=login, head_sha=head_sha,
                                     published_ids=published_ids):
         if not previous["sameParticipant"]:
             continue
@@ -172,9 +177,13 @@ def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
 
 def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str,
                  summary: Optional[str] = None, repository: str = REPOSITORY, duplicates: Optional[List[Dict[str, Any]]] = None,
-                 published_ids: Optional[Collection[str]] = None) -> bool:
+                 published_ids: Optional[Collection[str]] = None, readout: str = "coherent") -> bool:
     """Write the files and the index entry into the checkout. Returns whether anything changed. Raises `ArchiveRefused` (`DuplicatePolicy` when `DUPLICATE_RULES`
-    refuse a repeat). Repeats that the rules allow are appended to `duplicates`. `published_ids`: see `find_duplicates`."""
+    refuse a repeat). Repeats that the rules allow are appended to `duplicates`. `published_ids`: see `find_duplicates`.
+
+    `readout` is this submission's readout design. Your own earlier copies of the policy go through `plan_readout_variant`: the same readout is still the repeat it has
+    always been, the other readout is a variant of them and keeps their primitive, so it enters the full board alone. Only such a non-legacy entry records `readout` and
+    `boards`; the default coherent entry is written exactly as it always was, and no archived row is backfilled."""
     if not HEAD.fullmatch(head_sha):
         raise ArchiveRefused("the head commit is not a 40-hex sha")
     if not source.strip():
@@ -193,12 +202,25 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
         if old["sha256"] != entry["sha256"] or old["digest"] != entry["digest"] or old.get("summarySha256") != entry.get("summarySha256"):
             raise ArchiveRefused(f"{head_sha} is already archived with a different policy")
         return False
-    for repeat in find_duplicates(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha,
-                                   published_ids=published_ids):
+    repeats = find_duplicates(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha,
+                              published_ids=published_ids)
+    primitive_from = None
+    try:
+        primitive_from = plan_readout_variant(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha,
+                                              readout=readout, published_ids=published_ids)
+    except DuplicatePolicy:
+        if DUPLICATE_RULES["same_participant"] == "refuse":     # the same readout: the repeat the rules have always refused
+            raise
+    else:
+        repeats = [r for r in repeats if not r["sameParticipant"]]   # your own copies are all of the other readout, so this is a variant of them
+    for repeat in repeats:
         if DUPLICATE_RULES["same_participant" if repeat["sameParticipant"] else "other_participant"] == "refuse":
             raise DuplicatePolicy(repeat)
         if duplicates is not None:
             duplicates.append(repeat)
+    if readout != "coherent" or primitive_from is not None:
+        entry["readout"] = readout
+        entry["boards"] = ["full"] if primitive_from else ["pp", "full"]
     folder = checkout / DIR / head_sha
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "Policy.lean").write_text(source)
@@ -227,9 +249,10 @@ def _git(checkout: Path, *args: str, env: Optional[Dict[str, str]] = None, check
 
 def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str, summary: Optional[str] = None,
                    token: Optional[str] = None, remote: str = "origin", attempts: int = 4, repository: str = REPOSITORY,
-                   published_ids: Optional[Collection[str]] = None) -> Dict[str, Any]:
+                   published_ids: Optional[Collection[str]] = None, readout: str = "coherent") -> Dict[str, Any]:
     """Add the policy to `BRANCH` and push, starting each attempt from the branch's current tip (a competing archive push is retried, not merged).
-    `checkout` is a clone with `remote`; returns `{"path", "commit", "added", "duplicates"}` (the earlier submissions of the same policy that the rules allowed)."""
+    `checkout` is a clone with `remote`; returns `{"path", "commit", "added", "duplicates"}` (the earlier submissions of the same policy that the rules allowed).
+    `readout` is passed to `write_policy`, which decides there what an earlier copy of the policy with another readout design means."""
     env = _env(token)
     last = ""
     for _ in range(attempts):
@@ -237,7 +260,7 @@ def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, 
         _git(checkout, "checkout", "--detach", "FETCH_HEAD")
         duplicates: List[Dict[str, Any]] = []
         if not write_policy(checkout, v, login=login, pull=pull, head_sha=head_sha, run_id=run_id, source=source, summary=summary, repository=repository,
-                            duplicates=duplicates, published_ids=published_ids):
+                            duplicates=duplicates, published_ids=published_ids, readout=readout):
             tip = _git(checkout, "rev-parse", "HEAD").stdout.strip()
             return {"path": f"{DIR}/{head_sha}", "commit": tip, "added": False, "duplicates": []}
         _git(checkout, "add", INDEX_PATH, f"{DIR}/{head_sha}")

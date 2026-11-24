@@ -55,7 +55,9 @@ verification reuse, successful publication and an already-published result.
 already holds that digest, `evaluation/archive_policy.py` applies `DUPLICATE_RULES`: by default the **same participant** (same GitHub login, case-insensitive)
 is refused with stage `duplicate`, no row, and a pull-request comment naming the earlier submission, while **another participant** is published normally and the
 repeat is only identified (the `duplicates` of the archive result in `publication-result.json`, and a `duplicate-policy:` line in the publish log). To refuse
-other participants as well, set `DUPLICATE_RULES["other_participant"] = "refuse"`. Only policies the publisher has actually published count (the archive is written first, so an archived head whose publication failed does not block a retry); a rerun of the same head commit is never a repeat. To list repeats already
+other participants as well, set `DUPLICATE_RULES["other_participant"] = "refuse"`. Your own earlier copies first go through `plan_readout_variant`: the same
+readout design is the repeat just described, while the **other** readout design is a variant of that submission, archived with `readout` and `boards: ["full"]`
+and keeping the earlier entry's primitive result (legacy entries carry neither key and mean coherent readout; nothing is backfilled). Only policies the publisher has actually published count (the archive is written first, so an archived head whose publication failed does not block a retry); a rerun of the same head commit is never a repeat. To list repeats already
 published, group `leaderboard/policy-submissions.json` on the `submission-results` branch by `digest`; rows published before this rule stay.
 
 Archive writes rebuild the index from the exact current parent on every
