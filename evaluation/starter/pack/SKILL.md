@@ -1,6 +1,6 @@
 ---
 name: forshor-challenge-submission
-description: "Use when helping a solver or coding agent take part in the ForShor Challenge with its starter pack: set up the pack, write a banded PhaseProduct or PhaseTripleProduct policy, price it with starter.py (examples, price, forshor-doc, template, lean-input), run the optional Lean checks (policy check, PhaseTripleProduct harness, ForShor's build), and prepare it for submission. Explains the three boards, the score Q x T, exact widths, the threshold rule, what Lean does and does not certify, the exact trust wording, resource limits, staying current with the leaderboards, and common errors."
+description: "Use when helping a solver or coding agent take part in the ForShor Challenge with its starter pack: set up the pack, write a banded PhaseProduct or PhaseTripleProduct policy, price it with starter.py (examples, price, forshor-doc, template, lean-input), run the optional Lean checks (policy check, PhaseTripleProduct harness, ForShor's build), and prepare it for submission. Explains the three boards, the score Q x T, exact widths, the threshold rule, what Lean does and does not certify, the exact trust wording, resource limits, the three tiers of circuit-design options and which of them can be submitted for a score, staying current with the leaderboards, and common errors."
 ---
 
 # ForShor Challenge: Policy Submission
@@ -173,13 +173,9 @@ Read `SUBMISSION_FORMAT.md` section 6 first. **This pack prices a policy and pre
 Once the repository is public, `./forshor submit` creates or reuses the participant's GitHub fork and opens the PR against `zapatacomputing/forshor-submissions/main`; participants do not need upstream Write access. While private, existing authorized staging contributors retain their current route.
 
 Copy the generated Lean policy to `TableGeneration/Submission/Policy.lean` in the submission checkout. The CLI accepts a
-`ShorPolicySubmission` (PhaseProduct) or `PTPPolicy` (PhaseTripleProduct), not the pricing JSON. The submittable full order-finding
-path is the default one: coherent readout, the exact logical QFT, Ross–Selinger synthesis and `oneQubit` negation. Leaving the design
-selectors out gives exactly that, and writing a default out in full changes nothing: hosted intake treats an explicit default
-declaration as identical to omission (owner ruling 2026-11-24), so `.rossSelinger`, `.reference` and `{ readout := .coherent }` are
-accepted and resolve the same way in every lane. **Any other value is refused** — those are local qualification routes with no
-hosted publication route, never something to submit for a score. The exact declarations and refusals are in
-`SUBMISSION_FORMAT.md` section 2.
+`ShorPolicySubmission` (PhaseProduct) or `PTPPolicy` (PhaseTripleProduct), not the pricing JSON. The design options are
+covered in full below, in "Design Options: Three Tiers"; the exact declarations, the recogniser's shape and the 8 full-run
+profiles are in `SUBMISSION_FORMAT.md` section 2.
 
 Run `./forshor check` before `./forshor submit`. Pricing and template generation are not proof checks. When checking fails, read the
 failed stage and reason, then `artifacts/forshor/verification/table-generation-summary.md` for details. On GitHub, open the
@@ -194,6 +190,56 @@ attempts that did not help), limitations, and the model or harness you used. Lea
 An accepted policy appears on the boards under the submitter's GitHub handle as `<handle>_sub<N>`, N counting their own submissions from 1 (the handle `forshor` is reserved), ranked by Q × T
 with the starting rows, the starting policies, built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (named `forshor_sub<N>`), and is listed as checked in Lean if it has been. It inherits the repository's
 Apache 2.0 licence. **The boards' numbers are the ones that count:** the site prices the policy again with the same engine.
+
+## Design Options: Three Tiers
+
+Every circuit-design option is declared in the **Lean source** (`Policy.lean`), never in the table policy JSON.
+There are three tiers, and **the tier is the most important thing about an option**. `SUBMISSION_FORMAT.md` section 2,
+"The design options, in three tiers", is the full matrix: the exact declarations, the recogniser's shape, all 8 full-run
+profiles and the verbatim refusals. The short form:
+
+| Tier | Options | Status |
+|---|---|---|
+| **1 — submittable for a score** | the default design (coherent readout, exact logical QFT, Ross–Selinger synthesis, `oneQubit` negation), whether left out or written out in full; several tables of the same `k` selected per width band | hosted intake accepts, publishes and ranks it |
+| **2 — local qualification only, nonpublishing** | semiclassical (measured) readout; standalone primitives `.catalyticB2` and `.adaptiveB3`; the 7 non-default full-run profiles | **attested and priced locally; not accepted by hosted intake; no score** |
+| **3 — not available** | per-family QFT mixes outside the 8 named profiles, Step 4 adaptive fallback, controlled Steps 1 and 5, any precision other than δ = 1e-2 | no typed selector exists |
+
+**Tier 1 in full.** Leaving the selectors out gives the submittable design. Writing a default out in full changes nothing:
+hosted intake treats an explicit default declaration as **identical to omission** (owner ruling 2026-11-24), so
+`def submittedPrimitive : Shor.PrimitiveSynthesis := .rossSelinger`,
+`def submittedDesign : Shor.SubmissionDesign := { readout := .coherent }` and, on the PhaseProduct board only,
+`def submittedFullRunDesign : Shor.FullRunDesign := .reference` are accepted, build the same document, price the same and
+count as the same submission in either arrival order. The recogniser is exact: one `def` at column 0, directly in the
+board's namespace, ForShor's own type, the default value, nothing else on the statement, once. Prefer **omitting** the
+selectors — it is shorter and cannot be mis-shaped.
+
+**Tier 2 is not a way to score.** Each of the three is a real typed choice the verifier attests when you run it yourself,
+and none of them has a hosted publication route. Work is in flight to price the QFT axis, but the publication gate is
+untouched: nothing in tier 2 publishes today. Even a receipt from the local readout-qualification route is refused by the
+publisher at its first gate — `qualified readout receipts are local only; publishing is not enabled`. Never offer one to a
+user as a submission, and never present its local number as a board number.
+
+**The 7 non-default full-run profiles** are a closed enum with `reference`: `quotientExact`, `quotientCatalytic`,
+`quotientBandedDataCatalyticWork`, `quotientFallbackDataCatalyticWork`, `quotientStep2Fallback`, `splitStep4Kicks`,
+`splitStep2FallbackStep4Kicks`. What each one selects is tabulated in `SUBMISSION_FORMAT.md` section 2. There is no way to
+ask for a combination outside those 8.
+
+**Tier 3, so a submission is not wasted.** Do not try to build a per-family QFT mixture, Step 4 *adaptive* fallback (which
+is not Step 4 selective kicks), a controlled Step 1 or Step 5, or a precision other than δ = 1e-2. Only δ = 1e-2 is in
+scope and there is no precision control to set.
+
+**Design options are never JSON.** A policy or band object carrying `readout`, `submittedDesign`, `submittedPrimitive`,
+`submittedFullRunDesign`, `qft`, `modmul`, `phase_product`, `synthesis` or `synthesis_backend` (or their snake_case forms)
+is refused whatever its value, by `starter.py` and by hosted intake alike:
+`table policy JSON cannot select circuit design options (<keys>); use the supported Lean policy interface`.
+Putting `"readout": "coherent"` in the JSON does not express the default — the default is what you get by writing nothing.
+
+**A stop is not a verdict.** A timeout or a memory stop is *incomplete*, never a refusal and never a pass: its text ends
+"This is not a verdict on the policy." Retry it; do not change the policy because of one, and do not report it as a
+rejection or an acceptance.
+
+The refusal messages quoted here and in `SUBMISSION_FORMAT.md` are the ones this pack was built against. Several are
+reachable from more than one cause and **the wording may become more specific**; the rule each one is about does not change.
 
 ## Optional LaTeX Summary
 
@@ -320,7 +366,12 @@ you name with `--out` or `--json`.
 | `starter.py template` refuses | a format limit or unsupported option | the template tool writes PP and PTP policies with 1 < k ≤ 8; read the named refusal rather than changing a valid PTP policy to PP |
 | `forshor-doc` prints `DIFFERS` | the printed document does not match the converted policy, or is a scan document | rebuild with `--balanced`. A document without `width_rule` is priced on the upstream cross-check, not the board's IR. |
 | `error: the policy asks for negation 'scratch'` | ForShor's `scratch` method is not priced by the boards or this pack | remove the `negation` key (or set `"oneQubit"`) |
-| `submittedDesign is not enabled for ordinary submissions` / `submittedPrimitive requires separate nonpublishing primitive qualification` / `submittedFullRunDesign requires dedicated nonpublishing full-run qualification` | the Lean file declares a design selector at something other than its default, declares it twice, or mentions the name elsewhere | leave the selector out, or write exactly the default declaration (`SUBMISSION_FORMAT.md` section 2). The refused routes are local qualification only and cannot be published, so there is no submittable variant of them |
+| `submittedDesign is not enabled for ordinary submissions; it requires local readout qualification` | the file asks for measured readout (tier 2), or writes the `.coherent` default in a shape the recogniser does not take, or mentions the name elsewhere | leave the selector out, or write exactly the default declaration (`SUBMISSION_FORMAT.md` section 2). Measured readout is local qualification only and cannot be published, so there is no submittable variant |
+| `submittedPrimitive requires separate nonpublishing primitive qualification` | the file asks for `.catalyticB2` or `.adaptiveB3` (tier 2), or mis-shapes the `.rossSelinger` default, or mentions the name elsewhere | same fix. The standalone primitives have no hosted publication route |
+| `submittedFullRunDesign requires dedicated nonpublishing full-run qualification` | the file names one of the 7 non-default full-run profiles (tier 2), mis-shapes `.reference`, declares it twice, or declares it on the PhaseTripleProduct board (refused there even at `.reference`) | same fix. The 7 profiles have no hosted publication route |
+| `table policy JSON cannot select circuit design options (…); use the supported Lean policy interface` | a design key (`readout`, `qft`, `modmul`, `synthesis`, `phase_product`, a `submitted*` name, …) is in the **table JSON** | design options are declared in `Policy.lean` only; delete the key. The default is what you get by writing nothing |
+| `full-run synthesis requires saved semiclassical readout and --balanced --readout submitted` / `full-run and standalone synthesis opt-ins are not jointly qualified` | ForShor refusing a non-`reference` full-run profile outside its qualification mode, or mixed with a standalone primitive | these are tier-2 routes with no hosted publication route; a scoring submission does not declare them at all |
+| `qualified readout receipts are local only; publishing is not enabled` | a measured-readout receipt was given to the publisher | measured readout is attested and priced locally; it is not accepted by hosted intake and gets no score |
 | a Lean run is killed for memory or time | over the memory cap, or the stage limit you set | run one or two checks at a time; some are hours long (see Lean Checks). If it persists, report the policy and the record rather than raising the cap. |
 | `rejected`: a missing object file, `Insufficient number of fields`, or a missing file under a temporary directory | an infrastructure failure (an unbuilt PhaseTripleProduct module, a stale harness script, a cleaned temporary directory) | fix the setup and run again; it is not a verdict on the policy |
 
@@ -333,8 +384,13 @@ you name with `--out` or `--json`.
 - Never use `sorry`, `admit`, `axiom`, `native_decide`, `#eval`, `set_option`, macros, `unsafe`, `extern`, `csimp` or
   `implemented_by` in a `Policy.lean`. Never edit any other ForShor file.
 - Never present a policy that asks for `negation: scratch` as priced. Never say Q is Lean-proved for a policy of yours.
-- Never set a design selector to anything but its default, and never offer one as a way to score: measured readout,
-  standalone primitives and full-run designs are local, nonpublishing qualification routes with no hosted publication route.
+- Never set a design selector to anything but its default, and never offer one as a way to score. Measured readout, the
+  standalone primitives and all 7 non-default full-run profiles are tier 2: attested and priced locally, not accepted by
+  hosted intake, no score. Say that plainly rather than hedging.
+- Never put a design key in the table policy JSON. Design options are declared in `Policy.lean` only.
+- Never promise a tier-3 option (a per-family QFT mixture outside the 8 profiles, Step 4 adaptive fallback, a controlled
+  Step 1 or 5) or any precision other than δ = 1e-2. There is no selector for them.
+- Never report a timeout or memory stop as a refusal or as a pass. It is incomplete, it is not a verdict, and it may be retried.
 - Never present a local number as final. The site prices the policy again, and its numbers count.
 
 ## Reuse And Provenance

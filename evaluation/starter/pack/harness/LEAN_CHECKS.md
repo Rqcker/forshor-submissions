@@ -94,9 +94,22 @@ identity) is what `forshor-doc` does for the fixed values; the template's lexica
 
 ForShor's template has an optional `negation` (`.oneQubit`, the default, or `.scratch`). The printed `policy.json` carries `negation` and `negate_charge`. The boards, and this pack, price `oneQubit` only.
 
-The design selectors (`submittedDesign`, `submittedPrimitive`, `submittedFullRunDesign`) are left out of the file by default, which gives coherent readout, the exact
-logical QFT and Ross–Selinger synthesis. Writing a default declaration out in full is accepted and resolves exactly as omission; any other value is refused, and the
-routes those other values name are local qualification routes with no publication route. The exact declarations are in `SUBMISSION_FORMAT.md` section 2.
+**The design selectors, by tier.** `submittedDesign`, `submittedPrimitive` and `submittedFullRunDesign` are declared in the Lean source and nowhere else — never in the
+table policy JSON, which refuses every design key with `table policy JSON cannot select circuit design options (…); use the supported Lean policy interface`.
+`SUBMISSION_FORMAT.md` section 2, "The design options, in three tiers", is the full matrix; in short:
+
+* **Tier 1, submittable for a score.** Leaving all three out gives coherent readout, the exact logical QFT, Ross–Selinger synthesis and `oneQubit` negation. Writing a
+  default out in full is accepted and resolves exactly as omission (owner ruling 2026-11-24): `:= .rossSelinger`, `:= { readout := .coherent }` and, on the PhaseProduct
+  board only, `:= .reference`, each as one `def` at column 0 directly in the board's namespace, with ForShor's own type and nothing else on the statement.
+* **Tier 2, local qualification only.** Semiclassical readout, the standalone primitives `.catalyticB2` and `.adaptiveB3`, and the 7 non-`reference` full-run profiles
+  (`quotientExact`, `quotientCatalytic`, `quotientBandedDataCatalyticWork`, `quotientFallbackDataCatalyticWork`, `quotientStep2Fallback`, `splitStep4Kicks`,
+  `splitStep2FallbackStep4Kicks`). The builds below attest the choice on your own machine; **hosted intake refuses every one of them and there is no publication route** —
+  attested and priced locally, not accepted by hosted intake, no score. A non-`reference` profile also needs saved semiclassical readout and
+  `--balanced --readout submitted`, or ForShor's executable refuses it before anything is printed.
+* **Tier 3, not available.** No typed selector exists for a per-family QFT mixture outside those 8 profiles, for Step 4 *adaptive* fallback (which is not Step 4 selective
+  kicks), for controlled Steps 1 and 5, or for any precision other than δ = 1e-2.
+
+A `rejected` record is a verdict; a **timeout or memory stop is not**. An incomplete attempt says nothing about the policy and may be retried.
 
 **k = 5 to 8, many bands, repeated k.** ForShor accepts them, through run-time IR extraction: up to 256 bands, and several bands may carry different tables of the
 same k, since C1 to C4 are proved per table and per band and `sorted` constrains the thresholds only.
