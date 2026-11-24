@@ -1,0 +1,78 @@
+{
+ "schema": "forshor.price-surface/1",
+ "note": "Data, not a computation. scripts/ci is not an epoch input; nothing here is read by evaluation/export_v2/epoch.py. See scripts/ci/price_surface.py for the rule.",
+ "head": "792464f8355f960ef98d07b0114139cbf077e5a7",
+ "epochInputs": {
+  "dataFingerprint": "176ce4047f5957f1",
+  "engineDataFingerprint": "a098f72365d01ee5",
+  "engineRevision": "677cc2e05ab178afff8dc632ff56058a8196a116",
+  "qualtranVersion": "0.8.0.dev0",
+  "forshorPin": "21e129aeefc0fd1bbb8fa63402f5799af2490788",
+  "leanToolchain": "leanprover/lean4:v4.36.0-rc1"
+ },
+ "groups": {
+  "site_engine.uncovered": {
+   "enforce": true,
+   "pathspec": [
+    "evaluation/engine/site_engine",
+    ":(exclude)evaluation/engine/site_engine/paper_full.py",
+    ":(exclude)evaluation/engine/site_engine/full_frontier.py",
+    ":(exclude)evaluation/engine/site_engine/fullalg.py"
+   ],
+   "files": 15,
+   "sha256": "4cfef6ce11d4bb9941c01ffe6dcbcbc8a198cfa892632992a975cb5deb12007d"
+  },
+  "vendor.qualtran": {
+   "enforce": true,
+   "pathspec": [
+    "evaluation/engine/vendor"
+   ],
+   "files": 789,
+   "sha256": "c1cfb0ebbf616346f0a569ff4f7184adb4e0a74929e3d09af457a4b48953b227"
+  },
+  "engine.cache": {
+   "enforce": true,
+   "pathspec": [
+    "evaluation/engine/cache"
+   ],
+   "files": 16,
+   "sha256": "63e290ff8aa33ea01f122f3714e73cbb08b14700ea440ded70dd09c92a3f312b"
+  },
+  "engine.data.forshor_submitted": {
+   "enforce": true,
+   "pathspec": [
+    "evaluation/engine/data/forshor_submitted"
+   ],
+   "files": 215,
+   "sha256": "c042b1c7e51c8f20ba02e5d59a7b3fd34a76f9dcaa25f45bbbf7b728f8c9a6ac"
+  },
+  "engine.environment": {
+   "enforce": true,
+   "pathspec": [
+    "evaluation/engine/requirements.txt"
+   ],
+   "files": 1,
+   "sha256": "f112a8a9a28497e446dd05f0b30226f0778a6c7c958f6992891cae08dd3131d0"
+  },
+  "tcost.noncode": {
+   "enforce": true,
+   "pathspec": [
+    "evaluation/engine/tcost/exact/SOURCES.json",
+    "evaluation/engine/tcost/certification"
+   ],
+   "files": 14,
+   "sha256": "e539c0b222ce53caf076b6894a2b9f3323f17db931e6286491f0ddb6f795af04"
+  },
+  "export_v2.model": {
+   "enforce": false,
+   "pathspec": [
+    "evaluation/export_v2/epoch.py",
+    "evaluation/export_v2/canon.py",
+    "evaluation/export_v2/pricing.py",
+    "evaluation/export_v2/mapping.py"
+   ],
+   "files": 4,
+   "sha256": "8a274b37af2a1742e8c5b8441e0aee9c1ccaae0d111de62a5bc0d83fdd690b48"
+  }
+ }
+}

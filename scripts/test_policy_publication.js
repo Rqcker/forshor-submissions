@@ -69,6 +69,25 @@ for (const reused of [false, true]) test(`a ${reused ? 'reused receipt' : 'sourc
   assert.ok(!fs.existsSync('evaluation-metadata.json'));
 }));
 
+for (const reused of [false, true]) test(`a ${reused ? 'reused receipt' : 'fresh artifact'} with a native compiled key never prepares publication`, () => fixture(async f => {
+  for (const submitted_full_run of [null, 'malformed', { schema: 'forshor.full-run-selection/v1' }]) {
+    f.verification.printed = { schema: 'forshor.policy-submission/v1', submitted_full_run };
+    f.write();
+    const receipt = { ...f.input.identity, runId: '123', runAttempt: 2, pullRequest: 12 };
+    if (reused) {
+      const base = `results/policy-submissions/${HEAD}`;
+      const entry = { policy_id: HEAD, path: base,
+        source: { repository: 'zapatacomputing/forshor-submissions', run_id: '123', pr_number: 12 } };
+      const readJson = async (g, c, name) => name.startsWith('leaderboard/') ? { schema: 'forshor.policy-archive/v1', policies: [entry] }
+        : { ...f.verification, ciVerification: receipt };
+      await assert.rejects(policy.accepted({ ...f.input, readJson }), /submitted_full_run/);
+      f.input.recovered = { verification: f.verification, receipt, base };
+    }
+    await assert.rejects(policy.prepare(f.input), /submitted_full_run/);
+    assert.ok(!fs.existsSync('evaluation-metadata.json'));
+  }
+}));
+
 for (const field of ['login', 'leanSource', 'leanSha256', 'digest']) {
   test(`a forged policy ${field} cannot reach publication`, () => fixture(async f => {
     f.verification[field] = 'forged'; f.write();

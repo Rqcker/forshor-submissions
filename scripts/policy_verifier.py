@@ -35,11 +35,36 @@ SUBMISSION = "TableGeneration/Submission/Policy.lean"
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "evaluation"))
 import summary_tex  # noqa: E402  (the shared rules for the optional summary file)
+from export_v2.attempt import AttemptBusy, exclusive_attempt  # noqa: E402
 
 SUMMARY = summary_tex.SUMMARY_PATH
 CHALLENGE = "forshor-policy"
 
 _NAMESPACES = (re.compile(r"^\s*namespace\s+PolicySubmission\b", re.M), re.compile(r"^\s*namespace\s+PTPPolicySubmission\b", re.M))
+
+#: A declaration of `submittedDesign` that survives `without_default_selectors`, i.e. one that is not the explicit
+#: default `{ readout := .coherent }`. The recogniser is the source gate's own, so this wrapper, `intake_v2`'s
+#: `refuse_unqualified_design` and `scripts/ci/policy_source.py` cannot disagree about what a declaration is.
+_SUBMITTED_DESIGN = re.compile(r"(?<![\w'])submittedDesign(?![\w'])")
+
+
+def wants_readout_qualification(source: str) -> bool:
+    """True when the policy declares a non-default readout design, so intake must be asked to qualify it.
+
+    Without this the verifier job produces an unqualified receipt and the publisher has nothing to accept: the
+    two-job route would refuse every measured submission while the in-run route accepted it. The condition is
+    exactly the one `intake_v2.refuse_unqualified_design` refuses on, read from the same stripped source, so the
+    flag is set precisely when omitting it would make intake refuse for want of the flag.
+
+    Deliberately not restricted to PhaseProduct: a PhaseTripleProduct policy that declares a design is refused by
+    intake with "readout qualification only supports PhaseProduct", which is the accurate reason. Suppressing the
+    flag there would instead report that designs need qualification, which is no longer true.
+    """
+    sys.path.insert(0, str(HERE.parent))
+    from scripts.ci.policy_source import strip_lean_comments, without_default_selectors
+    # Comments first, exactly as `intake_v2._without_default_selectors` does. `default_selectors` documents that it
+    # takes comment-stripped source; without the strip a design named only in a comment would set the flag.
+    return bool(_SUBMITTED_DESIGN.search(without_default_selectors(strip_lean_comments(source))))
 
 
 def is_policy_file(text: str) -> bool:
@@ -92,6 +117,8 @@ def summary(result: Dict[str, Any]) -> str:
     if any(c["name"] == "memory" and c["status"] != "success" for c in result["checks"]):
         lines += ["**Stopped: memory limit reached.** This is not a verdict on your policy.",
                   "We're working towards supporting submissions that need more memory.", ""]
+    if any(c["name"] == "timeout" and c["status"] != "success" for c in result["checks"]):
+        lines += ["**Stopped: time limit reached.** This is not a verdict on your policy.", ""]
     pol = result.get("policy")
     if pol:
         lines += [f"Policy `{pol['digest'][:12]}`: {pol['mode']}, {pol['bands']} band(s). STO mirror: accepted. ForShor: "
@@ -108,6 +135,21 @@ def run(repo: Path, out_dir: Path, *, get_changed_files: Callable[[Path], Tuple[
     env = dict(os.environ if env is None else env)
     repo, out_dir = Path(repo).resolve(), Path(out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        # The wrapper owns cleanup and artifact reads; intake owns its own distinct locks.
+        with exclusive_attempt(out_dir / ".policy-verifier.lock") as lock_fd:
+            return _run(repo, out_dir, get_changed_files, env, intake, preflight, lock_fd)
+    except AttemptBusy as error:
+        print(f"policy verifier: {error}", file=sys.stderr)
+        return 2
+
+
+def _run(repo, out_dir, get_changed_files, env, intake, preflight, lock_fd):
+    result_path = out_dir / "intake-result.json"
+    receipt_path = out_dir / "verification.json"
+    # Local checks reuse the output directory; only this invocation's artifacts count.
+    result_path.unlink(missing_ok=True)
+    receipt_path.unlink(missing_ok=True)
     first, files = changed_files_and_list(get_changed_files, repo)
     checks: List[Dict[str, str]] = [first]
     policy = None
@@ -124,24 +166,39 @@ def run(repo: Path, out_dir: Path, *, get_changed_files: Callable[[Path], Tuple[
         else:
             cmd = intake or [env.get("ENGINE_PYTHON") or sys.executable, str(HERE.parent / "evaluation" / "intake_v2.py")]
             cmd = cmd + ["--lean-policy", str(repo / SUBMISSION), "--login", env.get("TABLE_GEN_LOGIN") or "local-check", "--no-publish", "--tree", sto, "--forshor-tree", forshor,
-                         "--workdir", str(out_dir / "work"), "--verification-out", str(out_dir / "verification.json"), "--out", str(out_dir / "intake-result.json")]
+                         "--workdir", str(out_dir / "work"), "--verification-out", str(receipt_path), "--out", str(result_path)]
             if summary_data is not None:
                 cmd += ["--summary", str(repo / SUMMARY)]
+            try:
+                submitted_source = (repo / SUBMISSION).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                submitted_source = ""      # intake reports an unreadable submission; do not pre-empt its message
+            if wants_readout_qualification(submitted_source):
+                cmd += ["--qualify-readout"]
             if env.get("POLICY_STAGE_TIMEOUT"):
                 cmd += ["--stage-timeout", env["POLICY_STAGE_TIMEOUT"]]
             if env.get("POLICY_MIRROR_TIMEOUT"):
                 cmd += ["--mirror-timeout", env["POLICY_MIRROR_TIMEOUT"]]
-            with open(out_dir / "policy-verifier.log", "w") as log:
-                proc = subprocess.run(cmd, cwd=repo, env=env, stdout=log, stderr=subprocess.STDOUT)
             try:
-                got = json.loads((out_dir / "intake-result.json").read_text())
-            except (OSError, ValueError):
-                got = {"failed": True, "error": f"the intake wrote no result (exit {proc.returncode}); see policy-verifier.log"}
+                with open(out_dir / "policy-verifier.log", "w") as log:
+                    proc = subprocess.run(cmd, cwd=repo, env=env, stdout=log, stderr=subprocess.STDOUT, pass_fds=(lock_fd,))
+            except OSError as error:
+                got = {"failed": True, "error": f"could not start intake: {error}"}
+            else:
+                try:
+                    got = json.loads(result_path.read_text())
+                except (OSError, ValueError):
+                    got = None
+                if not isinstance(got, dict):
+                    got = {"failed": True, "error": f"the intake wrote no usable result (exit {proc.returncode}); see policy-verifier.log"}
+                elif got.get("verified") and (proc.returncode or not receipt_path.is_file() or not isinstance(got.get("policy"), dict)
+                        or not all(key in got["policy"] for key in ("digest", "mode", "bands"))):
+                    got = {"failed": True, "error": f"the intake reported success without a successful run and complete verification (exit {proc.returncode}); see policy-verifier.log"}
             carried = None
             if got.get("verified") and summary_data is not None:   # the verification must carry exactly the file that was checked, or it is not published
                 try:
-                    carried = json.loads((out_dir / "verification.json").read_text()).get("summarySha256")
-                except (OSError, ValueError):
+                    carried = json.loads(receipt_path.read_text()).get("summarySha256")
+                except (OSError, ValueError, AttributeError):
                     carried = None
                 if carried != summary_tex.sha256(summary_data):
                     got = {"failed": True, "error": "the verification does not carry the summary that was checked"}
@@ -150,9 +207,13 @@ def run(repo: Path, out_dir: Path, *, get_changed_files: Callable[[Path], Tuple[
                 checks.append(check("policy", True, f"ForShor's gate and build, the STO mirror at exact widths: accepted ({policy['mode']}, {policy['bands']} band(s))"))
             elif got.get("refused"):
                 checks.append(check(str(got.get("stage") or "refused"), False, str(got.get("reason") or "refused")[:900]))
+            elif got.get("failed") and got.get("stage") in ("memory", "timeout"):
+                checks.append(check(got["stage"], False, str(got.get("error") or "verification could not complete")[:900]))
             else:
                 checks.append(check("verification", False, "the verification could not complete (a tool failed, not a verdict on the policy): " + str(got.get("error") or "")[:900]))
     ok = all(c["status"] == "success" for c in checks)
+    if not ok:
+        receipt_path.unlink(missing_ok=True)
     result = {"schema_version": 1, "challenge": CHALLENGE, "kind": "policy", "phase": "preflight" if preflight else "full", "status": "success" if ok else "failure", "checks": checks,
               "policy": policy, "verification": "verification.json" if ok and not preflight else None,
               "summary": {"sha256": summary_tex.sha256(summary_data), "bytes": len(summary_data)} if summary_data is not None else None}

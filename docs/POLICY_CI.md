@@ -24,6 +24,11 @@ The PR comment and CLI distinguish these from proof failures. The memory message
 **We're working towards supporting submissions that need more memory.** See [CLI.md](CLI.md)
 for queue status and notification behavior.
 
+The verifier clears earlier intake results and accepts success only when this run exits successfully
+and writes a new verification receipt. On an invalid policy, `./forshor check` shows the failed
+check and its reason; the GitHub run summary and PR comment use the same verifier result. If intake
+could not run or wrote no usable result, that is an incomplete verification, not a failed proof.
+
 ## Source restrictions before compilation
 
 The trusted `scripts/ci/policy_source.py` filter runs before dependency setup or
@@ -44,6 +49,12 @@ The trusted publisher applies the same filter to the exact file read from
 GitHub, including archived/reused verification. This operational guard is
 always applied around the mathematical proof cache; it does not change the
 Lean theorems, estimator/model pins, epoch, or the archived proof identity.
+
+## Workflow hardening
+
+Every third-party action in `.github/workflows/` and `.github/actions/` is pinned by full commit SHA; `scripts/ci/test_workflow_pins.py` fails on any other `uses:` (local `./` actions excepted) and lists the few tags still awaiting a resolved SHA. `scripts/ci/test_workflow_security.py` holds the boundaries above in place: no `pull_request_target`, no credentials or write scope in a workflow a pull request starts, the verifier checked out at the base commit, every checkout without a persisted token, and the publisher and notifier running `main` code with the downloaded artifact as data.
+
+There is deliberately no separate changed-files allowlist step in the verify workflow. The path filter only decides what triggers a run; the admitted paths are enforced by the verifier (`scripts/policy_verifier.py`) and again by the trusted publisher against GitHub's own file list (`scripts/ci/table_generation_report.js`), so a pull request that edits a workflow or anything else beside the submission surface is refused before anything is published.
 
 ## Trusted publication
 

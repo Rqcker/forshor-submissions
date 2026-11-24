@@ -280,10 +280,23 @@ end PolicySubmission
     return "".join(out)
 
 
+def accepted_policies(docs) -> list:
+    """`Policy.from_json` of each doc (each band's table is checked as it is read), refusing what the boards refuse: no policy, or a
+    policy with no bands (Lean reads `[]` as "not entered"; `Policy.leaf` is the schoolbook baseline). Unlike the engine's
+    `checked_policies` it allows different tables of the same k in different bands, as the boards and both Lean checks do."""
+    pols = [tt.Policy.from_json(d) for d in docs]
+    if not pols:
+        raise tt.TableError("no policy in the document")
+    for p in pols:
+        if not p.bands:
+            raise tt.TableError(f"{p.name or p.mode}: no bands (not entered); Policy.leaf is the schoolbook baseline")
+    return pols
+
+
 def template_from_file(path: Path, index: int = 0, lib: str = DEFAULT_LIB) -> str:
     """The template of policy `index` of the policy file `path`, with that policy object's own `"negation"` key honoured."""
     docs = tt.policy_docs(json.loads(Path(path).read_text()))
-    pols = tt.checked_policies(docs)
+    pols = accepted_policies(docs)
     return template_text(pols[index], lib, negation_of(docs[index]))
 
 

@@ -56,14 +56,21 @@ DUPLICATE_RULES = {"same_participant": "refuse", "other_participant": "allow"}
 
 
 class DuplicatePolicy(ArchiveRefused):
-    """A policy this submission repeats, and a rule that refuses it. `duplicate_of` describes the earlier archived submission."""
+    """A policy this submission repeats, and a rule that refuses it. `duplicate_of` describes the earlier archived submission.
 
-    def __init__(self, duplicate_of: Dict[str, Any]):
+    `source` names which check refused, because the same message was raised from two of them (census C21): the readout
+    variant planner, whose refusal the writer may catch as control flow, and the writer's own duplicate rules. An
+    operator reading a refused run could not tell whether the repeat was found while planning the readout variant or
+    while writing the entry, and those are different places to look."""
+
+    def __init__(self, duplicate_of: Dict[str, Any], source: str = "the archive's duplicate rules"):
         who = "you" if duplicate_of["sameParticipant"] else "another participant"
         super().__init__(f"{who} already submitted this exact policy as pull request #{duplicate_of['pull']} (commit {duplicate_of['policyId'][:7]}, "
                          f"{str(duplicate_of['createdAt'])[:10]}); each policy can be published once"
-                         + (" per participant" if duplicate_of["sameParticipant"] else ""))
+                         + (" per participant" if duplicate_of["sameParticipant"] else "")
+                         + f" (refused by {source})")
         self.duplicate_of = duplicate_of
+        self.source = source
 
 
 def sha256(text: str) -> str:
@@ -92,7 +99,9 @@ def github_summary(head_sha: str, token: str, request_json: Callable[..., Any], 
     data = base64.b64decode(doc["content"])
     why = summary_tex.problem(data)
     if why:
-        raise ArchiveRefused(why)
+        # Census C20: summary_tex.problem's three messages are raised here and again from check_summary below, so each
+        # route says which file it read. Here it is GitHub's copy at the head commit; there it is the carried copy.
+        raise ArchiveRefused(f"{why} (the summary.tex at the pull request's head commit)")
     return data.decode("utf-8")
 
 
@@ -126,6 +135,39 @@ def find_duplicates(index: Dict[str, Any], *, digest: str, mode: str, login: str
     return sorted(found, key=lambda d: (d["createdAt"] or "", d["policyId"]))
 
 
+def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head_sha: str,
+                         readout: str, published_ids: Optional[Collection[str]] = None,
+                         mode: str = "PhaseProduct") -> Optional[str]:
+    """How this participant's own earlier archived copies of this policy bear on it. Return a prior primitive ID, if any.
+
+    Raises `DuplicatePolicy` for a repeat with the same readout. `mode` is the
+    board mode to compare on; readout designs exist for PhaseProduct only, but
+    `write_policy` asks about every mode it archives, so the same refusal holds.
+
+    Take only visible records into account. Legacy records omit both circuit
+    and board metadata and mean coherent readout with a primitive result.
+    Future opt-in entries can carry `readout` and `boards` without backfill.
+    """
+    if readout not in ("coherent", "semiclassical"):
+        raise ArchiveRefused("unknown readout design")
+    records = {p["policy_id"]: p for p in index["policies"]}
+    primitive = None
+    for previous in find_duplicates(index, digest=digest, mode=mode, login=login, head_sha=head_sha,
+                                    published_ids=published_ids):
+        if not previous["sameParticipant"]:
+            continue
+        entry = records[previous["policyId"]]
+        chosen = entry.get("readout", "coherent")
+        boards = entry.get("boards", ["pp", "full"])
+        if chosen not in ("coherent", "semiclassical") or boards not in (["pp", "full"], ["full", "pp"], ["full"]):
+            raise ArchiveRefused("unrecognized circuit or boards in published archive entry")
+        if chosen == readout:
+            raise DuplicatePolicy(previous, "the readout variant planner")
+        if "pp" in boards and primitive is None:
+            primitive = previous["policyId"]
+    return primitive
+
+
 def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
     """`summary` is the file at the head commit (None: there is none). It must satisfy the rules, and the verification must carry exactly it, in both directions."""
     carried = v.get("summarySource")
@@ -135,7 +177,7 @@ def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
         raise ArchiveRefused("the verification carries a summary.tex that the pull request's head commit does not have")
     why = summary_tex.problem(summary.encode("utf-8"))
     if why:
-        raise ArchiveRefused(why)
+        raise ArchiveRefused(f"{why} (cross-checking the verification against the head commit)")
     if carried is None:
         raise ArchiveRefused("the pull request's head commit has a summary.tex that the verification does not carry")
     if carried != summary or v.get("summarySha256") != sha256(summary):
@@ -144,9 +186,13 @@ def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
 
 def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str,
                  summary: Optional[str] = None, repository: str = REPOSITORY, duplicates: Optional[List[Dict[str, Any]]] = None,
-                 published_ids: Optional[Collection[str]] = None) -> bool:
+                 published_ids: Optional[Collection[str]] = None, readout: str = "coherent") -> bool:
     """Write the files and the index entry into the checkout. Returns whether anything changed. Raises `ArchiveRefused` (`DuplicatePolicy` when `DUPLICATE_RULES`
-    refuse a repeat). Repeats that the rules allow are appended to `duplicates`. `published_ids`: see `find_duplicates`."""
+    refuse a repeat). Repeats that the rules allow are appended to `duplicates`. `published_ids`: see `find_duplicates`.
+
+    `readout` is this submission's readout design. Your own earlier copies of the policy go through `plan_readout_variant`: the same readout is still the repeat it has
+    always been, the other readout is a variant of them and keeps their primitive, so it enters the full board alone. Only such a non-legacy entry records `readout` and
+    `boards`; the default coherent entry is written exactly as it always was, and no archived row is backfilled."""
     if not HEAD.fullmatch(head_sha):
         raise ArchiveRefused("the head commit is not a 40-hex sha")
     if not source.strip():
@@ -165,12 +211,25 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
         if old["sha256"] != entry["sha256"] or old["digest"] != entry["digest"] or old.get("summarySha256") != entry.get("summarySha256"):
             raise ArchiveRefused(f"{head_sha} is already archived with a different policy")
         return False
-    for repeat in find_duplicates(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha,
-                                   published_ids=published_ids):
+    repeats = find_duplicates(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha,
+                              published_ids=published_ids)
+    primitive_from = None
+    try:
+        primitive_from = plan_readout_variant(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha,
+                                              readout=readout, published_ids=published_ids)
+    except DuplicatePolicy:
+        if DUPLICATE_RULES["same_participant"] == "refuse":     # the same readout: the repeat the rules have always refused
+            raise
+    else:
+        repeats = [r for r in repeats if not r["sameParticipant"]]   # your own copies are all of the other readout, so this is a variant of them
+    for repeat in repeats:
         if DUPLICATE_RULES["same_participant" if repeat["sameParticipant"] else "other_participant"] == "refuse":
-            raise DuplicatePolicy(repeat)
+            raise DuplicatePolicy(repeat, "the archive's duplicate rules, while writing the entry")
         if duplicates is not None:
             duplicates.append(repeat)
+    if readout != "coherent" or primitive_from is not None:
+        entry["readout"] = readout
+        entry["boards"] = ["full"] if primitive_from else ["pp", "full"]
     folder = checkout / DIR / head_sha
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "Policy.lean").write_text(source)
@@ -199,9 +258,10 @@ def _git(checkout: Path, *args: str, env: Optional[Dict[str, str]] = None, check
 
 def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str, summary: Optional[str] = None,
                    token: Optional[str] = None, remote: str = "origin", attempts: int = 4, repository: str = REPOSITORY,
-                   published_ids: Optional[Collection[str]] = None) -> Dict[str, Any]:
+                   published_ids: Optional[Collection[str]] = None, readout: str = "coherent") -> Dict[str, Any]:
     """Add the policy to `BRANCH` and push, starting each attempt from the branch's current tip (a competing archive push is retried, not merged).
-    `checkout` is a clone with `remote`; returns `{"path", "commit", "added", "duplicates"}` (the earlier submissions of the same policy that the rules allowed)."""
+    `checkout` is a clone with `remote`; returns `{"path", "commit", "added", "duplicates"}` (the earlier submissions of the same policy that the rules allowed).
+    `readout` is passed to `write_policy`, which decides there what an earlier copy of the policy with another readout design means."""
     env = _env(token)
     last = ""
     for _ in range(attempts):
@@ -209,7 +269,7 @@ def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, 
         _git(checkout, "checkout", "--detach", "FETCH_HEAD")
         duplicates: List[Dict[str, Any]] = []
         if not write_policy(checkout, v, login=login, pull=pull, head_sha=head_sha, run_id=run_id, source=source, summary=summary, repository=repository,
-                            duplicates=duplicates, published_ids=published_ids):
+                            duplicates=duplicates, published_ids=published_ids, readout=readout):
             tip = _git(checkout, "rev-parse", "HEAD").stdout.strip()
             return {"path": f"{DIR}/{head_sha}", "commit": tip, "added": False, "duplicates": []}
         _git(checkout, "add", INDEX_PATH, f"{DIR}/{head_sha}")

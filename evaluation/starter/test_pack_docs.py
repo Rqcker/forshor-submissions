@@ -7,7 +7,7 @@ from pathlib import Path
 STALE = ["FastMultiplication", "qubitCount", "f9adbe9", "10fe620", "run.sh", "probe-scan", "<LIB>", "PTP suite", "ptp-suite", "policy-mirror",
          "November 1 to December 1", "static-layout formula at exact widths", "sto_site",
          "courtneyjzapata", "port/forshor-21e129a", "ShorTableOptimization_temp", "interim STO fork", "harness/ptp-fast-report",
-         "STO mirror", "STO policy mirror", "STO's table contract"]   # the participant-facing name is "policy check" (the site dropped "STO" on 2026-11-14)
+         "STO mirror", "STO policy mirror", "STO's table contract", "GeneratorPolicy"]   # the participant-facing name is "policy check" (the site dropped "STO" on 2026-11-14)
 ALLOWED = {"harness/policy_to_template.py": ["FastMultiplication", "qubitCount"]}   # a comment saying the old name no longer exists
 pack = Path(sys.argv[1])
 bad = []
@@ -33,11 +33,19 @@ for f in sorted(pack.rglob("*.lean")):
         bad.append(f"{rel}: a Lean file in the pack that is not named Policy.lean")
 if not (pack / "templates" / "Policy.lean").exists():
     bad.append("templates/Policy.lean is missing")
-# the old wording must not survive: the pack never says the file is submitted as PolicyTemplate.lean, and never quotes the old k <= 6 limit
+# the old wording must not survive: the pack never says the file is submitted as PolicyTemplate.lean, and never quotes the old k <= 6 limit.
+# `templates/Policy.lean` carries the same limits in prose, so the scan covers the pack's Lean files too (it used to be *.md only, and the
+# template's stale `1 < k <= 6` escaped it).
+PROSE = [f for f in sorted(pack.rglob("*")) if f.is_file() and f.suffix in {".md", ".lean"} and not str(f.relative_to(pack)).startswith("engine/")]
 for w in ("PolicyTemplate.lean`; you", "k ≤ 6 is the supported", "1 < k ≤ 6", "1 < k <= 6", "2 ≤ k ≤ 6"):
-    for f in sorted(pack.rglob("*.md")):
-        if not str(f.relative_to(pack)).startswith("engine/") and w in f.read_text():
+    for f in PROSE:
+        if w in f.read_text():
             bad.append(f"{f.relative_to(pack)}: {w!r}")
+# the shipped PhaseProduct template states this challenge's submission limits and the document the board prices
+template_lean = (pack / "templates" / "Policy.lean").read_text() if (pack / "templates" / "Policy.lean").exists() else ""
+for need in ("2 ≤ k ≤ 8", "--balanced"):
+    if need not in template_lean:
+        bad.append(f"templates/Policy.lean does not say {need!r}")
 # no file of the pack (engine data and examples included) names the machine the pack was built on
 for f in sorted(pack.rglob("*")):
     if f.is_file() and f.suffix not in {".zip", ".pyc"}:

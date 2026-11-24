@@ -422,12 +422,25 @@ def check(root=None, base=None):
     if policy_format(root):
         env.update(prepare_policy(root, base, cache, env), TABLE_GEN_LOGIN=gh_json('api', 'user')['login'])
     artifacts = root / 'artifacts' / 'forshor' / 'verification'
+    outcome = artifacts / 'table-generation-submission-result.json'
+    summary = artifacts / 'table-generation-summary.md'
+    outcome.unlink(missing_ok=True)
+    summary.unlink(missing_ok=True)
     # The script, config, adapters and model come from the fetched main commit.
-    logged(root, 'Checking the submission in Lean', [sys.executable, 'scripts/verifier.py',
-           '--out-dir', str(artifacts)], cache, env)
-    result = json.loads((artifacts / 'table-generation-submission-result.json').read_text())
-    if result.get('status') != 'success' or result.get('phase') != 'full':
-        raise UserError(f'Full verification did not succeed. Read {artifacts}/table-generation-summary.md')
+    try:
+        logged(root, 'Checking the submission in Lean', [sys.executable, 'scripts/verifier.py',
+               '--out-dir', str(artifacts)], cache, env)
+    except UserError:
+        failure = first_failed_check(read_check_result(outcome))
+        if failure:
+            raise UserError(f'Verification failed at {check_text(failure.get("name"), "verification")}: '
+                            f'{check_text(failure.get("details"), "no details available")}. '
+                            f'Read {summary}') from None
+        raise
+    result = read_check_result(outcome)
+    if not result or result.get('status') != 'success' or result.get('phase') != 'full':
+        details = summary if summary.is_file() else artifacts.parent / 'checking-the-submission-in-lean.log'
+        raise UserError(f'Full verification did not succeed. Read {details}')
     if fingerprint(root, base) != digest:
         raise UserError('The submission changed during verification. Run ./forshor check again.')
     state = read_state(root)
@@ -512,6 +525,23 @@ def verification_feedback(verification, submission):
         return None  # Missing diagnostics must not conceal the failed verification.
 
 
+def read_check_result(path):
+    try:
+        result = json.loads(path.read_text())
+        return result if isinstance(result, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def first_failed_check(result):
+    if isinstance(result, dict) and result.get('status') == 'failure' and isinstance(result.get('checks'), list):
+        return next((c for c in result['checks'] if isinstance(c, dict) and c.get('status') == 'failure'), None)
+
+
+def check_text(text, fallback):
+    return ' '.join(''.join(c for c in str(text or '')[:900] if c.isprintable() or c in '\t\n').split()) or fallback
+
+
 def hosted_failure(verification, result=None):
     """Why a hosted verification did not pass. The conclusion alone cannot say whose fault it is, so do not blame the submission."""
     details_url = f'Details: {verification["html_url"]}'
@@ -519,18 +549,19 @@ def hosted_failure(verification, result=None):
         return f'Stopped: time limit reached. This is not a verdict on your policy. {details_url}'
     if verification['conclusion'] == 'action_required':
         return f'Waiting for a maintainer to approve the GitHub Actions run. {details_url}'
-    if isinstance(result, dict) and result.get('status') == 'failure' and isinstance(result.get('checks'), list):
-        failed = next((c for c in result['checks'] if isinstance(c, dict) and c.get('status') != 'success'), None)
-        if failed and verification['conclusion'] == 'failure':
-            name, detail = failed.get('name'), str(failed.get('details', ''))
-            if name == 'memory' or re.search(r'killed: memory [\d.]+ G(?:i)?B > cap [\d.]+ G(?:i)?B', detail):
-                return ('Stopped: memory limit reached. This is not a verdict on your policy.\n'
-                        "We're working towards supporting submissions that need more memory. "
-                        f'A maintainer can retry verification when more capacity is available. {details_url}')
-            if name == 'timeout' or re.search(r'killed: timeout [\d.]+ s', detail):
-                return f'Stopped: time limit reached. This is not a verdict on your policy. {details_url}'
-            if name in {'forshor', 'check', 'threshold', 'widths', 'cert', 'replay', 'audit', 'mirror', 'axiom dependencies'}:
-                return f'Proof check failed. Open the run summary for the failed check and its details. {details_url}'
+    failed = first_failed_check(result)
+    if failed and verification['conclusion'] == 'failure':
+        name, detail = check_text(failed.get('name'), 'verification'), str(failed.get('details', ''))
+        if name == 'memory' or re.search(r'killed: memory [\d.]+ G(?:i)?B > cap [\d.]+ G(?:i)?B', detail):
+            return ('Stopped: memory limit reached. This is not a verdict on your policy.\n'
+                    "We're working towards supporting submissions that need more memory. "
+                    f'A maintainer can retry verification when more capacity is available. {details_url}')
+        if name == 'timeout' or re.search(r'killed: timeout [\d.]+ s', detail):
+            return f'Stopped: time limit reached. This is not a verdict on your policy. {details_url}'
+        if name in {'forshor', 'check', 'threshold', 'widths', 'cert', 'replay', 'audit', 'mirror', 'axiom dependencies'}:
+            return f'Proof check failed ({name}): {check_text(detail, "see run summary")}. {details_url}'
+        if name in {'format', 'lexical', 'policy-source', 'summary'}:
+            return f'Submission did not pass the {name} check: {check_text(detail, "see run summary")}. {details_url}'
     return (f'The hosted Lean verification did not pass ({verification["conclusion"]}). {details_url}\n'
             'Open the run summary: it names the check that failed. If that is the hosted environment (for example `trees`: the runner has no '
             'prepared Lean trees), the cause is the hosted setup and not your policy; `./forshor check` verifies the same file locally. '

@@ -2,14 +2,19 @@
 
 The policy is priced at all four deltas on the boards it enters (a PhaseProduct policy: pp and full; a PhaseTripleProduct
 policy: ptp only). The request is refused here, before any compute is spent on a hopeless one, if the policy has no valid
-STO mirror evidence: only an accepted policy is ever published."""
+STO mirror evidence: only an accepted policy is ever published.
+
+A compiled full-run QFT design, where one is present, applies to the `mapping.DESIGN_DELTA` panel alone -- the one
+precision that surface is qualified at -- and the other three deltas are priced exactly as they are without it."""
 from __future__ import annotations
 
+from hashlib import sha256
+import re
 from typing import Any, Callable, Dict, List, Optional
 
-from . import engine, mapping, pricing
-from .canon import epoch_of, policy_digest
-from .evidence import EvidenceStore, forshor_from_seed  # noqa: F401  (ForShor evidence for new runs comes with policy intake)
+from . import engine, epoch, full_run_design, mapping, pricing
+from .canon import epoch_of, policy_digest, sha256_hex
+from .evidence import EvidenceStore, forshor_from_seed, stomirror_from_envelope  # noqa: F401  (ForShor evidence for new runs comes with policy intake)
 
 SUBMISSIONS_REPO = "zapatacomputing/forshor-submissions"
 
@@ -23,19 +28,139 @@ def build_request(policy_json: Dict[str, Any], *, model: Dict[str, Any], store: 
                   github_login: str, run_id: str, submitted_at: str, evaluated_at: str, archive_commit: str,
                   accepted_ids: List[str], evaluation_key: str, base_generation: str, number: int,
                   forshor: Optional[Dict[str, Any]] = None, log: Callable[[str], None] = lambda s: None) -> Dict[str, Any]:
+    return _build_request(policy_json, model=model, store=store, head_sha=head_sha, pull_number=pull_number,
+                          github_login=github_login, run_id=run_id, submitted_at=submitted_at, evaluated_at=evaluated_at,
+                          archive_commit=archive_commit, accepted_ids=accepted_ids, evaluation_key=evaluation_key,
+                          base_generation=base_generation, number=number, forshor=forshor, log=log)
+
+
+def build_measured_request(policy_json: Dict[str, Any], *, compiled, verifier_pin, lean_source, model,
+                           primitive_from=None, **request_args) -> Dict[str, Any]:
+    """Local rehearsal only: the production path has no caller for this entry point."""
+    from intake_v2 import check_legacy_full_run_source
+    from policy_options import check_no_full_run_export
+    from .readout_overlay import EPOCH, bind_compiled_readout
+
+    check_legacy_full_run_source(lean_source.decode("utf-8"))
+    check_no_full_run_export(compiled)
     eng = engine.load()
     policy = eng.tables.Policy.from_json(policy_json)
-    boards = boards_for(policy.mode)
+    if policy.mode != eng.tables.PAIR or epoch_of(model) != EPOCH:
+        raise ValueError("measured pricing supports only PhaseProduct under the current epoch")
+    evidence = bind_compiled_readout(policy, compiled, verifier_pin=verifier_pin, lean_source=lean_source)
+    return _build_request(policy_json, model=model, readout=evidence, full_run=full_run_design.selection_of(compiled),
+                          primitive_from=primitive_from, **request_args)
+
+
+def build_coherent_variant_request(policy_json: Dict[str, Any], *, model, primitive_from, **request_args) -> Dict[str, Any]:
+    """Local inverse-order rehearsal: add coherent full pricing without replacing the primitive."""
+    from .readout_overlay import EPOCH
+
+    if policy_json.get("mode") != engine.load().tables.PAIR or epoch_of(model) != EPOCH or primitive_from is None:
+        raise ValueError("a coherent variant requires PhaseProduct and a prior primitive in the current epoch")
+    return _build_request(policy_json, model=model, primitive_from=primitive_from, **request_args)
+
+
+def rehearse_qualified_request(receipt, *, source: bytes, compiled_sha256, index, published_ids, model,
+                               head_sha, github_login, store, **request_args) -> Dict[str, Any]:
+    """Bind a local qualification receipt to independently supplied source and ledger data.
+
+    No publication authority is granted here. Hosted intake must obtain those
+    inputs from the trusted GitHub run and publisher, not from this receipt.
+    """
+    from archive_policy import plan_readout_variant
+    from intake_v2 import (VERIFICATION_SCHEMA, check_legacy_full_run_source, forshor_record,
+                           policy_from_document, require_coherent_export)
+    from policy_options import check_no_full_run_export
+    from .readout_overlay import EPOCH, VERIFIER_PIN, bind_compiled_readout
+
+    if (not isinstance(receipt, dict) or not isinstance(source, bytes)
+            or receipt.get("schema") != VERIFICATION_SCHEMA or receipt.get("login") != github_login
+            or receipt.get("leanSha256") != sha256(source).hexdigest()
+            or receipt.get("leanSource") != source.decode("utf-8")):
+        raise ValueError("qualification receipt does not match the trusted author or source")
+    check_legacy_full_run_source(source.decode("utf-8"))
+    qualification = receipt.get("localReadoutQualification")
+    document = receipt.get("printed")
+    if not isinstance(qualification, dict) or not isinstance(document, dict):
+        raise ValueError("missing local readout qualification or its compiled export")
+    check_no_full_run_export(document)
+    if model != epoch.model_of() or receipt.get("model") != model or epoch_of(model) != EPOCH:
+        raise ValueError("qualification receipt was made for a different model")
+    if sha256_hex(document) != compiled_sha256:
+        raise ValueError("qualification receipt differs from the separately recorded compiled export")
+    mode = qualification.get("mode")
+    if mode not in ("coherent", "semiclassical") or document.get("submitted_readout") != mode:
+        raise ValueError("readout qualification does not match the compiled selection")
+    eng = engine.load()
+    raw_policy = receipt.get("policy")
+    if not isinstance(raw_policy, dict):
+        raise ValueError("qualification receipt lacks a policy")
+    policy = eng.tables.Policy.from_json(raw_policy)
+    policy_json = policy.to_json()
+    digest = policy_digest(policy_json)
+    if (policy.mode != eng.tables.PAIR or receipt.get("digest") != digest
+            or policy_digest(policy_from_document(eng, document).to_json()) != digest):
+        raise ValueError("qualification receipt and compiled export disagree on the policy")
+    envelope = receipt.get("envelope")
+    if not isinstance(envelope, dict):
+        raise ValueError("qualification receipt lacks this attempt's mirror envelope")
+    current_mirror, _ = stomirror_from_envelope(envelope, policy_json, model, "pp")
+    stored_mirror, _ = store.stomirror(policy_json, model, "pp")
+    if current_mirror is None or current_mirror != stored_mirror:
+        raise ValueError("qualification receipt's mirror does not match the accepted mirror record")
+    readout = None
+    if mode == "semiclassical":
+        readout = bind_compiled_readout(policy, document, verifier_pin=VERIFIER_PIN, lean_source=source)
+        if qualification.get("evidence") != readout:
+            raise ValueError("qualified readout evidence does not match the compiled export")
+    else:
+        if document.get("schema") != "forshor.policy-submission/v1" or qualification.get("evidence") is not None:
+            raise ValueError("coherent qualification must not carry measured evidence")
+        require_coherent_export(document)
+        if receipt.get("forshor") != forshor_record(eng, policy, document, VERIFIER_PIN):
+            raise ValueError("coherent qualification does not bind the operational verifier pin")
+    primitive_from = plan_readout_variant(index, digest=digest, login=github_login, head_sha=head_sha,
+                                         readout=mode, published_ids=published_ids)
+    return _build_request(policy_json, model=model, head_sha=head_sha, github_login=github_login, store=store,
+                          readout=readout, full_run=full_run_design.selection_of(document),
+                          primitive_from=primitive_from, **request_args)
+
+
+def _build_request(policy_json, *, model, store, head_sha, pull_number, github_login, run_id, submitted_at, evaluated_at,
+                   archive_commit, accepted_ids, evaluation_key, base_generation, number, forshor=None,
+                   readout=None, full_run=None, primitive_from=None, log=lambda s: None):
+    # First, before any evidence lookup or any pricing: a compiled selection this pipeline cannot convert is
+    # reported, never priced as the default, and no part of a request is built for it. A selection that DOES
+    # convert is threaded to the pricing loop below, at `mapping.DESIGN_DELTA` and nowhere else: the QFT design
+    # surface is qualified at that one precision, and the other three deltas of a publish request are the
+    # design-free panels of the same policy that they already are -- the same policy at a different precision,
+    # which is what every panel ever published is. They are priced with no `design` keyword at all, the exact
+    # call 792464f made, so their bytes cannot move. Refusing the whole request instead (which is what a design
+    # at every delta did) meant a design-bearing document could never complete one.
+    design = full_run_design.design_of(full_run)
+    eng = engine.load()
+    policy = eng.tables.Policy.from_json(policy_json)
+    if primitive_from is not None and (not isinstance(primitive_from, str) or not re.fullmatch(r"[0-9a-f]{40}", primitive_from)
+                                        or primitive_from == head_sha or primitive_from not in accepted_ids):
+        raise ValueError("a full-only variant needs a different accepted primitive entry")
+    boards = ["full"] if primitive_from else boards_for(policy.mode)
     mirror_board = "ptp" if "ptp" in boards else "pp"
     mirror, why = store.stomirror(policy_json, model, mirror_board)
     if mirror is None:
         raise ValueError(f"not publishable: no valid STO mirror evidence for this policy ({why})")
     verification = {"stoMirror": mirror, "forshorPolicy": forshor if mirror_board == "pp" else None}
+    if readout:
+        if forshor is not None:
+            raise ValueError("measured proof must not claim coherent IR agreement")
+        verification["readout"] = readout
     epoch = epoch_of(model)
     pr_url = f"https://github.com/{SUBMISSIONS_REPO}/pull/{pull_number}"
     priced = []
     for delta in mapping.DELTA_KEYS:
-        views = pricing.price_views(policy, f"Submission {head_sha[:12]}", delta, boards)
+        views = pricing.price_views(policy, f"Submission {head_sha[:12]}", delta, boards,
+                                    **({"measured": True} if readout else {}),
+                                    **({"design": design} if design and delta == mapping.DESIGN_DELTA else {}))
         for board in boards:
             log(f"priced {board} {delta}")
             detail = mapping.panel_path(epoch, head_sha, board, delta)
@@ -51,6 +176,7 @@ def build_request(policy_json: Dict[str, Any], *, model: Dict[str, Any], store: 
         "model": model,
         "submission": {"id": head_sha, "pullRequestUrl": pr_url, "submittedAt": submitted_at,
                        "contributors": [{"githubLogin": github_login, "role": "submitter", "evidenceUrl": pr_url}],
-                       "policyDigest": policy_digest(policy_json), "boards": boards, "verification": verification},
+                       "policyDigest": policy_digest(policy_json), "boards": boards, "verification": verification,
+                       **({"primitiveFrom": primitive_from} if primitive_from else {})},
         "priced": priced,
     }

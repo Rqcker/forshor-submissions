@@ -46,6 +46,7 @@ from site_engine import frontier as fr  # noqa: E402
 from site_engine import library as lib  # noqa: E402
 from tcost import score as ts  # noqa: E402
 from tcost import tables as tt  # noqa: E402
+from policy_options import check_coherent_export, check_table_options  # noqa: E402
 
 N = 2048
 SCHEMA = "forshor-starter.price/1"
@@ -109,15 +110,36 @@ def accept_point_order_alias(x: Any, where: str = "policy") -> Any:
     return out
 
 
-def load(path: Path) -> tuple:
-    text = Path(path).read_text()
+def accepted_policies(docs) -> list:
+    """`Policy.from_json` of each doc (each band's table is checked as it is read), refusing what the boards refuse: no policy, or a
+    policy with no bands (Lean reads `[]` as "not entered"; `Policy.leaf` is the schoolbook baseline). Unlike the engine's
+    `checked_policies` it allows different tables of the same k in different bands, as the boards and both Lean checks do."""
+    pols = [tt.Policy.from_json(d) for d in docs]
+    if not pols:
+        raise tt.TableError("no policy in the document")
+    for p in pols:
+        if not p.bands:
+            raise tt.TableError(f"{p.name or p.mode}: no bands (not entered); Policy.leaf is the schoolbook baseline")
+    return pols
+
+
+def read_json(path: Path) -> Any:
     try:
-        doc = json.loads(text)
+        return json.loads(Path(path).read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        raise StarterError(f"{path}: not valid JSON: {e.msg} (line {e.lineno})")
-    doc = accept_point_order_alias(doc, str(path))
+        raise StarterError(f"{path}: not valid JSON: {e.msg} (line {e.lineno})") from None
+    except UnicodeDecodeError:
+        raise StarterError(f"{path}: file must be UTF-8") from None
+    except OSError as e:
+        raise StarterError(f"cannot read {path}: {e.strerror}") from None
+
+
+def load(path: Path) -> tuple:
+    doc = accept_point_order_alias(read_json(path), str(path))
+    check_negation(doc)
     try:
-        pols = tt.checked_policies(tt.policy_docs(doc))
+        check_table_options(doc)
+        pols = accepted_policies(tt.policy_docs(doc))
     except tt.TableError as e:
         raise StarterError(f"{path}: not an accepted policy: {e}")
     except (KeyError, TypeError, ValueError) as e:
@@ -245,7 +267,6 @@ def check_negation(doc: Any) -> None:
 
 def price(path: Path, n: int = N, delta: float = DEFAULT_DELTA, full: bool = True) -> Dict[str, Any]:
     doc, pols = load(path)
-    check_negation(doc)
     keys = declared_width_keys(doc)
     return {"schema": SCHEMA, "input": Path(path).name, "n": n, "delta": delta,
             "declared_widths_ignored": keys,
@@ -274,9 +295,16 @@ def policy_from_doc(doc: Dict[str, Any], name: str = "forshor-policy") -> tt.Pol
 
 def forshor_doc(path: Path, delta: float = DEFAULT_DELTA) -> Dict[str, Any]:
     from site_engine import fullalg as fa
-    doc = json.loads(Path(path).read_text())
+    doc = read_json(path)
+    if not isinstance(doc, dict):
+        raise StarterError(f"{path}: expected a ForShor policy document (JSON object)")
     if doc.get("schema") != FORSHOR_SCHEMA:
         raise StarterError(f"{path}: schema {doc.get('schema')!r} is not {FORSHOR_SCHEMA!r} (a ForShor policy document)")
+    try:
+        check_coherent_export(doc)
+    except ValueError as error:
+        raise StarterError(f"{path}: {error}") from error
+    check_negation(doc)
     rule = fa.doc_width_rule(doc)          # "exact": exact-width document (board IR); "scan": the default scan (cross-check IR)
     ref = json.loads((fa.REFERENCE_SCAN if rule == "scan" else fa.REFERENCE).read_text())
     fixed = {"benchmark": ("bits", "trial_count"), "precision": ("eta", "m")}
@@ -298,13 +326,24 @@ def forshor_doc(path: Path, delta: float = DEFAULT_DELTA) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------------------------------- Lean inputs
+def submission_policy(path: Path) -> tt.Policy:
+    _, pols = load(path)
+    if len(pols) != 1:
+        raise StarterError(f"{path}: expected one policy, found {len(pols)}")
+    policy = pols[0]
+    # Keep in sync with the hosted intake and the publisher's results contract.
+    if len(policy.bands) > 256:
+        raise StarterError(f"{path}: a submission may contain at most 256 bands; found {len(policy.bands)}")
+    for band in policy.bands:
+        if not 2 <= band.table.k <= 8:
+            raise StarterError(f"{path}: band at threshold {band.threshold} has k = {band.table.k}; submissions take 2 <= k <= 8")
+    return policy
+
+
 def lean_input(path: Path) -> Dict[str, Any]:
     """The policy check / PhaseTripleProduct harness input: mode, name, bands {threshold, k, point_order, operations} (as the site's
     harness/sto_policy_verify.to_mirror; nothing else is copied, so a declared ladder never reaches Lean)."""
-    doc, pols = load(path)
-    if len(pols) != 1:
-        raise StarterError(f"{path}: expected one policy, found {len(pols)}")
-    P = pols[0]
+    P = submission_policy(path)
     return {"name": str(P.name)[:200], "mode": P.mode,
             "bands": [{"threshold": b["threshold"], "k": b["k"], "point_order": b["point_order"], "operations": b["operations"]}
                       for b in P.to_json()["bands"]]}
@@ -312,12 +351,10 @@ def lean_input(path: Path) -> Dict[str, Any]:
 
 def template(path: Path, lib: Optional[str] = None, forshor: Optional[Path] = None) -> str:
     import policy_to_template as ptt
-    _, pols = load(path)
-    if len(pols) != 1:
-        raise StarterError(f"{path}: expected one policy, found {len(pols)}")
+    policy = submission_policy(path)
     try:
         name = ptt.library_of(forshor) if forshor else (lib or ptt.DEFAULT_LIB)
-        return ptt.template_text(pols[0], name)
+        return ptt.template_text(policy, name)
     except ptt.TemplateError as e:
         raise StarterError(f"cannot write a ForShor policy: {e}")
 
@@ -469,17 +506,20 @@ def main(argv=None) -> int:
     a5.add_argument("--write-expected", action="store_true", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     try:
+        if a.cmd in {"price", "forshor-doc"} and not (math.isfinite(a.delta) and 1e-15 <= a.delta < 1):
+            raise StarterError("delta must be in [1e-15, 1)")
         if a.cmd == "price":
             if not 16 <= a.n <= 1 << 15:
                 raise StarterError("n must be in [16, 32768]")
-            if not (math.isfinite(a.delta) and 1e-15 <= a.delta < 1):
-                raise StarterError("delta must be in [1e-15, 1)")
             r = price(a.policy, a.n, a.delta, full=not a.no_full)
             show(r)
             if a.json:
                 _emit(r, a.json)
         elif a.cmd == "forshor-doc":
-            r = forshor_doc(a.doc, a.delta)
+            try:
+                r = forshor_doc(a.doc, a.delta)
+            except (KeyError, TypeError, ValueError, AttributeError, IndexError, OverflowError) as e:
+                raise StarterError(f"{a.doc}: malformed or unsupported ForShor policy document: {e}") from None
             show(r)
             if a.json:
                 _emit(r, a.json)

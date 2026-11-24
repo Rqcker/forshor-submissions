@@ -352,3 +352,187 @@ def test_another_participants_unpublished_copy_is_not_reported_as_a_repeat(remot
     archive(clone, login="other")
     got = archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2, published_ids=set())
     assert got["added"] is True and got["duplicates"] == []
+
+
+# ---- the readout planner: the same policy measured the other way is a variant of it, not a repeat of it
+
+def archived_entry(index, digest="d" * 16, login="tester", mode="pair", created="2026-11-08T10:00:00Z", **extra):
+    index["policies"].append({"policy_id": "ef" * 20, "digest": digest, "mode": mode,
+                              "source": {"pr_number": 1, "github_login": login, "created_at": created}, **extra})
+    return index
+
+
+def plain(tmp_path, name="archive"):
+    """A checkout with nothing but the index's folder: `write_policy` on its own, without git or a remote."""
+    checkout = tmp_path / name
+    (checkout / ap.INDEX_PATH).parent.mkdir(parents=True)
+    return checkout
+
+
+def put(checkout, v=None, head=HEAD, source=SOURCE, login="tester", pull=7, run_id="99", **kw):
+    return ap.write_policy(checkout, v or verification(), login=login, pull=pull, head_sha=head, run_id=run_id, source=source, **kw)
+
+
+def entry_of(checkout, head):
+    return next(p for p in ap.read_index(checkout)["policies"] if p["policy_id"] == head)
+
+
+#: `write_policy`'s index for one ordinary coherent submission, as it has always written it (git blob 650b2416, submission tree 9f99f79f).
+LEGACY_INDEX = ('{\n "schema": "forshor.policy-archive/v1",\n "policies": [\n  {\n'
+                '   "policy_id": "abababababababababababababababababababab",\n   "digest": "dddddddddddddddd",\n'
+                '   "mode": "pair",\n   "board": "pp",\n'
+                '   "sha256": "de52165f0717eb98cd744a4399ec1eb44406045448822c1b16142d5e7fdb46ca",\n'
+                '   "path": "results/policy-submissions/abababababababababababababababababababab",\n'
+                '   "source": {\n    "repository": "zapatacomputing/forshor-submissions",\n    "pr_number": 7,\n'
+                '    "github_login": "tester",\n    "run_id": "99",\n    "created_at": "2026-11-08T10:00:00Z"\n   }\n  }\n ]\n}\n')
+
+
+def test_the_coherent_default_is_byte_identical_to_what_the_archive_already_holds(remote, tmp_path):
+    # Fails if an ordinary coherent entry gains `readout`, `boards` or any other key, or is reordered or reformatted:
+    # every row already on `submission-results` was written by this path and its id must not move.
+    bare, clone = remote
+    out = archive(clone)
+    assert show_bytes(bare, ap.INDEX_PATH) == LEGACY_INDEX.encode()
+    assert git(bare, "rev-parse", f"{ap.BRANCH}:{ap.INDEX_PATH}") == "650b24166dfd41f07f2baf585718eba7d6dd046f"
+    assert git(bare, "rev-parse", f"{ap.BRANCH}:{out['path']}") == "9f99f79f7062654110969060e1f677c9b4899ebc"
+    put(plain(tmp_path, "explicit"), readout="coherent")
+    assert (tmp_path / "explicit" / ap.INDEX_PATH).read_bytes() == LEGACY_INDEX.encode(), "the explicit default is the omitted default"
+
+
+@pytest.mark.parametrize("first,second", [("coherent", "semiclassical"), ("semiclassical", "coherent")])
+def test_your_own_policy_with_the_other_readout_is_a_full_only_variant(first, second, tmp_path):
+    # Fails if write_policy refuses a same-participant repeat straight from find_duplicates/DUPLICATE_RULES instead of
+    # routing it through plan_readout_variant, which answers with the earlier entry's id: the other readout is a variant of it.
+    checkout = plain(tmp_path)
+    assert put(checkout, readout=first) is True
+    assert put(checkout, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2, readout=second) is True
+    earlier, variant = entry_of(checkout, HEAD), entry_of(checkout, HEAD2)
+    assert variant["readout"] == second and variant["boards"] == ["full"], "the variant prices the full board; the primitive stays with the earlier entry"
+    if first == "coherent":
+        assert "readout" not in earlier and "boards" not in earlier, "the legacy coherent entry is read as it is, never backfilled"
+    else:
+        assert earlier["readout"] == first and earlier["boards"] == ["pp", "full"], "a first measured submission is its own primitive"
+
+
+@pytest.mark.parametrize("readout", ["coherent", "semiclassical"])
+def test_the_same_policy_with_the_same_readout_is_still_a_repeat(readout, tmp_path):
+    # Fails if the routing only reads plan_readout_variant's return value and swallows its DuplicatePolicy.
+    checkout = plain(tmp_path)
+    put(checkout, readout=readout)
+    before = (checkout / ap.INDEX_PATH).read_bytes()
+    with pytest.raises(ap.DuplicatePolicy, match="already submitted") as refused:
+        put(checkout, verification(SOURCE2), head=HEAD2, source=SOURCE2, readout=readout)
+    assert refused.value.duplicate_of["policyId"] == HEAD and refused.value.duplicate_of["sameParticipant"] is True
+    assert (checkout / ap.INDEX_PATH).read_bytes() == before, "the refused repeat wrote nothing"
+
+
+def test_the_rule_table_still_decides_a_same_readout_repeat(tmp_path, monkeypatch):
+    # Fails if the routing calls a same-readout repeat a variant (boards ["full"]) rather than leaving it to DUPLICATE_RULES.
+    checkout = plain(tmp_path)
+    put(checkout, readout="semiclassical")
+    monkeypatch.setitem(ap.DUPLICATE_RULES, "same_participant", "allow")
+    repeats = []
+    assert put(checkout, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2,
+               readout="semiclassical", duplicates=repeats) is True
+    assert [(r["policyId"], r["sameParticipant"]) for r in repeats] == [(HEAD, True)]
+    assert entry_of(checkout, HEAD2)["boards"] == ["pp", "full"], "an allowed repeat is not a variant and inherits no primitive"
+
+
+def test_an_unknown_readout_is_refused_and_writes_nothing(tmp_path):
+    # Fails if write_policy accepts a readout name without asking the planner, which is the only check of it.
+    checkout = plain(tmp_path)
+    with pytest.raises(ap.ArchiveRefused, match="unknown readout design"):
+        put(checkout, readout="measured")
+    assert ap.read_index(checkout)["policies"] == [] and not (checkout / ap.DIR).exists()
+
+
+def test_another_participants_readout_variant_is_still_only_identified(remote):
+    # Fails if the readout routing reaches other participants: DUPLICATE_RULES must keep deciding for them, and their
+    # measured submission is its own primitive, not a variant of a policy they do not own.
+    bare, clone = remote
+    archive(clone)
+    got = archive(clone, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2,
+                  login="other", readout="semiclassical")
+    assert got["added"] is True
+    assert [(d["policyId"], d["sameParticipant"]) for d in got["duplicates"]] == [(HEAD, False)]
+    assert entry_of(clone, HEAD2)["boards"] == ["pp", "full"] and entry_of(clone, HEAD2)["readout"] == "semiclassical"
+
+
+def test_the_planner_reads_the_mode_it_is_given(remote):
+    # Fails if plan_readout_variant pins mode="PhaseProduct" again: write_policy must be able to ask about the mode it is archiving.
+    index = archived_entry({"policies": []})
+    binding = dict(digest="d" * 16, login="tester", head_sha=HEAD, published_ids={"ef" * 20})
+    assert ap.plan_readout_variant(index, **binding, readout="semiclassical") is None, "the default mode is still PhaseProduct"
+    assert ap.plan_readout_variant(index, **binding, readout="semiclassical", mode="pair") == "ef" * 20
+    with pytest.raises(ap.DuplicatePolicy):
+        ap.plan_readout_variant(index, **binding, readout="coherent", mode="pair")
+
+
+# --- C20 / C21: two archive checks raised byte-identical messages -------------------------------
+# Census: ForShor_Integration/readiness/pre-push/REFUSAL-CENSUS.md. Nothing below changes which
+# submissions are archived or refused; only the reason says which check refused.
+
+def test_a_summary_rule_says_which_copy_of_the_file_it_read(remote):
+    # Production change that would fail this: dropping either parenthetical from the two
+    # summary_tex.problem call sites (github_summary and check_summary). The same three messages
+    # ("empty", the size limit, the UTF-8/control-character rules) are raised once for GitHub's copy
+    # at the head commit and once when the verification is cross-checked against it. An operator
+    # cannot otherwise tell a bad file in the pull request from a verification that carries a
+    # different one. Census C20.
+    _, clone = remote
+    bad = "  \n"
+    with pytest.raises(ap.ArchiveRefused) as cross_check:
+        archive(clone, with_summary(bad), summary=bad)
+    fetched = {"type": "file", "encoding": "base64", "content": base64.encodebytes(bad.encode()).decode()}
+    with pytest.raises(ap.ArchiveRefused) as at_head:
+        ap.github_summary(HEAD, "tok", lambda url, token, payload=None: fetched)
+    for refused in (cross_check, at_head):
+        assert "empty" in str(refused.value), str(refused.value)          # the anchor: summary_tex's own message
+    assert str(cross_check.value) != str(at_head.value)
+    assert "head commit" in str(at_head.value) and "cross-checking" in str(cross_check.value)
+
+
+def test_the_duplicate_refusal_says_which_check_found_the_repeat(remote):
+    # Production change that would fail this: dropping DuplicatePolicy's `source` argument, or
+    # passing the same label from both sites. The readout variant planner and the writer's own
+    # duplicate rules raised a byte-identical message, and the planner's refusal is sometimes caught
+    # as control flow, so an operator could not tell where the repeat was found. Census C21.
+    _, clone = remote
+    archive(clone)
+    # The writer's own rule, reached only when a repeat by ANOTHER participant is set to refuse: the same participant's
+    # repeat is found earlier, by the planner, which is exactly the distinction this patch makes visible.
+    with pytest.raises(ap.DuplicatePolicy) as writer:
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setitem(ap.DUPLICATE_RULES, "other_participant", "refuse")
+            archive(clone, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2,
+                    login="other")
+    with pytest.raises(ap.DuplicatePolicy) as planner:
+        archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2)
+    for refused in (writer, planner):
+        assert "already submitted this exact policy" in str(refused.value), str(refused.value)   # the anchor
+    assert str(writer.value) != str(planner.value)
+    assert planner.value.source == "the readout variant planner", "the same participant's repeat is found by the planner"
+    assert "writing the entry" in writer.value.source
+    # The source must be IN the message, not only on the exception: the CLI reports str(e) as the reason
+    # (intake_v2.py's duplicate arm), so an operator reading a refused run sees only the text.
+    for refused in (writer, planner):
+        assert refused.value.source in str(refused.value), str(refused.value)
+    # Two repeats that differ only in which check found them must not read the same, which is the collision itself.
+    same = {"policyId": HEAD, "login": "tester", "pull": 7, "createdAt": "2026-11-08T10:00:00Z", "sameParticipant": True}
+    assert str(ap.DuplicatePolicy(same, "the readout variant planner")) != str(ap.DuplicatePolicy(same))
+
+
+def test_the_duplicate_rules_still_refuse_and_accept_exactly_what_they_did(remote):
+    # Production change that would fail this: letting the `source` argument change the duplicate
+    # decision rather than only the reason. The same participant repeating a policy is still
+    # refused, another participant is still archived with the repeat recorded, and
+    # plan_readout_variant still returns (rather than raises) for the other readout.
+    bare, clone = remote
+    archive(clone)
+    before = tip(bare)
+    with pytest.raises(ap.DuplicatePolicy):
+        archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2)
+    assert tip(bare) == before, "nothing was pushed"
+    index = archived_entry({"policies": []})
+    assert ap.plan_readout_variant(index, digest="d" * 16, login="tester", head_sha=HEAD, mode="pair",
+                                   readout="semiclassical", published_ids={"ef" * 20}) == "ef" * 20

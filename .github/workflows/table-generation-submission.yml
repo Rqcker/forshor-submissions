@@ -178,7 +178,7 @@ jobs:
       # the submission checkout, so a fork cannot steer which cache it gets.
       - name: Restore Lean dependency cache
         if: steps.reuse.outputs.reused != 'true' && steps.format.outputs.kind == 'table'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .lake/packages
           key: lake-packages-${{ runner.os }}-${{ hashFiles('verifier/lake-manifest.json', 'verifier/lean-toolchain') }}
@@ -209,7 +209,7 @@ jobs:
 
       - name: Restore Lean build cache
         if: steps.reuse.outputs.reused != 'true' && steps.format.outputs.kind == 'table'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .lake/build
           key: lake-build-${{ runner.os }}-${{ hashFiles('verifier/lean-toolchain', 'verifier/lakefile.lean', 'verifier/lake-manifest.json', 'verifier/TableGeneration.lean', 'verifier/TableGeneration/**/*.lean') }}
@@ -289,7 +289,7 @@ jobs:
 
       - name: Retain environment bootstrap timings
         if: always() && steps.format.outputs.kind == 'policy'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: policy-bootstrap-${{ github.run_id }}-${{ github.run_attempt }}
           path: policy-bootstrap.json
@@ -297,7 +297,7 @@ jobs:
 
       - name: Upload verification artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: table-generation-submission-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
