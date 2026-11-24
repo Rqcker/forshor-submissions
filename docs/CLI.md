@@ -59,8 +59,8 @@ qualification route: it is attested and priced locally, it is not accepted by
 hosted intake, and it gets no score. The refusals name the selector
 (*submittedDesign is not enabled for ordinary submissions; it requires local
 readout qualification*, *submittedPrimitive requires separate nonpublishing
-primitive qualification*, *submittedFullRunDesign requires dedicated
-nonpublishing full-run qualification*), and a qualified readout receipt offered
+primitive qualification*, *submittedFullRunDesign is not accepted as
+written*), and a qualified readout receipt offered
 to the publisher is refused with *qualified readout receipts are local only;
 publishing is not enabled*. The full option matrix, with all eight full-run
 profiles and the options that have no selector at all, is in the participant

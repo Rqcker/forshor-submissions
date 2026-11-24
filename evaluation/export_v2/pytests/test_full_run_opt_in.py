@@ -193,7 +193,13 @@ def test_every_shipped_route_still_reaches_the_default_gate():
     # 2026-11-24: `build_primitive_request` is a THIRD site here -- the local standalone-primitive pricing
     # entry point, which runs the gate on its compiled export before binding anything. It is the DEFAULT gate, so
     # the invariant this test protects is intact and only the expected count moved.
-    assert sites.count("evaluation/export_v2/request.py") == 3, sites
+    #
+    # Lane Y21, 2026-11-24 (owner ruling: a measured readout and a reference-topology design compose). The two MEASURED
+    # request sites -- `build_measured_request` and `rehearse_qualified_request`'s semiclassical branch -- moved to the
+    # measured route's own gate, `check_measured_full_run_export` (pinned by
+    # `test_the_measured_gate_is_called_from_the_measured_route_only` below). The default gate keeps
+    # `build_primitive_request` and the coherent branch of `rehearse_qualified_request`, so 3 -> 2.
+    assert sites.count("evaluation/export_v2/request.py") == 2, sites
     # Integration 2026-11-24 (lane XE): WQ's publication-gate lift added a FOURTH intake site,
     # `publish_verification`'s measured arm (intake_v2.py:613), which rules on a measured export that names a
     # selection this checkout has no converter for. It is the DEFAULT gate, so the invariant this test exists to
@@ -205,4 +211,24 @@ def test_every_shipped_route_still_reaches_the_default_gate():
     # selector the coherent checker has no opinion on, but it must still name no full-run selection) and every other
     # route keeps the checker it had, so the conditional reads the same name twice. The `_forshor_build` site is
     # unchanged and now covers the primitive route too. All five are the DEFAULT gate.
-    assert sites.count("evaluation/intake_v2.py") == 5, sites
+    #
+    # Lane Y21: `policy_from_lean`'s measured arm moved to the measured gate, so the conditional reads the default
+    # name once rather than twice (5 -> 4). `forshor_record`, `_forshor_build`'s primitive arm, `policy_from_lean`'s
+    # primitive arm and `publish_verification`'s converter-absent arm are all still the DEFAULT gate.
+    assert sites.count("evaluation/intake_v2.py") == 4, sites
+
+
+def test_the_measured_gate_is_called_from_the_measured_route_only():
+    # Production change that would fail this: calling `check_measured_full_run_export` from a coherent or primitive
+    # route. It admits a full-run selection, and only the measured route may: the verifier emits a design on no other.
+    import ast
+    repo = EVAL.parent
+    callers = set()
+    for relative in ("evaluation/export_v2/request.py", "evaluation/intake_v2.py"):
+        tree = ast.parse((repo / relative).read_text(encoding="utf-8"))
+        for fn in ast.walk(tree):
+            if isinstance(fn, ast.FunctionDef) and any(isinstance(n, ast.Name) and n.id == "check_measured_full_run_export"
+                                                       for n in ast.walk(fn)):
+                callers.add(fn.name)
+    assert callers == {"build_measured_request", "rehearse_qualified_request", "_forshor_build", "policy_from_lean",
+                       "publish_verification"}, callers

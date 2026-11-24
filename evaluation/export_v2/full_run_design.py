@@ -269,10 +269,8 @@ def _design_of_body(body: Any, profile: Optional[str] = None) -> Optional[Dict[s
             raise ValueError(f"{named} {PHASE_KEY!r} is not an object: {phases!r}")
         steps = sorted(set(phases) & set(PHASE_STEPS)) or sorted(phases)
         raise ValueError(
-            f"{named} selects the phase-product step backend(s) {steps}, which this path cannot "
-            f"price: the step backends are not symbolic, deterministic or closed-form, so they are out of "
-            f"scope (qft_overlay.py SCOPE). They are reported by name, never ignored and never priced as "
-            f"{MULTIPLIERS[0]!r} defaults")
+            f"{named} selects the phase-product step backend(s) {steps}, which this path does not "
+            f"price. They are refused by name, never ignored and never priced as {MULTIPLIERS[0]!r} defaults")
 
     qft = body.get(QFT_KEY)
     if qft is None:
@@ -288,7 +286,7 @@ def _design_of_body(body: Any, profile: Optional[str] = None) -> Optional[Dict[s
                 f"QFT family {family!r} names a {ROTATION_FIELD!r} ({choice[ROTATION_FIELD]!r}), the "
                 f"`{family}Rotations` axis, which this path cannot price: the engine's QFT design "
                 f"(data, work, scratch, exponent) has no field for a rotation backend. It is refused by "
-                f"name, the same reason profile 'quotient-fallback-data-catalytic-work' is refused")
+                f"name")
         design[family] = copy.deepcopy(choice)
 
     # The overlay owns the value rules. Validate EAGERLY -- before any board is priced -- so an

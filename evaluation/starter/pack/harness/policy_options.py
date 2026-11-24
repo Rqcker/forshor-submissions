@@ -64,6 +64,36 @@ def allow_qualified_full_run_export(document):
         raise ValueError(f"{FULL_RUN_ROUTE}: {cause}")
 
 
+#: The compiled schema of a measured (semiclassical) export, `export_v2/readout_overlay.MEASURED_SCHEMA`.
+MEASURED_EXPORT_SCHEMA = "forshor.policy-submission-semiclassical/v1"
+#: The anchor the measured gate below raises.
+MEASURED_FULL_RUN_REFUSAL = "compiled submitted_full_run is not accepted"
+
+
+def check_measured_full_run_export(document):
+    """The MEASURED publication route's gate (owner ruling 2026-11-24), and only that route's.
+
+    The verifier emits a full-run selection only beside a saved semiclassical readout, so a selection is let through
+    for conversion only on a measured export, and only as a well-formed `forshor.full-run-selection/v1` object naming
+    exactly one of a non-empty `profile` or an explicit `design` body. The conversion that follows is fail-closed and
+    refuses by name everything this route does not price (non-reference topologies, the named profiles, rotation
+    and phase-step backends, the `exponent` family under the readout). Absence is accepted: a measured policy with no
+    selection is priced exactly as before. Every other route keeps `check_no_full_run_export`."""
+    present, selected = _full_run_selection(document)
+    if not present:
+        return
+    if not (isinstance(document, dict) and document.get("schema") == MEASURED_EXPORT_SCHEMA
+            and document.get("submitted_readout") == "semiclassical"):
+        raise ValueError(f"{MEASURED_FULL_RUN_REFUSAL}: a full-run design is accepted only on an export compiled with "
+                         "the semiclassical readout, and this export is not one")
+    if not (isinstance(selected, dict) and selected.get("schema") == FULL_RUN_SELECTION_SCHEMA
+            and (("profile" in selected) != ("design" in selected))
+            and ((isinstance(selected.get("profile"), str) and selected["profile"]) if "profile" in selected
+                 else isinstance(selected.get("design"), dict))):
+        raise ValueError(f"{MEASURED_FULL_RUN_REFUSAL}: the export carries a `submitted_full_run` key that is not a "
+                         f"`{FULL_RUN_SELECTION_SCHEMA}` selection naming exactly one of a profile or a design body")
+
+
 def check_coherent_export(document):
     check_no_full_run_export(document)
     # Finding F1: `submitted_design in document` raised TypeError for a non-dict and `.get` raised AttributeError,

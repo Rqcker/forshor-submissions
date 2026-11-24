@@ -84,9 +84,9 @@ FULL_RUN_SOURCE = LEGACY_SOURCE.replace("end PolicySubmission", "def submittedFu
 def test_full_run_declaration_using_old_imports_is_refused_before_legacy_compile(qualify_readout, tmp_path, monkeypatch):
     monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **kw: pytest.fail("no old compiler fallback"))
     monkeypatch.setattr(intake_v2, "request_json", lambda *a, **kw: pytest.fail("no publisher request"))
-    with pytest.raises(intake_v2.Refused, match="submittedFullRunDesign requires dedicated"):
+    with pytest.raises(intake_v2.Refused, match="submittedFullRunDesign is not accepted"):
         intake_v2.policy_from_lean(None, FULL_RUN_SOURCE, tmp_path, tmp_path, qualify_readout=qualify_readout)
-    with pytest.raises(intake_v2.Refused, match="submittedFullRunDesign requires dedicated"):
+    with pytest.raises(intake_v2.Refused, match="submittedFullRunDesign is not accepted"):
         intake_v2.publish_verification({"leanSource": FULL_RUN_SOURCE, "printed": {"schema": "forshor.policy-submission/v1"}},
                                        login="tester", pull=1, url="http://unused", token="unused", workdir=tmp_path)
 
@@ -102,7 +102,7 @@ def test_full_run_refusal_clears_an_old_readout_receipt(tmp_path, monkeypatch):
                            "--tree", str(tmp_path), "--workdir", str(tmp_path),
                            "--verification-out", str(receipt), "--out", str(out)]) == 1
     assert not receipt.exists()
-    assert "submittedFullRunDesign requires dedicated" in json.loads(out.read_text())["reason"]
+    assert "submittedFullRunDesign is not accepted" in json.loads(out.read_text())["reason"]
 
 
 @pytest.mark.parametrize("qualify_readout", [False, True])
@@ -140,9 +140,9 @@ def test_compiled_full_run_key_is_not_ignored_in_any_old_route(metadata, tmp_pat
     with pytest.raises(ValueError, match="compiled submitted_full_run"):
         request.rehearse_qualified_request(receipt, **args)
     source = FULL_RUN_SOURCE.encode()
-    with pytest.raises(ValueError, match="submittedFullRunDesign requires dedicated"):
+    with pytest.raises(ValueError, match="submittedFullRunDesign is not accepted"):
         request.build_measured_request({}, compiled={}, verifier_pin=overlay.VERIFIER_PIN, lean_source=source, model=None)
-    with pytest.raises(ValueError, match="submittedFullRunDesign requires dedicated"):
+    with pytest.raises(ValueError, match="submittedFullRunDesign is not accepted"):
         request.rehearse_qualified_request({**receipt, "leanSource": FULL_RUN_SOURCE, "leanSha256": sha256(source).hexdigest(),
                                            "printed": {"schema": "forshor.policy-submission/v1"}}, **{**args, "source": source})
 

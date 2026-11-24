@@ -47,7 +47,7 @@ from publish import RetryPublication, request_json  # noqa: E402  (v1 helpers, u
 from publish_v2 import ModelMismatch, ReservedHandle, policy_name, publish_v2_with_recovery  # noqa: E402
 from export_v2.attempt import AttemptBusy, exclusive_attempt  # noqa: E402
 import summary_tex  # noqa: E402  (the shared rules for the optional summary.tex)
-from policy_options import check_coherent_export, check_no_full_run_export  # noqa: E402
+from policy_options import check_coherent_export, check_measured_full_run_export, check_no_full_run_export  # noqa: E402
 
 REPO = "zapatacomputing/forshor-submissions"
 MAX_FORSHOR_K = 8           # a submission's bands take 2 <= k <= 8
@@ -224,10 +224,37 @@ PRIMITIVE_KEY = "submitted_primitive"
 PRIMITIVE_EXPORT_REFUSAL = "compiled primitive synthesis is not admitted by this intake"
 
 
-def check_legacy_full_run_source(source: str) -> None:
+def check_legacy_full_run_source(source: str) -> bool:
+    """The CI source gate's full-run rule, applied to the submitted source: True when it declares an admitted
+    reference-topology design (only ever beside the semiclassical readout declaration), False when it declares none
+    or the explicit default `.reference`. Raises `ValueError` with the gate's own message otherwise."""
     sys.path.insert(0, str(HERE.parent))
-    from scripts.ci.policy_source import check_no_full_run_selector, strip_lean_comments
-    check_no_full_run_selector(strip_lean_comments(source))   # accepts only the explicit default `.reference`, see policy_source.default_selectors
+    from scripts.ci.policy_source import check_full_run_selector, strip_lean_comments
+    return check_full_run_selector(strip_lean_comments(source))
+
+
+#: The refusal for a compiled export whose full-run selection is not the one its own source declares.
+FULL_RUN_BINDING_REFUSAL = "the compiled full-run design does not match the submitted Lean file"
+#: Why a declared design is refused when the run is not pricing the semiclassical readout.
+FULL_RUN_PRICED_WITH_READOUT = ("submittedFullRunDesign is not accepted as written: a full-run design is priced only "
+                                "together with the semiclassical readout")
+
+
+def check_full_run_binding(source: str, document: Any) -> bool:
+    """A compiled full-run selection must be the one the submitted source declares: the export carries
+    `submitted_full_run` exactly when the source declares an admitted design. The verifier guarantees this for its
+    own build; a receipt whose document names a selection its own source does not (or the reverse) is refused here,
+    by name, before anything is priced or archived. Returns whether a design is declared. Raises `Refused`."""
+    try:
+        declared = check_legacy_full_run_source(source)
+    except ValueError as error:
+        raise Refused("format", str(error)) from error
+    present = isinstance(document, dict) and FULL_RUN_KEY in document
+    if present != declared:
+        raise Refused("format", f"{FULL_RUN_BINDING_REFUSAL}: the export "
+                                + ("names a full-run design the file does not declare" if present else
+                                   "names no full-run design although the file declares one"))
+    return declared
 
 
 def require_legacy_export(check, document: Dict[str, Any]) -> None:
@@ -245,7 +272,7 @@ def require_coherent_export(document: Dict[str, Any]) -> None:
 FULL_RUN_KEY = "submitted_full_run"
 
 
-def compiled_full_run(printed: Any) -> tuple:
+def compiled_full_run(printed: Any, *, measured: bool = False) -> tuple:
     """`(selection, design)` for a compiled export: the engine `design` its full-run selection converts to.
 
     `(None, None)` means "no selection to convert", and the caller then applies the ordinary export checks. That is the
@@ -256,7 +283,9 @@ def compiled_full_run(printed: Any) -> tuple:
         Then a document that DOES name a selection falls through to `check_no_full_run_export`, which refuses it with
         the standing message. A selection is never read as the default and never priced as one.
 
-    A selection the converter cannot express is refused BY NAME, with the converter's own wording."""
+    A selection the converter cannot express is refused BY NAME, with the converter's own wording. On a `measured`
+    export the conversion is `readout_qft_overlay.design_of_measured`, which also refuses the `exponent` family the
+    readout replaces -- on the raw selection, before an all-exact design collapses to None."""
     if not isinstance(printed, dict) or FULL_RUN_KEY not in printed:
         return None, None
     try:
@@ -265,6 +294,9 @@ def compiled_full_run(printed: Any) -> tuple:
         return None, None
     try:
         selection = full_run_design.selection_of(printed)
+        if measured:
+            from export_v2.readout_qft_overlay import design_of_measured
+            return selection, design_of_measured(selection)
         return selection, full_run_design.design_of(selection)
     except ValueError as error:
         raise Refused("format", str(error)) from error
@@ -412,7 +444,10 @@ def _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_reado
     if target.read_bytes() != source:
         raise RuntimeError("Policy.lean changed during the ForShor compile attempt")
     document = json.loads(printed.stdout)
-    if qualify_readout or qualify_primitive:
+    if qualify_readout:
+        # The measured route is the one route a full-run design publishes on: the verifier emits one only here.
+        require_legacy_export(check_measured_full_run_export, document)
+    elif qualify_primitive:
         require_legacy_export(check_no_full_run_export, document)
     return document
 
@@ -443,9 +478,14 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
         # precedence -- the same call as for readout + design.
         raise Refused("format", "a combined measured readout and primitive qualification is not admitted")
     try:
-        check_legacy_full_run_source(lean_text)
+        declares_design = check_legacy_full_run_source(lean_text)
     except ValueError as error:
         raise Refused("format", str(error)) from error
+    if declares_design and not qualify_readout:
+        # The source gate admits a design only beside the semiclassical readout declaration, and that declaration is
+        # refused by `refuse_unqualified_design` below on every route but the measured one. Said here, by name, so the
+        # design is not reported as a readout problem.
+        raise Refused("format", f"{FULL_RUN_PRICED_WITH_READOUT}, and this check was run without the readout")
     kind = lean_kind(lean_text)
     if not qualify_primitive:
         refuse_unqualified_primitive(lean_text)
@@ -466,8 +506,14 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
     # coherent checker, so the default path is identical to omission here too.
     if qualify_primitive and PRIMITIVE_KEY in doc:
         require_legacy_export(check_no_full_run_export, doc)
+    elif qualify_readout:
+        # A full-run design is admitted on the measured route, bound to this source, and converted now so that a
+        # selection this release does not price is refused by name before the mirror runs.
+        require_legacy_export(check_measured_full_run_export, doc)
+        check_full_run_binding(lean_text, doc)
+        compiled_full_run(doc, measured=True)
     else:
-        require_legacy_export(check_no_full_run_export if qualify_readout else check_coherent_export, doc)
+        require_legacy_export(check_coherent_export, doc)
     bands = doc["bands"]
     check_band_limit(bands)
     if not bands:
@@ -760,14 +806,19 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     # because it never publishes at all.
     if "localPrimitiveQualification" in v or (isinstance(printed, dict) and PRIMITIVE_KEY in printed):
         raise Refused("format", "primitive qualification is local only; publishing is not enabled")
-    selection, design = compiled_full_run(printed) if measured else (None, None)
+    if measured:
+        # The measured route's own document gate, then the fail-closed conversion (by name).
+        require_legacy_export(check_measured_full_run_export, printed)
+    selection, design = compiled_full_run(printed, measured=True) if measured else (None, None)
     if isinstance(printed, dict):
         # The route picks the checker, as `policy_from_lean` already does at the compile step: a measured export
-        # carries the readout loop the coherent checker exists to refuse, and a converted full-run selection is ruled
-        # on by `compiled_full_run` above instead of by key presence.
+        # carries the readout loop the coherent checker exists to refuse, and its full-run selection is ruled on by
+        # the measured gate and `compiled_full_run` above.
         if not measured:
             require_coherent_export(printed)
         elif selection is None:
+            # No selection converted. With no key this passes; with a key and no converter in this checkout, the
+            # standing refusal names it -- a selection is never priced as the readout-only default.
             require_legacy_export(check_no_full_run_export, printed)
     if isinstance(v.get("leanSource"), str):
         # The receipt's two source fields must agree before the gates below are trusted: they rule on `leanSource`, while
@@ -778,10 +829,16 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
         # here, the trusted-source comparison stays in `archive_policy`.
         if isinstance(v.get("leanSha256"), str) and v["leanSha256"] != hashlib.sha256(v["leanSource"].encode()).hexdigest():
             raise Refused("format", "the verification's Lean source does not match its own digest")
-        try:
-            check_legacy_full_run_source(v["leanSource"])
-        except ValueError as error:
-            raise Refused("format", str(error)) from error
+        if measured:
+            # The selection must be the one this source declares (an inconsistent receipt is refused here,
+            # by name, before anything is priced or archived).
+            check_full_run_binding(v["leanSource"], printed)
+        else:
+            try:
+                if check_legacy_full_run_source(v["leanSource"]):
+                    raise ValueError(f"{FULL_RUN_PRICED_WITH_READOUT}, and this verification does not carry it")
+            except ValueError as error:
+                raise Refused("format", str(error)) from error
         if not measured:
             # The same precedent as `policy_from_lean`: a qualified measured submission declares the readout it
             # compiled (`submittedDesign ... readout := .semiclassical`), which is what qualification is for. The
@@ -854,14 +911,15 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     def price() -> Dict[str, Any]:
         if readout is not None:
             from export_v2.readout_overlay import VERIFIER_PIN
-            # The measured pricer re-binds the evidence itself; `design` is passed only when a full-run selection
-            # converted to one, so a document that names none prices on the reference pipeline, bit for bit.
+            # The measured pricer re-binds the evidence and re-converts the compiled selection itself, so the design
+            # it prices is the one `compiled_full_run` gave the archive; a document that names none prices on the
+            # readout-only pipeline, bit for bit.
             return request.build_measured_request(policy_json, compiled=printed, verifier_pin=VERIFIER_PIN,
                                                   lean_source=v["leanSource"].encode("utf-8"), model=model, store=store,
                                                   head_sha=head_sha, pull_number=pull, github_login=login, run_id=run_id,
                                                   submitted_at=submitted_at, evaluated_at=submitted_at, archive_commit=archive,
                                                   accepted_ids=[head_sha], number=0, evaluation_key=evaluation_key,
-                                                  base_generation="", log=log, **({"design": design} if design is not None else {}))
+                                                  base_generation="", log=log)
         return request.build_request(policy_json, model=model, store=store, head_sha=head_sha, pull_number=pull, github_login=login, run_id=run_id,
                                      submitted_at=submitted_at, evaluated_at=submitted_at, archive_commit=archive, accepted_ids=[head_sha], number=0,
                                      evaluation_key=evaluation_key, base_generation="", forshor=forshor, log=log)
@@ -896,6 +954,15 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
         # nonpublishing and its refusal above fires before this line, so no primitive value exists HERE to pass. It is
         # named explicitly so the axis is visibly considered and the published primitive-bearing case has one place to
         # fill in; `archive_policy`'s module docstring states the ruling.
+        #
+        # A REFUSAL WRITES NOTHING (lane Y19). The request is priced HERE, before the entry is written, so every
+        # refusal pricing can raise -- e.g. `build_measured_request`'s unconditional `check_no_full_run_export` for a
+        # receipt whose document names a selection its own source does not -- is raised with the archive untouched.
+        # The recovery loop below then reuses this request instead of pricing again. Only the order moves: the request
+        # carries `archive` (the commit read above) and `[head_sha]`, not the archive write, and every attempt
+        # still replaces both from `accepted_now` before sending.
+        template = price()
+        price = lambda: template                                # noqa: E731
         archived = archive_write(v, readout="semiclassical" if measured else "coherent", primitive=None, design=design)
         log(f"archived {archived['path']} on submission-results ({archived['commit'][:12]})" if archived["added"] else f"already archived: {archived['path']}")
         for repeat in archived.get("duplicates") or []:

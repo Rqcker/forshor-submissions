@@ -36,19 +36,31 @@ def build_request(policy_json: Dict[str, Any], *, model: Dict[str, Any], store: 
 
 def build_measured_request(policy_json: Dict[str, Any], *, compiled, verifier_pin, lean_source, model,
                            primitive_from=None, **request_args) -> Dict[str, Any]:
-    """Local rehearsal only: the production path has no caller for this entry point."""
-    from intake_v2 import check_legacy_full_run_source
-    from policy_options import check_no_full_run_export
-    from .readout_overlay import EPOCH, bind_compiled_readout
+    """The measured request: `publish_verification` prices a qualified measured receipt through this entry point.
 
-    check_legacy_full_run_source(lean_source.decode("utf-8"))
-    check_no_full_run_export(compiled)
+    A compiled full-run selection is admitted here (owner ruling 2026-11-24), and only here: the verifier emits one
+    only beside a saved semiclassical readout. It must be well formed (`check_measured_full_run_export`), bound to
+    the submitted source (`check_full_run_binding`), and convert through `readout_qft_overlay.design_of_measured`,
+    which refuses by name a non-reference topology, a named profile, a rotation or phase-step backend and the
+    `exponent` family. The design is then priced TOGETHER with the readout (`readout_qft_overlay.project`)."""
+    from intake_v2 import Refused, check_full_run_binding
+    from policy_options import check_measured_full_run_export
+    from .readout_overlay import EPOCH, bind_compiled_readout
+    from .readout_qft_overlay import design_of_measured
+
+    check_measured_full_run_export(compiled)
+    try:
+        check_full_run_binding(lean_source.decode("utf-8"), compiled)
+    except Refused as error:
+        raise ValueError(error.reason) from error
+    selection = full_run_design.selection_of(compiled)
+    design_of_measured(selection)
     eng = engine.load()
     policy = eng.tables.Policy.from_json(policy_json)
     if policy.mode != eng.tables.PAIR or epoch_of(model) != EPOCH:
         raise ValueError("measured pricing supports only PhaseProduct under the current epoch")
     evidence = bind_compiled_readout(policy, compiled, verifier_pin=verifier_pin, lean_source=lean_source)
-    return _build_request(policy_json, model=model, readout=evidence, full_run=full_run_design.selection_of(compiled),
+    return _build_request(policy_json, model=model, readout=evidence, full_run=selection,
                           primitive_from=primitive_from, **request_args)
 
 
@@ -106,9 +118,10 @@ def rehearse_qualified_request(receipt, *, source: bytes, compiled_sha256, index
     inputs from the trusted GitHub run and publisher, not from this receipt.
     """
     from archive_policy import plan_readout_variant
-    from intake_v2 import (VERIFICATION_SCHEMA, check_legacy_full_run_source, forshor_record,
-                           policy_from_document, require_coherent_export)
-    from policy_options import check_no_full_run_export
+    from intake_v2 import (VERIFICATION_SCHEMA, Refused, check_full_run_binding, check_legacy_full_run_source,
+                           forshor_record, policy_from_document, require_coherent_export)
+    from policy_options import check_measured_full_run_export, check_no_full_run_export
+    from .readout_qft_overlay import design_of_measured
     from .readout_overlay import EPOCH, VERIFIER_PIN, bind_compiled_readout
 
     if (not isinstance(receipt, dict) or not isinstance(source, bytes)
@@ -121,7 +134,16 @@ def rehearse_qualified_request(receipt, *, source: bytes, compiled_sha256, index
     document = receipt.get("printed")
     if not isinstance(qualification, dict) or not isinstance(document, dict):
         raise ValueError("missing local readout qualification or its compiled export")
-    check_no_full_run_export(document)
+    if qualification.get("mode") == "semiclassical":
+        # The measured route admits a bound reference-topology design, as `build_measured_request` does.
+        check_measured_full_run_export(document)
+        try:
+            check_full_run_binding(source.decode("utf-8"), document)
+        except Refused as error:
+            raise ValueError(error.reason) from error
+        design_of_measured(full_run_design.selection_of(document))
+    else:
+        check_no_full_run_export(document)
     if model != epoch.model_of() or receipt.get("model") != model or epoch_of(model) != EPOCH:
         raise ValueError("qualification receipt was made for a different model")
     if sha256_hex(document) != compiled_sha256:

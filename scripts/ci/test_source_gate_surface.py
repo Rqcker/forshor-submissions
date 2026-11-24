@@ -11,7 +11,7 @@ import policy_source as ps
 import source_gate_surface as sgs
 
 
-CORPUS_SIZE = 739      # 2 boards x 9 headers x 41 bodies, + 1 edge source. Read off the axes, not chosen.
+CORPUS_SIZE = 793      # 2 boards x 9 headers x 44 bodies, + 1 edge source. Read off the axes, not chosen.
 
 
 class Corpus(unittest.TestCase):
@@ -70,7 +70,8 @@ class Coverage(unittest.TestCase):
         observed = sgs.observations()
         differing = [n for n, r in observed.items() if r['validate'] != r['validate_qfr']]
         self.assertTrue(differing, 'validate_qfr must observe a branch the plain row does not')
-        self.assertEqual(len(differing), 345, 'the two rows differ on a known 345 of 739 sources')
+        # 345 of 739 before the three admitted-design bodies were added (lane Y21); 390 of 793 with them.
+        self.assertEqual(len(differing), 390, 'the two rows differ on a known 390 of 793 sources')
 
     def test_selector_cause_is_actually_called_for_every_selector(self):
         # The second half of the defect: a documented row that was never invoked.
@@ -91,6 +92,18 @@ class Coverage(unittest.TestCase):
 
 
 class Digest(unittest.TestCase):
+    def test_the_admitted_design_is_admitted_only_beside_the_readout_on_the_phaseproduct_board(self):
+        # Lane Y21 (owner ruling 2026-11-24). Production change that would fail this: admitting the design without the
+        # readout declaration, on the PhaseTripleProduct board, or with a topology.
+        observed = sgs.observations()
+        for name, rows in observed.items():
+            board, header, body = name.split('|') if name.count('|') == 2 else (None, None, None)
+            if body == 'fullrun/design-beside-readout' and board == 'PolicySubmission' and header in ('policy', 'policy+fullrun', 'fullrun-only', 'two-on-a-line', 'no-import'):
+                self.assertEqual(rows['validate'], ('ok', 'None'), name)
+                self.assertEqual(rows['check_full_run_selector'], ('ok', 'True'), name)
+            elif body in ('fullrun/design-beside-readout', 'fullrun/design-alone', 'fullrun/design-topology'):
+                self.assertEqual(rows['validate'][0], 'ValueError', name)
+
     def test_the_pinned_digest_holds(self):
         self.assertEqual(sgs.digest(sgs.ENTRY_POINTS), sgs.SURFACE_DIGEST)
 
@@ -136,7 +149,7 @@ class QualifyFullRun(unittest.TestCase):
         # Every relaxation must be one of the gate's two documented ones, not an accident.
         for case in self.report['accepts_more']:
             self.assertRegex(case['plain_refusal'],
-                             f"submittedFullRunDesign requires|imports {ps.FULL_RUN_IMPORT}|"
+                             f"submittedFullRunDesign is not accepted|imports {ps.FULL_RUN_IMPORT}|"
                              f"line 1 imports {ps.FULL_RUN_IMPORT}",
                              f"{case['source']} is accepted under qualification for an unrelated reason")
 
@@ -151,13 +164,15 @@ class QualifyFullRun(unittest.TestCase):
 
     def test_the_audit_partitions_the_whole_corpus(self):
         self.assertEqual(sum(len(v) for v in self.report.values()), CORPUS_SIZE)
-        self.assertEqual(len(self.report['accepts_more']), 261)
-        self.assertEqual(len(self.report['cause_changed']), 84)
-        self.assertEqual(len(self.report['identical']), 394)
+        # Lane Y21 added three full-run bodies (an admitted design beside the readout, the same design alone, and a
+        # topology beside the readout): 261/84/394 over 739 sources became 286/104/403 over 793.
+        self.assertEqual(len(self.report['accepts_more']), 286)
+        self.assertEqual(len(self.report['cause_changed']), 104)
+        self.assertEqual(len(self.report['identical']), 403)
 
     def test_the_cause_differs_only_where_a_header_refusal_pre_empts_the_selector_refusal(self):
         # Both paths REFUSE; only the stated cause differs. It is participant-facing text, so it is pinned rather
-        # than left to drift. The mechanism is ordering: the plain path runs `check_no_full_run_selector` BEFORE
+        # than left to drift. The mechanism is ordering: the plain path runs `check_full_run_selector` BEFORE
         # the header/import loop, so it blames the selector; under qualification that check is skipped and the
         # same source is blamed on the structural problem it also has. Every such source is refused either way.
         headers = {case['source'].split('|')[1] for case in self.report['cause_changed']}

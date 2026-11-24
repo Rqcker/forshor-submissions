@@ -75,14 +75,9 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
             raise ValueError(f"a full-run design is priced at delta {DESIGN_DELTA} only, not {delta_key}")
         if "full" not in boards:
             raise ValueError("a full-run design belongs to the full order-finding board, which is not being priced")
-        # The measured readout and the QFT design do NOT compose; see `mapping.ranked_price_of` for the three reasons
-        # and for the shipped intake gate that reaches the same conclusion. Refused here so that a view carrying both
-        # overlays is never built and nothing is priced on a precedence nobody has ruled on.
-        if measured:
-            raise ValueError("a measured readout and a full-run QFT design do not compose: each re-prices the whole "
-                             "run from the same frozen coherent census, the per-rotation synthesis rate is nonlinear "
-                             "in the rotation total, and on the exponent register the readout removes the very QFT a "
-                             "design bands. The combination is reported, not priced on a guessed precedence")
+        # A measured readout WITH a design is priced by ONE rule, `readout_qft_overlay.project` (owner ruling
+        # 2026-11-24): both census patches applied together and the synthesis pool divided once over the joint
+        # rotation total. The two single overlays are never stacked, and a measured view never carries `qft`.
     price_full = pricer or eng.fullalg.price_full
     out: Dict[str, Dict[str, Any]] = {}
     for board in boards:
@@ -95,7 +90,10 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
             if measured:
                 from .readout_overlay import project
                 view["full"]["readout"] = project(P, full)
-            if design is not None:
+            if design is not None and measured:
+                from .readout_qft_overlay import project
+                view["full"]["readoutQft"] = project(P, full, design)
+            elif design is not None:
                 from .qft_overlay import project
                 view["full"]["qft"] = project(P, full, design)
             view["usage"], view["tables_used"] = full.get("usage"), full.get("tables_used")

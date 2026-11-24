@@ -128,7 +128,11 @@ def without_default_selectors(text):
 # cause follows it after a colon. Classification happens only AFTER the refusal is decided, so nothing
 # here changes which sources are accepted or refused.
 SHIPPED_FULL_RUN_FORM = 'def submittedFullRunDesign : Shor.FullRunDesign := .reference'
-FULL_RUN_REFUSAL = 'submittedFullRunDesign requires dedicated nonpublishing full-run qualification'
+#: The leading sentence of every full-run source refusal. The cause follows it after a colon and states the rule
+#: that failed, so the participant knows what to change.
+FULL_RUN_REFUSAL = 'submittedFullRunDesign is not accepted as written'
+#: The one readout declaration a full-run design is accepted beside, as a participant writes it.
+MEASURED_READOUT_FORM = 'def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }'
 #: Finding F5: this used to end "one import command per line", a rule the gate has never enforced -- `import A B` with
 #: both modules approved is accepted, because `validate` only tests membership and never `len(modules)`. Enforcing the
 #: promise would refuse sources that are accepted today, which is a change to the accepted set and out of scope here,
@@ -143,7 +147,8 @@ IMPORT_REFUSAL = 'Policy.lean imports must be the approved template modules, in 
 #: the source gate, the hosted intake and the publisher re-check agree about what each selector means.
 _SELECTOR_CAUSES = {
     'submittedFullRunDesign': (SHIPPED_FULL_RUN_FORM, 'full-run design', 'full run',
-                               'only the dedicated nonpublishing full-run harness qualifies a full run (it never publishes)',
+                               'a full-run design is accepted only beside the semiclassical readout declaration '
+                               f'`{MEASURED_READOUT_FORM}`, and this file does not declare it',
                                re.compile(rf"(?:\.|{_SHOR}FullRunDesign\.)reference(?![\w'])")),
     'submittedPrimitive': ('def submittedPrimitive : Shor.PrimitiveSynthesis := .rossSelinger', 'primitive synthesis',
                            'Ross-Selinger primitive synthesis',
@@ -169,6 +174,24 @@ def _shipped_form_rule(selector):
             'nothing continuing it on the next line, no attribute or modifier line before it, and declared exactly once')
 
 
+def _declaration_span(lines, index):
+    """`(first, end)` line indices of the declaration starting at `lines[index]`: it runs until the next non-blank
+    line that starts a command at column 0 (or the end of the text)."""
+    end = index + 1
+    while end < len(lines) and not (lines[end].strip() and _COMMAND_START.match(lines[end])):
+        end += 1
+    return index, end
+
+
+def _declared_value(lines, index):
+    """The value of the declaration at `lines[index]`, continuation lines included: everything after its first `:=`
+    (or `where`), whitespace-collapsed. Empty when the declaration states no value."""
+    first, end = _declaration_span(lines, index)
+    text = '\n'.join(lines[first:end])
+    split = re.search(r":=|(?<![\w'])where(?![\w'])", text)
+    return ' '.join(text[split.end():].split()) if split else ''
+
+
 def selector_cause(residual, selector='submittedFullRunDesign'):
     """(line number, cause) for the first `selector` left after its explicit default declaration is consumed.
 
@@ -184,8 +207,9 @@ def selector_cause(residual, selector='submittedFullRunDesign'):
     if declaration is None:
         return number, ('the name is used here but does not declare a selector, and an ordinary submission may not '
                         'mention it at all; remove the mention')
-    rest = declaration['rest']
-    value = rest.split(':=', 1)[1].strip() if ':=' in rest else ''
+    # The value is the WHOLE declaration, not only its first line: a structure literal written on the lines after
+    # `:=` (the natural way to write a design) was otherwise read as an empty value and told it "selects the default".
+    value = _declared_value(residual.split('\n'), number - 1)
     if value and not default_value.search(value):
         return number, (f'this declaration selects the non-default {value_noun} `{value}`, and {route}')
     return number, (f'this declaration selects the default {default_noun}, but not in the shipped form '
@@ -233,12 +257,91 @@ def declared_readout(source):
     raise ValueError(f'{READOUT_REFUSAL}: line {number}, {cause}')
 
 
-def check_no_full_run_selector(text):
-    """Reject the selector token in comment-stripped source, except the explicit default `.reference` declaration."""
+#: The one non-default full-run declaration this gate admits: a public `def` at column 0 directly inside
+#: `namespace PolicySubmission`, typed with the repo's type, whose value (which may continue on the following
+#: indented lines) Lean then type-checks and serializes. Owner ruling 2026-11-24: admit any declaration the pinned
+#: verifier will serialize, bound to the source, and ONLY beside the semiclassical readout declaration -- the
+#: verifier itself emits a design only on the measured route (`--readout submitted`).
+_DESIGN_DECL = re.compile(rf"def[ \t]+submittedFullRunDesign[ \t]*:[ \t]*{_SHOR}FullRunDesign[ \t]*(?::=|where)(?![\w'])")
+#: Field and constructor names of the full-run record OUTSIDE the QFT backend axis, and the qualified profiles, each
+#: of which selects a multiplier topology, a rotation backend or a phase-product step. The topology gate and the
+#: rotation/phase-step refusals are unchanged, so a source naming one is refused BY NAME here, before anything is
+#: built, exactly as every non-default declaration was before. `exponent` is refused too: under the semiclassical
+#: readout the exponent QFT is replaced by measured feed-forward phases, so there is no exponent QFT to choose
+#: (`evaluation/export_v2/readout_qft_overlay.py`).
+_REFUSED_AXES = (
+    ('multiplier|quotientStream|splitCompare', 'a multiplier topology'),
+    ('quotient\\w*|split\\w*', 'a profile'),
+    ('dataRotations|workRotations|scratchRotations|exponentRotations', 'a per-family rotation backend'),
+    ('step1|step2|step4|step5', 'a phase-product step backend'),
+    ('fallback|selectiveKick', 'a rotation or phase-step backend'),
+    ('exponent', 'the `exponent` QFT family (the semiclassical readout replaces that QFT by measured phases)'),
+)
+
+
+def _measured_readout_declared(text):
+    """True when `text` (comment-stripped) declares the semiclassical readout in its one shipped form."""
+    measured, consumed = default_selectors(text, forms=_MEASURED_FORMS, declarations=_MEASURED_DECL)
+    return 'submittedDesign' in consumed and not _SELECTOR_TOKEN['submittedDesign'].search(measured)
+
+
+def check_full_run_selector(text):
+    """The full-run selector gate, for comment-stripped source. Returns True when the source declares a full-run
+    design that is accepted, False when it declares none (omitted, or the explicit default `.reference`).
+
+    A design is accepted only when ALL hold, and is otherwise refused with `FULL_RUN_REFUSAL` and the rule that failed:
+      * its value names only the per-family QFT choice on the reference topology (`_REFUSED_AXES` names the rest);
+      * the semiclassical readout is declared in its shipped form (the verifier emits a design on no other build);
+      * exactly one `def submittedFullRunDesign : Shor.FullRunDesign := ...` at column 0 directly inside
+        `namespace PolicySubmission`, with no attribute or modifier line before it, and the name mentioned nowhere
+        else (so the declaration Lean serializes is the one this gate read).
+    Lean still decides validity (`FullRunDesign.qftOnly`) and the compiled body is converted fail-closed
+    (`evaluation/export_v2/full_run_design.py`)."""
     residual = without_default_selectors(text)
-    if FULL_RUN_SELECTOR.search(residual):
-        number, cause = selector_cause(residual, 'submittedFullRunDesign')
+    found = FULL_RUN_SELECTOR.search(residual)
+    if not found:
+        return False
+    number, cause = selector_cause(residual, 'submittedFullRunDesign')
+    lines = residual.split('\n')
+    index = number - 1
+    value = _declared_value(lines, index)
+    if _SELECTOR_DECLARATION['submittedFullRunDesign'].match(lines[index]) is None or not value \
+            or _SELECTOR_CAUSES['submittedFullRunDesign'][4].search(value):
+        # A bare mention (remove it) or the default written another way (rewrite it): the cause already says which.
         raise ValueError(f'{FULL_RUN_REFUSAL}: line {number}, {cause}')
+    for pattern, what in _REFUSED_AXES:
+        if (hit := re.search(rf"(?<![\w'])(?:{pattern})(?![\w'])", value)):
+            raise ValueError(f'{FULL_RUN_REFUSAL}: line {number}, this declaration selects the non-default full-run '
+                             f'design `{value}`, which names {what} (`{hit[0]}`); a full-run design chooses only the '
+                             'data, work and scratch QFT families (Ross-Selinger or catalytic, exact or approximate) on '
+                             'the reference topology')
+    if not _measured_readout_declared(text):
+        raise ValueError(f'{FULL_RUN_REFUSAL}: line {number}, {cause}')
+    namespace = []
+    for line in lines[:index]:
+        stripped = line.strip()
+        if (m := _NAMESPACE.fullmatch(stripped)):
+            namespace.append(m[1])
+        elif _SECTION.match(stripped):
+            namespace.append('')
+        elif _END.match(stripped) and namespace:
+            namespace.pop()
+    previous = next((l.strip() for l in reversed(lines[:index]) if l.strip()), '')
+    first, end = _declaration_span(lines, index)
+    rest = residual[:sum(len(l) + 1 for l in lines[:first])] + '\n'.join(lines[end:])
+    if (not _DESIGN_DECL.match(lines[index]) or '.'.join(p for p in namespace if p) != 'PolicySubmission'
+            or _MODIFIER_LINE.match(previous) or FULL_RUN_SELECTOR.search(rest)):
+        raise ValueError(f'{FULL_RUN_REFUSAL}: line {number}, a full-run design is accepted only as one public '
+                         '`def submittedFullRunDesign : Shor.FullRunDesign := ...` at column 0 directly inside '
+                         '`namespace PolicySubmission`, with no attribute or modifier line before it, declared exactly '
+                         'once and mentioned nowhere else, and this declaration is not that form')
+    return True
+
+
+def declared_full_run(source):
+    """Whether `source` declares a full-run design (True), declares none (False), or is refused (ValueError).
+    The binding check compares this with the compiled export's `submitted_full_run` key."""
+    return check_full_run_selector(strip_lean_comments(source))
 
 
 def validate(source, *, qualify_full_run=False):
@@ -259,9 +362,8 @@ def validate(source, *, qualify_full_run=False):
     if found:
         line = text.count('\n', 0, found.start()) + 1
         raise ValueError(f'Policy.lean line {line}: {found[0]} is outside the policy source rules')
-    if not qualify_full_run:
-        check_no_full_run_selector(text)
-    default_full_run = 'submittedFullRunDesign' in default_selectors(text)[1]
+    design_full_run = False if qualify_full_run else check_full_run_selector(text)
+    default_full_run = design_full_run or 'submittedFullRunDesign' in default_selectors(text)[1]
     header = True
     for number, line in enumerate(text.splitlines(), 1):
         line = line.strip()
@@ -282,8 +384,8 @@ def validate(source, *, qualify_full_run=False):
                 if FULL_RUN_IMPORT in unapproved:
                     raise ValueError(f'{IMPORT_REFUSAL}: line {number} imports {FULL_RUN_IMPORT}, which an ordinary '
                                      f'submission may import only together with the explicit default '
-                                     f'`{SHIPPED_FULL_RUN_FORM}`; any other full run is qualified by the dedicated '
-                                     'nonpublishing harness')
+                                     f'`{SHIPPED_FULL_RUN_FORM}`, or together with a reference-topology QFT design '
+                                     'declared beside the semiclassical readout')
                 raise ValueError(f'{IMPORT_REFUSAL}: line {number} imports {", ".join(unapproved)}, which '
                                  f'{"is" if len(unapproved) == 1 else "are"} not an approved template module')
         elif header:

@@ -248,6 +248,7 @@ def converter(monkeypatch):
         raise ValueError(f"unrecognised full-run selection {profile!r}")
 
     module.selection_of, module.design_of = selection_of, design_of
+    module.DESIGN_KEY, module.QFT_KEY = "design", "qft"          # the wire keys `readout_qft_overlay` reads
     monkeypatch.setitem(sys.modules, "export_v2.full_run_design", module)
     monkeypatch.setattr(export_v2, "full_run_design", module, raising=False)
     return module
@@ -263,21 +264,37 @@ def with_profile(v, profile):
             "localReadoutQualification": {"mode": "semiclassical", "evidence": evidence_}}
 
 
+def bound(monkeypatch):
+    """SEAM: the profile receipts below carry a selection the recorded source does not declare (no source can: the
+    source gate refuses a named profile by name). The source binding is pinned on its own in
+    `test_design_body_fixture.py`; standing it aside here isolates the ROUTING of the converter's verdict."""
+    monkeypatch.setattr(intake_v2, "check_full_run_binding", lambda source, document: True)
+
+
 @pytest.mark.parametrize("profile", sorted(QFT_ONLY))
 def test_a_convertible_full_run_profile_is_accepted_and_carries_its_design(profile, measured, publisher, converter, monkeypatch, tmp_path):
-    """SEAM (routing only): accepted, and the converted design reaches the measured pricer. The real pricer grows its
-    `design` argument in WP's chain; here the call is captured."""
-    seen = {}
+    """SEAM (routing only): accepted, and the converted design reaches the archive and the measured pricer.
+
+    REPLACED by lane Y21: the measured pricer now re-converts the compiled selection itself (and prices it together
+    with the readout), so `publish_verification` no longer hands it a `design` keyword. What reaches the pricer is the
+    compiled document carrying the selection; what reaches the archive is the converted design. Production change that
+    would fail this: dropping the selection on the way to the pricer, or archiving a design other than the converted one."""
+    seen, archived = {}, {}
+    bound(monkeypatch)
     v = qualify(measured, publisher, monkeypatch, tmp_path)
     monkeypatch.setattr(request, "build_measured_request", lambda policy_json, **kw: seen.update(kw) or _payload())
-    assert publish(with_profile(v, profile), tmp_path, qualified_in_run=True)["published"]
-    assert seen["design"] == QFT_ONLY[profile]
+    write = lambda v, **kind: archived.update(kind) or {"path": "p", "commit": "c" * 40, "added": True}
+    assert publish(with_profile(v, profile), tmp_path, qualified_in_run=True, archive_write=write)["published"]
+    assert seen["compiled"][intake_v2.FULL_RUN_KEY] == {"schema": SELECTION_SCHEMA, "profile": profile}
+    assert "design" not in seen
+    assert archived == {"readout": "semiclassical", "primitive": None, "design": QFT_ONLY[profile]}
 
 
 @pytest.mark.parametrize("profile", sorted(BEYOND_QFT))
 def test_an_unconvertible_full_run_profile_is_refused_by_name_and_prices_nothing(profile, measured, publisher, converter, monkeypatch, tmp_path):
     """SEAM (routing only). RETAINED: a selection this pipeline cannot convert is reported, never priced as the default.
     Red if the converter's refusal stops being raised at intake."""
+    bound(monkeypatch)
     v = qualify(measured, publisher, monkeypatch, tmp_path)
     monkeypatch.setattr(request, "build_measured_request", lambda *a, **kw: pytest.fail("an unconvertible profile prices nothing"))
     monkeypatch.setattr(request, "build_request", lambda *a, **kw: pytest.fail("an unconvertible profile is not priced as the default"))
@@ -358,19 +375,32 @@ def test_without_the_converter_a_full_run_key_keeps_its_standing_refusal(measure
 
 
 @pytest.mark.parametrize("qualify_readout", [False, True])
-def test_the_full_run_source_gate_is_still_closed_on_every_route(qualify_readout, measured, publisher, monkeypatch, tmp_path):
-    """NOT LIFTED, on purpose, and this test is the record of it. `intake_v2.policy_from_lean` applies
-    `check_legacy_full_run_source` UNCONDITIONALLY (intake_v2.py:278-280), before `kind` is even read, so no route --
-    ordinary or qualified -- accepts a source that declares a full-run selection. This lane lifted the PUBLICATION gate
-    at :484-485; it did not open the source gate, because the converter is absent here and lane WR has not yet shown a
-    convertible profile pricing differently from the reference. Opening :278-280 before that would price a full-run
-    profile as the default, which is the one outcome the decision forbids.
-    """
+def test_the_full_run_source_gate_admits_only_the_one_form_and_only_beside_the_readout(qualify_readout, measured, publisher, monkeypatch, tmp_path):
+    """REPLACED by lane Y21 (owner ruling 2026-11-24): the source gate was closed on every route; it now admits ONE
+    form -- `def submittedFullRunDesign : Shor.FullRunDesign := ...` beside the semiclassical readout declaration -- and
+    keeps refusing everything else before any compile. A declaration of another type is still refused on both routes
+    (`intake_v2.policy_from_lean` applies `check_legacy_full_run_source` before `kind` is read). Production change that
+    would fail this: admitting a declaration that is not the admitted form, or compiling before the gate rules.
+
+    POSITIVE CONTROL: the admitted form, beside the readout, reaches the compile on the measured route only."""
     _, _, source = measured
     declared = source.replace("def submittedDesign", "def submittedFullRunDesign : Nat := 0\n\ndef submittedDesign")
     monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **kw: pytest.fail("the source gate refuses before any compile"))
-    with pytest.raises(intake_v2.Refused, match="submittedFullRunDesign requires dedicated"):
+    with pytest.raises(intake_v2.Refused, match="submittedFullRunDesign is not accepted"):
         intake_v2.policy_from_lean(engine.load(), declared, tmp_path, tmp_path, qualify_readout=qualify_readout)
+    admitted = source.replace("end PolicySubmission", "def submittedFullRunDesign : Shor.FullRunDesign :=\n"
+                              "  { data := some ⟨.rossSelinger, .exact⟩ }\n\nend PolicySubmission")
+    admitted = "import ForShor.ShorVerification.Framework.FullRunDesign\n" + admitted
+    reached = []
+    monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **kw: reached.append(kw) or {"stop": True})
+    if qualify_readout:
+        with pytest.raises(Exception):
+            intake_v2.policy_from_lean(engine.load(), admitted, tmp_path, tmp_path, qualify_readout=True)
+        assert reached == [{"kind": "pp", "qualify_readout": True}], "the admitted form reaches the measured build"
+    else:
+        with pytest.raises(intake_v2.Refused, match="priced only together with the semiclassical readout"):
+            intake_v2.policy_from_lean(engine.load(), admitted, tmp_path, tmp_path)
+        assert reached == []
     assert publisher.sent == []
 
 

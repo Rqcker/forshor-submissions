@@ -126,6 +126,9 @@ def full_run_of(view: Raw, lean_peak: Any = False) -> Raw:
         # engine's own coherent price in `T` beside it; which of the two a BOARD shows is `ranked_price_of`, and since
         # the owner's Tier 2 ruling that is the projection's T, exactly as it is `readout`'s for the measured route.
         **({"qft": f["qft"]} if "qft" in f else {}),
+        # A measured readout priced together with a QFT design (`readout_qft_overlay`): present only on that panel,
+        # beside the readout-only `readout` block it starts from, and never beside `qft`.
+        **({"readoutQft": f["readoutQft"]} if "readoutQft" in f else {}),
         "toffoli": f["toffoli"], "clifford": f["clifford"], "cnot": f["cnot"],
         "qubits": f["qubits_peak"], "qubitsLayout": f["qubits_layout"], "peakExtra": f["peak_extra"],
         "qubitsLabel": peak_label(lean_peak), "qubitsRule": peak_rule(lean_peak),
@@ -259,23 +262,28 @@ def ranked_price_of(full: Raw) -> Raw:
     returns the panel's own full-run block unchanged -- the object itself -- which is what every published row was
     built from.
 
-    THE TWO OVERLAYS DO NOT COMPOSE, and the combination is refused rather than ranked on a guessed precedence. Each
-    re-derives the WHOLE run's census from the same frozen coherent result and returns a FINAL price, not a census
-    patch; the synthesis rate `sto_currency.ts_per_rotation(delta, R)` is nonlinear in the rotation total, so two
-    finals cannot be combined into one; and on the exponent register they make contradictory claims about the SAME
-    site -- the semiclassical readout deletes the exponent QFT (`readout_overlay.py:132-138`, `base -= iqft.base`)
-    while a design bands it (`qft_overlay.FAMILY_WIDTH["exponent"]`). The shipped intake gate reaches the same
-    conclusion from the other end: `policy_options.check_no_full_run_export` refuses a compiled document that carries
-    `submitted_full_run` at all, and both measured entry points in `request.py` run it before converting a selection,
-    so the pair has never had a defined price anywhere in this pipeline. Ranking the readout would silently drop the
-    design the submission asked for; ranking the projection would publish a coherent-census price for a measured
-    circuit. `pricing.price_views` refuses the same pair one step earlier, so nothing is priced either."""
+    A MEASURED READOUT WITH A DESIGN is ranked from `readoutQft`, the one composed price
+    (`readout_qft_overlay.project`, owner ruling 2026-11-24): both census patches applied together and the pool divided
+    once over the joint rotation total. It replaces T and qubits outright, as `readout` does, and it is only ever
+    present beside the readout-only `readout` block it starts from.
+
+    THE UNCOMPOSED PAIR IS STILL REFUSED. A panel carrying `readout` and `qft` side by side holds two finals, each
+    re-derived from the same frozen coherent census; the synthesis rate `sto_currency.ts_per_rotation(delta, R)` is
+    nonlinear in the rotation total, so they cannot be combined, and on the exponent register they contradict each
+    other about one site. `pricing.price_views` never builds that view (a measured design prices `readoutQft`), so a
+    panel that carries it was not built by this pipeline and its ranked price is refused rather than guessed."""
+    if "readoutQft" in full:
+        if "readout" not in full or "qft" in full:
+            raise ValueError("a composed readout + QFT design price must sit beside the readout-only `readout` block "
+                             "and never beside a coherent `qft` projection")
+        return full["readoutQft"]
     if "readout" in full and "qft" in full:
         raise ValueError(
-            "a full-run panel carries both a measured readout and a QFT design projection: the two overlays do not "
-            "compose (each re-prices the whole run from the same frozen coherent census and returns a final price, the "
-            "per-rotation synthesis rate is nonlinear in the rotation total, and on the exponent register the readout "
-            "removes the very QFT a design bands), so the ranked price is refused, not guessed")
+            "a full-run panel carries both a measured readout and a coherent QFT design projection: the two overlays do "
+            "not compose by stacking (each re-prices the whole run from the same frozen coherent census and returns a "
+            "final price, the per-rotation synthesis rate is nonlinear in the rotation total, and on the exponent "
+            "register the readout removes the very QFT a design bands), so the ranked price is refused, not guessed; a "
+            "measured design is priced as `readoutQft`")
     if "readout" in full:
         return full["readout"]
     if "qft" in full:

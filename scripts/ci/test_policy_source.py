@@ -137,7 +137,10 @@ class ExplicitDefaults(unittest.TestCase):
     """Owner ruling 2026-11-24: Ross-Selinger, the reference full run and coherent readout are the defaults, and an
     explicit default token is identical to omission. Only those tokens: the grammar is not widened."""
 
-    FULL_REFUSAL = 'submittedFullRunDesign requires dedicated nonpublishing full-run qualification'
+    #: Reworded with the design route (owner rulings 2026-11-24): the old anchor told a participant that a full run
+    #: "requires dedicated nonpublishing full-run qualification", which is false for an accepted design and is not a
+    #: participant's term. Production change that would fail this: reverting the anchor, or dropping the cause after it.
+    FULL_REFUSAL = 'submittedFullRunDesign is not accepted as written'
     IMPORT_REFUSAL = 'imports must be the approved template modules'
 
     def test_explicit_reference_full_run_is_accepted_like_omission(self):
@@ -524,6 +527,81 @@ class DeclaredReadout(unittest.TestCase):
         self.assertEqual(self.refusal(text), intake.exception.reason)
         self.assertTrue(intake.exception.reason.startswith(READOUT_REFUSAL))
 
+
+
+DESIGN_BODY = 'def submittedFullRunDesign : Shor.FullRunDesign :=\n  { data := some ⟨.rossSelinger, .approximate ⟨25, 5, by decide, by decide, by decide⟩⟩ }'
+
+
+class AdmittedDesign(unittest.TestCase):
+    """Owner ruling 2026-11-24 (lane Y21): the gate admits ONE non-default full-run form -- a reference-topology QFT
+    design, `def submittedFullRunDesign : Shor.FullRunDesign := ...` (its value may continue on indented lines), at
+    column 0 directly inside `namespace PolicySubmission`, declared once, mentioned nowhere else -- and only beside the
+    semiclassical readout declaration. Everything else stays refused by name."""
+
+    FULL_REFUSAL = ExplicitDefaults.FULL_REFUSAL
+
+    def reason(self, text):
+        with self.assertRaises(ValueError) as refused:
+            validate(text)
+        return str(refused.exception)
+
+    def test_the_design_is_admitted_beside_the_semiclassical_readout(self):
+        # Production change that would fail this: keeping the gate closed to the one form the verifier serializes.
+        import policy_source
+        for text in (source(MEASURED, DESIGN_BODY, imports=FULL_IMPORT),
+                     source(MEASURED, DESIGN_BODY.replace(':=\n  ', ':= '), imports=FULL_IMPORT),
+                     source(MEASURED, 'def submittedFullRunDesign : Shor.FullRunDesign :=\n  { work := some ⟨.catalytic, .exact⟩ }',
+                            imports=FULL_IMPORT)):
+            with self.subTest(text=text[-80:]):
+                validate(text)
+                self.assertIs(policy_source.declared_full_run(text), True)
+        self.assertIs(policy_source.declared_full_run(source(MEASURED, FULL, imports=FULL_IMPORT)), False)
+        self.assertIs(policy_source.declared_full_run(source(MEASURED)), False)
+
+    def test_without_the_readout_declaration_it_is_refused_and_named_as_the_design_it_is(self):
+        # Production change that would fail this: admitting a design alone, or (lane Y19's finding) reading only the
+        # declaration's first line and telling a multi-line design that it "selects the default full run".
+        for readout in ('', DESIGN, MEASURED.replace('.semiclassical', '.coherent ')):
+            with self.subTest(readout=readout):
+                reason = self.reason(source(*([readout] if readout else []), DESIGN_BODY, imports=FULL_IMPORT))
+                self.assertIn(self.FULL_REFUSAL, reason)
+                self.assertIn('selects the non-default full-run design `{ data := some', reason)
+                self.assertNotIn('selects the default full run', reason)
+                self.assertIn('semiclassical readout', reason)
+
+    def test_a_value_outside_the_reference_qft_axis_is_refused_by_name(self):
+        # Production change that would fail this: admitting a topology, a profile, a rotation or phase-step backend,
+        # or the exponent family to the build.
+        for value, named in (('{ multiplier := .splitCompare }', 'multiplier topology'),
+                             ('.splitStep4Kicks', 'names a profile'),
+                             ('Shor.FullRunDesign.quotientCatalytic', 'names a profile'),
+                             ('{ data := some ⟨.rossSelinger, .exact⟩, workRotations := some .fallback }', 'per-family rotation backend'),
+                             ('{ step4 := some .selectiveKick }', 'phase-product step backend'),
+                             ('{ exponent := some ⟨.rossSelinger, .exact⟩ }', '`exponent` QFT family')):
+            with self.subTest(value=value):
+                reason = self.reason(source(MEASURED, f'def submittedFullRunDesign : Shor.FullRunDesign :=\n  {value}',
+                                            imports=FULL_IMPORT))
+                self.assertIn(self.FULL_REFUSAL, reason)
+                self.assertIn(named, reason)
+                for word in ('not yet', 'deferred', 'coming', 'qualification', 'release'):
+                    self.assertNotIn(word, reason.split(': ', 1)[1], 'a refusal names what was asked, nothing more')
+
+    def test_anything_but_the_one_form_is_refused_even_beside_the_readout(self):
+        # Production change that would fail this: widening the admitted form, so the declaration Lean serializes might
+        # not be the one the gate read.
+        for label, text in {
+                'mentioned elsewhere': source(MEASURED, DESIGN_BODY, 'def alias := submittedFullRunDesign', imports=FULL_IMPORT),
+                'declared twice': source(MEASURED, DESIGN_BODY, DESIGN_BODY, imports=FULL_IMPORT),
+                'wrong type': source(MEASURED, DESIGN_BODY.replace('Shor.FullRunDesign', 'Nat'), imports=FULL_IMPORT),
+                'private': source(MEASURED, 'private ' + DESIGN_BODY, imports=FULL_IMPORT),
+                'attribute line before': source(MEASURED, '@[reducible]', DESIGN_BODY, imports=FULL_IMPORT),
+                'nested namespace': source(MEASURED, DESIGN_BODY, namespace='PolicySubmission.Inner', imports=FULL_IMPORT),
+                'ptp board': source(MEASURED, DESIGN_BODY, namespace='PTPPolicySubmission', imports=FULL_IMPORT),
+                'default value written across lines': source(MEASURED, 'def submittedFullRunDesign : Shor.FullRunDesign :=\n  .reference',
+                                                             imports=FULL_IMPORT),
+        }.items():
+            with self.subTest(label):
+                self.assertIn(self.FULL_REFUSAL, self.reason(text))
 
 if __name__ == '__main__':
     unittest.main()

@@ -75,11 +75,11 @@ NON_DEFAULTS = [   # (source, gate that must refuse it, the message it always ga
     (with_decoy(PRIM), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
     (lean("private " + PRIM), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
     (lean(PRIM, "  |> fun _ => Shor.PrimitiveSynthesis.adaptiveB3"), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
-    (lean(FULL.replace(".reference", ".quotientExact"), imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign requires dedicated nonpublishing full-run qualification"),
-    (lean(FULL, FULL, imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign requires dedicated nonpublishing full-run qualification"),
-    (with_decoy(FULL, imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign requires dedicated nonpublishing full-run qualification"),
+    (lean(FULL.replace(".reference", ".quotientExact"), imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign is not accepted as written"),
+    (lean(FULL, FULL, imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign is not accepted as written"),
+    (with_decoy(FULL, imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign is not accepted as written"),
     # PTPPolicyCheck refuses a full-run declaration on the PhaseTripleProduct board, `.reference` included
-    (lean(FULL, namespace="PTPPolicySubmission", imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign requires dedicated nonpublishing full-run qualification"),
+    (lean(FULL, namespace="PTPPolicySubmission", imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign is not accepted as written"),
 ]
 
 

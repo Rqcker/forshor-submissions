@@ -45,7 +45,7 @@ from types import SimpleNamespace
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from export_v2 import canon, epoch as epoch_module, full_run_design, mapping, pricing, qft_overlay, request  # noqa: E402
+from export_v2 import canon, engine, epoch as epoch_module, full_run_design, mapping, pricing, qft_overlay, request  # noqa: E402
 
 DATA = Path(__file__).parent / "data"
 POLICY = DATA / "real/1bc92ac6e1e82ba3.policy.json"
@@ -493,38 +493,57 @@ def test_the_row_names_no_design_and_no_readout_because_the_site_contract_has_no
     assert (design_row["T"], design_row["qubits"]) == (4.0, 11)
 
 
-def test_a_readout_and_a_design_together_refuse_rather_than_pick_a_precedence():
-    """WS found that the two overlays do not compose, and the code says why: each re-derives the WHOLE run's
-    census from the same frozen coherent result and returns a FINAL price rather than a census patch, the
-    synthesis rate `ts_per_rotation(delta, R)` is nonlinear in the rotation total so two finals cannot be
-    added, and on the exponent register they contradict each other about one site -- `readout_overlay.project`
-    DELETES the exponent QFT while `qft_overlay.FAMILY_WIDTH["exponent"]` bands it.
+def test_a_readout_and_a_coherent_design_projection_side_by_side_still_refuse():
+    """WS found that the two SINGLE overlays do not stack: each re-derives the WHOLE run's census from the same frozen
+    coherent result and returns a FINAL price, the synthesis rate `ts_per_rotation(delta, R)` is nonlinear in the
+    rotation total so two finals cannot be added, and on the exponent register they contradict each other.
 
-    So the combination is REFUSED, at the ranked price and at the pricer. Fails if a precedence is ever
-    guessed: ranking the readout would silently drop the design the submission asked for, and ranking the
-    projection would silently publish a coherent-census price for a measured circuit."""
+    KEPT by lane Y21, and retargeted: the owner ruled (2026-11-24) that a measured readout and a design COMPOSE, and
+    they do -- through ONE rule, `readout_qft_overlay`, published as `readoutQft` (next test). A panel carrying the
+    uncomposed pair `readout` + `qft` is still refused at the ranked price. Production change that would fail this:
+    ranking either single overlay when both are present, i.e. guessing a precedence instead of composing."""
     both = {**ENGINE_FULL, "readout": {"T": 3.0, "qubits": 2}, "qft": {"T": 4.0}}
-    with pytest.raises(ValueError, match="do not compose"):
+    with pytest.raises(ValueError, match="do not compose by stacking"):
         mapping.ranked_price_of(both)
-    with pytest.raises(ValueError, match="do not compose"):
+    with pytest.raises(ValueError, match="do not compose by stacking"):
         mapping.row_of({"rowId": HEAD_SHA, "fullRun": both, "verification": {}}, origin="submission", name="t",
                        created_at="x", pull_request_url=None, submission_id=None, detail="d")
 
 
-def test_the_pricer_refuses_a_measured_readout_and_a_design_in_the_same_call():
-    """The same refusal one step earlier, so nothing is priced at all. `policy_options.check_no_full_run_export`
-    already refuses a compiled document that carries `submitted_full_run`, and both measured entry points in
-    `request.py` run it before converting a selection, so this pair has never had a defined price anywhere.
-    Fails if `price_views` starts producing a view carrying both overlays."""
-    class FakePolicy:
-        mode, bands = "PhaseProduct", ()
+def test_a_composed_readout_and_design_price_is_the_ranked_price():
+    """Lane Y21. `readoutQft` replaces T and qubits outright, as `readout` does, and only beside the readout-only block
+    it starts from. Production change that would fail this: ranking `readout` (dropping the design the submission
+    asked for), or accepting a composed price beside a coherent `qft` projection or without its readout block."""
+    composed = {"T": 2.0, "qubits": 3, "mode": "semiclassical-readout-with-qft-design"}
+    full = {**ENGINE_FULL, "readout": {"T": 3.0, "qubits": 2}, "readoutQft": composed}
+    assert mapping.ranked_price_of(full) is composed
+    row = mapping.row_of({"rowId": HEAD_SHA, "fullRun": full, "verification": {"stoMirror": None, "forshorPolicy": None}},
+                         origin="submission", name="t", created_at="x", pull_request_url=None, submission_id=None,
+                         detail="d")
+    assert (row["T"], row["qubits"]) == (2.0, 3) and set(row) <= SITE_ROW_FIELDS
+    for bad in ({**ENGINE_FULL, "readoutQft": composed},
+                {**ENGINE_FULL, "readout": {"T": 3.0, "qubits": 2}, "qft": {"T": 4.0}, "readoutQft": composed}):
+        with pytest.raises(ValueError, match="composed readout"):
+            mapping.ranked_price_of(bad)
 
-        def with_widths(self, _):
-            return self
 
-    with pytest.raises(ValueError, match="do not compose"):
-        pricing.price_views(FakePolicy(), "t", "1e-2", ["full"], measured=True,
-                            design=full_run_design.design_of(priced_selection()))
+@pytest.mark.slow
+def test_the_pricer_composes_a_measured_readout_and_a_design_in_the_same_call(policy_json):
+    """REPLACED by lane Y21: this was the pricer's refusal of the pair; the owner ruled it composes. The measured view
+    carries the readout-only `readout` block AND the composed `readoutQft`, and never the coherent `qft` projection;
+    the composed price is `readout_qft_overlay.project`'s on the same frozen census. Production change that would fail
+    this: stacking the two single overlays, or publishing a coherent-census `qft` price beside a measured circuit."""
+    from export_v2 import readout_overlay, readout_qft_overlay
+
+    design = full_run_design.design_of(priced_selection())
+    eng = engine.load()
+    P = eng.tables.Policy.from_json(policy_json).with_widths("exact")
+    full = pricing.price_views(P, "t", "1e-2", ["full"], measured=True, design=design)["full"]["full"]
+    assert "qft" not in full
+    coherent = eng.fullalg.price_full(P, 2048, 1e-2, detail=True)
+    assert full["readout"] == readout_overlay.project(P, coherent)
+    assert full["readoutQft"] == readout_qft_overlay.project(P, coherent, design)
+    assert full["readoutQft"]["T"] not in (full["readout"]["T"], full["T"])
 
 
 # --------------------------------------------------------------- the design is scoped, not filtered

@@ -23,7 +23,7 @@ that way cannot be confirmed, because the script is gone. What CAN be confirmed 
 dead, and that a digest cannot detect its own dead rows -- so this harness checks for them directly.
 
 ENTRY POINTS: 9 rows, 8 DISTINCT BEHAVIOURS. `check_legacy_full_run_source` is a one-line delegation to
-`check_no_full_run_selector` in `evaluation/intake_v2.py`, so the two rows agree on every source by construction.
+`check_full_run_selector` in `evaluation/intake_v2.py`, so the two rows agree on every source by construction.
 Both are kept, because they are separately importable entry points that could drift apart, but the honest coverage
 number is EIGHT distinct behaviours over NINE rows. `duplicate_columns` reports the pair; see it for why a pair is
 not automatically a bug but always makes a raw row count misleading.
@@ -57,14 +57,18 @@ BOARDS = ('PolicySubmission', 'PTPPolicySubmission')
 #: and the second one decided verdicts for a release before anything observed it. See the module docstring: these
 #: 9 rows carry 8 distinct behaviours, and `duplicate_columns` is what keeps that statement honest.
 ENTRY_POINTS = ('validate', 'validate_qfr', 'default_selectors', 'without_default_selectors',
-                'check_no_full_run_selector', 'selector_cause', 'refuse_unqualified_design',
+                'check_full_run_selector', 'selector_cause', 'refuse_unqualified_design',
                 'refuse_unqualified_primitive', 'check_legacy_full_run_source')
 
 #: The rows that agree on every source by construction, so a row count is not a behaviour count.
-KNOWN_DUPLICATE_COLUMNS = [('check_no_full_run_selector', 'check_legacy_full_run_source')]
+KNOWN_DUPLICATE_COLUMNS = [('check_full_run_selector', 'check_legacy_full_run_source')]
 
 #: This file's own baseline over its own corpus. Not comparable to any previously reported value.
-SURFACE_DIGEST = '8ffe41913e67ababf9967699da4573ae5f19cff4529540207f1b1abd52130137'
+#: Re-baselined deliberately with the full-run design route (`8ffe4191...` before). Over the 739 sources it had then,
+#: NO accept/refuse verdict moved: what moved is the full-run refusal text (its leading sentence and causes now state
+#: the rule that failed in a participant's terms), the full-run import refusal's text, and the gate's return value
+#: (`None` -> `False`: it now reports whether a design is declared). The corpus also gained the three design bodies.
+SURFACE_DIGEST = '8a9c4fb0b4213d2074c09ccc0aed1f2d132686c8b59da8d5db12068ac5487b10'
 
 HEADERS = {
     'policy': f'import {POLICY_IMPORT}\n',
@@ -112,6 +116,9 @@ def _selector_forms(selector, type_name, default, non_default, alternate):
     ]
 
 
+_MEASURED = 'def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }\n'
+_DESIGN = 'def submittedFullRunDesign : Shor.FullRunDesign :=\n  {{ {} }}'
+
 BODIES = (
     [(f'design/{n}', b) for n, b in _selector_forms(
         'submittedDesign', 'SubmissionDesign', '{ readout := .coherent }', '{ readout := .semiclassical }',
@@ -122,6 +129,12 @@ BODIES = (
     + [(f'fullrun/{n}', b) for n, b in _selector_forms(
         'submittedFullRunDesign', 'FullRunDesign', '.reference', '.quotientExact',
         'def submittedFullRunDesign : Shor.FullRunDesign := Shor.FullRunDesign.reference')]
+    # The one non-default full-run form the gate admits (owner ruling 2026-11-24): a design declared beside the
+    # semiclassical readout, written across lines the way a structure literal naturally is; and its two neighbours,
+    # the same design without the readout declaration and beside it but selecting a multiplier topology.
+    + [('fullrun/design-beside-readout', _MEASURED + _DESIGN.format('data := some ⟨.rossSelinger, .exact⟩')),
+       ('fullrun/design-alone', _DESIGN.format('data := some ⟨.rossSelinger, .exact⟩')),
+       ('fullrun/design-topology', _MEASURED + _DESIGN.format('multiplier := .quotientStream'))]
     + [('plain/data', 'def points := #[1, 2, 3]'),
        ('plain/empty', ''),
        ('plain/banned', 'def p := by native_decide'),
@@ -180,7 +193,7 @@ def observe(source):
         'validate_qfr': verdict(ps.validate, source, qualify_full_run=True),
         'default_selectors': verdict(ps.default_selectors, text),
         'without_default_selectors': verdict(ps.without_default_selectors, text),
-        'check_no_full_run_selector': verdict(ps.check_no_full_run_selector, text),
+        'check_full_run_selector': verdict(ps.check_full_run_selector, text),
         'selector_cause': ('ok', json.dumps(_selector_causes(text), sort_keys=True)),
         'refuse_unqualified_design': verdict(intake_v2.refuse_unqualified_design, source),
         'refuse_unqualified_primitive': verdict(intake_v2.refuse_unqualified_primitive, source),
@@ -233,7 +246,7 @@ def audit_qualify_full_run(observed=None):
                          branch: qualifying a full run is a different question, and the dedicated harness never
                          publishes.
       `refuses_more`  -- accepted by the plain path, refused under qualification. Must be EMPTY. `validate` only
-                         ever relaxes on this flag (it skips `check_no_full_run_selector` and widens
+                         ever relaxes on this flag (it skips `check_full_run_selector` and widens
                          `ALLOWED_IMPORTS`), so a non-empty list means the branch is not monotone and is a defect.
       `cause_changed` -- refused by both, with a different message. Not a verdict change, but it is the
                          participant-facing text, so it is reported rather than hidden.

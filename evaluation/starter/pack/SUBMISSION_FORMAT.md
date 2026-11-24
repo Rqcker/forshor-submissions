@@ -141,7 +141,7 @@ one, and do not treat its local number as a board number.
 | Semiclassical (measured) readout | `def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }` (PP and PTP) | `submittedDesign is not enabled for ordinary submissions; it requires local readout qualification` |
 | Standalone primitive, catalytic B2 | `def submittedPrimitive : Shor.PrimitiveSynthesis := .catalyticB2` (PP and PTP) | `submittedPrimitive requires separate nonpublishing primitive qualification` |
 | Standalone primitive, adaptive B3 | `def submittedPrimitive : Shor.PrimitiveSynthesis := .adaptiveB3` (PP and PTP) | `submittedPrimitive requires separate nonpublishing primitive qualification` |
-| Any full-run design other than `.reference` | `def submittedFullRunDesign : Shor.FullRunDesign := .<value>` (PhaseProduct board; `PTPPolicyCheck` refuses the name outright on PTP) | `submittedFullRunDesign requires dedicated nonpublishing full-run qualification` |
+| Any full-run design other than `.reference` | `def submittedFullRunDesign : Shor.FullRunDesign := .<value>` (PhaseProduct board; `PTPPolicyCheck` refuses the name outright on PTP) | `submittedFullRunDesign is not accepted as written` |
 
 Even a receipt produced by the local readout-qualification route cannot be published. `publish_verification` refuses
 **every measured receipt at its first gate**, before anything else about the submission is looked at:
