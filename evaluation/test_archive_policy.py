@@ -513,6 +513,13 @@ def test_the_duplicate_refusal_says_which_check_found_the_repeat(remote):
     assert str(writer.value) != str(planner.value)
     assert planner.value.source == "the readout variant planner", "the same participant's repeat is found by the planner"
     assert "writing the entry" in writer.value.source
+    # The source must be IN the message, not only on the exception: the CLI reports str(e) as the reason
+    # (intake_v2.py's duplicate arm), so an operator reading a refused run sees only the text.
+    for refused in (writer, planner):
+        assert refused.value.source in str(refused.value), str(refused.value)
+    # Two repeats that differ only in which check found them must not read the same, which is the collision itself.
+    same = {"policyId": HEAD, "login": "tester", "pull": 7, "createdAt": "2026-11-08T10:00:00Z", "sameParticipant": True}
+    assert str(ap.DuplicatePolicy(same, "the readout variant planner")) != str(ap.DuplicatePolicy(same))
 
 
 def test_the_duplicate_rules_still_refuse_and_accept_exactly_what_they_did(remote):
