@@ -14,7 +14,12 @@ from .mapping import DELTA_VALUES
 
 EPOCH = "ab1f8887b1b50e56"
 RULE = "exact-reference-readout-v1"
-VERIFIER_PIN = "931bbf16e7d37e38fa938a590e0f3e444222b812"
+# The OPERATIONAL pin (`evaluation/policy-trees.json` -> `forshor.ref`): the checkout a submission is compiled in, and
+# the one `intake_v2._forshor_build` requires `git rev-parse HEAD` to equal before it will qualify a readout. These two
+# must never diverge -- `pytests/test_operational_pin.py::test_the_readout_verifier_pin_is_the_operational_pin` is the
+# guard. The pin is a literal here on purpose: `rule_fingerprint()` hashes this file, so the published `ruleSha256`
+# covers which verifier the evidence names, and the site contract pins both values (`src/contracts/results-v2.ts`).
+VERIFIER_PIN = "80d7b6b2d0e696df46f1fa6ed928cbd1d9d7d6c5"
 MEASURED_SCHEMA = "forshor.policy-submission-semiclassical/v1"
 SCHEDULE = {
     "schema": "forshor.readout-loop/v1", "mode": "semiclassical",

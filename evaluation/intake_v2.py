@@ -225,6 +225,71 @@ def require_coherent_export(document: Dict[str, Any]) -> None:
     require_legacy_export(check_coherent_export, document)
 
 
+#: The one top-level key a compiled export names its full-run selection in (`policy_options.DESIGN_KEYS`).
+FULL_RUN_KEY = "submitted_full_run"
+
+
+def compiled_full_run(printed: Any) -> tuple:
+    """`(selection, design)` for a compiled export: the engine `design` its full-run selection converts to.
+
+    `(None, None)` means "no selection to convert", and the caller then applies the ordinary export checks. That is the
+    answer in two cases, and both are deliberate:
+
+      * the document names no selection at all -- the reference pipeline, priced exactly as it always was;
+      * this checkout has no `export_v2.full_run_design` converter (WO's module, arriving with WP's QFT pricing chain).
+        Then a document that DOES name a selection falls through to `check_no_full_run_export`, which refuses it with
+        the standing message. A selection is never read as the default and never priced as one.
+
+    A selection the converter cannot express is refused BY NAME, with the converter's own wording."""
+    if not isinstance(printed, dict) or FULL_RUN_KEY not in printed:
+        return None, None
+    try:
+        from export_v2 import full_run_design
+    except ImportError:
+        return None, None
+    try:
+        selection = full_run_design.selection_of(printed)
+        return selection, full_run_design.design_of(selection)
+    except ValueError as error:
+        raise Refused("format", str(error)) from error
+
+
+def require_readout_epoch(model: Dict[str, Any]) -> None:
+    """The measured readout rule is qualified for ONE epoch. A checkout whose engine is at another epoch cannot rule on
+    a measured submission at all, so this is an operator-side stop and NOT a verdict on the policy: it is `Incomplete`
+    at stage `epoch`, which `scripts/ci/notify_submitters.js` (LIMIT_STAGES) already reports to the submitter as
+    incomplete/limits. Checked BEFORE `bind_compiled_readout`, whose own epoch `ValueError` would otherwise surface as
+    `Refused("forshor", ...)` -- telling a participant their policy is wrong when the engine checkout is the thing that
+    does not match. Proposed by lane WU; the cause belongs to the operator, so the message says so."""
+    from export_v2.canon import epoch_of
+    from export_v2.readout_overlay import EPOCH as READOUT_EPOCH
+    if epoch_of(model) != READOUT_EPOCH:
+        raise Incomplete("epoch", f"this checkout's engine is at epoch {epoch_of(model)} and the measured readout rule is "
+                                  f"qualified for {READOUT_EPOCH}; the submission was not examined")
+
+
+def bind_measured_readout(verification: Dict[str, Any], policy, printed: Dict[str, Any]) -> Dict[str, Any]:
+    """The readout evidence for a qualified measured export, re-derived HERE from the compiled document and the
+    submitted source. The receipt's own `localReadoutQualification.evidence` is never the proof: it is compared with
+    what `bind_compiled_readout` independently produces, so evidence bound to another source, or naming another
+    verifier, is refused rather than published. Raises `Refused`."""
+    from export_v2.readout_overlay import VERIFIER_PIN, bind_compiled_readout
+    source = verification.get("leanSource")
+    if not isinstance(source, str):
+        raise Refused("format", "a qualified measured readout needs the submitted Lean source it was compiled from")
+    qualification = verification.get("localReadoutQualification")
+    if not isinstance(qualification, dict) or qualification.get("mode") != "semiclassical" \
+            or printed.get("submitted_readout") != "semiclassical":
+        raise Refused("forshor", "missing or mismatched compiled readout selection")
+    try:
+        readout = bind_compiled_readout(policy, printed, verifier_pin=VERIFIER_PIN, lean_source=source.encode("utf-8"))
+    except ValueError as error:
+        raise Refused("forshor", str(error)) from error
+    if qualification.get("evidence") != readout:
+        raise Refused("forshor", "the qualified readout evidence does not bind this source and this verifier")
+    return readout
+
+
 def forshor_build(forshor_tree: Path, template: str, workdir: Path, timeout: int = 7200, kind: str = "pp", *,
                   qualify_readout: bool = False) -> Dict[str, Any]:
     """The Lean file as ForShor's template (`kind`: `pp` or `ptp`), in a disposable copy of the checkout: ForShor's lexical gate, its build, then the document its
@@ -374,7 +439,7 @@ def check_summary(summary: Optional[str], lean_policy: Optional[str]) -> None:
 def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, summary: Optional[str] = None, login: str, url: Optional[str] = None, token: str = "local", tree: Path, workdir: Path,
                       forshor_tree: Optional[Path] = None, stage_timeout: Optional[int] = None, mirror_timeout: int = 7200,
                       run_mirror_fn: Optional[Callable[..., Dict[str, Any]]] = None, python: str = sys.executable,
-                      qualify_readout: bool = False,
+                      qualify_readout: bool = False, publishing: bool = False,
                       log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
     """Everything up to the publish: the reserved handle and (when a publisher URL is given) the epoch, then ForShor's gate and build (a Lean submission), the STO mirror
     and ForShor's check. Returns the verification: the policy, ForShor's printed document, the mirror's envelope and the model it was verified under, as data a trusted
@@ -382,7 +447,7 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, sum
     workdir.mkdir(parents=True, exist_ok=True)
     with exclusive_attempt(workdir / ".verification.lock"):
         return _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree, workdir, forshor_tree,
-                                  stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, log)
+                                  stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, publishing, log)
 
 
 def _run_mirror_or_incomplete(run, policy_json, board, tree, out_dir, **kw):
@@ -400,12 +465,14 @@ def _run_mirror_or_incomplete(run, policy_json, board, tree, out_dir, **kw):
 
 
 def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree, workdir, forshor_tree,
-                       stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, log):
+                       stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, publishing, log):
     from export_v2 import engine, epoch
     from export_v2.canon import policy_digest
     from export_v2.evidence import run_mirror, stomirror_from_envelope
     from publish_v2 import HOUSE_HANDLE
-    if qualify_readout and (url or lean_policy is None):
+    if qualify_readout and (lean_policy is None or (url and not publishing)):
+        # `publishing`: `run_intake` verifies and publishes in ONE trusted run, so there the publisher URL is the
+        # publisher it is about to publish to. A bare `--qualify-readout --no-publish` still touches no network.
         raise Refused("format", "readout qualification is local only and requires Policy.lean")
     check_summary(summary, lean_policy)                         # a rule of the summary file first: cheap, and not a verdict on the policy
     eng = engine.load()
@@ -432,6 +499,7 @@ def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree
         from export_v2.readout_overlay import MEASURED_SCHEMA, VERIFIER_PIN, bind_compiled_readout
         selected = printed.get("submitted_readout")
         if selected == "semiclassical" and printed.get("schema") == MEASURED_SCHEMA:
+            require_readout_epoch(model)                        # an operator-side epoch stop is not this policy's fault
             try:
                 readout = bind_compiled_readout(P, printed, verifier_pin=VERIFIER_PIN, lean_source=lean_policy.encode("utf-8"))
             except ValueError as error:
@@ -516,7 +584,7 @@ def archive_policy_rules() -> Dict[str, str]:
 
 def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, token: str, workdir: Path, head_sha: Optional[str] = None, run_id: Optional[str] = None,
                          organizer_baseline: Optional[str] = None, archive_commit: Optional[str] = None, archive_view: Optional[Callable[[], Any]] = None,
-                         archive_write: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
+                         archive_write: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None, qualified_in_run: bool = False,
                          log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
     """Price and publish a verification (`verify_submission`'s output, possibly produced by another job). No Lean runs here and nothing in `v` is trusted: the policy's digest, the
     mirror's envelope (against this checkout's model and the policy), the printed document and ForShor's record are all checked again, and the handle and epoch against the live
@@ -526,10 +594,23 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     from export_v2.evidence import EvidenceStore
     from export_v2.readout_overlay import MEASURED_SCHEMA
     printed = v.get("printed")
-    if "localReadoutQualification" in v or (isinstance(printed, dict) and printed.get("schema") == MEASURED_SCHEMA):
+    # Owner decision 2026-11-24: the blanket refusal here was a conservative default while readout qualification was
+    # pending. It exists now, so a qualified measured document THIS RUN's trusted verifier produced is priced on the
+    # measured path below. What does NOT change: a qualification that arrives inside a receipt is still refused.
+    # Hosted intake takes its inputs from the trusted GitHub run and the publisher, never from a receipt the submitter
+    # supplies, so only `run_intake` -- which just ran the verifier itself -- sets `qualified_in_run`.
+    measured = isinstance(printed, dict) and printed.get("schema") == MEASURED_SCHEMA
+    if ("localReadoutQualification" in v or measured) and not qualified_in_run:
         raise Refused("format", "qualified readout receipts are local only; publishing is not enabled")
+    selection, design = compiled_full_run(printed) if measured else (None, None)
     if isinstance(printed, dict):
-        require_coherent_export(printed)
+        # The route picks the checker, as `policy_from_lean` already does at the compile step: a measured export
+        # carries the readout loop the coherent checker exists to refuse, and a converted full-run selection is ruled
+        # on by `compiled_full_run` above instead of by key presence.
+        if not measured:
+            require_coherent_export(printed)
+        elif selection is None:
+            require_legacy_export(check_no_full_run_export, printed)
     if isinstance(v.get("leanSource"), str):
         # The receipt's two source fields must agree before the gates below are trusted: they rule on `leanSource`, while
         # `archive_policy.archive_policy` compares BOTH fields against the file at the pull request's head commit. If they
@@ -543,7 +624,11 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
             check_legacy_full_run_source(v["leanSource"])
         except ValueError as error:
             raise Refused("format", str(error)) from error
-        refuse_unqualified_design(v["leanSource"])
+        if not measured:
+            # The same precedent as `policy_from_lean`: a qualified measured submission declares the readout it
+            # compiled (`submittedDesign ... readout := .semiclassical`), which is what qualification is for. The
+            # refusal stays byte-identical for every ordinary submission.
+            refuse_unqualified_design(v["leanSource"])
     eng = engine.load()
     model = epoch.model_of()
     if v.get("schema") != VERIFICATION_SCHEMA:
@@ -581,8 +666,16 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
         (ev / f"{digest[:16]}.evidence.json").write_text(json.dumps(v["envelope"], indent=1, ensure_ascii=False))
     P = eng.tables.Policy.from_json(policy_json)
     printed = v.get("printed")
+    if measured:
+        require_readout_epoch(model)                            # before the binding, for the same reason as in verify
+    readout = bind_measured_readout(v, P, printed) if measured else None
     forshor = None
-    if printed is not None and not str(printed.get("schema", "")).startswith("forshor.ptp-"):
+    if readout is not None:
+        # A measured proof claims no coherent IR agreement: `forshor_record` prices the document's own IR against the
+        # coherent single-run cost, and a measured export's IR is the readout round. `_build_request` refuses a request
+        # that carries both.
+        log("  verified the compiled readout and checked its reference arithmetic census")
+    elif printed is not None and not str(printed.get("schema", "")).startswith("forshor.ptp-"):
         forshor = forshor_record(eng, P, printed, model["forshor"]["pin"])
     elif printed is not None:
         # threshold, k and the table itself, band by band (as `forshor_record` does for PhaseProduct): two tables of one k are told apart
@@ -601,6 +694,16 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     accepted_now = archive_view or (lambda: (sorted(set(state_of().get("submissionIds", [])) | {head_sha}), archive))
 
     def price() -> Dict[str, Any]:
+        if readout is not None:
+            from export_v2.readout_overlay import VERIFIER_PIN
+            # The measured pricer re-binds the evidence itself; `design` is passed only when a full-run selection
+            # converted to one, so a document that names none prices on the reference pipeline, bit for bit.
+            return request.build_measured_request(policy_json, compiled=printed, verifier_pin=VERIFIER_PIN,
+                                                  lean_source=v["leanSource"].encode("utf-8"), model=model, store=store,
+                                                  head_sha=head_sha, pull_number=pull, github_login=login, run_id=run_id,
+                                                  submitted_at=submitted_at, evaluated_at=submitted_at, archive_commit=archive,
+                                                  accepted_ids=[head_sha], number=0, evaluation_key=evaluation_key,
+                                                  base_generation="", log=log, **({"design": design} if design is not None else {}))
         return request.build_request(policy_json, model=model, store=store, head_sha=head_sha, pull_number=pull, github_login=login, run_id=run_id,
                                      submitted_at=submitted_at, evaluated_at=submitted_at, archive_commit=archive, accepted_ids=[head_sha], number=0,
                                      evaluation_key=evaluation_key, base_generation="", forshor=forshor, log=log)
@@ -639,12 +742,17 @@ def run_intake(policy_doc: Any, *, lean_policy: Optional[str] = None, login: str
                stage_timeout: Optional[int] = None, mirror_timeout: int = 7200, archive_commit: Optional[str] = None,
                archive_view: Optional[Callable[[], Any]] = None, summary: Optional[str] = None,
                run_mirror_fn: Optional[Callable[..., Dict[str, Any]]] = None, python: str = sys.executable,
+               qualify_readout: bool = False,
                log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
-    """The pipeline above, verify then publish in one call. Returns the publisher's result. Raises `Refused`, `ReservedHandle`, `ModelMismatch`."""
+    """The pipeline above, verify then publish in one call. Returns the publisher's result. Raises `Refused`, `ReservedHandle`, `ModelMismatch`.
+
+    This is the ONE route that may publish a qualified measured readout: the verification `publish_verification` rules
+    on is the one this call's own trusted verifier just produced, not a receipt handed in from elsewhere."""
     v = verify_submission(policy_doc, lean_policy=lean_policy, summary=summary, login=login, url=url, token=token, tree=tree, workdir=workdir, forshor_tree=forshor_tree,
-                          stage_timeout=stage_timeout, mirror_timeout=mirror_timeout, run_mirror_fn=run_mirror_fn, python=python, log=log)
+                          stage_timeout=stage_timeout, mirror_timeout=mirror_timeout, run_mirror_fn=run_mirror_fn, python=python, log=log,
+                          qualify_readout=qualify_readout, publishing=True)
     return publish_verification(v, login=login, pull=pull, url=url, token=token, workdir=workdir, head_sha=head_sha, run_id=run_id,
-                                archive_commit=archive_commit, archive_view=archive_view, log=log)
+                                archive_commit=archive_commit, archive_view=archive_view, qualified_in_run=qualify_readout, log=log)
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -657,7 +765,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="verify only (the reserved handle, ForShor's gate and build, the STO mirror, ForShor's check) and write a verification file; nothing is priced, nothing is "
                          "sent, no publisher or token is needed. This is `./forshor check`, and the untrusted half of CI")
     ap.add_argument("--verification-out", type=Path, help="with --no-publish: where to write the verification (default: WORKDIR/verification.json)")
-    ap.add_argument("--qualify-readout", action="store_true", help="local only: compile PhaseProduct readout at the separate trusted verifier pin")
+    ap.add_argument("--qualify-readout", action="store_true", help="compile PhaseProduct readout at the operational verifier pin. With --no-publish this is local only and takes no "
+                    "publisher URL; with a publisher URL and --pull it verifies and publishes in one trusted run (the only route that may publish a measured readout)")
     ap.add_argument("--organizer-baseline", choices=["baseline-gpt", "baseline-claude", "baseline-gpt-6.2-sol", "baseline-claude-opus-5-5", "baseline-gpt-6.2-sol-medium", "baseline-claude-opus-5-5-medium"], help="Display identity assigned by trusted publication CI")
     ap.add_argument("--publish-from", type=Path, help="price and publish a verification written by --no-publish (the trusted half of CI): no Lean runs, and everything in it is checked again")
     ap.add_argument("--login", required=True, help="the submitter's GitHub handle (the PR author)")
@@ -680,8 +789,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         ap.error("give exactly one of --policy, --lean-policy and --publish-from")
     if a.summary is not None and a.lean_policy is None:
         ap.error("--summary goes with --lean-policy (the publish job takes the summary from the verification and the pull request's head commit)")
-    if a.qualify_readout and (not a.no_publish or a.lean_policy is None or a.publisher_url):
-        ap.error("--qualify-readout requires --no-publish and --lean-policy, with no publisher URL")
+    if a.qualify_readout:
+        if a.lean_policy is None:
+            ap.error("--qualify-readout requires --lean-policy")
+        if a.no_publish and a.publisher_url:
+            ap.error("--qualify-readout with --no-publish is local only: it takes no publisher URL")
     if a.publish_from is not None:
         if a.no_publish:
             ap.error("--publish-from publishes: it cannot be combined with --no-publish")
@@ -755,7 +867,8 @@ def _run_args(a, ap, verification_path):
         else:
             result = run_intake(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_bytes().decode("utf-8") if a.lean_policy else None, summary=summary_text, login=a.login,
                                 pull=a.pull, url=a.publisher_url, token=token, tree=a.tree, workdir=a.workdir, head_sha=a.head_sha, run_id=a.run_id, forshor_tree=a.forshor_tree,
-                                stage_timeout=a.stage_timeout, mirror_timeout=a.mirror_timeout, archive_commit=a.archive_commit, archive_view=archive_view)
+                                stage_timeout=a.stage_timeout, mirror_timeout=a.mirror_timeout, archive_commit=a.archive_commit, archive_view=archive_view,
+                                **({"qualify_readout": True} if a.qualify_readout else {}))
         code = 0
     except Incomplete as e:
         result, code = {"failed": True, "stage": e.stage, "error": str(e)[:600]}, 2
