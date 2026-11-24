@@ -2,12 +2,18 @@
 
 Which production change each test pins is named in the test's docstring. The tests split in two:
 
-* seam tests (no engine): they inject a fake pricer into `pricing.price_views`, because the vendored
-  `fullalg.price_full` does not take `design=` until lane WM lands the engine side of the contract.
+* seam tests (no engine): they inject a fake pricer into `pricing.price_views` and record exactly what
+  reached it. `fullalg.price_full` never takes `design=` -- see below.
 * real-engine tests (marked slow): they price the real policy
   `pytests/data/real/1bc92ac6e1e82ba3.policy.json` through the vendored engine and assert the panels are
-  byte-identical to 792464f. They never pass a design, because the engine cannot accept one yet; what they
-  prove is that the default path is untouched.
+  byte-identical to 792464f. They never pass a design; what they prove is that the default path is untouched.
+
+LANE WP UPDATE. This file was written expecting lane WM to add a `design=` parameter to the ENGINE's
+`fullalg.price_full`. WM did not: `evaluation/engine` feeds both `engineRevision` and `dataFingerprint`, so
+any edit there -- even a comment -- moves the epoch, and WM qualified the design axis as an out-of-engine
+overlay (`qft_overlay`) instead. `price_full` therefore still has its 792464f signature and the design is
+routed to the overlay by the hook at `pricing.py:52-54`. The seam test below pins that. The end-to-end chain
+this file's two halves were building toward lives in `test_full_run_chain.py`.
 """
 import json
 import sys
@@ -187,11 +193,26 @@ def test_no_selection_passes_no_design_argument_at_all(seam):
     assert all("design" not in call for call in seam)
 
 
-def test_a_design_is_threaded_to_the_full_run_pricer(seam):
-    """Fails if pricing.price_views drops the design argument on the floor."""
+def test_a_design_is_threaded_to_the_overlay_and_never_to_the_full_run_pricer(seam, monkeypatch):
+    """Fails if pricing.price_views drops the design argument on the floor, OR if it resurrects the engine-side
+    `price_full(..., design=...)` call this lane removed.
+
+    LANE WP RECONCILIATION. WO wrote this test against a superseded brief in which lane WM would add `design=` to
+    `fullalg.price_full`. WM instead qualified the axis as an out-of-engine overlay, because ANY engine edit moves
+    dataFingerprint and engineRevision and so the epoch; `git diff 792464f -- evaluation/engine` is empty on the
+    merged branch and `price_full` still has the 792464f signature `(P, n, delta, detail, rule, negation)`, so the
+    engine-side call raised `TypeError: price_full() got an unexpected keyword argument 'design'` against the real
+    engine. The design now reaches `qft_overlay.project(P, full, design)` instead -- the hook mirroring `measured`."""
+    import export_v2.qft_overlay as qft_overlay
+
+    seen = []
+    monkeypatch.setattr(qft_overlay, "project", lambda P, full, design: seen.append(design) or {"probe": True})
     design = full_run_design.design_of(selection("quotient-banded-data-catalytic-work"))
-    pricing.price_views(FakePolicy(), "t", "1e-2", ["full"], design=design)
-    assert seam == [{"n": pricing.N, "delta": 0.01, "detail": True, "design": design}]
+    views = pricing.price_views(FakePolicy(), "t", "1e-2", ["full"], design=design)
+    assert seam == [{"n": pricing.N, "delta": 0.01, "detail": True}]
+    assert all("design" not in call for call in seam)
+    assert seen == [design]
+    assert views["full"]["full"]["qft"] == {"probe": True}
 
 
 def test_a_design_is_refused_at_every_delta_but_1e_2(seam):

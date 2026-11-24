@@ -42,7 +42,14 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
     `design` is the compiled full-run QFT design (`full_run_design.design_of`), or None for no design at all, which is the
     engine's default and reproduces every published price byte for byte: with None the full-run pricer is called with exactly
     the arguments it was called with before this parameter existed, not with `design=None`. `pricer` replaces
-    `fullalg.price_full` (a test seam; the engine side of the `design` contract is lane WM's)."""
+    `fullalg.price_full` (a test seam).
+
+    A design is NEVER passed to the full-run pricer. Lane WM qualified the design axis as an out-of-engine OVERLAY
+    (`qft_overlay.project`, constructing in-epoch `ReferenceQFT` with a Coppersmith `k_max` band) precisely because any edit
+    to `evaluation/engine` -- including an additive `design=` parameter, including a comment -- moves `dataFingerprint` and
+    `engineRevision` and so the epoch (`qft_overlay` module docstring: appending one comment line to `site_engine/fullalg.py`
+    moves ab1f8887b1b50e56 to d3bda33d5ddd5dca). So the engine prices the coherent reference exactly as it always did and the
+    design is applied on top of that frozen result, mirroring the `measured` readout hook directly above."""
     eng = engine.load()
     delta = DELTA_VALUES[delta_key]
     P = policy.with_widths("exact")
@@ -59,13 +66,15 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
         if board == "full":
             if P.mode != eng.tables.PAIR:
                 raise ValueError("only a PhaseProduct policy is priced on the full order-finding board")
-            full = (price_full(P, N, delta, detail=True) if design is None
-                    else price_full(P, N, delta, detail=True, design=design))
+            full = price_full(P, N, delta, detail=True)
             view = eng.policy_view.view(P, N, delta, f"{title}, full order finding, n = {N}")
             view["full"] = {k: full.get(k) for k in FULL_KEYS}
             if measured:
                 from .readout_overlay import project
                 view["full"]["readout"] = project(P, full)
+            if design is not None:
+                from .qft_overlay import project
+                view["full"]["qft"] = project(P, full, design)
             view["usage"], view["tables_used"] = full.get("usage"), full.get("tables_used")
             view["tables"] = _all_tables(eng, P)
             _fix_bands_used(view)
