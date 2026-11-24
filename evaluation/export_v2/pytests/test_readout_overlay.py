@@ -167,7 +167,13 @@ def test_real_submitted_readout_binds_to_the_compiled_policy(measured):
     policy, document, source = measured
     proof = overlay.bind_compiled_readout(policy, document, verifier_pin=overlay.VERIFIER_PIN, lean_source=source)
     assert proof["mode"] == "semiclassical" and proof["irSha256"] == sha256_hex(document)
-    assert proof["ruleSha256"] == overlay.rule_fingerprint()
+    # Was `== overlay.rule_fingerprint()`, which `bind_compiled_readout` assigns this field FROM: a self-referential
+    # assertion that held for any value and so could never catch the module drifting away from the literal the site
+    # contract pins (`src/contracts/results-v2.ts` -> `referenceReadout.ruleSha256`). Found by lane WU. The expected
+    # value lives in `test_operational_pin.py` with the other cross-repo pins, as the single source of truth.
+    from test_operational_pin import READOUT_RULE_SHA256
+
+    assert proof["ruleSha256"] == READOUT_RULE_SHA256 == overlay.rule_fingerprint()
     with pytest.raises(ValueError, match="pinned verifier"):
         overlay.bind_compiled_readout(policy, document, verifier_pin="0" * 40, lean_source=source)
 
