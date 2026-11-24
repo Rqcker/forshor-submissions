@@ -67,14 +67,22 @@ no board is ever priced for it. One validator in the repo, not two.
 research document has no separate key, whereas production carries `submitted_readout` beside
 `submitted_full_run` and `QFT-SURFACE-MAPPING.md` section 4.2's `FullRunDesign` has no readout field.
 
-EXACT MEANS UNTOUCHED. `target: "exact"` is "leave this family as the engine priced it" (`k_max = None`,
-no substitution), never "substitute the exact ladder" -- lane WM measured that substitution at 14.8x T
-(`qft_overlay.py:34-40`). A design in which no family asks for an `approximate` target therefore asks for
-nothing at all and converts to None, the engine's untouched default, exactly as `reference` does: section
-1.2's rule that the empty selection is not a design. The collapse is applied on THIS path only; the
-profile path's 8 labels are already-qualified fixtures whose conversion is recorded byte-for-byte, and
-`quotient-exact` keeps resolving to its mapping. Both price the same T (the overlay returns
-`identity: True` for an all-exact mapping), so that asymmetry is in reporting, not in price.
+EXACT MEANS UNTOUCHED, ON THE CONSTRUCTION AXIS. `target: "exact"` is "leave this family as the engine
+priced it" (`k_max = None`, no substitution), never "substitute the exact ladder" -- lane WM measured that
+substitution at 14.8x T (`qft_overlay.py:34-40`). A design in which no family asks for an `approximate`
+target AND no family asks for the `catalytic` backend therefore asks for nothing at all and converts to
+None, the engine's untouched default, exactly as `reference` does: section 1.2's rule that the empty
+selection is not a design.
+
+The `backend` clause of that rule is wave 2's integration fix, and it matters: `target` and `backend` are
+ORTHOGONAL axes -- the first picks the construction, the second picks the CURRENCY. Once lane WX priced the
+catalytic arm, a catalytic family changes the price whatever its target, so collapsing a catalytic-exact
+design to None would have returned the Ross-Selinger default for a submission that asked for catalysis
+(measured: 1628644042547.186 against 1641978984650.562 at delta 1e-2). See `_design_of_body`.
+
+The collapse is applied on THIS path only; the profile path's 8 labels are already-qualified fixtures whose
+conversion is recorded byte-for-byte. Today every one of those labels refuses on its multiplier topology,
+so the asymmetry is moot in this release.
 """
 from __future__ import annotations
 
@@ -103,7 +111,6 @@ BODY_KEYS = ("schema", MULTIPLIER_KEY, QFT_KEY, PHASE_KEY)
 REFUSAL_CLASSES = (
     "unknown-backend",      # a backend qft_overlay.BACKENDS does not name
     "unknown-target",       # a target qft_overlay.TARGETS does not name
-    "catalytic",            # a second axis: its own budget share and a catalyst register (WM)
     "max-error",            # not '<units>e-<scale>', or not a precision in (0, 1), or missing/unexpected
     "phase-product",        # step1/step2/step4/step5: certified word banks, out of scope
     "rotation-backend",     # the `<family>Rotations` axis; the contract has no field for it
@@ -294,8 +301,27 @@ def _design_of_body(body: Any, profile: Optional[str] = None) -> Optional[Dict[s
         if target == "approximate":
             qft_overlay.parse_max_error(family, max_error)
 
-    # EXACT MEANS UNTOUCHED. No family asking for an approximate target is no design at all.
-    if not any(target == "approximate" for _b, target, _m in plan.values()):
+    # EXACT MEANS UNTOUCHED -- ON THE CONSTRUCTION AXIS ONLY.
+    #
+    # INTEGRATION FIX (wave 2, lane XF). This collapse read `not any(target == "approximate")`, written when
+    # the band was the only axis: `target: "exact"` meant k_max = None, no substitution, so a design with no
+    # approximate target genuinely asked for nothing. Lane WX then priced the CATALYTIC arm, and `backend`
+    # is a second, orthogonal axis: `target` picks the construction, `backend` picks the CURRENCY. A
+    # catalytic family is "touched" by `qft_overlay.project` whatever its target
+    # (`qft_overlay.py:442-443`, `touched = banded | catalytic`), because the arm re-prices that family's
+    # surviving rotations on the catalyst, takes its own share of the synthesis pool, and adds the shared
+    # catalyst register to Q.
+    #
+    # Measured on the merged tree, for `{"data": {"backend": "catalytic", "target": "exact"}}` against the
+    # real engine at delta 1e-2: the engine's own T is 1628644042547.186 and the overlay's is
+    # 1641978984650.562. So collapsing that design to None returned the Ross-Selinger default for a
+    # submission that asked for catalysis -- the silent default this release forbids, and the one thing both
+    # the topology gate and the catalytic refusal it replaced exist to prevent.
+    #
+    # The collapse therefore now tests BOTH axes. A design asks for nothing only when no family asks for an
+    # approximate target AND no family asks for the catalytic currency.
+    if not any(target == "approximate" or backend == "catalytic"
+               for backend, target, _m in plan.values()):
         return None
     return design
 

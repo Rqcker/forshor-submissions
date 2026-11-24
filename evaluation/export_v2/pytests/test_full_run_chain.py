@@ -44,6 +44,23 @@ design on the reference topology (`full_run_design`'s second path, `Design.json`
 prices any combination of the four QFT families. The tests below that need a real design to thread are
 therefore stated against the explicit path; `test_every_profile_label_refuses_and_the_explicit_design_prices`
 states the position as a fact rather than leaving it to be discovered.
+
+AND THE CHAIN DIFFERENTIATES (lane WX), ON THAT PATH. WX priced the catalytic arm, which `qft_overlay` used
+to refuse as "a second axis": the arm's own proportional share of the run-wide synthesis pool, the shared
+catalyst register charged to Q, and `catalyst_prep_T` as a separate unconditional charge. So a design naming
+`backend: "catalytic"` produces a price that DIFFERS from the engine's own -- a genuinely differentiated
+full-run price, which is this release's deliverable.
+
+WX stated that over the two catalytic PROFILE LABELS, which the topology gate refuses. The two facts are
+not in conflict, because the label and the design are different things: what the labels named was a
+per-family QFT combination ATTACHED TO a quotientStream topology, and it is only the topology that cannot
+be honoured. Every one of the three combinations those labels named -- exact/exact, catalytic/catalytic,
+banded-data/catalytic-work -- still prices when expressed as an EXPLICIT reference-topology design, the
+catalytic two differentiating exactly as WX measured. WX's two tests are re-pointed there rather than
+dropped, and WR's gate is not weakened:
+`test_the_catalytic_designs_price_a_differentiated_full_run` and
+`test_the_explicit_design_prices_every_combination_the_profile_labels_named`.
+
 """
 import copy
 import json
@@ -66,6 +83,9 @@ HEAD_PANELS = {"full": "998ad142a47fae05466541a3a92e0851cb86bac91876ce409ec4a98b
 #: REFUSED ON THEIR MULTIPLIER TOPOLOGY (lane WR's gate). These three name only QFT families, so they once
 #: converted; they select `modmul: quotient_stream`, which `qft_overlay` cannot honour, so they refuse by name.
 REFUSED_BY_TOPOLOGY = ("quotient-exact", "quotient-catalytic", "quotient-banded-data-catalytic-work")
+#: Of those three, the two whose family combination names `backend: "catalytic"`. The LABELS refuse; the
+#: same combinations as EXPLICIT reference-topology designs price, and differentiate (lane WX's arm).
+CATALYTIC_COMBINATIONS = ("quotient-catalytic", "quotient-banded-data-catalytic-work")
 #: Refused by `full_run_design` itself: they select a rotation or phase-product backend, not a QFT. Two of
 #: these also select `split_compare`; they are refused on the selector, which is checked first.
 REFUSED_BY_DESIGN = ("quotient-fallback-data-catalytic-work", "quotient-step2-fallback",
@@ -149,7 +169,7 @@ def test_a_compiled_document_prices_a_panel_carrying_a_qft_projection(policy, ep
 
     views = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"], design=design)
     projection = views["full"]["full"]["qft"]
-    assert projection["pricingRule"] == qft_overlay.RULE == "coppersmith-banded-qft-v1"
+    assert projection["pricingRule"] == qft_overlay.RULE == "qft-design-axis-v2"
     assert projection["epoch"] == qft_overlay.EPOCH == "ab1f8887b1b50e56"
     assert projection["ruleSha256"] == qft_overlay.rule_fingerprint()
     assert set(projection["families"]) == set(design)
@@ -302,6 +322,72 @@ def test_every_profile_label_refuses_and_the_explicit_design_prices(policy=None)
     assert design == {"data": BANDED}
     plan = qft_overlay.parse_design(design)
     assert plan and all(target == "approximate" for _backend, target, _max_error in plan.values())
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("named", CATALYTIC_COMBINATIONS)
+def test_the_catalytic_designs_price_a_differentiated_full_run(policy, epoch_id, named):
+    """THE RELEASE DELIVERABLE. The catalytic arm was refused at `qft_overlay.parse_design` as "a second
+    axis"; lane WX priced that axis, so a catalytic design reaches a real price through the same four
+    production steps. It must differ from the engine's own price, must carry a catalyst block with all
+    three of its charges, and must charge the shared register to Q.
+
+    RE-POINTED (wave 2, lane XF) -- from `test_the_catalytic_profiles_price_a_differentiated_full_run`.
+    WX drove this from the two catalytic PROFILE LABELS, which WR's topology gate now refuses: they also
+    select `modmul: quotient_stream`, and the overlay prices against the frozen REFERENCE census. The gate
+    is NOT weakened to keep this green. What the labels named was a per-family QFT COMBINATION attached to
+    a quotientStream topology, and only the topology is unhonourable -- so the identical combination is
+    driven here as an EXPLICIT reference-topology design, taken from the converter's own `QFT_ONLY` table
+    so the two cannot drift. Every assertion WX wrote is preserved verbatim; only the way the design is
+    obtained moved onto the path that ships.
+
+    Fails if the catalytic arm is reverted (back to a refusal, or to the Ross-Selinger default), if the
+    catalyst register stops being charged to the qubit total, or if the panel stops carrying the block."""
+    design = design_from(explicit_document(full_run_design.QFT_ONLY[named]))
+    assert design is not None
+    assert any(choice["backend"] == "catalytic" for choice in design.values())
+
+    views = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"], design=design)
+    full, projection = views["full"]["full"], views["full"]["full"]["qft"]
+    catalyst = projection["catalyst"]
+
+    assert projection["identity"] is False
+    assert projection["T"] != full["T"], "a catalytic design must not price at the engine's own number"
+    assert projection["catalysed"] == sorted(f for f, c in design.items() if c["backend"] == "catalytic")
+    # All three charges present and nonzero.
+    assert catalyst["b"] >= qft_overlay.B_MIN and catalyst["deltaArm"] > 0.0      # its own budget share
+    assert catalyst["registerQubits"] == catalyst["b"]                            # the shared register
+    assert projection["qubitsPeak"] == full["qubits_peak"] + catalyst["b"]
+    assert catalyst["prepT"] > 0.0                                               # the prep allowance
+    assert catalyst["T"] == catalyst["cellsT"] + catalyst["prepT"]
+    assert projection["rotationsCatalysed"] > 0
+
+    built = panel(views["full"], epoch_id, "full")
+    assert built["fullRun"]["qft"] == projection, "the panel must carry the projection the pricer produced"
+
+
+def test_the_explicit_design_prices_every_combination_the_profile_labels_named(policy=None):
+    """The other half of the release-decision fact: what REFUSES is the label, not the design.
+
+    RE-POINTED (wave 2, lane XF) -- from WX's `test_three_profiles_price_and_four_refuse`, which asserted
+    that three profile labels price. Under WR's topology gate none of them do. The substance of WX's claim
+    survives at the level it is actually true: all three per-family COMBINATIONS those labels named still
+    convert and price as EXPLICIT reference-topology designs, with the two catalytic ones selecting the
+    catalytic backend and `quotient-exact`'s all-exact combination collapsing to the engine's untouched
+    default ("exact means untouched"). So nothing about the PRICING was lost when the labels were refused;
+    only the quotientStream topology they also carried was, which is the deferred part.
+
+    Fails if the explicit path stops honouring any combination the qualified labels named."""
+    for named, qft in full_run_design.QFT_ONLY.items():
+        design = design_from(explicit_document(qft))
+        if named in CATALYTIC_COMBINATIONS:
+            plan = qft_overlay.parse_design(design)
+            assert plan and any(backend == "catalytic" for backend, _t, _m in plan.values())
+        else:
+            # quotient-exact's combination is all-exact, so it asks for nothing: the engine's own price.
+            assert design is None, named
+            assert all(choice["backend"] == "ross_selinger" and choice["target"] == "exact"
+                       for choice in qft.values())
 
 
 # ------------------------------------------------------------------ the engine is never asked for a design

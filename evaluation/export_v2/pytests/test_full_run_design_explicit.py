@@ -162,8 +162,9 @@ REFUSALS = {
     "unknown-backend": (explicit({"data": {"backend": "magic_state_cultivation", "target": "exact"}}),
                         "magic_state_cultivation"),
     "unknown-target": (explicit({"data": {"backend": "ross_selinger", "target": "cheap"}}), "'cheap'"),
-    "catalytic-approximate": (explicit({"data": band(backend="catalytic")}), "catalytic"),
-    "catalytic-exact": (explicit({"data": {"backend": "catalytic", "target": "exact"}}), "catalytic"),
+    # NOTE: `catalytic-approximate` and `catalytic-exact` were refusal cases here until lane WX priced the
+    # catalytic arm. They are now CONVERSION cases, re-pointed to
+    # `test_a_catalytic_design_converts_on_both_targets_and_is_never_collapsed` below.
     "max-error-float": (explicit({"data": {**band(), "max_error": 1e-6}}), "max_error"),
     "max-error-decimal-point": (explicit({"data": band("1.5e-6")}), "1.5e-6"),
     "max-error-capital-e": (explicit({"data": band("1E-6")}), "1E-6"),
@@ -204,11 +205,44 @@ def test_an_unconvertible_explicit_design_is_refused_and_names_what_it_refused(s
         full_run_design.design_of(selection)
 
 
+@pytest.mark.parametrize("choice,target", [(band(backend="catalytic"), "approximate"),
+                                           ({"backend": "catalytic", "target": "exact"}, "exact")],
+                         ids=["catalytic-approximate", "catalytic-exact"])
+def test_a_catalytic_design_converts_on_both_targets_and_is_never_collapsed(choice, target):
+    """RE-POINTED (wave 2, lane XF). These two were REFUSAL cases -- `catalytic` was a refusal class,
+    because the arm "re-prices every rotation in the run and adds a catalyst register, which is a separate
+    axis from the QFT band". Lane WX priced that axis (its own share of the synthesis pool, the shared
+    register charged to Q, and `catalyst_prep_T`), so `catalytic` is a CONVERTIBLE backend and the refusal
+    class is gone. They are re-pointed rather than deleted, because what they guard still needs guarding:
+    a catalytic design must not be answered with anything other than a catalytic design.
+
+    The `exact` case is the one that matters, and it caught a real integration defect. `backend` and
+    `target` are ORTHOGONAL: target picks the construction, backend picks the currency. So a catalytic
+    family changes the price even on an exact target -- `qft_overlay.project` counts it as `touched` and
+    the arm re-prices its rotations. WR's "exact means untouched" collapse, written when the band was the
+    only axis, returned None for it, which would have priced a catalysis request at the Ross-Selinger
+    default: measured 1628644042547.186 (engine) against 1641978984650.562 (overlay) at delta 1e-2. The
+    collapse now tests both axes, and this test is what pins that.
+
+    Fails if either the catalytic backend stops converting, or the collapse starts eating it again."""
+    design = full_run_design.design_of(explicit({"data": choice}))
+    assert design is not None, "a catalytic design must never collapse to the engine's default"
+    assert design == {"data": choice}
+
+    from export_v2 import qft_overlay
+    plan = qft_overlay.parse_design(design)
+    assert plan["data"][0] == "catalytic"
+    assert plan["data"][1] == target
+
+
 def test_the_refusals_are_the_complete_documented_list():
     """Fails if a refusal class is added to the code without a case above, or dropped from REFUSAL_CLASSES
-    without being made convertible. Keeps the lane report's refusal list honest."""
+    without being made convertible. Keeps the lane report's refusal list honest.
+
+    `catalytic` was dropped from this list in wave 2 because it WAS made convertible, by lane WX; the two
+    cases that covered it are now conversion cases immediately above."""
     assert set(full_run_design.REFUSAL_CLASSES) == {
-        "unknown-backend", "unknown-target", "catalytic", "max-error", "phase-product",
+        "unknown-backend", "unknown-target", "max-error", "phase-product",
         "rotation-backend", "unknown-family", "multiplier", "unknown-body-key", "body-schema",
         "malformed-shape", "profile-and-design",
     }
