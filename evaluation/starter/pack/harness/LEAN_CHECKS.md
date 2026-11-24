@@ -94,7 +94,12 @@ identity) is what `forshor-doc` does for the fixed values; the template's lexica
 
 ForShor's template has an optional `negation` (`.oneQubit`, the default, or `.scratch`). The printed `policy.json` carries `negation` and `negate_charge`. The boards, and this pack, price `oneQubit` only.
 
-**k = 5 / 6 and three or more bands.** ForShor accepts them, through run-time IR extraction.
+The design selectors (`submittedDesign`, `submittedPrimitive`, `submittedFullRunDesign`) are left out of the file by default, which gives coherent readout, the exact
+logical QFT and Ross–Selinger synthesis. Writing a default declaration out in full is accepted and resolves exactly as omission; any other value is refused, and the
+routes those other values name are local qualification routes with no publication route. The exact declarations are in `SUBMISSION_FORMAT.md` section 2.
+
+**k = 5 to 8, many bands, repeated k.** ForShor accepts them, through run-time IR extraction: up to 256 bands, and several bands may carry different tables of the
+same k, since C1 to C4 are proved per table and per band and `sorted` constrains the thresholds only.
 
 **Scan documents.** A document printed without `--balanced`/`--exact-widths` (ForShor's default width scan, no balanced split, no `ir.width_rule`)
 is priced by `starter.py forshor-doc` on upstream's IR, the board's labelled cross-check, not on the board's IR

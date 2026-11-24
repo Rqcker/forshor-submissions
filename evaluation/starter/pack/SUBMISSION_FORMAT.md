@@ -19,13 +19,13 @@ One JSON object (UTF-8, at most 2,000,000 bytes):
 |---|---|
 | `mode` | `PhaseProduct` (PP board) or `PhaseTripleProduct` (PTP board). |
 | `bands` | A submission takes 1 to 256 bands, widest first. Thresholds are non-negative integers and strictly decrease. A band serves every width w ≥ its threshold that is below the previous band's threshold. Below the last threshold, the leaf is used. |
-| tables per k | Different bands may use different tables of the same k; each band's table is checked on its own. |
+| tables per k | Several bands may carry **different tables of the same k**, selected per width band. There is no separate limit: only the 256 bands. Each band carries its own table and is checked on its own, so nothing about the policy's shape has to change for this — C1 to C4 are proved per table and per band, and `sorted` constrains the thresholds only. An accepted policy on the boards uses 11 tables over 22 bands, with two different tables at each of k = 3, 5, 7 and 8. |
 | `k` | 2 ≤ k ≤ 8 for a submission. A PP table evaluates at 2k − 1 points, a PTP table at 3k − 2. The boards price a policy of any k, but a submission takes 2 ≤ k ≤ 8 for both PP and PTP (section 2). |
 | `point_order` | The order in which the program consumes the points: `"z"` (an integer), `"1/m"` or `"-1/m"`, `"inf"`. Distinct and unisolvent. The site's panel files (`policyJson`) spell this key `pointOrder`; `starter.py` accepts either spelling (a band that carries both with different values is refused). |
 | `operations` | `["addScaled", dst, src, sign, shift]` (sign +1 or −1, dst ≠ src), `["negate", i]`, `["shiftL", i, n]`, `["shiftR", i, n]` (exact division only), `["phaseProduct", i]`, on registers 0 to k − 1. The program consumes the points in order, restores the registers, and satisfies the exact Toom-Cook identity. |
 | widths | **Do not declare widths.** The board derives the exact widths and prices at them. Any `declared_ladder`, `ladder`, `widths`, `child_width` (and similar) is ignored, with a notice. It is never passed to Lean (`starter.py lean-input` drops it). The derived width of a table is the least width at which every value the program ever holds fits, **intermediate values included**, so a `shiftL` / `shiftR` pair that makes a register briefly larger raises it (see "Widths and shift pairs" below). |
 | `negation` | Optional: `"oneQubit"` (ForShor's default, `Shor.NegationMethod`) or `"scratch"`. The boards, and this pack, price every policy under `oneQubit`. A policy that asks for `scratch` is **refused by `starter.py`** (a number for it would be wrong), and its meaning is in section 3. |
-| `name` | Optional, at most 200 characters. Table JSON is not a circuit-design selection format; policy or band fields requesting readout, QFT, multiplier or synthesis options are refused. |
+| `name` | Optional, at most 200 characters. Table JSON is not a circuit-design selection format: a policy or band field requesting readout, QFT, multiplier, primitive-synthesis or full-run-design options is refused whatever its value. The Lean file declares the design, and only the default declarations are accepted there (section 2). |
 
 The site also reads `{"policy": {...}}` and `{"policies": [...]}` (at most 8 policies per file).
 
@@ -62,6 +62,22 @@ The full order-finding board prices every PP policy (section 1). ForShor's Lean 
   and `IO.`/`System.`. On top of this, ForShor's lexical gate (`scripts/check_template_lexical.sh`) applies.
 * ForShor's check proves C1 to C4 by `decide +kernel` and extracts the IR at run time in the compiled exe, so k = 5
   to 8 tables and three or more bands pass.
+* **The design selectors.** The submittable design is the default one: coherent readout, the exact logical QFT, Ross–Selinger
+  synthesis of every rotation and `oneQubit` negation. Leaving the selectors out of the file gives exactly that. Writing a default
+  out in full is accepted too, and resolves exactly as omission (owner ruling of 2026-11-24): one `def` at the start of a line,
+  directly inside the board's namespace, annotated with ForShor's own type, with the default value and nothing else on the
+  statement —
+  `def submittedPrimitive : Shor.PrimitiveSynthesis := .rossSelinger`,
+  `def submittedDesign : Shor.SubmissionDesign := { readout := .coherent }` (or the two-line `where` form, with
+  `readout := .coherent` indented on the next line),
+  and, on the PhaseProduct board only, `def submittedFullRunDesign : Shor.FullRunDesign := .reference`. The explicit file and the
+  omitting file build the same document, price the same and count as the same submission. **Everything else about these three names
+  is refused**: any other value, a second copy of the same declaration, a declaration in another namespace, any other mention of the
+  name, and `submittedFullRunDesign` on the PhaseTripleProduct board even at `.reference`. The refusal names the selector:
+  `submittedDesign is not enabled for ordinary submissions; it requires local readout qualification`,
+  `submittedPrimitive requires separate nonpublishing primitive qualification`,
+  `submittedFullRunDesign requires dedicated nonpublishing full-run qualification`. Those are local, nonpublishing qualification
+  routes: they have no hosted publication route, nothing from them reaches a board, and they are not something to submit for a score.
 * The document is printed by `lake exe forshor_policy_submission --balanced`: exact register widths
   (`ir.width_rule`) and the balanced IR templates. At the pinned commit the document also prints the policy's `negation` and the per-method
   `negate_charge`. A per-submission rebuild touches only ForShor's `PolicyTemplate` module,
