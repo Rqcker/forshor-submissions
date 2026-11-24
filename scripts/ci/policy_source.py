@@ -40,9 +40,77 @@ HEADER_END = re.compile(r'^(?:namespace|open|section|end|def|abbrev|theorem|lemm
 FULL_RUN_SELECTOR = re.compile(r"(?<![\w'])submittedFullRunDesign(?![\w'])")
 
 
+# Explicit default selections. Owner ruling 2026-11-24: Ross-Selinger, the reference full run and coherent readout are
+# the defaults, and an explicit default token is identical to omission (Lean's resolvers return the default when the
+# declaration is absent, and attest the document unchanged when it is the default). Only these exact declarations are
+# recognised: one `def` at column 0 directly inside the board's namespace, annotated with the repo's type, with the
+# default value and nothing else on the statement. Recognition is lexical only (nothing is run) and Lean still
+# decides validity; anything else that mentions a selector name is refused exactly as before.
+_SHOR = r'(?:_root_\.)?Shor\.'
+_BOARDS = ('PolicySubmission', 'PTPPolicySubmission')
+_DEFAULT_FORMS = {   # name: (declaration after the name, boards where Lean reads it)
+    'submittedPrimitive': (rf':[ \t]*{_SHOR}PrimitiveSynthesis[ \t]*:=[ \t]*(?:\.|{_SHOR}PrimitiveSynthesis\.)rossSelinger',
+                           _BOARDS),
+    # PTPPolicyCheck refuses any submittedFullRunDesign, `.reference` included, so only the PhaseProduct board has the default.
+    'submittedFullRunDesign': (rf':[ \t]*{_SHOR}FullRunDesign[ \t]*:=[ \t]*(?:\.|{_SHOR}FullRunDesign\.)reference',
+                               ('PolicySubmission',)),
+    'submittedDesign': (rf':[ \t]*{_SHOR}SubmissionDesign[ \t]*(?::=[ \t]*\{{[ \t]*readout[ \t]*:=[ \t]*\.coherent[ \t]*\}}'
+                        rf'|where[ \t]*\n[ \t]+readout[ \t]*:=[ \t]*\.coherent)', _BOARDS),
+}
+_DEFAULT_DECL = {name: re.compile(rf'def[ \t]+{name}[ \t]*{form}[ \t]*(?:\n|\Z)') for name, (form, _) in _DEFAULT_FORMS.items()}
+_COMMAND_START = re.compile(r'(?:end|def|abbrev|theorem|lemma|example|namespace|open|section|variable|universe|structure|inductive)\b')
+_MODIFIER_LINE = re.compile(r'(?:@\[|private\b|protected\b|noncomputable\b|unsafe\b|partial\b|nonrec\b|scoped\b|local\b)')
+_NAMESPACE = re.compile(r'namespace[ \t]+([A-Za-z_][\w.]*)[ \t]*$')
+_SECTION = re.compile(r'section\b')
+_END = re.compile(r'end\b')
+
+
+def default_selectors(text):
+    """(`text` with each explicit default declaration blanked, {selector: board namespace}) for comment-stripped source.
+
+    Line count is preserved. A declaration is consumed only once per selector, only at column 0 directly inside the
+    board's namespace, and only when the next non-blank line starts a new command at column 0 (so no continuation
+    line can change the value) and the previous one is not a modifier or attribute line. The rest of the file,
+    including any second declaration or any other mention of the selector, is left for the refusal checks."""
+    lines = text.split('\n')
+    consumed = {}
+    scopes = []
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if (m := _NAMESPACE.fullmatch(stripped)):
+            scopes.append(m[1])
+        elif _SECTION.match(stripped):
+            scopes.append('')
+        elif _END.match(stripped) and scopes:
+            scopes.pop()
+        namespace = '.'.join(part for part in scopes if part)
+        found = re.match(r'def[ \t]+(submitted\w+)', line)       # column 0 only
+        if not found or found[1] not in _DEFAULT_DECL or found[1] in consumed or namespace not in _DEFAULT_FORMS[found[1]][1]:
+            continue
+        rest = '\n'.join(lines[i:i + 2]) + '\n'
+        match = _DEFAULT_DECL[found[1]].match(rest)
+        if not match:
+            continue
+        span = match.group(0).count('\n')                      # lines the declaration occupies
+        end = i + (span if span else 1)
+        following = next((l for l in lines[end:] if l.strip()), None)
+        previous = next((l.strip() for l in reversed(lines[:i]) if l.strip()), '')
+        if (following is not None and not _COMMAND_START.match(following)) or _MODIFIER_LINE.match(previous):
+            continue
+        consumed[found[1]] = namespace
+        for j in range(i, end):
+            lines[j] = ''
+    return '\n'.join(lines), consumed
+
+
+def without_default_selectors(text):
+    """Comment-stripped source with the explicit default selector declarations removed (see `default_selectors`)."""
+    return default_selectors(text)[0]
+
+
 def check_no_full_run_selector(text):
-    """Reject the exact selector token in comment-stripped source."""
-    if FULL_RUN_SELECTOR.search(text):
+    """Reject the selector token in comment-stripped source, except the explicit default `.reference` declaration."""
+    if FULL_RUN_SELECTOR.search(without_default_selectors(text)):
         raise ValueError('submittedFullRunDesign requires dedicated nonpublishing full-run qualification')
 
 
@@ -60,6 +128,7 @@ def validate(source, *, qualify_full_run=False):
         raise ValueError(f'Policy.lean line {line}: {found[0]} is outside the policy source rules')
     if not qualify_full_run:
         check_no_full_run_selector(text)
+    default_full_run = 'submittedFullRunDesign' in default_selectors(text)[1]
     header = True
     for line in text.splitlines():
         line = line.strip()
@@ -68,7 +137,7 @@ def validate(source, *, qualify_full_run=False):
         if re.match(r'import\b', line):
             modules = line.split()[1:]
             if not header or not modules or any(m not in ALLOWED_IMPORTS and
-                                                not (qualify_full_run and m == FULL_RUN_IMPORT) for m in modules):
+                                                not ((qualify_full_run or default_full_run) and m == FULL_RUN_IMPORT) for m in modules):
                 raise ValueError('Policy.lean imports must be the approved template modules, one import command per line')
         elif header:
             if not HEADER_END.match(line):
