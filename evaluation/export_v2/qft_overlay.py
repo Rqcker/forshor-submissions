@@ -95,10 +95,11 @@ classical draw per kick and reports a diamond/TV bound instead -- a different me
 b >= 2 the deterministic charge is the larger, so the arm taken here is the worst case of the two; the
 receipt reports both so the choice is visible.
 
-SCOPE. QFT families only: `data`, `work`, `scratch`, `exponent`. `step2 := fallback` and
-`step4 := selectiveKick` are fields of the same compiled selector record but are not symbolic,
-deterministic or closed-form -- they need certified word banks -- and are explicitly out of scope; a
-design mapping carrying them is REFUSED, not quietly ignored.
+SCOPE. QFT families only: `data`, `work`, `scratch`, `exponent`. The four phase-product steps --
+`step1`, `step2`, `step4` and `step5` -- are fields of the same compiled selector record but are not
+symbolic, deterministic or closed-form (they need certified word banks), and they also re-divide the
+one run-wide synthesis pool this overlay divides, so they are explicitly out of scope; a design mapping
+carrying any of them is REFUSED, not quietly ignored.
 
 FAIL CLOSED. An unrecognised backend, an unparseable `max_error`, an out-of-scope selector, or a family
 this overlay cannot honour RAISES and names the family and the offending value. A request that cannot
@@ -126,7 +127,9 @@ BACKENDS = ("ross_selinger", "catalytic")
 TARGETS = ("exact", "approximate")
 
 #: Selector fields of the same compiled record that this overlay must not price (see SCOPE above).
-OUT_OF_SCOPE = ("step2", "step4")
+#: All four phase-product steps, the same set `full_run_design.PHASE_STEPS` refuses on the explicit path, so
+#: each one is refused by name as a phase-product step rather than as an unrecognised family.
+OUT_OF_SCOPE = ("step1", "step2", "step4", "step5")
 
 #: The share of the catalytic arm's error budget spent preparing the gradient rather than rounding
 #: turns into it. This is the spec's OWN number: the `prep_fraction` default of
@@ -256,8 +259,8 @@ def parse_design(design):
              f"QFT design must be a mapping with per-family keys {list(FAMILIES)}; got {type(design).__name__}")
     for field in OUT_OF_SCOPE:
         _require(field not in design,
-                 f"QFT overlay refuses the selector field {field!r}: it is not symbolic, deterministic or "
-                 f"closed-form and requires separate qualification with a certified word bank. This overlay "
+                 f"QFT overlay refuses the selector field {field!r}: it is a phase-product step, not a QFT "
+                 f"family, and it is not symbolic, deterministic or closed-form. This overlay "
                  f"prices the QFT families {list(FAMILIES)} only; re-submit without {field!r}")
     unknown = sorted(set(design) - set(FAMILIES))
     _require(not unknown,

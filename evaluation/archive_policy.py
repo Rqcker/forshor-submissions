@@ -18,7 +18,56 @@ AND the verification must carry the same text and hash. A summary on one side on
 `summary_tex.py`.
 
 `<head>` is the pull request's head commit, which is the submission id on the boards. Writing is idempotent: the same head with the same file is a no-op, and the
-same head with a different file is refused. The source is not taken from the (untrusted) verification alone: it must equal the file at `head_sha` on GitHub.
+same head with a different file -- or the same file priced as a different RESULT -- is refused. The source is not taken from the (untrusted) verification alone:
+it must equal the file at `head_sha` on GitHub.
+
+WHICH RESULT AN ENTRY ARCHIVES
+------------------------------
+One policy can be priced as more than one result. Each way it can be is one axis, each axis is one index key, and each key is ABSENT for the result the engine
+prices by default -- so every row already on the branch keeps exactly the keys it was written with and nothing is backfilled (`KIND_DEFAULT`, `entry_kind`):
+
+    readout     "coherent" (the default, absent) or "semiclassical"   -- `export_v2.readout_overlay`
+    primitive   absent (the default `rossSelinger`, which stamps nothing into the compiled document) or a key of
+                `PRIMITIVE_T_SITE_KIND` -- `export_v2.primitive_overlay`
+    design      absent (no QFT design: `reference` and the empty selection are not designs) or the per-family mapping
+                that was priced -- `export_v2.qft_overlay`, at `mapping.DESIGN_DELTA` on the full board
+                only, the other three deltas being the design-free panels of the same policy that they are
+
+`intake_v2.publish_verification` passes all three at the archive call site (owner ruling 2026-11-24, ruling 1). Before that it passed none, so a published MEASURED
+submission was archived as a legacy -- i.e. COHERENT -- entry.
+
+A PRIMITIVE QUALIFICATION IS NOT ARCHIVED, AND THAT IS THE DESIGN
+-----------------------------------------------------------------
+Owner ruling, 2026-11-24 (ruling 3). The `primitive` key above is for a PUBLISHED primitive-bearing submission. It is NOT for a primitive QUALIFICATION, which is
+local-only by design and can never reach this module at all:
+
+  * `intake_v2.publish_verification` refuses any receipt carrying `localPrimitiveQualification`, and any compiled document carrying `submitted_primitive`, and that
+    refusal fires BEFORE `archive_write` is called (`test_the_primitive_refusal_fires_before_the_archive_is_written`);
+  * `--qualify-primitive` requires `--no-publish`, while `archive_write` is wired on `--publish-from` alone, so the two flag sets do not intersect
+    (`test_the_cli_refuses_to_publish_a_primitive_qualification`).
+
+DO NOT ADD A NONPUBLISHING ARCHIVE-WRITE PATH. The absence of one is not missing architecture; it is the route keeping the promise it has always made (the receipts
+carry `localOnly: true` / `publishable: false`, and the published row's closed field set -- `SITE_ROW_FIELDS` in `export_v2/pytests/test_design_price_plumbing.py` --
+names no primitive price, which the publisher's validators reject rather than ignore). This note exists because the opposite reading has had
+to be corrected three times already in this release -- a default-off gate read as "no publication path", a closed enum read as "not expressible", a `staging_*`
+filename read as "awaiting deployment". A conservative guard is not a gap. `primitive` and its `tKind` stay exactly as written: unused they cost nothing,
+and they are correct the day a primitive-bearing submission is published.
+
+The archive is the ONLY durable record of the design and the primitive. The ledger row cannot carry either: the published row's field set is CLOSED -- an
+unrecognised key is rejected, not ignored -- and it names neither (the field set is transcribed into this
+repository as `SITE_ROW_FIELDS` in `export_v2/pytests/test_design_price_plumbing.py`), and `mapping.row_of` copies no such key -- yet `mapping.ranked_price_of` now ranks the QFT
+projection's own T and qubits, so a design-bearing row would carry the projection's numbers with nothing naming the design. The compiled selection itself is
+archived verbatim inside `verification.json` (`printed.submitted_full_run` / `submitted_primitive`); the index key is what makes it findable, comparable and
+visible to the variant rules below, which is what the `readout` key is for too.
+
+WHAT AN ENTRY NEVER RECORDS
+---------------------------
+An entry says WHICH result was archived; it has never carried the number, and `check_entry` refuses one that does (`BARE_PRICE_KEYS`). That is not tidiness:
+`adaptiveB3`'s T is an UNCONDITIONAL EXPECTED value, not a bound, and `catalyticB2`'s is deterministic. `primitive_overlay` makes the two structurally
+uncollapsible -- no bare `T` field, `tKind` plus exactly one of `tDeterministic` / `tExpectedAdaptive` (`primitive_overlay.py:212-217`). A bare `T` on an index
+entry would undo that here, in the one place the result is kept forever. So a primitive-bearing entry records `tKind` -- the overlay's own per-site axis, under
+the overlay's own name (owner ruling 2026-11-24, ruling 2: the per-site axis keeps the short key because it is the one that is structurally enforced and reaches
+production) -- and no number at all. `write_policy` admits the three axes above and nothing else.
 """
 from __future__ import annotations
 
@@ -53,6 +102,39 @@ class ArchiveRefused(Exception):
 #: "other_participant": anyone else. "refuse" publishes no row and tells the author which earlier submission it repeats; "allow" publishes as usual and the repeat is
 #: only identified (the `duplicates` of the archive result, logged by `intake_v2`). Change `other_participant` to "refuse" to stop others repeating a published policy.
 DUPLICATE_RULES = {"same_participant": "refuse", "other_participant": "allow"}
+
+#: The result axes an entry may record, and the value each one has for the result the engine prices by default. An
+#: entry equal to this on every axis is a LEGACY entry and records none of the keys, so it is byte-identical to every
+#: row already on `submission-results` (`test_the_coherent_default_is_byte_identical_to_what_the_archive_already_holds`).
+KIND_DEFAULT = {"readout": "coherent", "primitive": None, "design": None}
+READOUTS = ("coherent", "semiclassical")
+#: The synthesis primitives `export_v2.primitive_overlay` prices standalone, and WHICH KIND OF NUMBER each one's T is:
+#: catalyticB2 charges every phase site the worst-case full-width carry path, so its T is DETERMINISTIC; adaptiveB3
+#: probes repeat-until-success against a pinned atlas, so its T is an UNCONDITIONAL EXPECTATION. The default
+#: `rossSelinger` is recorded as the ABSENCE of the key, never as a value, because it stamps nothing into the compiled
+#: document and is priced by the engine itself. Pinned against the overlay's own `PRIMITIVE_OF` and the `kind` its
+#: `project` returns, so the two cannot drift.
+PRIMITIVE_T_SITE_KIND = {"catalyticB2": "deterministic", "adaptiveB3": "expectedAdaptive"}
+#: The boards a submission's rows occupy, by the board its policy is priced on: a PhaseProduct policy enters its own
+#: standalone board and the full order-finding board, a PhaseTripleProduct policy only its own (AGENTS.md, "A
+#: submission"). An index entry written before `board` was recorded falls back to the PhaseProduct pair, which is what
+#: the rows already on the branch are.
+BOARDS_OF = {"pp": ["pp", "full"], "ptp": ["ptp"]}
+#: The board sets an entry may name, sorted. Legacy and first entries name their whole set; a variant names only what
+#: it re-prices.
+BOARD_SETS = (["full", "pp"], ["full"], ["pp"], ["ptp"])
+#: WHERE each axis re-prices. A readout design and a QFT design re-price the full order-finding run -- both are read by
+#: `mapping.ranked_price_of` out of the panel's `fullRun` block, and nothing else. A synthesis primitive re-prices the
+#: STANDALONE board only: `primitive_overlay` prices `pp` and `ptp` and states that "the full order-finding board takes
+#: no primitive", and its hook sits in `pricing.price_views`'s single-product branch. The boards an axis does not
+#: re-price carry the same rows under either result, which is exactly why a variant surrenders them to the earlier entry.
+AXIS_BOARD = {"readout": "full", "design": "full", "primitive": "standalone"}
+#: Price fields an index entry must never carry. `T` / `rankedT` because `primitive_overlay` makes deterministic and
+#: expected-adaptive T structurally uncollapsible and a bare field would undo it here; `ranked_upper_T` because an
+#: interval endpoint is not a bound; `qubits` because the full run's count is the live-qubit PEAK and the static layout
+#: total is several times larger (`mapping.peak_label` states the distinction the panel renders, and the full board's
+#: number comes from `qubits_peak`), so an unlabelled count is ambiguous in its unit.
+BARE_PRICE_KEYS = ("T", "t", "rankedT", "ranked_upper_T", "qubits")
 
 
 class DuplicatePolicy(ArchiveRefused):
@@ -135,9 +217,61 @@ def find_duplicates(index: Dict[str, Any], *, digest: str, mode: str, login: str
     return sorted(found, key=lambda d: (d["createdAt"] or "", d["policyId"]))
 
 
+def _design_shape(design: Optional[Dict[str, Any]]) -> bool:
+    """Shape only: a non-empty mapping of QFT family -> that family's own choice. The VALUES are not re-checked here --
+    `full_run_design` delegates them to `qft_overlay.parse_design`, so there is one validator in the repo and not two,
+    and what the archive records is what that validator already accepted."""
+    return design is None or (isinstance(design, dict) and bool(design)
+                              and all(isinstance(k, str) and isinstance(v, dict) for k, v in design.items()))
+
+
+def entry_kind(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """Which result an archived entry records, on every axis the archive admits (`KIND_DEFAULT`). A legacy entry names
+    none of them and means the coherent readout, the default `rossSelinger` primitive and no QFT design -- which is what
+    every row already on the branch is -- so reading one never needs a backfill."""
+    return {axis: entry.get(axis, default) for axis, default in KIND_DEFAULT.items()}
+
+
+def entry_boards(entry: Dict[str, Any]) -> List[str]:
+    """The boards an archived entry's rows occupy. Legacy entries name none and mean every board their own board's
+    policy enters."""
+    return entry.get("boards") or BOARDS_OF.get(entry.get("board"), ["pp", "full"])
+
+
+def variant_boards(board: str, asked: Dict[str, Any], other: Dict[str, Any]) -> List[str]:
+    """The boards of a `board` policy whose rows DIFFER between result kinds `asked` and `other`, in board order.
+
+    Read off `AXIS_BOARD` rather than hard-coded, so each axis surrenders the right half: a readout or a QFT design
+    re-prices the full run and leaves the standalone row alone (the readout variant rule), while a synthesis primitive re-prices
+    the standalone row and leaves the full run alone -- the same rule with the two boards exchanged, because the full
+    order-finding board takes no primitive. The boards NOT in this list carry the same rows under both kinds, so the
+    earlier entry keeps them and the later one is a variant of it."""
+    where = {AXIS_BOARD[axis] for axis in KIND_DEFAULT if asked.get(axis) != other.get(axis)}
+    return [b for b in BOARDS_OF.get(board, ["pp", "full"]) if ("full" if b == "full" else "standalone") in where]
+
+
+def check_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """Refuse an index entry that flattens what it archives. Two ways it could:
+
+    a bare price field, which would let a reader rank a number without its kind -- `primitive_overlay` refuses the
+    same thing at the other end of the pipeline, and the archive is the copy that is kept forever; or a primitive recorded with a T kind that is not the one the overlay prices it
+    with, which would say `adaptiveB3`'s expectation is a deterministic cost (or the reverse) in the one durable record
+    of it."""
+    bare = [k for k in BARE_PRICE_KEYS if k in entry]
+    if bare:
+        raise ArchiveRefused(f"an archive entry records which result was archived, never the number: remove {bare} "
+                             "and record a field whose name says what kind of number it is")
+    primitive = entry.get("primitive")
+    if primitive is not None and entry.get("tKind") != PRIMITIVE_T_SITE_KIND.get(primitive):
+        raise ArchiveRefused(f"{primitive} prices a {PRIMITIVE_T_SITE_KIND.get(primitive)!r} T, not a "
+                             f"{entry.get('tKind')!r} one; a deterministic and an expected T are never the same claim")
+    return entry
+
+
 def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head_sha: str,
                          readout: str, published_ids: Optional[Collection[str]] = None,
-                         mode: str = "PhaseProduct") -> Optional[str]:
+                         mode: str = "PhaseProduct", primitive: Optional[str] = None,
+                         design: Optional[Dict[str, Any]] = None, board: str = "pp") -> Optional[str]:
     """How this participant's own earlier archived copies of this policy bear on it. Return a prior primitive ID, if any.
 
     Raises `DuplicatePolicy` for a repeat with the same readout. `mode` is the
@@ -147,25 +281,55 @@ def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head
     Take only visible records into account. Legacy records omit both circuit
     and board metadata and mean coherent readout with a primitive result.
     Future opt-in entries can carry `readout` and `boards` without backfill.
-    """
-    if readout not in ("coherent", "semiclassical"):
+
+    THAT OPT-IN HAS ARRIVED (owner ruling 2026-11-24, ruling 1):
+    `intake_v2.publish_verification` now passes the readout, the primitive and
+    the design at the archive call site, so a published measured submission
+    reaches this planner as the variant it is instead of as the default it is
+    not. Nothing is backfilled: a legacy row is still read exactly as written.
+
+    The name and the readout rule are unchanged. The planner now compares on the whole result kind
+    (`KIND_DEFAULT`): a repeat is the same policy priced the SAME way on every axis, and differing on any axis -- the
+    readout, the synthesis primitive or the QFT design -- is a variant of the earlier entry, which keeps the boards both
+    results price alike. `board` is the submission's own board, which decides how many boards there are to divide.
+
+    TWO SENSES OF "PRIMITIVE" MEET HERE and they are different things: the earlier entry a variant derives from,
+    which is what this function RETURNS; and the synthesis primitive, which is now one of the axes it compares on
+    and is the `primitive` PARAMETER. The return value is the former."""
+    asked = {"readout": readout, "primitive": primitive, "design": design}
+    if readout not in READOUTS:
         raise ArchiveRefused("unknown readout design")
+    if primitive is not None and primitive not in PRIMITIVE_T_SITE_KIND:
+        raise ArchiveRefused(f"unknown synthesis primitive {primitive!r}: the archive admits "
+                             f"{sorted(PRIMITIVE_T_SITE_KIND)} and records the default rossSelinger as no key at all")
+    if not _design_shape(design):
+        raise ArchiveRefused("unknown QFT design: expected the per-family mapping that was priced")
+    if asked != KIND_DEFAULT and board not in BOARDS_OF:
+        raise ArchiveRefused(f"a readout, primitive or design result cannot be archived for the {board!r} board")
+    if asked != KIND_DEFAULT and not variant_boards(board, asked, KIND_DEFAULT):
+        # A readout design and a QFT design re-price the full order-finding run, which a PhaseTripleProduct policy does
+        # not enter: `readout_overlay` and `qft_overlay` are PhaseProduct's, and intake refuses the pair from the other
+        # end ("readout qualification only supports PhaseProduct"). Refused here whether or not an earlier entry exists,
+        # so no such row is ever written -- claiming no board, or claiming its own.
+        raise ArchiveRefused(f"this result re-prices no board of a {board!r} policy")
     records = {p["policy_id"]: p for p in index["policies"]}
-    primitive = None
+    primitive_of = None
     for previous in find_duplicates(index, digest=digest, mode=mode, login=login, head_sha=head_sha,
                                     published_ids=published_ids):
         if not previous["sameParticipant"]:
             continue
         entry = records[previous["policyId"]]
-        chosen = entry.get("readout", "coherent")
-        boards = entry.get("boards", ["pp", "full"])
-        if chosen not in ("coherent", "semiclassical") or boards not in (["pp", "full"], ["full", "pp"], ["full"]):
+        chosen = entry_kind(entry)
+        boards = entry_boards(entry)
+        if chosen["readout"] not in READOUTS or (chosen["primitive"] is not None and chosen["primitive"] not in PRIMITIVE_T_SITE_KIND) \
+                or not _design_shape(chosen["design"]) or sorted(boards) not in BOARD_SETS:
             raise ArchiveRefused("unrecognized circuit or boards in published archive entry")
-        if chosen == readout:
+        if chosen == asked:
             raise DuplicatePolicy(previous, "the readout variant planner")
-        if "pp" in boards and primitive is None:
-            primitive = previous["policyId"]
-    return primitive
+        kept = [b for b in BOARDS_OF.get(board, ["pp", "full"]) if b not in variant_boards(board, asked, chosen)]
+        if any(b in boards for b in kept) and primitive_of is None:
+            primitive_of = previous["policyId"]
+    return primitive_of
 
 
 def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
@@ -186,13 +350,19 @@ def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
 
 def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str,
                  summary: Optional[str] = None, repository: str = REPOSITORY, duplicates: Optional[List[Dict[str, Any]]] = None,
-                 published_ids: Optional[Collection[str]] = None, readout: str = "coherent") -> bool:
+                 published_ids: Optional[Collection[str]] = None, readout: str = "coherent",
+                 primitive: Optional[str] = None, design: Optional[Dict[str, Any]] = None) -> bool:
     """Write the files and the index entry into the checkout. Returns whether anything changed. Raises `ArchiveRefused` (`DuplicatePolicy` when `DUPLICATE_RULES`
     refuse a repeat). Repeats that the rules allow are appended to `duplicates`. `published_ids`: see `find_duplicates`.
 
     `readout` is this submission's readout design. Your own earlier copies of the policy go through `plan_readout_variant`: the same readout is still the repeat it has
     always been, the other readout is a variant of them and keeps their primitive, so it enters the full board alone. Only such a non-legacy entry records `readout` and
-    `boards`; the default coherent entry is written exactly as it always was, and no archived row is backfilled."""
+    `boards`; the default coherent entry is written exactly as it always was, and no archived row is backfilled.
+
+    `primitive` is the declared synthesis primitive (`PRIMITIVE_T_SITE_KIND`; None is the default `rossSelinger`, which stamps nothing and is recorded as no key) and
+    `design` the QFT design that was priced (None is no design). They are the same arrangement as `readout`, one axis each, and the planner now compares on all three:
+    a repeat is the same policy priced the same way throughout. A primitive-bearing entry also records `tKind` -- the overlay's per-site axis, under its own name (owner ruling
+    2026-11-24) -- so the one durable record of an `adaptiveB3` price says it is an expectation; it records no number at all, and `check_entry` refuses an entry that would."""
     if not HEAD.fullmatch(head_sha):
         raise ArchiveRefused("the head commit is not a 40-hex sha")
     if not source.strip():
@@ -205,18 +375,26 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
                                                       "created_at": v["createdAt"]}}
     if summary is not None:
         entry["summarySha256"] = sha256(summary)
+    kind = {"readout": readout, "primitive": primitive, "design": design}
     index = read_index(checkout)
     old = next((p for p in index["policies"] if p["policy_id"] == head_sha), None)
     if old is not None:
         if old["sha256"] != entry["sha256"] or old["digest"] != entry["digest"] or old.get("summarySha256") != entry.get("summarySha256"):
             raise ArchiveRefused(f"{head_sha} is already archived with a different policy")
+        # The same file priced as a different RESULT is a different submission, and the three comparisons above cannot see
+        # it: the source, the digest and the summary are all unchanged by a readout, a primitive or a design. Said
+        # separately from "a different policy" for the reason census C20/C21 gives -- an operator reading a refused run has
+        # to know which of the two it was, and they are different places to look.
+        if entry_kind(old) != kind:
+            raise ArchiveRefused(f"{head_sha} is already archived as a different result ({entry_kind(old)}, not {kind})")
         return False
     repeats = find_duplicates(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha,
                               published_ids=published_ids)
     primitive_from = None
     try:
         primitive_from = plan_readout_variant(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha,
-                                              readout=readout, published_ids=published_ids)
+                                              readout=readout, published_ids=published_ids, primitive=primitive,
+                                              design=design, board=entry["board"])
     except DuplicatePolicy:
         if DUPLICATE_RULES["same_participant"] == "refuse":     # the same readout: the repeat the rules have always refused
             raise
@@ -227,9 +405,21 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
             raise DuplicatePolicy(repeat, "the archive's duplicate rules, while writing the entry")
         if duplicates is not None:
             duplicates.append(repeat)
-    if readout != "coherent" or primitive_from is not None:
+    if kind != KIND_DEFAULT or primitive_from is not None:
+        if primitive_from is None:
+            boards = BOARDS_OF[entry["board"]]      # your first copy of this policy is its own primitive, on every board it enters
+        else:
+            boards = variant_boards(entry["board"], kind, entry_kind(next(p for p in index["policies"] if p["policy_id"] == primitive_from)))
+            if not boards:                          # e.g. a readout on PhaseTripleProduct: the axis re-prices a board this policy does not enter
+                raise ArchiveRefused(f"this result re-prices no board of a {entry['board']!r} policy")
         entry["readout"] = readout
-        entry["boards"] = ["full"] if primitive_from else ["pp", "full"]
+        entry["boards"] = boards
+        if primitive is not None:
+            entry["primitive"] = primitive
+            entry["tKind"] = PRIMITIVE_T_SITE_KIND[primitive]
+        if design is not None:
+            entry["design"] = {family: design[family] for family in sorted(design)}
+    check_entry(entry)
     folder = checkout / DIR / head_sha
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "Policy.lean").write_text(source)
@@ -258,10 +448,11 @@ def _git(checkout: Path, *args: str, env: Optional[Dict[str, str]] = None, check
 
 def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str, summary: Optional[str] = None,
                    token: Optional[str] = None, remote: str = "origin", attempts: int = 4, repository: str = REPOSITORY,
-                   published_ids: Optional[Collection[str]] = None, readout: str = "coherent") -> Dict[str, Any]:
+                   published_ids: Optional[Collection[str]] = None, readout: str = "coherent",
+                   primitive: Optional[str] = None, design: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Add the policy to `BRANCH` and push, starting each attempt from the branch's current tip (a competing archive push is retried, not merged).
     `checkout` is a clone with `remote`; returns `{"path", "commit", "added", "duplicates"}` (the earlier submissions of the same policy that the rules allowed).
-    `readout` is passed to `write_policy`, which decides there what an earlier copy of the policy with another readout design means."""
+    `readout`, `primitive` and `design` are passed to `write_policy`, which decides there what an earlier copy of the policy priced another way means."""
     env = _env(token)
     last = ""
     for _ in range(attempts):
@@ -269,7 +460,7 @@ def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, 
         _git(checkout, "checkout", "--detach", "FETCH_HEAD")
         duplicates: List[Dict[str, Any]] = []
         if not write_policy(checkout, v, login=login, pull=pull, head_sha=head_sha, run_id=run_id, source=source, summary=summary, repository=repository,
-                            duplicates=duplicates, published_ids=published_ids, readout=readout):
+                            duplicates=duplicates, published_ids=published_ids, readout=readout, primitive=primitive, design=design):
             tip = _git(checkout, "rev-parse", "HEAD").stdout.strip()
             return {"path": f"{DIR}/{head_sha}", "commit": tip, "added": False, "duplicates": []}
         _git(checkout, "add", INDEX_PATH, f"{DIR}/{head_sha}")

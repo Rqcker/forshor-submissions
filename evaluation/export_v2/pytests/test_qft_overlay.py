@@ -525,15 +525,14 @@ def test_an_exact_target_carrying_a_max_error_is_refused():
 
 
 @pytest.mark.parametrize("field", list(overlay.OUT_OF_SCOPE))
-def test_the_out_of_scope_selector_fields_are_refused_with_a_qualification_message(field):
-    """`step2 := fallback` and `step4 := selectiveKick` are fields of the same compiled selector record
-    but are not symbolic, deterministic or closed-form. Silently ignoring them -- pricing the QFT
-    families and dropping the rest of the record -- would publish a price for a design that was not
-    priced, and fails this."""
+def test_the_out_of_scope_selector_fields_are_refused_by_name(field):
+    """The phase-product steps are fields of the same compiled selector record but are not symbolic,
+    deterministic or closed-form. Silently ignoring them -- pricing the QFT families and dropping the
+    rest of the record -- would publish a price for a design that was not priced, and fails this."""
     with pytest.raises(overlay.QftOverlayRefused) as error:
         overlay.parse_design({"exponent": EXACT, field: "whatever"})
-    assert field in str(error.value) and "separate qualification" in str(error.value)
-    assert "word bank" in str(error.value)
+    assert field in str(error.value) and "not symbolic, deterministic or closed-form" in str(error.value)
+    assert "phase-product step" in str(error.value) and f"re-submit without {field!r}" in str(error.value)
 
 
 def test_an_unknown_family_key_is_refused_rather_than_ignored():

@@ -1,5 +1,5 @@
-"""Engine output -> contract-v2 documents. The Python twin of forshor-site's `scripts/fixture-v2.ts`: that file builds the
-fixture from the same raw engine views, and `pytests/test_mapping.py` checks this module reproduces its panels exactly."""
+"""Engine output -> contract-v2 documents. The publisher's own fixture builder builds the same panels from the same raw engine
+views, and `pytests/test_mapping.py` checks this module reproduces them exactly against a committed golden document."""
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -9,7 +9,7 @@ BOARDS = ("full", "pp", "ptp")
 DELTA_KEYS = ("1e-2", "3e-4", "1e-4", "1e-6")
 DELTA_VALUES = {"1e-2": 0.01, "3e-4": 3e-4, "1e-4": 1e-4, "1e-6": 1e-6}
 
-#: The one delta the full-run QFT design surface is qualified at (`QFT-SURFACE-MAPPING.md` section 1). A publish request
+#: The one delta the full-run QFT design surface is qualified at. A publish request
 #: prices all four of `DELTA_KEYS`; the design applies to THIS panel and the other three are priced as the design-free
 #: panels of the same policy that they are -- the same policy at a different precision, which is what every published
 #: panel is -- rather than refusing the whole request. `pricing.price_views` and `request._build_request` share this name
@@ -44,8 +44,8 @@ def _table_step(x: Raw) -> Raw:
     return {"W": x["W"], "k": x.get("k"), "table": x.get("table"), "digest": x.get("digest")}
 
 
-# The full run's qubit count is the live-qubit peak, not the static layout. The same strings are in forshor-site's scripts/fixture-v2.ts
-# (PEAK_LABEL, PEAK_RULE); the golden test holds them equal once golden.json has been regenerated from that builder.
+# The full run's qubit count is the live-qubit peak, not the static layout. The publisher's fixture builder carries the same two
+# strings, and the golden test holds them equal once golden.json has been regenerated from that builder.
 #
 # The text depends on ONE per-row fact, `leanPeak`: has Lean's kernel evaluated the peak for THIS policy (same method, same width rule as the
 # epoch's)? It defaults to False, so a row keeps "Lean has not evaluated it on this policy" unless epoch.LEAN_PEAK lists it.
@@ -227,6 +227,13 @@ def panel_of(view: Raw, *, epoch: str, row_id: str, board: str, delta: str, veri
         "verification": verification,
         "costCheck": {"claim": "counted-in-python-not-proved-in-lean", "engines": ["tcost", "forshor_qualtran"], "agree": bool(view["agree"])},
         "fullRun": full_run_of(view, lean_peak) if board == "full" else None,
+        # The standalone primitive price, verbatim as `primitive_overlay.project` returned it. The same shape as
+        # `fullRun.readout` and `fullRun.qft` -- present only when `price_views` was given a primitive, absent on every
+        # panel priced without one, which is every panel ever published, so no published panel's bytes move. It sits at
+        # panel level and not inside `fullRun` because the overlay prices the SINGLE-PRODUCT boards, whose `fullRun` is
+        # null. It carries `tKind` / `rankedTKind` and exactly one of `tDeterministic` / `tExpectedAdaptive`: B3's price
+        # is an unconditional EXPECTATION and nothing may read it as a worst case (see `standalone_price_of`).
+        **({"primitive": view["primitive"]} if "primitive" in view else {}),
     }
 
 
@@ -279,12 +286,47 @@ def ranked_price_of(full: Raw) -> Raw:
     return full
 
 
+def standalone_price_of(panel: Raw) -> Raw:
+    """The numbers a SINGLE-PRODUCT board shows: the standalone primitive's price when the panel carries one, the
+    engine's own otherwise. The counterpart of `ranked_price_of` for the pp and ptp boards, whose `fullRun` is null.
+
+    Like `readout`, a primitive price replaces T and qubits outright, because `primitive_overlay.project` returns both
+    for the standalone circuit; the panel keeps the engine's own default price in the rest of its fields, as a
+    design-bearing full-run panel keeps the coherent comparison beside `qft`.
+
+    THE PRIMITIVE OVERLAY'S STRUCTURAL GUARANTEE IS RE-ASSERTED HERE, and this is the one place it could be lost. A row's `T` is a bare
+    number with no kind beside it, and the two standalone primitives do not price the same kind of number: catalyticB2's
+    T is DETERMINISTIC while adaptiveB3's 143,366,613 is an UNCONDITIONAL EXPECTATION over repeat-until-success probes.
+    Substituting `rankedT` alone would let every consumer of a row read an expectation as the worst case that every
+    other row's T is. So the substitution refuses a result that does not carry its own kind -- `rankedTKind` set, no
+    bare `T`, and exactly one of `tDeterministic` / `tExpectedAdaptive` -- and the kind itself stays on the panel beside
+    the row (`panel["primitive"]["rankedTKind"]`), which is the only place the pair can carry it: the published row schema
+    is CLOSED and names no field for it, so a row that grows any key is rejected outright rather than ignored, and the row
+    may not carry one (the accepted key set is pinned executably as `SITE_ROW_FIELDS` in
+    `pytests/test_design_price_plumbing.py`). A primitive panel is consequently NOT publishable, which is exactly
+    what the route promises -- it never publishes."""
+    result = panel.get("primitive")
+    if not result:
+        return panel
+    if "T" in result:
+        raise ValueError("a standalone primitive result must not carry a bare T: the row would read the number "
+                         "without its kind, and adaptiveB3's T is an expectation, not a worst case")
+    if not result.get("rankedTKind"):
+        raise ValueError("a standalone primitive result names no kind for its ranked T; a deterministic T and an "
+                         "expected T must never be read as the same number")
+    priced = [value for value in (result.get("tDeterministic"), result.get("tExpectedAdaptive")) if value is not None]
+    if len(priced) != 1 or priced[0] != result["rankedT"]:
+        raise ValueError("a standalone primitive result must price exactly one of tDeterministic and "
+                         "tExpectedAdaptive, and it must be the ranked T")
+    return {**panel, "T": result["rankedT"], "qubits": result["qubits"]}
+
+
 def row_of(panel: Raw, *, origin: str, name: str, created_at: str, pull_request_url: Optional[str], submission_id: Optional[str],
            detail: str) -> Raw:
     """A ledger row (no rank): the numbers a board shows, taken from the panel they came from."""
     full = panel["fullRun"]
     label = full["ladderLabel"] if full else panel["ladderLabel"]
-    price = ranked_price_of(full) if full else panel
+    price = ranked_price_of(full) if full else standalone_price_of(panel)
     return {
         "rowId": panel["rowId"], "origin": origin, "name": name, "T": price["T"],
         "qubits": price["qubits"], "ladder": ladder_of(label), "ladderLabel": label,
