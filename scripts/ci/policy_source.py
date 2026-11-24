@@ -16,8 +16,10 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 from scripts.verifier import strip_lean_comments
 
 MAX_BYTES = 1_000_000
+FULL_RUN_IMPORT = 'ForShor.ShorVerification.Framework.FullRunDesign'
 ALLOWED_IMPORTS = {
     'ForShor.ShorVerification.Framework.Policy',
+    'ForShor.ShorVerification.Framework.PrimitiveSynthesis',
     'ForShor.ShorVerification.Framework.ToomCookTable',
     'ForShor.ShorVerification.Implementation.PhaseTripleProduct.Statement',
     'ForShor.ShorVerification.Submission.Decide',
@@ -35,9 +37,16 @@ BANNED = re.compile(
     r"(?![A-Za-z0-9_'])"
 )
 HEADER_END = re.compile(r'^(?:namespace|open|section|end|def|abbrev|theorem|lemma|example|variable|universe)\b')
+FULL_RUN_SELECTOR = re.compile(r"(?<![\w'])submittedFullRunDesign(?![\w'])")
 
 
-def validate(source):
+def check_no_full_run_selector(text):
+    """Reject the exact selector token in comment-stripped source."""
+    if FULL_RUN_SELECTOR.search(text):
+        raise ValueError('submittedFullRunDesign requires dedicated nonpublishing full-run qualification')
+
+
+def validate(source, *, qualify_full_run=False):
     if len(source.encode('utf-8')) > MAX_BYTES:
         raise ValueError(f'Policy.lean exceeds {MAX_BYTES} bytes')
     text = strip_lean_comments(source)
@@ -49,6 +58,8 @@ def validate(source):
     if found:
         line = text.count('\n', 0, found.start()) + 1
         raise ValueError(f'Policy.lean line {line}: {found[0]} is outside the policy source rules')
+    if not qualify_full_run:
+        check_no_full_run_selector(text)
     header = True
     for line in text.splitlines():
         line = line.strip()
@@ -56,7 +67,8 @@ def validate(source):
             continue
         if re.match(r'import\b', line):
             modules = line.split()[1:]
-            if not header or not modules or any(m not in ALLOWED_IMPORTS for m in modules):
+            if not header or not modules or any(m not in ALLOWED_IMPORTS and
+                                                not (qualify_full_run and m == FULL_RUN_IMPORT) for m in modules):
                 raise ValueError('Policy.lean imports must be the approved template modules, one import command per line')
         elif header:
             if not HEADER_END.match(line):
@@ -68,12 +80,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', nargs='?', type=Path)
     parser.add_argument('--stdin', action='store_true')
+    parser.add_argument('--qualify-full-run', action='store_true', help='Use only in the dedicated nonpublishing qualification harness')
     parser.add_argument('--artifacts', type=Path, help='Update the trusted preflight report on a source-rule refusal')
     args = parser.parse_args()
     if args.stdin == (args.source is not None):
         parser.error('Provide one policy file or --stdin')
+    if args.qualify_full_run and args.artifacts is not None:
+        parser.error('--qualify-full-run cannot be used for ordinary preflight artifacts')
     try:
-        validate(sys.stdin.read() if args.stdin else args.source.read_text(encoding='utf-8'))
+        validate(sys.stdin.read() if args.stdin else args.source.read_text(encoding='utf-8'),
+                 qualify_full_run=args.qualify_full_run)
     except ValueError as error:
         if args.artifacts:
             report = args.artifacts / 'table-generation-submission-result.json'

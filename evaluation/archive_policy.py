@@ -126,6 +126,34 @@ def find_duplicates(index: Dict[str, Any], *, digest: str, mode: str, login: str
     return sorted(found, key=lambda d: (d["createdAt"] or "", d["policyId"]))
 
 
+def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head_sha: str,
+                         readout: str, published_ids: Collection[str]) -> Optional[str]:
+    """Local planner, not called by the live archive writer. Return a prior primitive ID, if any.
+
+    Take only visible records into account. Legacy records omit both circuit
+    and board metadata and mean coherent readout with a primitive result.
+    Future opt-in entries can carry `readout` and `boards` without backfill.
+    """
+    if readout not in ("coherent", "semiclassical"):
+        raise ArchiveRefused("unknown readout design")
+    records = {p["policy_id"]: p for p in index["policies"]}
+    primitive = None
+    for previous in find_duplicates(index, digest=digest, mode="PhaseProduct", login=login, head_sha=head_sha,
+                                    published_ids=published_ids):
+        if not previous["sameParticipant"]:
+            continue
+        entry = records[previous["policyId"]]
+        chosen = entry.get("readout", "coherent")
+        boards = entry.get("boards", ["pp", "full"])
+        if chosen not in ("coherent", "semiclassical") or boards not in (["pp", "full"], ["full", "pp"], ["full"]):
+            raise ArchiveRefused("unrecognized circuit or boards in published archive entry")
+        if chosen == readout:
+            raise DuplicatePolicy(previous)
+        if "pp" in boards and primitive is None:
+            primitive = previous["policyId"]
+    return primitive
+
+
 def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
     """`summary` is the file at the head commit (None: there is none). It must satisfy the rules, and the verification must carry exactly it, in both directions."""
     carried = v.get("summarySource")

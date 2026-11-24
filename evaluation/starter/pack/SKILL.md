@@ -135,7 +135,7 @@ The submission file, `TableGeneration/Submission/Policy.lean` (PP; bands take 1 
 python starter.py template my_pp_policy.json --out Policy.lean --forshor /path/to/ForShor
 ```
 
-ForShor's Lean library is `ForShor`; `--forshor` checks the name against your checkout, which must be at the pinned commit `21e129aeefc0fd1bbb8fa63402f5799af2490788`.
+ForShor's Lean library is `ForShor`; `--forshor` checks the library name in your checkout. For a manual verifier build, use the operational pin in the submissions repository's `evaluation/policy-trees.json`; `./forshor check` selects it automatically. The pack's model pin `21e129aeefc0fd1bbb8fa63402f5799af2490788` identifies the pricing baseline, not the verifier checkout.
 
 A ForShor build's printed document, priced on the board's IR. It must say `agrees`:
 
@@ -149,7 +149,7 @@ The build trees are not in the pack; `harness/LEAN_CHECKS.md` says where they co
 
 - **PP:** the policy check, `check_banded_policy.py --widths exact --target-width 2048` (in the `forshor-submissions` repository, `main`: github.com/zapatacomputing/forshor-submissions; `./forshor check` in a clone of it runs the whole check).
 - **PTP:** `check_ptp_policy.py --widths exact --target-width 2048` of the same repository, against ForShor's `Shor.PTP`. Build the PhaseTripleProduct modules by name first.
-- **Full run:** ForShor at `21e129a` (VerifiedQC/ForShor). Put your `Policy.lean` at `ForShor/ShorVerification/Submission/PolicyTemplate.lean` (ForShor's name for the file). Then:
+- **Full run:** VerifiedQC/ForShor at the operational verifier pin. Put your `Policy.lean` at `ForShor/ShorVerification/Submission/PolicyTemplate.lean` (ForShor's name for the file). Then:
 
   ```bash
   lake exe cache get
@@ -312,7 +312,7 @@ you name with `--out` or `--json`.
 | `a table fails the Toom-Cook check` | the program does not consume its points in order, does not restore the registers, or breaks the exact identity | fix the table, not the threshold |
 | widths notice | the file declares a ladder or widths | remove them: the board derives exact widths and ignores declared ones |
 | rejected at stage `threshold` | a band is applied where it does not shrink the width, or at a width below k | raise that band's threshold (the reason names it), and re-check the exact ladder |
-| `starter.py template` refuses | k > 8, or a PTP policy | the template tool writes PP and PTP policies with 1 < k ≤ 8; a k > 8 policy is still priced but cannot be submitted |
+| `starter.py template` refuses | a format limit or unsupported option | the template tool writes PP and PTP policies with 1 < k ≤ 8; read the named refusal rather than changing a valid PTP policy to PP |
 | `forshor-doc` prints `DIFFERS` | the printed document does not match the converted policy, or is a scan document | rebuild with `--balanced`. A document without `width_rule` is priced on the upstream cross-check, not the board's IR. |
 | `error: the policy asks for negation 'scratch'` | ForShor's `scratch` method is not priced by the boards or this pack | remove the `negation` key (or set `"oneQubit"`) |
 | a Lean run is killed for memory or time | over the memory cap, or the stage limit you set | run one or two checks at a time; some are hours long (see Lean Checks). If it persists, report the policy and the record rather than raising the cap. |

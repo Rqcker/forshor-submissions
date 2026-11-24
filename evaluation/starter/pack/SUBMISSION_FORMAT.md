@@ -25,7 +25,7 @@ One JSON object (UTF-8, at most 2,000,000 bytes):
 | `operations` | `["addScaled", dst, src, sign, shift]` (sign +1 or −1, dst ≠ src), `["negate", i]`, `["shiftL", i, n]`, `["shiftR", i, n]` (exact division only), `["phaseProduct", i]`, on registers 0 to k − 1. The program consumes the points in order, restores the registers, and satisfies the exact Toom-Cook identity. |
 | widths | **Do not declare widths.** The board derives the exact widths and prices at them. Any `declared_ladder`, `ladder`, `widths`, `child_width` (and similar) is ignored, with a notice. It is never passed to Lean (`starter.py lean-input` drops it). The derived width of a table is the least width at which every value the program ever holds fits, **intermediate values included**, so a `shiftL` / `shiftR` pair that makes a register briefly larger raises it (see "Widths and shift pairs" below). |
 | `negation` | Optional: `"oneQubit"` (ForShor's default, `Shor.NegationMethod`) or `"scratch"`. The boards, and this pack, price every policy under `oneQubit`. A policy that asks for `scratch` is **refused by `starter.py`** (a number for it would be wrong), and its meaning is in section 3. |
-| `name` | Optional, at most 200 characters. Other keys are ignored. |
+| `name` | Optional, at most 200 characters. Table JSON is not a circuit-design selection format; policy or band fields requesting readout, QFT, multiplier or synthesis options are refused. |
 
 The site also reads `{"policy": {...}}` and `{"policies": [...]}` (at most 8 policies per file).
 
@@ -46,8 +46,7 @@ Declaring widths directly (for instance, any width at or above the exact one) is
 ## 2. The submission file `Policy.lean` (and the full order-finding board)
 
 A submission is this one Lean file, `Policy.lean`, holding the policy: for PhaseProduct a ForShor `ShorPolicySubmission` (bands with 2 ≤ k ≤ 8), for PhaseTripleProduct a ForShor `PTPPolicy` in `namespace PTPPolicySubmission` (bands with 2 ≤ k ≤ 8; the format is `templates/ptp.Policy.lean`, ForShor's `PTPPolicyTemplate.lean`, and `starter.py template` writes it from a PTP site policy). Either kind may have at most 256 bands. The namespace the file declares says which board it is for. Both are built by ForShor (`lake build PolicySubmission forshor_policy_submission`, or `lake build PTPPolicySubmission forshor_ptp_policy_submission`) after ForShor's lexical gate; the PhaseTripleProduct files are in ForShor `main` from `349849e` (PR #83), not in the pinned `21e129a`, which is otherwise unchanged by them.
-The full order-finding board prices every PP policy (section 1). ForShor builds the PhaseProduct file (`starter.py template` writes it from site policy JSON) at the pinned commit `21e129aeefc0fd1bbb8fa63402f5799af2490788`
-(VerifiedQC/ForShor `main`, the merge of PR #80, which contains PR #79). Its Lean library is `ForShor`. If you write the file by hand, these rules apply:
+The full order-finding board prices every PP policy (section 1). ForShor's Lean library is `ForShor`. For a manual verifier build, use the submissions repository's operational pin in `evaluation/policy-trees.json`; `./forshor check` selects it automatically. The pack's model pin `21e129aeefc0fd1bbb8fa63402f5799af2490788` identifies the pricing baseline, not the verifier checkout. If you write the file by hand, these rules apply:
 
 * **One file: `TableGeneration/Submission/Policy.lean`, the only file a pull request must change** (the optional `TableGeneration/Submission/summary.tex`, section 6, is the only other file it may carry), at most 1,000,000 bytes. For ForShor's build it is
   copied to `ForShor/ShorVerification/Submission/PolicyTemplate.lean` (ForShor's name for the file); nothing else in the ForShor tree changes.

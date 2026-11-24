@@ -43,7 +43,29 @@ def main():
         path.write_text(json.dumps({**doc, "negation": "scratch"}))
         for command in ("price", "template", "lean-input"):
             run(command, path, error="the policy asks for negation 'scratch'")
-        path.write_text(json.dumps({**json.loads(compiled.read_text()), "negation": "scratch"}))
+        for option in ("readout", "submitted_design", "qft", "modmul", "phase_product", "synthesis"):
+            path.write_text(json.dumps({"policy": {**doc, option: "unsupported"}}))
+            for command in ("price", "template", "lean-input"):
+                run(command, path, error=f"table policy JSON cannot select circuit design options ({option})")
+        ptp_doc = json.loads(ptp.read_text())
+        out = Path(tmp) / "Policy.lean"
+        for invalid, key in (
+            ({"policies": [{**ptp_doc, "readout": "semiclassical"}]}, "readout"),
+            ({"policy": {**ptp_doc, "bands": [{**ptp_doc["bands"][0], "synthesis": "fallback"}]}}, "synthesis"),
+            ({"policy": {**doc, "bands": [{**doc["bands"][0], "synthesis_backend": "catalytic"}]}}, "synthesis_backend"),
+        ):
+            path.write_text(json.dumps(invalid))
+            run("template", path, "--out", out, error=f"table policy JSON cannot select circuit design options ({key})")
+            assert not out.exists(), (key, "refused template wrote a policy")
+        printed = json.loads(compiled.read_text())
+        path.write_text(json.dumps(printed))
+        legacy = run("forshor-doc", path)
+        path.write_text(json.dumps({**printed, "submitted_readout": "coherent"}))
+        assert run("forshor-doc", path) == legacy
+        path.write_text(json.dumps({**printed, "submitted_readout": "semiclassical"}))
+        run("forshor-doc", path, "--json", out, error="not supported by the coherent pricing route")
+        assert not out.exists(), "refused price wrote a result"
+        path.write_text(json.dumps({**printed, "negation": "scratch"}))
         run("forshor-doc", path, error="the policy asks for negation 'scratch'")
         for delta in ("nan", "inf", "0", "1"):
             run("price", pp, "--delta", delta, error="delta must be")

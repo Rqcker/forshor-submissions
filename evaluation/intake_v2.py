@@ -26,6 +26,7 @@ Exit status: 0 published (or already published), 1 refused (the result says why)
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 import datetime as dt
 import hashlib
 import json
@@ -34,6 +35,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -43,7 +45,9 @@ sys.path.insert(0, str(HERE / "starter" / "pack" / "harness"))
 
 from publish import RetryPublication, request_json  # noqa: E402  (v1 helpers, unchanged)
 from publish_v2 import ModelMismatch, ReservedHandle, policy_name, publish_v2_with_recovery  # noqa: E402
+from export_v2.attempt import AttemptBusy, exclusive_attempt  # noqa: E402
 import summary_tex  # noqa: E402  (the shared rules for the optional summary.tex)
+from policy_options import check_coherent_export, check_no_full_run_export  # noqa: E402
 
 REPO = "zapatacomputing/forshor-submissions"
 MAX_FORSHOR_K = 8           # a submission's bands take 2 <= k <= 8
@@ -59,14 +63,25 @@ class Refused(Exception):
         self.stage, self.reason = stage, reason
 
 
+class Incomplete(RuntimeError):
+    def __init__(self, stage: str, reason: str):
+        super().__init__(f"{stage}: {reason}. This is not a verdict on the policy.")
+        self.stage = stage
+
+
 def check_band_limit(bands: Any) -> None:
     if isinstance(bands, (list, tuple)) and len(bands) > MAX_POLICY_BANDS:
         raise Refused("format", f"a policy may contain at most {MAX_POLICY_BANDS} bands; found {len(bands)}")
 
 
 def normalise(policy_doc: Any) -> Dict[str, Any]:
-    """The policy the engine prices, as site policy JSON: mode, name, bands (threshold, k, point_order, operations). Anything else is dropped."""
+    """Normalize a table policy. Ignore display/width metadata but never discard an explicit design selection."""
     from export_v2 import engine
+    from policy_options import check_table_options
+    try:
+        check_table_options(policy_doc)
+    except ValueError as error:
+        raise Refused("format", str(error)) from error
     eng = engine.load()
     docs = eng.tables.policy_docs(policy_doc)
     if len(docs) != 1:
@@ -109,6 +124,7 @@ def forshor_record(eng, P, doc: Dict[str, Any], pin: str) -> Dict[str, Any]:
     """`verification.forshorPolicy` for a PhaseProduct policy, from ForShor's printed document: its bands are the submitted bands and its own IR
     prices to the same single-run T as the policy does (the site's two agreement checks). Raises Refused when either fails."""
     from export_v2.evidence import FORSHOR_CLAIM
+    require_legacy_export(check_no_full_run_export, doc)
     sys.path.insert(0, str(eng.engine_dir))
     from site_engine import DEFAULT_DELTA
     from site_engine import fullalg as fa
@@ -142,40 +158,102 @@ def lean_kind(lean_text: str) -> str:
     return "ptp" if ptp else "pp"
 
 
-def forshor_build(forshor_tree: Path, template: str, workdir: Path, timeout: int = 7200, kind: str = "pp") -> Dict[str, Any]:
+def refuse_unqualified_design(source: str) -> None:
+    """The old verifier would otherwise compile a new declaration and ignore it."""
+    sys.path.insert(0, str(HERE.parent))
+    from scripts.verifier import strip_lean_comments
+    if re.search(r"(?<![\w'])submittedDesign(?![\w'])", strip_lean_comments(source)):
+        raise Refused("format", "submittedDesign is not enabled for ordinary submissions; it requires local readout qualification")
+
+
+def refuse_unqualified_primitive(source: str) -> None:
+    sys.path.insert(0, str(HERE.parent))
+    from scripts.verifier import strip_lean_comments
+    if re.search(r"(?<![\w'])submittedPrimitive(?![\w'])", strip_lean_comments(source)):
+        raise Refused("format", "submittedPrimitive requires separate nonpublishing primitive qualification")
+
+
+def check_legacy_full_run_source(source: str) -> None:
+    sys.path.insert(0, str(HERE.parent))
+    from scripts.ci.policy_source import check_no_full_run_selector, strip_lean_comments
+    check_no_full_run_selector(strip_lean_comments(source))
+
+
+def require_legacy_export(check, document: Dict[str, Any]) -> None:
+    try:
+        check(document)
+    except ValueError as error:
+        raise Refused("format", str(error)) from error
+
+
+def require_coherent_export(document: Dict[str, Any]) -> None:
+    require_legacy_export(check_coherent_export, document)
+
+
+def forshor_build(forshor_tree: Path, template: str, workdir: Path, timeout: int = 7200, kind: str = "pp", *,
+                  qualify_readout: bool = False) -> Dict[str, Any]:
     """The Lean file as ForShor's template (`kind`: `pp` or `ptp`), in a disposable copy of the checkout: ForShor's lexical gate, its build, then the document its
     executable prints. Raises `Refused` at stage `lexical` or `forshor`; the file is only ever compiled, never run by us."""
+    workdir = workdir.resolve()
+    workdir.mkdir(parents=True, exist_ok=True)
+    with exclusive_attempt(workdir / ".forshor-build.lock") as lock_fd:
+        return _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_readout, lock_fd)
+
+
+def _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_readout, lock_fd):
     filename, targets, exe = FORSHOR_KINDS[kind]
+    if qualify_readout:
+        from export_v2.readout_overlay import VERIFIER_PIN
+        if kind != "pp":
+            raise Refused("format", "readout qualification only supports PhaseProduct")
+        actual = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=forshor_tree, text=True).strip()
+        dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=forshor_tree, text=True)
+        if actual != VERIFIER_PIN or dirty:
+            raise Refused("forshor", "readout qualification requires a clean checkout of the pinned verifier")
+        source_gate = HERE.parent / "scripts" / "ci" / "policy_source.py"
+        checked = subprocess.run([sys.executable, str(source_gate), "--stdin"], input=template, text=True, capture_output=True)
+        if checked.returncode:
+            raise Refused("policy-source", checked.stderr.strip())
+        exe = [*exe, "--readout", "submitted"]
     tree = workdir / "forshor-tree"
     if tree.exists():
         shutil.rmtree(tree)
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
     from tree_copy import copy_lean_tree
     copy_lean_tree(forshor_tree, tree)
+    if qualify_readout and (tree / ".git").is_file():
+        (tree / ".git").unlink()
     target = tree / "ForShor" / "ShorVerification" / "Submission" / filename
     if not target.parent.is_dir() or (kind == "ptp" and not (target.parent / "PTPPolicyCheck.lean").exists()):
         raise RuntimeError(f"the ForShor checkout has no {'PhaseTripleProduct' if kind == 'ptp' else 'policy'} submission files (it needs ForShor's PTPPolicyCheck and PTPPolicyMain)")
-    target.write_text(template)
+    source = template.encode("utf-8")
+    target.unlink(missing_ok=True)  # don't follow an old template symlink in the copy
+    target.write_bytes(source)
     gate = subprocess.run(["bash", "scripts/check_template_lexical.sh", str(target)], cwd=tree, capture_output=True, text=True)
     if gate.returncode != 0:
         raise Refused("lexical", "ForShor's lexical gate refused the file: " + (gate.stdout + gate.stderr)[-500:].strip())
     log = workdir / "forshor.log"
     try:
         with open(log, "w") as out:
-            built = subprocess.run(["lake", "build", *targets], cwd=tree, stdout=out, stderr=subprocess.STDOUT, timeout=timeout)
+            built = subprocess.run(["lake", "build", *targets], cwd=tree, stdout=out, stderr=subprocess.STDOUT, timeout=timeout, pass_fds=(lock_fd,))
     except subprocess.TimeoutExpired:
-        raise Refused("timeout", f"ForShor's Lean build reached its {timeout:g}s time limit. This is not a verdict on the policy.") from None
+        raise Incomplete("timeout", f"ForShor's Lean build reached its {timeout:g}s time limit") from None
     if built.returncode != 0:
         text = log.read_text()
         errors = [line for line in text.splitlines() if "error" in line.lower()]          # Lean's own error lines, not the tail of a long build log
         raise Refused("forshor", "ForShor's build of the policy template failed: " + ("\n".join(errors[:6]) or text[-500:])[:900])
     try:
-        printed = subprocess.run(["lake", "exe", *exe], cwd=tree, capture_output=True, text=True, timeout=timeout)
+        printed = subprocess.run(["lake", "exe", *exe], cwd=tree, capture_output=True, text=True, timeout=timeout, pass_fds=(lock_fd,))
     except subprocess.TimeoutExpired:
-        raise Refused("timeout", f"ForShor's circuit extraction and checks reached their {timeout:g}s time limit. This is not a verdict on the policy.") from None
+        raise Incomplete("timeout", f"ForShor's circuit extraction and checks reached their {timeout:g}s time limit") from None
     if printed.returncode != 0:
         raise Refused("forshor", "ForShor's check refused the policy: " + (printed.stderr or printed.stdout)[-500:])
-    return json.loads(printed.stdout)
+    if target.read_bytes() != source:
+        raise RuntimeError("Policy.lean changed during the ForShor compile attempt")
+    document = json.loads(printed.stdout)
+    if qualify_readout:
+        require_legacy_export(check_no_full_run_export, document)
+    return document
 
 
 def forshor_check(eng, P, forshor_tree: Path, workdir: Path, pin: str, timeout: int = 7200) -> Dict[str, Any]:
@@ -184,17 +262,31 @@ def forshor_check(eng, P, forshor_tree: Path, workdir: Path, pin: str, timeout: 
     return forshor_record(eng, P, forshor_build(forshor_tree, ptt.template_text(P, "ForShor"), workdir, timeout), pin)
 
 
-def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir: Path, timeout: int = 7200):
+def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir: Path, timeout: int = 7200, *,
+                     qualify_readout: bool = False):
     """A submitted `Policy.lean` (ForShor's PolicyTemplate format for PhaseProduct, its PTPPolicyTemplate format for PhaseTripleProduct, told apart by the namespace it
     declares) to (the policy as site policy JSON, ForShor's printed document). ForShor builds the file, so the document is the policy it kernel-checked; the boards then
     check the same tables in the STO mirror and price them. Only exact widths and the default negation are priced, so a file that asks for anything else is refused
     rather than priced as something it is not."""
     if len(lean_text.encode()) > MAX_LEAN_BYTES:
         raise Refused("format", f"the Lean file is larger than {MAX_LEAN_BYTES} bytes")
+    try:
+        check_legacy_full_run_source(lean_text)
+    except ValueError as error:
+        raise Refused("format", str(error)) from error
     kind = lean_kind(lean_text)
+    refuse_unqualified_primitive(lean_text)
+    if qualify_readout and kind != "pp":
+        raise Refused("format", "readout qualification only supports PhaseProduct")
+    if not qualify_readout:
+        refuse_unqualified_design(lean_text)
     if forshor_tree is None:
         raise RuntimeError("a Lean policy needs ForShor's build, and no ForShor checkout was given (--forshor-tree)")
-    doc = forshor_build(forshor_tree, lean_text, workdir, timeout, kind=kind)
+    doc = forshor_build(forshor_tree, lean_text, workdir, timeout, kind=kind,
+                        **({"qualify_readout": True} if qualify_readout else {}))
+    if "submitted_primitive" in doc:
+        raise Refused("format", "compiled primitive synthesis is not admitted by this intake")
+    require_legacy_export(check_no_full_run_export if qualify_readout else check_coherent_export, doc)
     bands = doc["bands"]
     check_band_limit(bands)
     if not bands:
@@ -247,14 +339,25 @@ def check_summary(summary: Optional[str], lean_policy: Optional[str]) -> None:
 def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, summary: Optional[str] = None, login: str, url: Optional[str] = None, token: str = "local", tree: Path, workdir: Path,
                       forshor_tree: Optional[Path] = None, stage_timeout: Optional[int] = None, mirror_timeout: int = 7200,
                       run_mirror_fn: Optional[Callable[..., Dict[str, Any]]] = None, python: str = sys.executable,
+                      qualify_readout: bool = False,
                       log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
     """Everything up to the publish: the reserved handle and (when a publisher URL is given) the epoch, then ForShor's gate and build (a Lean submission), the STO mirror
     and ForShor's check. Returns the verification: the policy, ForShor's printed document, the mirror's envelope and the model it was verified under, as data a trusted
     job can publish from (`publish_verification`). Nothing is priced and nothing leaves the machine. Raises `Refused`, `ReservedHandle`, `ModelMismatch`."""
+    workdir.mkdir(parents=True, exist_ok=True)
+    with exclusive_attempt(workdir / ".verification.lock"):
+        return _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree, workdir, forshor_tree,
+                                  stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, log)
+
+
+def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree, workdir, forshor_tree,
+                       stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, log):
     from export_v2 import engine, epoch
     from export_v2.canon import policy_digest
-    from export_v2.evidence import EvidenceStore, run_mirror
+    from export_v2.evidence import run_mirror, stomirror_from_envelope
     from publish_v2 import HOUSE_HANDLE
+    if qualify_readout and (url or lean_policy is None):
+        raise Refused("format", "readout qualification is local only and requires Policy.lean")
     check_summary(summary, lean_policy)                         # a rule of the summary file first: cheap, and not a verdict on the policy
     eng = engine.load()
     model = epoch.model_of()
@@ -266,29 +369,49 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, sum
         if state["model"] != model:
             raise ModelMismatch(f"live epoch {state['epoch']} was built for a different model than this checkout's; not publishing")
 
-    workdir.mkdir(parents=True, exist_ok=True)
     printed = None
     if lean_policy is not None:                                 # a Lean submission: ForShor builds it, its printed document is the policy
         log("ForShor's lexical gate, build and printed document (the submitted Lean file) ...")
-        policy_doc, printed = policy_from_lean(eng, lean_policy, forshor_tree, workdir)
+        policy_doc, printed = policy_from_lean(eng, lean_policy, forshor_tree, workdir,
+                                               **({"qualify_readout": True} if qualify_readout else {}))
     policy_json = normalise(policy_doc)
     digest = policy_digest(policy_json)
     board = "ptp" if policy_json["mode"] == eng.tables.TRIPLE else "pp"
+    P = eng.tables.Policy.from_json(policy_json)
+    readout = None
+    if qualify_readout:
+        from export_v2.readout_overlay import MEASURED_SCHEMA, VERIFIER_PIN, bind_compiled_readout
+        selected = printed.get("submitted_readout")
+        if selected == "semiclassical" and printed.get("schema") == MEASURED_SCHEMA:
+            try:
+                readout = bind_compiled_readout(P, printed, verifier_pin=VERIFIER_PIN, lean_source=lean_policy.encode("utf-8"))
+            except ValueError as error:
+                raise Refused("forshor", str(error)) from error
+        elif selected != "coherent" or printed.get("schema") != "forshor.policy-submission/v1":
+            raise Refused("forshor", "missing or mismatched compiled readout selection")
+        else:
+            require_coherent_export(printed)
     log(f"policy {digest[:12]} ({policy_json['mode']}, {len(policy_json['bands'])} bands): the Lean mirror at exact widths ...")
     envelope = (run_mirror_fn or run_mirror)(policy_json, board, tree, workdir / "evidence", timeout=mirror_timeout, python=python, stage_timeout=stage_timeout, fast=True)   # `fast`: skip the interpreted report stage, see run_mirror
-    mirror, why = EvidenceStore(workdir / "evidence").stomirror(policy_json, model, board)
+    mirror, why = stomirror_from_envelope(envelope, policy_json, model, board)
     if mirror is None:
         rec = envelope.get("record", {})
         rej = rec.get("rejection") or {}
-        raise Refused(rej.get("stage") or "mirror", f"{rej.get('reason') or why}: {str(rej.get('detail') or '')[:400]}".strip(": "))
+        stage = rej.get("stage") or "mirror"
+        reason = f"{rej.get('reason') or why}: {str(rej.get('detail') or '')[:400]}".strip(": ")
+        if stage in ("memory", "timeout"):
+            raise Incomplete(stage, reason)
+        raise Refused(stage, reason)
     log("  accepted by the STO mirror")
 
-    P = eng.tables.Policy.from_json(policy_json)
-    if printed is not None and str(printed.get("schema", "")).startswith("forshor.ptp-"):
+    if readout is not None:
+        forshor = None
+        log("  verified the compiled readout and checked its reference arithmetic census")
+    elif printed is not None and str(printed.get("schema", "")).startswith("forshor.ptp-"):
         log("  ForShor kernel-checked the PhaseTripleProduct policy (it has no IR, so the row carries no ForShor record)")
         forshor = None
     elif printed is not None:
-        forshor = forshor_record(eng, P, printed, model["forshor"]["pin"])
+        forshor = forshor_record(eng, P, printed, VERIFIER_PIN if qualify_readout else model["forshor"]["pin"])
         log("  ForShor policy-verified")
     elif forshor_tree and P.mode == eng.tables.PAIR and max(b.table.k for b in P.bands) <= MAX_FORSHOR_K:
         log("ForShor's build and printed document ...")
@@ -301,12 +424,39 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, sum
         log("no ForShor check (" + ("PhaseTripleProduct" if P.mode != eng.tables.PAIR else "no ForShor checkout given" if not forshor_tree else f"k above {MAX_FORSHOR_K}") + ")")
     out = {"schema": VERIFICATION_SCHEMA, "digest": digest, "mode": policy_json["mode"], "board": board, "policy": policy_json, "printed": printed,
            "envelope": envelope, "forshor": forshor, "model": model, "login": login, "createdAt": _now()}
+    if qualify_readout:
+        out["localReadoutQualification"] = {"mode": selected, "evidence": readout}
     if lean_policy is not None:                                 # what the archive stores; the publish job compares it with the file at the PR's head commit
         out.update(leanSource=lean_policy, leanSha256=hashlib.sha256(lean_policy.encode()).hexdigest())
     if summary is not None:                                     # data only: nothing above read it, so it cannot have changed the digest or the verdict
         raw = summary.encode("utf-8")
         out.update(summarySource=summary, summarySha256=summary_tex.sha256(raw), summaryBytes=len(raw))
     return out
+
+
+def prepare_receipt_path(path: Path, *other_paths: Optional[Path]) -> None:
+    if path.is_symlink() or any(other is not None and path.resolve() == other.resolve() for other in other_paths):
+        raise ValueError("the verification receipt needs a separate, non-symlink output path")
+    if path.exists():
+        try:
+            old = json.loads(path.read_text())
+        except (OSError, ValueError):
+            old = None
+        if not isinstance(old, dict) or old.get("schema") != VERIFICATION_SCHEMA:
+            raise ValueError(f"not replacing an unrelated file at {path}; choose a fresh verification output path")
+        path.unlink()
+
+
+def write_receipt(path: Path, verification: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as f:
+        temp = Path(f.name)
+        try:
+            f.write(json.dumps(verification) + "\n")
+            f.close()
+            temp.replace(path)
+        finally:
+            temp.unlink(missing_ok=True)
 
 
 def archive_policy_rules() -> Dict[str, str]:
@@ -324,6 +474,18 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     from export_v2 import engine, epoch, request
     from export_v2.canon import policy_digest
     from export_v2.evidence import EvidenceStore
+    from export_v2.readout_overlay import MEASURED_SCHEMA
+    printed = v.get("printed")
+    if "localReadoutQualification" in v or (isinstance(printed, dict) and printed.get("schema") == MEASURED_SCHEMA):
+        raise Refused("format", "qualified readout receipts are local only; publishing is not enabled")
+    if isinstance(printed, dict):
+        require_coherent_export(printed)
+    if isinstance(v.get("leanSource"), str):
+        try:
+            check_legacy_full_run_source(v["leanSource"])
+        except ValueError as error:
+            raise Refused("format", str(error)) from error
+        refuse_unqualified_design(v["leanSource"])
     eng = engine.load()
     model = epoch.model_of()
     if v.get("schema") != VERIFICATION_SCHEMA:
@@ -349,15 +511,16 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     if digest != v.get("digest"):
         raise Refused("format", "the verification's policy does not match its digest")
     board = "ptp" if policy_json["mode"] == eng.tables.TRIPLE else "pp"
-    # the mirror's envelope goes back where the engine reads evidence from, byte for byte as the harness wrote the policy file
-    ev = workdir / "evidence"
-    ev.mkdir(parents=True, exist_ok=True)
-    (ev / f"{digest[:16]}.policy.json").write_text(json.dumps(policy_json, indent=1, ensure_ascii=False))
-    (ev / f"{digest[:16]}.evidence.json").write_text(json.dumps(v["envelope"], indent=1, ensure_ascii=False))
-    store = EvidenceStore(ev)
+    # Never let a prior pass in the workdir vouch for a different verification.
+    store = EvidenceStore(envelope=v.get("envelope"))
     mirror, why = store.stomirror(policy_json, model, board)
     if mirror is None:
         raise Refused("mirror", f"the mirror evidence does not hold for this policy: {why}")
+    ev = workdir / "evidence"
+    ev.mkdir(parents=True, exist_ok=True)
+    with exclusive_attempt(ev / ".mirror.lock"):
+        (ev / f"{digest[:16]}.policy.json").write_text(json.dumps(policy_json, indent=1, ensure_ascii=False))
+        (ev / f"{digest[:16]}.evidence.json").write_text(json.dumps(v["envelope"], indent=1, ensure_ascii=False))
     P = eng.tables.Policy.from_json(policy_json)
     printed = v.get("printed")
     forshor = None
@@ -436,6 +599,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="verify only (the reserved handle, ForShor's gate and build, the STO mirror, ForShor's check) and write a verification file; nothing is priced, nothing is "
                          "sent, no publisher or token is needed. This is `./forshor check`, and the untrusted half of CI")
     ap.add_argument("--verification-out", type=Path, help="with --no-publish: where to write the verification (default: WORKDIR/verification.json)")
+    ap.add_argument("--qualify-readout", action="store_true", help="local only: compile PhaseProduct readout at the separate trusted verifier pin")
     ap.add_argument("--organizer-baseline", choices=["baseline-gpt", "baseline-claude", "baseline-gpt-6.2-sol", "baseline-claude-opus-5-5", "baseline-gpt-6.2-sol-medium", "baseline-claude-opus-5-5-medium"], help="Display identity assigned by trusted publication CI")
     ap.add_argument("--publish-from", type=Path, help="price and publish a verification written by --no-publish (the trusted half of CI): no Lean runs, and everything in it is checked again")
     ap.add_argument("--login", required=True, help="the submitter's GitHub handle (the PR author)")
@@ -458,6 +622,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         ap.error("give exactly one of --policy, --lean-policy and --publish-from")
     if a.summary is not None and a.lean_policy is None:
         ap.error("--summary goes with --lean-policy (the publish job takes the summary from the verification and the pull request's head commit)")
+    if a.qualify_readout and (not a.no_publish or a.lean_policy is None or a.publisher_url):
+        ap.error("--qualify-readout requires --no-publish and --lean-policy, with no publisher URL")
     if a.publish_from is not None:
         if a.no_publish:
             ap.error("--publish-from publishes: it cannot be combined with --no-publish")
@@ -468,6 +634,26 @@ def main(argv: Optional[List[str]] = None) -> int:
             ap.error("--tree is required to verify")
         if not a.no_publish and (not a.publisher_url or a.pull is None):
             ap.error("publishing needs --publisher-url (or PUBLISHER_URL) and --pull; use --no-publish to verify only")
+    verification_path = a.verification_out or (a.workdir / "verification.json")
+    outputs = {p.resolve() for p in (verification_path if a.no_publish else None, a.out) if p is not None}
+    try:
+        with ExitStack() as locks:
+            for path in sorted(outputs):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                locks.enter_context(exclusive_attempt(path.with_name(f".{path.name}.lock")))
+            return _run_args(a, ap, verification_path)
+    except (AttemptBusy, OSError) as e:
+        # The other attempt owns the receipt/result. Do not overwrite either one.
+        print(json.dumps({"failed": True, "error": str(e)}))
+        return 2
+
+
+def _run_args(a, ap, verification_path):
+    if a.no_publish:
+        try:
+            prepare_receipt_path(verification_path, a.lean_policy, a.policy, a.summary, a.out)
+        except (OSError, ValueError) as error:
+            ap.error(str(error))
     summary_text = None
     if a.summary is not None:
         data, why = summary_tex.inspect_file(a.summary)
@@ -501,19 +687,20 @@ def main(argv: Optional[List[str]] = None) -> int:
                                           head_sha=a.head_sha, run_id=a.run_id, archive_commit=a.archive_commit, archive_view=archive_view,
                                           archive_write=archive_write, organizer_baseline=a.organizer_baseline)
         elif a.no_publish:
-            v = verify_submission(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, summary=summary_text, login=a.login,
+            source = a.lean_policy.read_bytes().decode("utf-8") if a.lean_policy else None
+            v = verify_submission(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=source, summary=summary_text, login=a.login,
                                   url=a.publisher_url, token=token, tree=a.tree, workdir=a.workdir, forshor_tree=a.forshor_tree, stage_timeout=a.stage_timeout,
-                                  mirror_timeout=a.mirror_timeout)
-            path = a.verification_out or (a.workdir / "verification.json")
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(v) + "\n")
-            result = {"verified": True, "verification": str(path), "policy": {"digest": v["digest"], "mode": v["mode"], "bands": len(v["policy"]["bands"]),
+                                  mirror_timeout=a.mirror_timeout, **({"qualify_readout": True} if a.qualify_readout else {}))
+            write_receipt(verification_path, v)
+            result = {"verified": True, "verification": str(verification_path), "policy": {"digest": v["digest"], "mode": v["mode"], "bands": len(v["policy"]["bands"]),
                       "stoMirror": True, "forshorPolicy": bool(v["forshor"]), "forshorChecked": v["printed"] is not None}}
         else:
-            result = run_intake(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_text() if a.lean_policy else None, summary=summary_text, login=a.login,
+            result = run_intake(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=a.lean_policy.read_bytes().decode("utf-8") if a.lean_policy else None, summary=summary_text, login=a.login,
                                 pull=a.pull, url=a.publisher_url, token=token, tree=a.tree, workdir=a.workdir, head_sha=a.head_sha, run_id=a.run_id, forshor_tree=a.forshor_tree,
                                 stage_timeout=a.stage_timeout, mirror_timeout=a.mirror_timeout, archive_commit=a.archive_commit, archive_view=archive_view)
         code = 0
+    except Incomplete as e:
+        result, code = {"failed": True, "stage": e.stage, "error": str(e)[:600]}, 2
     except (Refused, ReservedHandle, ModelMismatch) as e:
         result, code = {"refused": True, "stage": getattr(e, "stage", type(e).__name__), "reason": getattr(e, "reason", str(e))}, 1
     except __import__("archive_policy").DuplicatePolicy as e:

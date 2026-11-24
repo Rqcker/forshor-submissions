@@ -6,7 +6,7 @@ import sys
 import tempfile
 import shutil
 
-from policy_source import validate
+from policy_source import FULL_RUN_IMPORT, validate
 
 
 SAFE = '''import ForShor.ShorVerification.Framework.Policy
@@ -14,6 +14,7 @@ namespace PolicySubmission
 def points := #[1, 2, 3]
 end PolicySubmission
 '''
+FULL_RUN = SAFE.replace('def points', 'def submittedFullRunDesign : Nat := 0\ndef points')
 
 
 class PolicySource(unittest.TestCase):
@@ -21,6 +22,27 @@ class PolicySource(unittest.TestCase):
         validate(SAFE)
         validate('/- #eval IO.println "not code" /- axiom -/ -/\n' + SAFE)
         validate(SAFE.replace('PolicySubmission', 'PTPPolicySubmission'))
+        validate('/- submittedFullRunDesign /- nested -/ -/\n-- submittedFullRunDesign\n' + SAFE)
+        validate(SAFE.replace('points', 'submittedFullRunDesignExample'))
+
+    def test_full_run_declaration_and_import_are_dedicated_only(self):
+        with self.assertRaisesRegex(ValueError, 'submittedFullRunDesign'):
+            validate(FULL_RUN)
+        with self.assertRaisesRegex(ValueError, 'approved template modules'):
+            validate(f'import {FULL_RUN_IMPORT}\n' + SAFE)
+        validate(f'import {FULL_RUN_IMPORT}\n' + FULL_RUN, qualify_full_run=True)
+        for source in (f'import {FULL_RUN_IMPORT}.Other\n' + FULL_RUN,
+                       f'import {FULL_RUN_IMPORT}\n' + FULL_RUN + '#eval 1\n'):
+            with self.assertRaises(ValueError):
+                validate(source, qualify_full_run=True)
+
+    def test_full_run_cli_flag_cannot_mark_ordinary_preflight_artifacts(self):
+        command = [sys.executable, str(Path(__file__).with_name('policy_source.py')), '--stdin', '--qualify-full-run']
+        source = f'import {FULL_RUN_IMPORT}\n' + FULL_RUN
+        self.assertEqual(subprocess.run(command, input=source, text=True, capture_output=True).returncode, 0)
+        result = subprocess.run([*command, '--artifacts', '.'], input=source, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('cannot be used for ordinary preflight artifacts', result.stderr)
 
     def test_build_time_execution_and_trust_overrides_are_refused(self):
         payloads = ['#eval IO.println "canary"', 'run_cmd pure ()',

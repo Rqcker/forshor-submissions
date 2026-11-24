@@ -46,6 +46,7 @@ from site_engine import frontier as fr  # noqa: E402
 from site_engine import library as lib  # noqa: E402
 from tcost import score as ts  # noqa: E402
 from tcost import tables as tt  # noqa: E402
+from policy_options import check_coherent_export, check_table_options  # noqa: E402
 
 N = 2048
 SCHEMA = "forshor-starter.price/1"
@@ -137,6 +138,7 @@ def load(path: Path) -> tuple:
     doc = accept_point_order_alias(read_json(path), str(path))
     check_negation(doc)
     try:
+        check_table_options(doc)
         pols = accepted_policies(tt.policy_docs(doc))
     except tt.TableError as e:
         raise StarterError(f"{path}: not an accepted policy: {e}")
@@ -298,6 +300,10 @@ def forshor_doc(path: Path, delta: float = DEFAULT_DELTA) -> Dict[str, Any]:
         raise StarterError(f"{path}: expected a ForShor policy document (JSON object)")
     if doc.get("schema") != FORSHOR_SCHEMA:
         raise StarterError(f"{path}: schema {doc.get('schema')!r} is not {FORSHOR_SCHEMA!r} (a ForShor policy document)")
+    try:
+        check_coherent_export(doc)
+    except ValueError as error:
+        raise StarterError(f"{path}: {error}") from error
     check_negation(doc)
     rule = fa.doc_width_rule(doc)          # "exact": exact-width document (board IR); "scan": the default scan (cross-check IR)
     ref = json.loads((fa.REFERENCE_SCAN if rule == "scan" else fa.REFERENCE).read_text())

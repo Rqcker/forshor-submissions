@@ -13,6 +13,11 @@ const digest = text => createHash('sha256').update(text).digest('hex');
 
 const strictUtf8 = new TextDecoder('utf-8', { fatal: true });
 
+function requireOrdinaryExport(verification) {
+  if (Object.hasOwn(verification.printed ?? {}, 'submitted_full_run'))
+    throw new Error('Compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification');
+}
+
 async function content(github, context, path, ref, { strict = false } = {}) {
   const { data } = await github.rest.repos.getContent({ ...context.repo, path, ref });
   if (Array.isArray(data) || (data.type && data.type !== 'file') || data.encoding !== 'base64' || typeof data.content !== 'string')
@@ -45,6 +50,7 @@ async function accepted({ github, context, identity, readJson }) {
       || String(entry.source.run_id) !== receipt.runId || Number(entry.source.pr_number) !== receipt.pullRequest
       || !/^[1-9][0-9]*$/.test(receipt.runId) || !Number.isSafeInteger(receipt.runAttempt) || receipt.runAttempt < 1)
     throw new Error('Invalid archived policy verification identity');
+  requireOrdinaryExport(verification);
   return { receipt, verification, base };
 }
 
@@ -79,6 +85,7 @@ async function prepare({ github, context, core, run, pr, identity, result, recov
   execFileSync('python3', [path.join(__dirname, 'policy_source.py'), '--stdin'], {
     input: source, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'],
   });
+  requireOrdinaryExport(verification);
   // The summary is data: it must be the very file at the head commit, in both directions (none on either side means none on both), and it never changes the policy.
   const summaryHead = await summaryAt(github, context, SUMMARY, pr.headSha);
   const carriesSummary = ['summarySource', 'summarySha256', 'summaryBytes'].filter(key => verification[key] !== undefined);

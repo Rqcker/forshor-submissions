@@ -35,6 +35,7 @@ SUBMISSION = "TableGeneration/Submission/Policy.lean"
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "evaluation"))
 import summary_tex  # noqa: E402  (the shared rules for the optional summary file)
+from export_v2.attempt import AttemptBusy, exclusive_attempt  # noqa: E402
 
 SUMMARY = summary_tex.SUMMARY_PATH
 CHALLENGE = "forshor-policy"
@@ -110,6 +111,16 @@ def run(repo: Path, out_dir: Path, *, get_changed_files: Callable[[Path], Tuple[
     env = dict(os.environ if env is None else env)
     repo, out_dir = Path(repo).resolve(), Path(out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        # The wrapper owns cleanup and artifact reads; intake owns its own distinct locks.
+        with exclusive_attempt(out_dir / ".policy-verifier.lock") as lock_fd:
+            return _run(repo, out_dir, get_changed_files, env, intake, preflight, lock_fd)
+    except AttemptBusy as error:
+        print(f"policy verifier: {error}", file=sys.stderr)
+        return 2
+
+
+def _run(repo, out_dir, get_changed_files, env, intake, preflight, lock_fd):
     result_path = out_dir / "intake-result.json"
     receipt_path = out_dir / "verification.json"
     # Local checks reuse the output directory; only this invocation's artifacts count.
@@ -140,7 +151,7 @@ def run(repo: Path, out_dir: Path, *, get_changed_files: Callable[[Path], Tuple[
                 cmd += ["--mirror-timeout", env["POLICY_MIRROR_TIMEOUT"]]
             try:
                 with open(out_dir / "policy-verifier.log", "w") as log:
-                    proc = subprocess.run(cmd, cwd=repo, env=env, stdout=log, stderr=subprocess.STDOUT)
+                    proc = subprocess.run(cmd, cwd=repo, env=env, stdout=log, stderr=subprocess.STDOUT, pass_fds=(lock_fd,))
             except OSError as error:
                 got = {"failed": True, "error": f"could not start intake: {error}"}
             else:
@@ -166,6 +177,8 @@ def run(repo: Path, out_dir: Path, *, get_changed_files: Callable[[Path], Tuple[
                 checks.append(check("policy", True, f"ForShor's gate and build, the STO mirror at exact widths: accepted ({policy['mode']}, {policy['bands']} band(s))"))
             elif got.get("refused"):
                 checks.append(check(str(got.get("stage") or "refused"), False, str(got.get("reason") or "refused")[:900]))
+            elif got.get("failed") and got.get("stage") in ("memory", "timeout"):
+                checks.append(check(got["stage"], False, str(got.get("error") or "verification could not complete")[:900]))
             else:
                 checks.append(check("verification", False, "the verification could not complete (a tool failed, not a verdict on the policy): " + str(got.get("error") or "")[:900]))
     ok = all(c["status"] == "success" for c in checks)

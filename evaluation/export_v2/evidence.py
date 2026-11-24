@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from .attempt import exclusive_attempt
 from .canon import policy_digest, sha256_hex
 
 SCHEMA = "forshor.mirror-evidence/v1"
@@ -57,6 +58,14 @@ def _ran(pins: Dict[str, Optional[str]], model: Dict[str, Any]) -> Tuple[Optiona
     return {"lean": pins["lean"], "stoCommit": sto, "forshorPin": pins["forshorPin"]}, None
 
 
+def _policy_hash_problem(envelope_hash: Any, record_hash: Any) -> Optional[str]:
+    if not all(isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h) for h in (envelope_hash, record_hash)):
+        return "missing or malformed policy-file SHA-256"
+    if envelope_hash != record_hash:
+        return "the record checked a different file than the envelope names"
+    return None
+
+
 def stomirror_from_envelope(envelope: Dict[str, Any], policy_json: Dict[str, Any], model: Dict[str, Any], board: str) -> Result:
     """The contract's `stoMirror` evidence for `policy_json`, or (None, why not)."""
     if envelope.get("schema") != SCHEMA:
@@ -76,8 +85,10 @@ def stomirror_from_envelope(envelope: Dict[str, Any], policy_json: Dict[str, Any
         return None, "the record is not an exact-width check at the model's width"
     if rec.get("mode") != policy_json["mode"] or rec.get("bands") != [{"threshold": b["threshold"], "k": b["k"]} for b in policy_json["bands"]]:
         return None, "the record's mode or bands differ from the policy's"
-    if (envelope.get("policyFile") or {}).get("sha256") != rec.get("policy_sha256"):
-        return None, "the record checked a different file than the envelope names"
+    file = envelope.get("policyFile")
+    why = _policy_hash_problem(file.get("sha256") if isinstance(file, dict) else None, rec.get("policy_sha256"))
+    if why is not None:
+        return None, why
     ran, why = _ran(envelope.get("tree") or {}, model)
     if ran is None:
         return None, why
@@ -111,11 +122,13 @@ def stomirror_from_seed(rec: Dict[str, Any], model: Dict[str, Any]) -> Result:
 
 
 class EvidenceStore:
-    """Envelopes found in a directory, by policy digest."""
+    """Envelopes found in a directory, or only the envelope of the current attempt."""
 
-    def __init__(self, directory: Optional[Path] = None):
+    def __init__(self, directory: Optional[Path] = None, *, envelope: Optional[Dict[str, Any]] = None):
         self.by_digest: Dict[str, List[Dict[str, Any]]] = {}
-        if directory:
+        if isinstance(envelope, dict) and envelope.get("schema") == SCHEMA and isinstance(envelope.get("policyDigest"), str):
+            self.by_digest[envelope["policyDigest"]] = [envelope]
+        elif envelope is None and directory:
             for path in sorted(Path(directory).glob("*.json")):
                 env = json.loads(path.read_text())
                 if env.get("schema") == SCHEMA:
@@ -145,11 +158,26 @@ def run_mirror(policy_json: Dict[str, Any], board: str, tree: Path, out_dir: Pat
     ``fast`` passes `--fast` to either harness: it skips the interpreted report stage (hours for an 8-way band: the interpreter never memoises
     the closures a `State` is built from, so the cost doubles every ~10 operations) and lets the kernel certificate prove the ladder (see
     `check_banded_policy.py` and the fork's `check_ptp_policy.py`). The tree must have the option: trees from before it reject the argument."""
+    tree, out_dir = Path(tree).resolve(), Path(out_dir).resolve()
+    if not tree.is_dir():
+        raise NotADirectoryError(tree)
     out_dir.mkdir(parents=True, exist_ok=True)
+    # PTP generates source in the supplied tree; PP must not copy that tree mid-write.
+    with exclusive_attempt(tree) as tree_fd, exclusive_attempt(out_dir / ".mirror.lock") as out_fd:
+        return _run_mirror(policy_json, board, tree, out_dir, cap_gb, timeout, python, stage_timeout, fast, (tree_fd, out_fd))
+
+
+def _run_mirror(policy_json, board, tree, out_dir, cap_gb, timeout, python, stage_timeout, fast, lock_fds):
     digest = policy_digest(policy_json)
     policy_file = out_dir / f"{digest[:16]}.policy.json"
-    policy_file.write_text(json.dumps(policy_json, indent=1, ensure_ascii=False))
     record_file = out_dir / f"{digest[:16]}.record.json"
+    evidence_file = out_dir / f"{digest[:16]}.evidence.json"
+    # This invocation owns these outputs. A crash must not leave an earlier pass.
+    evidence_file.unlink(missing_ok=True)
+    record_file.unlink(missing_ok=True)
+    policy_bytes = json.dumps(policy_json, indent=1, ensure_ascii=False).encode("utf-8")
+    policy_file.write_bytes(policy_bytes)
+    policy_sha256 = hashlib.sha256(policy_bytes).hexdigest()
     script = "check_ptp_policy.py" if board == "ptp" else "check_banded_policy.py"
     # The harness runs lake and `lean --run` underneath it, and when its own stage times out it leaves the interpreter running (full CPU,
     # and it blocks the next check). So it gets its own process group, and the whole group is swept when it ends, however it ends.
@@ -162,20 +190,37 @@ def run_mirror(policy_json: Dict[str, Any], board: str, tree: Path, out_dir: Pat
                                  "--cap-gb", str(cap_gb), "--out", str(record_file)] + (["--timeout", str(stage_timeout)] if stage_timeout else [])
                                 + (["--fast"] if fast else []),
                                 cwd=tree, stdout=log, stderr=subprocess.STDOUT,
-                                start_new_session=True)
+                                 start_new_session=True, pass_fds=lock_fds)
+        timed_out = None
         try:
             proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired as error:
+            timed_out = error
         finally:
             try:
                 os.killpg(proc.pid, signal.SIGKILL)   # timed out, or a leaked `lean --run` outlived the harness; an empty group is not found
             except ProcessLookupError:
                 pass
             proc.wait()
+    if timed_out:
+        record_file.unlink(missing_ok=True)
+        raise timed_out
     if not record_file.exists():
         raise RuntimeError(f"the harness wrote no record (exit {proc.returncode}): {log_file.read_text()[-400:]}")
     record = json.loads(record_file.read_text())
+    if not isinstance(record, dict):
+        raise RuntimeError("the harness did not write a usable record")
+    if proc.returncode and record.get("verdict") == "accepted":
+        record_file.unlink()
+        raise RuntimeError(f"the harness returned an accepted record but exited {proc.returncode}")
+    if record.get("verdict") == "accepted":
+        why = ("the submitted policy file changed during the mirror attempt" if policy_file.read_bytes() != policy_bytes
+               else _policy_hash_problem(policy_sha256, record.get("policy_sha256")))
+        if why is not None:
+            record_file.unlink()
+            raise RuntimeError(why)
     envelope = {"schema": SCHEMA, "policyDigest": digest,
-                "policyFile": {"name": policy_file.name, "sha256": hashlib.sha256(policy_file.read_bytes()).hexdigest()},
+                 "policyFile": {"name": policy_file.name, "sha256": policy_sha256},
                 "harness": HARNESS[board], "record": record, "tree": tree_pins(tree)}
-    (out_dir / f"{digest[:16]}.evidence.json").write_text(json.dumps(envelope, indent=1, ensure_ascii=False))
+    evidence_file.write_text(json.dumps(envelope, indent=1, ensure_ascii=False))
     return envelope

@@ -3,11 +3,13 @@ Needs the vendored engine and its Python environment: python -m pytest export_v2
 The evidence is a REAL archived envelope (the PhaseProduct baseline 6f036362, accepted at the epoch's pins), so a stubbed mirror run hands back
 what the harness really produced for that exact policy."""
 import copy
+from concurrent.futures import ThreadPoolExecutor
 import json
 import re
 import shutil
 import sys
 from pathlib import Path
+from threading import Event
 
 import pytest
 
@@ -163,6 +165,73 @@ def test_a_policy_the_harness_does_not_accept_is_refused_with_its_stage_and_noth
     assert not any(u.endswith("/v2/publish") for u, _ in calls if isinstance(u, str))
 
 
+@pytest.mark.parametrize("stage", ["memory", "timeout"])
+def test_inner_mirror_resource_stop_is_incomplete_and_leaves_no_receipt(tmp_path, monkeypatch, policy_doc, stage):
+    from export_v2 import evidence
+    policy = tmp_path / "policy.json"
+    policy.write_text(json.dumps(policy_doc))
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text(json.dumps({"schema": intake_v2.VERIFICATION_SCHEMA}))
+    result = tmp_path / "result.json"
+    monkeypatch.delenv("PUBLISHER_URL", raising=False)
+
+    def stop(*args, **kwargs):
+        env = archived_mirror([])(*args, **kwargs)
+        env["record"].update(verdict="rejected", rejection={"stage": stage, "reason": "replay limit reached"})
+        return env
+
+    monkeypatch.setattr(evidence, "run_mirror", stop)
+    assert intake_v2.main(["--policy", str(policy), "--no-publish", "--login", "tester", "--tree", str(tmp_path),
+                           "--workdir", str(tmp_path / "work"), "--verification-out", str(receipt), "--out", str(result)]) == 2
+    got = json.loads(result.read_text())
+    assert got["failed"] and got["stage"] == stage and "not a verdict" in got["error"]
+    assert "refused" not in got and not receipt.exists()
+
+
+def test_an_overlapping_cli_attempt_cannot_replace_the_active_receipt_or_result(tmp_path, monkeypatch):
+    source, second = tmp_path / "first.lean", tmp_path / "second.lean"
+    source.write_bytes(b"namespace PolicySubmission\r\n-- first\r\n")
+    second.write_text("namespace PolicySubmission\n-- other submission\n")
+    receipt, result = tmp_path / "receipt.json", tmp_path / "result.json"
+    entered, release = Event(), Event()
+    monkeypatch.delenv("PUBLISHER_URL", raising=False)
+
+    def verify(_doc, *, lean_policy, **kw):
+        assert lean_policy.encode() == source.read_bytes()
+        entered.set()
+        assert release.wait(5)
+        return {"schema": intake_v2.VERIFICATION_SCHEMA, "mode": "pair", "digest": "a" * 64, "policy": {"bands": []},
+                "forshor": None, "printed": None, "leanSource": lean_policy}
+
+    monkeypatch.setattr(intake_v2, "verify_submission", verify)
+    common = ["--no-publish", "--login", "tester", "--tree", str(tmp_path), "--verification-out", str(receipt), "--out", str(result)]
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        running = pool.submit(intake_v2.main, [*common, "--lean-policy", str(source), "--workdir", str(tmp_path / "one")])
+        try:
+            assert entered.wait(5)
+            assert intake_v2.main([*common, "--lean-policy", str(second), "--workdir", str(tmp_path / "two")]) == 2
+            assert not receipt.exists() and not result.exists()
+        finally:
+            release.set()
+        assert running.result(timeout=5) == 0
+    assert json.loads(receipt.read_text())["leanSource"].encode() == source.read_bytes()
+    assert json.loads(result.read_text())["verified"]
+
+
+def test_busy_compile_and_verification_workdirs_fail_before_running(tmp_path, monkeypatch):
+    def unexpected(*args, **kwargs):
+        pytest.fail("an attempt doesn't own the workdir")
+
+    monkeypatch.setattr(intake_v2, "_forshor_build", unexpected)
+    monkeypatch.setattr(intake_v2, "_verify_submission", unexpected)
+    with intake_v2.exclusive_attempt(tmp_path / ".forshor-build.lock"):
+        with pytest.raises(intake_v2.AttemptBusy):
+            intake_v2.forshor_build(tmp_path, "Policy.lean", tmp_path)
+    with intake_v2.exclusive_attempt(tmp_path / ".verification.lock"):
+        with pytest.raises(intake_v2.AttemptBusy):
+            intake_v2.verify_submission({}, login="tester", tree=tmp_path, workdir=tmp_path)
+
+
 def test_extra_keys_and_a_declared_ladder_are_dropped_before_anything_runs(policy_doc):
     noisy = {**policy_doc, "declared_ladder": [[2048, 6]], "widths": "scan", "note": "x"}
     assert intake_v2.normalise(noisy) == intake_v2.normalise(policy_doc)
@@ -249,26 +318,43 @@ def test_unsupported_lean_bands_name_the_rule_before_table_conversion(monkeypatc
 
 
 @pytest.mark.parametrize("step,reason", [("build", "Lean build"), ("exe", "circuit extraction")])
-def test_forshor_timeout_is_incomplete_not_a_failed_proof(monkeypatch, tmp_path, step, reason):
+@pytest.mark.parametrize("timeout", [True, False], ids=["timeout", "proof-refusal"])
+def test_forshor_timeout_is_incomplete_not_a_failed_proof(monkeypatch, tmp_path, step, reason, timeout):
     tree = tmp_path / "source"
     template = tree / "ForShor/ShorVerification/Submission/PolicyTemplate.lean"
     template.parent.mkdir(parents=True)
     template.write_text("-- test template\n")
     work = tmp_path / "work"
     work.mkdir()
+    source, result = tmp_path / "Policy.lean", tmp_path / "result.json"
+    source.write_text("namespace PolicySubmission\n")
+    receipt = work / "verification.json"
+    receipt.write_text(json.dumps({"schema": intake_v2.VERIFICATION_SCHEMA}))
+    monkeypatch.delenv("PUBLISHER_URL", raising=False)
     real_run = intake_v2.subprocess.run
 
     def process(args, **kwargs):
         if args[:2] == ["lake", step]:
-            raise intake_v2.subprocess.TimeoutExpired(args, 1)
+            if timeout:
+                raise intake_v2.subprocess.TimeoutExpired(args, kwargs["timeout"])
+            if step == "build":
+                print("error: proof failed", file=kwargs["stdout"])
+            return intake_v2.subprocess.CompletedProcess(args, 1, "", "proof failed")
         if args[0] in {"lake", "bash"}:
             return intake_v2.subprocess.CompletedProcess(args, 0)
         return real_run(args, **kwargs)
 
     monkeypatch.setattr(intake_v2.subprocess, "run", process)
-    with pytest.raises(intake_v2.Refused, match=reason) as err:
-        intake_v2.forshor_build(tree, "namespace PolicySubmission", work, timeout=1)
-    assert err.value.stage == "timeout"
+    code = intake_v2.main(["--no-publish", "--login", "tester", "--lean-policy", str(source), "--tree", str(tmp_path),
+                           "--forshor-tree", str(tree), "--workdir", str(work), "--out", str(result)])
+    got = json.loads(result.read_text())
+    if timeout:
+        assert code == 2 and got["failed"] and got["stage"] == "timeout" and "refused" not in got
+        assert reason in got["error"] and "not a verdict" in got["error"]
+    else:
+        assert code == 1 and got["refused"] and got["stage"] == "forshor" and "failed" not in got
+        assert "proof failed" in got["reason"]
+    assert not receipt.exists()
 
 
 def test_the_lexical_gate_refuses_before_anything_is_built(tmp_path):
@@ -389,7 +475,8 @@ def test_a_verification_published_by_another_job_gives_the_same_row_as_one_call(
 
 
 def test_nothing_in_a_verification_is_trusted(monkeypatch, tmp_path, model, policy_doc):
-    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, [], number=1))
+    calls = []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls, number=1))
     good = json.loads(json.dumps(intake_v2.verify_submission(policy_doc, login="tester", tree=tmp_path, workdir=tmp_path / "w", run_mirror_fn=archived_mirror([]), log=lambda s: None)))
     pub = lambda v, login="tester", n=0: intake_v2.publish_verification(v, login=login, pull=9, url="http://x", token="t", workdir=tmp_path / f"p{n}", log=lambda s: None)
     with pytest.raises(intake_v2.Refused, match="another handle"):
@@ -404,12 +491,17 @@ def test_nothing_in_a_verification_is_trusted(monkeypatch, tmp_path, model, poli
         pub(stale, n=3)
     forged = copy.deepcopy(good)
     forged["envelope"]["record"]["verdict"] = "rejected"
+    older = tmp_path / "p4" / "evidence" / "prior.evidence.json"
+    older.parent.mkdir(parents=True)
+    older.write_text(json.dumps(good["envelope"]))
     with pytest.raises(intake_v2.Refused, match="mirror"):
         pub(forged, n=4)
+    assert json.loads(older.read_text()) == good["envelope"]
     swapped = copy.deepcopy(good)
     swapped["envelope"]["policyDigest"] = "0" * 64                 # evidence for another policy
     with pytest.raises(intake_v2.Refused, match="mirror"):
         pub(swapped, n=5)
+    assert not any(url.endswith("/v2/publish") for url, _ in calls)
     assert pub(good, n=6)["published"]
 
 
@@ -581,7 +673,9 @@ def test_the_command_line_reads_the_summary_as_bytes_and_refuses_a_bad_one_befor
     summary = tmp_path / "summary.tex"
     summary.write_bytes(HOSTILE.encode())
     seen = {}
-    monkeypatch.setattr(intake_v2, "verify_submission", lambda doc, **kw: seen.update(kw) or {"digest": "d" * 16, "mode": "pair", "policy": {"bands": []}, "forshor": None, "printed": None})
+    monkeypatch.setattr(intake_v2, "verify_submission", lambda doc, **kw: seen.update(kw) or {
+        "schema": intake_v2.VERIFICATION_SCHEMA, "digest": "d" * 16, "mode": "pair", "policy": {"bands": []},
+        "forshor": None, "printed": None})
     base = ["--lean-policy", str(lean), "--no-publish", "--login", "u", "--tree", str(tmp_path), "--forshor-tree", str(tmp_path), "--workdir", str(tmp_path / "w"),
             "--verification-out", str(tmp_path / "v.json")]
     assert intake_v2.main([*base, "--summary", str(summary)]) == 0

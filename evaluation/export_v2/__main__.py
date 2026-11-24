@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from . import engine
+from .attempt import exclusive_attempt
 from .canon import policy_digest
 from .evidence import EvidenceStore, run_mirror
 
@@ -77,8 +78,9 @@ def main(argv=None) -> int:
         manifest = [{"digest": d, "board": b, "reason": w, "file": f"{d[:16]}.policy.json"} for d, (b, _p, w) in missing.items()]
         (out / "needed.json").write_text(json.dumps({"distinct": len(policies), "withoutEvidence": len(missing), "policies": manifest}, indent=1))
         if a.command == "evidence-needed":
-            for d, (b, pj, w) in missing.items():
-                (out / f"{d[:16]}.policy.json").write_text(json.dumps(pj, indent=1, ensure_ascii=False))
+            with exclusive_attempt(out / ".mirror.lock"):
+                for d, (b, pj, w) in missing.items():
+                    (out / f"{d[:16]}.policy.json").write_text(json.dumps(pj, indent=1, ensure_ascii=False))
             print(f"{len(policies)} distinct planner policies, {len(missing)} without valid evidence for this epoch; see {out/'needed.json'}")
         else:
             for d, (b, pj, w) in missing.items():

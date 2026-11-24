@@ -108,6 +108,7 @@ def full_run_of(view: Raw, lean_peak: Any = False) -> Raw:
     cc = f["cross_checks"]
     return {
         "T": f["T"], "TBase": f["T_base"], "rotations": f["rotations"], "tPerRotation": f["T_per_rotation"], "eps": f["eps"],
+        **({"readout": f["readout"]} if "readout" in f else {}),
         "toffoli": f["toffoli"], "clifford": f["clifford"], "cnot": f["cnot"],
         "qubits": f["qubits_peak"], "qubitsLayout": f["qubits_layout"], "peakExtra": f["peak_extra"],
         "qubitsLabel": peak_label(lean_peak), "qubitsRule": peak_rule(lean_peak),
@@ -225,9 +226,10 @@ def row_of(panel: Raw, *, origin: str, name: str, created_at: str, pull_request_
     """A ledger row (no rank): the numbers a board shows, taken from the panel they came from."""
     full = panel["fullRun"]
     label = full["ladderLabel"] if full else panel["ladderLabel"]
+    price = full.get("readout", full) if full else panel
     return {
-        "rowId": panel["rowId"], "origin": origin, "name": name, "T": full["T"] if full else panel["T"],
-        "qubits": full["qubits"] if full else panel["qubits"], "ladder": ladder_of(label), "ladderLabel": label,
+        "rowId": panel["rowId"], "origin": origin, "name": name, "T": price["T"],
+        "qubits": price["qubits"], "ladder": ladder_of(label), "ladderLabel": label,
         "createdAt": created_at, "pullRequestUrl": pull_request_url, "submissionId": submission_id,
         "trust": trust_of(panel["verification"]), "detail": detail,
     }

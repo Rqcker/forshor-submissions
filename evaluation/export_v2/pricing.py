@@ -34,7 +34,7 @@ def _fix_bands_used(view: Dict[str, Any]) -> None:
         b["used_at_n"] = b["digest"] in used
 
 
-def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str]) -> Dict[str, Dict[str, Any]]:
+def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], *, measured: bool = False) -> Dict[str, Dict[str, Any]]:
     """Views for a `tcost` Policy at one delta: 'pp' or 'ptp' is the single-product view; 'full' adds the whole run's pricing.
     The policy is priced at the exact widths the boards use."""
     eng = engine.load()
@@ -48,6 +48,9 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str]) 
             full = eng.fullalg.price_full(P, N, delta, detail=True)
             view = eng.policy_view.view(P, N, delta, f"{title}, full order finding, n = {N}")
             view["full"] = {k: full.get(k) for k in FULL_KEYS}
+            if measured:
+                from .readout_overlay import project
+                view["full"]["readout"] = project(P, full)
             view["usage"], view["tables_used"] = full.get("usage"), full.get("tables_used")
             view["tables"] = _all_tables(eng, P)
             _fix_bands_used(view)

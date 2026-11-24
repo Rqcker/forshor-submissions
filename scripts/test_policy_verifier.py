@@ -1,10 +1,15 @@
 """The policy verifier: which files it takes, what only the submission file may be, and how the intake's three outcomes become the result `./forshor check` reads.
 The intake itself (Lean, the mirror, ForShor) is stubbed: it is tested in evaluation/export_v2/pytests/test_intake_v2.py and was run for real on both boards."""
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import redirect_stderr
+from io import StringIO
 import json
 from pathlib import Path
 import sys
 import tempfile
+from threading import Event
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 import policy_verifier as pv  # noqa: E402
@@ -87,6 +92,51 @@ class PolicyVerifier(unittest.TestCase):
         self.assertIn("no usable result (exit 2)", result["checks"][-1]["details"])
         self.assertFalse((self.out / "verification.json").exists())
 
+    def test_overlapping_wrappers_do_not_touch_the_active_owners_outputs(self):
+        import verifier
+
+        self.write(PP)
+        changed = lambda _: (True, [pv.SUBMISSION], "Compared base...head.")
+        command = stub(self.tmp, {"verified": True, "policy": {"digest": "a" * 64, "mode": "PhaseProduct", "bands": 1}})
+        ready, release = Event(), Event()
+        real_run = pv.subprocess.run
+
+        def pause_before_read(*args, **kwargs):
+            proc = real_run(*args, **kwargs)
+            ready.set()  # The child wrote the receipt and result, but the owner has not read them yet.
+            self.assertTrue(release.wait(5))
+            return proc
+
+        read_text, read_bytes = Path.read_text, Path.read_bytes
+
+        def no_read(read):
+            def checked(path, *args, **kwargs):
+                self.assertFalse(path.resolve().is_relative_to(self.out.resolve()), f"contender read {path}")
+                return read(path, *args, **kwargs)
+            return checked
+
+        with patch.object(pv.subprocess, "run", pause_before_read), ThreadPoolExecutor(max_workers=1) as pool:
+            owner = pool.submit(pv.run, self.repo, self.out, get_changed_files=changed,
+                                env={"FORSHOR_TREE": str(self.tmp / "forshor")}, intake=command)
+            try:
+                self.assertTrue(ready.wait(5))
+                before = {p.name: p.read_bytes() for p in self.out.iterdir()}
+                self.assertIn("verification.json", before)
+                self.assertIn("intake-result.json", before)
+                stderr = StringIO()
+                argv = ["verifier.py", "--repo", str(self.repo), "--out-dir", str(self.out)]
+                with (redirect_stderr(stderr), patch.object(Path, "read_text", no_read(read_text)),
+                      patch.object(Path, "read_bytes", no_read(read_bytes)), patch.object(sys, "argv", argv)):
+                    self.assertEqual(pv.run(self.repo, self.out, get_changed_files=changed, preflight=True), 2)
+                    self.assertEqual(verifier.main(), 2)
+                self.assertEqual(stderr.getvalue().count("another verification attempt owns"), 2)
+                self.assertEqual({p.name: p.read_bytes() for p in self.out.iterdir()}, before)
+            finally:
+                release.set()
+            self.assertEqual(owner.result(timeout=5), 0)
+        self.assertEqual(json.loads((self.out / "table-generation-submission-result.json").read_text())["status"], "success")
+        self.assertEqual(pv.run(self.repo, self.out, get_changed_files=changed, preflight=True), 0)
+
     def test_success_receipt_from_a_failed_process_is_not_accepted(self):
         self.write(PP)
         command = stub(self.tmp, {"verified": True, "policy": {"digest": "a" * 64, "mode": "PhaseProduct", "bands": 1}})
@@ -121,9 +171,12 @@ class PolicyVerifier(unittest.TestCase):
 
     def test_timeout_is_not_a_verdict_in_the_shared_summary(self):
         self.write(PP)
-        code, result = self.run_pv({"refused": True, "stage": "timeout", "reason": "circuit extraction reached its time limit"})
-        self.assertEqual((code, result["checks"][-1]["name"]), (1, "timeout"))
-        self.assertIn("Stopped: time limit reached.** This is not a verdict", (self.out / "table-generation-summary.md").read_text())
+        for outcome in ({"refused": True, "reason": "circuit extraction reached its time limit"},
+                        {"failed": True, "error": "circuit extraction reached its time limit"}):
+            with self.subTest(outcome=outcome):
+                code, result = self.run_pv({**outcome, "stage": "timeout"})
+                self.assertEqual((code, result["checks"][-1]["name"], result["verification"]), (1, "timeout", None))
+                self.assertIn("Stopped: time limit reached.** This is not a verdict", (self.out / "table-generation-summary.md").read_text())
 
     def test_the_trusted_environment_must_be_prepared(self):
         self.write(PP)

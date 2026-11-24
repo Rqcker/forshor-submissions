@@ -1,10 +1,13 @@
 """Run from evaluation/: python -m pytest export_v2/pytests -q. The engine and Lean are NOT needed: the harness is a stub."""
 import copy
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
+import subprocess
 import sys
 import textwrap
 from pathlib import Path
+from threading import Event
 
 import pytest
 
@@ -87,6 +90,54 @@ def test_evidence_that_is_not_bound_accepted_exact_and_for_this_policy_is_refuse
     assert got is None and expected in why, (name, why)
 
 
+@pytest.mark.parametrize("hash_pair", [(None, None), ("no", "no"), ("b" * 64, None), (None, "b" * 64)])
+def test_an_envelope_requires_two_valid_policy_file_hashes(tmp_path, hash_pair):
+    env = envelope(tmp_path)
+    env["policyFile"]["sha256"], env["record"]["policy_sha256"] = hash_pair
+    for obj, key in ((env["policyFile"], "sha256"), (env["record"], "policy_sha256")):
+        if obj[key] is None:
+            del obj[key]
+    assert evidence.stomirror_from_envelope(env, PP_POLICY, MODEL, "pp") == (None, "missing or malformed policy-file SHA-256")
+
+
+@pytest.mark.parametrize("modified, reason", [
+    ('rec["policy_sha256"] = "0" * 64', "checked a different file"),
+    ('policy.write_text(policy.read_text() + " "); rec["policy_sha256"] = hashlib.sha256(policy.read_bytes()).hexdigest()', "file changed during"),
+])
+def test_fresh_mirror_checks_the_original_actual_policy_bytes(tmp_path, modified, reason):
+    out = tmp_path / "out"
+    tree = make_tree(tmp_path, stub=STUB.replace("out.write_text", modified + "\nout.write_text"))
+    with pytest.raises(RuntimeError, match=reason):
+        evidence.run_mirror(PP_POLICY, "pp", tree, out)
+    assert not list(out.glob("*.evidence.json")) and not list(out.glob("*.record.json"))
+    assert list(out.glob("*.harness.log"))
+
+
+def test_overlapping_mirrors_do_not_share_outputs_or_the_in_place_ptp_tree(tmp_path, monkeypatch):
+    tree, other_tree = make_tree(tmp_path / "one"), make_tree(tmp_path / "two")
+    out, entered, release = tmp_path / "out", Event(), Event()
+    popen = subprocess.Popen
+
+    def pause(*args, **kwargs):
+        entered.set()
+        assert release.wait(5)
+        return popen(*args, **kwargs)
+
+    monkeypatch.setattr(evidence.subprocess, "Popen", pause)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        running = pool.submit(evidence.run_mirror, PTP_POLICY, "ptp", tree, out)
+        try:
+            assert entered.wait(5)
+            with pytest.raises(RuntimeError, match="another verification attempt owns"):
+                evidence.run_mirror(PTP_POLICY, "ptp", tree, tmp_path / "different-output")
+            with pytest.raises(RuntimeError, match="another verification attempt owns"):
+                evidence.run_mirror({**PTP_POLICY, "name": "wrong attempt"}, "ptp", other_tree, out)
+        finally:
+            release.set()
+        got = running.result(timeout=5)
+    assert evidence.stomirror_from_envelope(got, PTP_POLICY, MODEL, "ptp")[0]
+
+
 @pytest.mark.parametrize("kwargs,expected", [
     ({"lean": "leanprover/lean4:v4.28.0"}, "v4.28.0"),
     ({"pin": "f" * 40}, "ForShor fffffffff"),
@@ -105,6 +156,19 @@ def test_the_runner_records_a_rejection_and_fails_loudly_without_a_record(tmp_pa
     silent = make_tree(tmp_path / "x", stub="import sys; sys.exit(3)")
     with pytest.raises(RuntimeError, match="no record"):
         evidence.run_mirror(PP_POLICY, "pp", silent, tmp_path / "o2")
+
+
+@pytest.mark.parametrize("stub,timeout,failure", [
+    ("raise SystemExit(3)", 5, RuntimeError),
+    ("import time; time.sleep(5)", 0.05, subprocess.TimeoutExpired),
+    (STUB.replace('sys.exit(0 if verdict == "accepted" else 1)', 'sys.exit(3)'), 5, RuntimeError),
+])
+def test_failed_mirror_cannot_reuse_prior_success(tmp_path, stub, timeout, failure):
+    out = tmp_path / "out"
+    evidence.run_mirror(PP_POLICY, "pp", make_tree(tmp_path / "success"), out)
+    with pytest.raises(failure):
+        evidence.run_mirror(PP_POLICY, "pp", make_tree(tmp_path / "failure", stub=stub), out, timeout=timeout)
+    assert not list(out.glob("*.evidence.json")) and not list(out.glob("*.record.json"))
 
 
 def test_the_store_finds_evidence_by_policy_and_explains_what_is_missing(tmp_path):
