@@ -109,6 +109,11 @@ def full_run_of(view: Raw, lean_peak: Any = False) -> Raw:
     return {
         "T": f["T"], "TBase": f["T_base"], "rotations": f["rotations"], "tPerRotation": f["T_per_rotation"], "eps": f["eps"],
         **({"readout": f["readout"]} if "readout" in f else {}),
+        # Same shape as `readout` directly above: present only when `price_views` was given a full-run design, so every
+        # panel priced without one -- which is every panel ever published -- is byte-identical. The projection is carried
+        # as evidence beside the engine's own price; it does NOT replace it (`price` at :229 still reads `readout`, not
+        # `qft`), because a full-run design is a nonpublishing qualification.
+        **({"qft": f["qft"]} if "qft" in f else {}),
         "toffoli": f["toffoli"], "clifford": f["clifford"], "cnot": f["cnot"],
         "qubits": f["qubits_peak"], "qubitsLayout": f["qubits_layout"], "peakExtra": f["peak_extra"],
         "qubitsLabel": peak_label(lean_peak), "qubitsRule": peak_rule(lean_peak),

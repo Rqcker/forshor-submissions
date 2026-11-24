@@ -1,7 +1,7 @@
 """Price one policy with the engine: the raw views `mapping.panel_of` turns into panels."""
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable, Optional
 
 from . import engine
 from .mapping import DELTA_VALUES
@@ -34,23 +34,47 @@ def _fix_bands_used(view: Dict[str, Any]) -> None:
         b["used_at_n"] = b["digest"] in used
 
 
-def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], *, measured: bool = False) -> Dict[str, Dict[str, Any]]:
+def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], *, measured: bool = False,
+                design: Optional[Dict[str, Any]] = None, pricer: Optional[Callable[..., Any]] = None) -> Dict[str, Dict[str, Any]]:
     """Views for a `tcost` Policy at one delta: 'pp' or 'ptp' is the single-product view; 'full' adds the whole run's pricing.
-    The policy is priced at the exact widths the boards use."""
+    The policy is priced at the exact widths the boards use.
+
+    `design` is the compiled full-run QFT design (`full_run_design.design_of`), or None for no design at all, which is the
+    engine's default and reproduces every published price byte for byte: with None the full-run pricer is called with exactly
+    the arguments it was called with before this parameter existed, not with `design=None`. `pricer` replaces
+    `fullalg.price_full` (a test seam).
+
+    A design is NEVER passed to the full-run pricer. Lane WM qualified the design axis as an out-of-engine OVERLAY
+    (`qft_overlay.project`, constructing in-epoch `ReferenceQFT` with a Coppersmith `k_max` band) precisely because any edit
+    to `evaluation/engine` -- including an additive `design=` parameter, including a comment -- moves `dataFingerprint` and
+    `engineRevision` and so the epoch (`qft_overlay` module docstring: appending one comment line to `site_engine/fullalg.py`
+    moves ab1f8887b1b50e56 to d3bda33d5ddd5dca). So the engine prices the coherent reference exactly as it always did and the
+    design is applied on top of that frozen result, mirroring the `measured` readout hook directly above."""
     eng = engine.load()
     delta = DELTA_VALUES[delta_key]
     P = policy.with_widths("exact")
+    boards = list(boards)
+    if design is not None:
+        # The QFT design surface is qualified at one precision only (QFT-SURFACE-MAPPING.md section 1).
+        if delta_key != "1e-2":
+            raise ValueError(f"a full-run design is priced at delta 1e-2 only, not {delta_key}")
+        if "full" not in boards:
+            raise ValueError("a full-run design belongs to the full order-finding board, which is not being priced")
+    price_full = pricer or eng.fullalg.price_full
     out: Dict[str, Dict[str, Any]] = {}
     for board in boards:
         if board == "full":
             if P.mode != eng.tables.PAIR:
                 raise ValueError("only a PhaseProduct policy is priced on the full order-finding board")
-            full = eng.fullalg.price_full(P, N, delta, detail=True)
+            full = price_full(P, N, delta, detail=True)
             view = eng.policy_view.view(P, N, delta, f"{title}, full order finding, n = {N}")
             view["full"] = {k: full.get(k) for k in FULL_KEYS}
             if measured:
                 from .readout_overlay import project
                 view["full"]["readout"] = project(P, full)
+            if design is not None:
+                from .qft_overlay import project
+                view["full"]["qft"] = project(P, full, design)
             view["usage"], view["tables_used"] = full.get("usage"), full.get("tables_used")
             view["tables"] = _all_tables(eng, P)
             _fix_bands_used(view)

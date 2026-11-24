@@ -9,7 +9,7 @@ from hashlib import sha256
 import re
 from typing import Any, Callable, Dict, List, Optional
 
-from . import engine, epoch, mapping, pricing
+from . import engine, epoch, full_run_design, mapping, pricing
 from .canon import epoch_of, policy_digest, sha256_hex
 from .evidence import EvidenceStore, forshor_from_seed, stomirror_from_envelope  # noqa: F401  (ForShor evidence for new runs comes with policy intake)
 
@@ -45,7 +45,7 @@ def build_measured_request(policy_json: Dict[str, Any], *, compiled, verifier_pi
     if policy.mode != eng.tables.PAIR or epoch_of(model) != EPOCH:
         raise ValueError("measured pricing supports only PhaseProduct under the current epoch")
     evidence = bind_compiled_readout(policy, compiled, verifier_pin=verifier_pin, lean_source=lean_source)
-    return _build_request(policy_json, model=model, readout=evidence,
+    return _build_request(policy_json, model=model, readout=evidence, full_run=full_run_design.selection_of(compiled),
                           primitive_from=primitive_from, **request_args)
 
 
@@ -120,12 +120,19 @@ def rehearse_qualified_request(receipt, *, source: bytes, compiled_sha256, index
     primitive_from = plan_readout_variant(index, digest=digest, login=github_login, head_sha=head_sha,
                                          readout=mode, published_ids=published_ids)
     return _build_request(policy_json, model=model, head_sha=head_sha, github_login=github_login, store=store,
-                          readout=readout, primitive_from=primitive_from, **request_args)
+                          readout=readout, full_run=full_run_design.selection_of(document),
+                          primitive_from=primitive_from, **request_args)
 
 
 def _build_request(policy_json, *, model, store, head_sha, pull_number, github_login, run_id, submitted_at, evaluated_at,
                    archive_commit, accepted_ids, evaluation_key, base_generation, number, forshor=None,
-                   readout=None, primitive_from=None, log=lambda s: None):
+                   readout=None, full_run=None, primitive_from=None, log=lambda s: None):
+    # First, before any evidence lookup or any pricing: a compiled selection this pipeline cannot convert is
+    # reported, never priced as the default, and no part of a request is built for it. A selection that DOES
+    # convert is threaded to the full-run pricer below; a publish request prices all four deltas and the QFT
+    # design surface is qualified at 1e-2 only, so `price_views` refuses it at 3e-4 -- which is the recorded
+    # position that a full-run design is a nonpublishing qualification, not a publishable price.
+    design = full_run_design.design_of(full_run)
     eng = engine.load()
     policy = eng.tables.Policy.from_json(policy_json)
     if primitive_from is not None and (not isinstance(primitive_from, str) or not re.fullmatch(r"[0-9a-f]{40}", primitive_from)
@@ -145,7 +152,8 @@ def _build_request(policy_json, *, model, store, head_sha, pull_number, github_l
     pr_url = f"https://github.com/{SUBMISSIONS_REPO}/pull/{pull_number}"
     priced = []
     for delta in mapping.DELTA_KEYS:
-        views = pricing.price_views(policy, f"Submission {head_sha[:12]}", delta, boards, **({"measured": True} if readout else {}))
+        views = pricing.price_views(policy, f"Submission {head_sha[:12]}", delta, boards,
+                                    **({"measured": True} if readout else {}), **({"design": design} if design else {}))
         for board in boards:
             log(f"priced {board} {delta}")
             detail = mapping.panel_path(epoch, head_sha, board, delta)
