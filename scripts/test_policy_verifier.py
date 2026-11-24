@@ -216,6 +216,80 @@ class PolicyVerifier(unittest.TestCase):
 HOSTILE = ("\\documentclass{article}\n\\immediate\\write18{touch CANARY}\n\\input{/etc/passwd}\n@everyone <script>alert(1)</script> ```\n" + "x" * 60000 + "\r\n\tend\n")
 
 
+
+class ReadoutQualification(unittest.TestCase):
+    """`--qualify-readout` is what makes the verifier job produce a receipt the publisher can accept (lane XN).
+
+    Without it the two-job route refuses every measured submission while the in-run route accepts it, which is the
+    asymmetry lane XH's origin check exists to remove. The flag must therefore be set on exactly the policies
+    `intake_v2.refuse_unqualified_design` would otherwise refuse for want of it -- no wider, no narrower.
+    """
+
+    DEFAULT = "def submittedDesign : Shor.SubmissionDesign := { readout := .coherent }"
+    OPT_IN = "def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }"
+
+    def policy(self, body=""):
+        return f"import ForShor.X\nnamespace PolicySubmission\n{body}\ndef policy := 1\nend PolicySubmission\n"
+
+    def test_the_flag_is_set_for_a_declared_non_default_readout_design(self):
+        self.assertTrue(pv.wants_readout_qualification(self.policy(self.OPT_IN)))
+
+    def test_the_flag_is_not_set_without_a_design(self):
+        self.assertFalse(pv.wants_readout_qualification(self.policy()))
+
+    def test_an_explicit_default_is_identical_to_omission(self):
+        """Owner ruling 2026-11-24. The source gate blanks it, so it must not ask for qualification either."""
+        self.assertFalse(pv.wants_readout_qualification(self.policy(self.DEFAULT)))
+
+    def test_a_design_named_only_in_a_comment_does_not_ask_for_qualification(self):
+        """`default_selectors` documents that it takes comment-stripped source; the strip is not optional."""
+        for commented in (f"-- {self.OPT_IN}", f"/- {self.OPT_IN} -/"):
+            self.assertFalse(pv.wants_readout_qualification(self.policy(commented)), commented)
+
+    def test_the_flag_agrees_exactly_with_the_refusal_it_exists_to_avoid(self):
+        """The invariant: ask for qualification precisely when intake would refuse for want of it. A second
+        spelling of the recogniser that drifted either way would reopen the asymmetry or refuse valid work."""
+        sys.path.insert(0, str(Path(pv.__file__).resolve().parents[1] / "evaluation"))
+        import intake_v2
+        for body in ("", self.DEFAULT, self.OPT_IN, f"-- {self.OPT_IN}", f"/- {self.OPT_IN} -/"):
+            source = self.policy(body)
+            try:
+                intake_v2.refuse_unqualified_design(source)
+                refuses = False
+            except intake_v2.Refused:
+                refuses = True
+            self.assertEqual(pv.wants_readout_qualification(source), refuses, body)
+
+
+class QualifyReadoutInTheCommand(PolicyVerifier):
+    """The flag reaches the intake command itself, not just the predicate."""
+
+    def args(self):
+        return json.loads((self.tmp / "repo" / "args.json").read_text())
+
+    def test_a_measured_submission_asks_intake_to_qualify_the_readout(self):
+        self.write("import ForShor.X\nnamespace PolicySubmission\n"
+                   "def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }\n"
+                   "def policy := 1\nend PolicySubmission\n")
+        code, _ = self.run_pv()
+        self.assertEqual(code, 0)
+        self.assertIn("--qualify-readout", self.args())
+
+    def test_an_ordinary_submission_does_not(self):
+        self.write(PP)
+        code, _ = self.run_pv()
+        self.assertEqual(code, 0)
+        self.assertNotIn("--qualify-readout", self.args())
+
+    def test_an_explicit_default_declaration_does_not(self):
+        self.write("import ForShor.X\nnamespace PolicySubmission\n"
+                   "def submittedDesign : Shor.SubmissionDesign := { readout := .coherent }\n"
+                   "def policy := 1\nend PolicySubmission\n")
+        code, _ = self.run_pv()
+        self.assertEqual(code, 0)
+        self.assertNotIn("--qualify-readout", self.args())
+
+
 def carrying_stub(tmp: Path, wrong: bool = False) -> list:
     """An intake stand-in that behaves like the real one with --summary: the verification carries the hash of the file it was given (`wrong`: of another file)."""
     script = tmp / "stub_intake2.py"

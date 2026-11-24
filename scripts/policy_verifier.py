@@ -42,6 +42,30 @@ CHALLENGE = "forshor-policy"
 
 _NAMESPACES = (re.compile(r"^\s*namespace\s+PolicySubmission\b", re.M), re.compile(r"^\s*namespace\s+PTPPolicySubmission\b", re.M))
 
+#: A declaration of `submittedDesign` that survives `without_default_selectors`, i.e. one that is not the explicit
+#: default `{ readout := .coherent }`. The recogniser is the source gate's own, so this wrapper, `intake_v2`'s
+#: `refuse_unqualified_design` and `scripts/ci/policy_source.py` cannot disagree about what a declaration is.
+_SUBMITTED_DESIGN = re.compile(r"(?<![\w'])submittedDesign(?![\w'])")
+
+
+def wants_readout_qualification(source: str) -> bool:
+    """True when the policy declares a non-default readout design, so intake must be asked to qualify it.
+
+    Without this the verifier job produces an unqualified receipt and the publisher has nothing to accept: the
+    two-job route would refuse every measured submission while the in-run route accepted it. The condition is
+    exactly the one `intake_v2.refuse_unqualified_design` refuses on, read from the same stripped source, so the
+    flag is set precisely when omitting it would make intake refuse for want of the flag.
+
+    Deliberately not restricted to PhaseProduct: a PhaseTripleProduct policy that declares a design is refused by
+    intake with "readout qualification only supports PhaseProduct", which is the accurate reason. Suppressing the
+    flag there would instead report that designs need qualification, which is no longer true.
+    """
+    sys.path.insert(0, str(HERE.parent))
+    from scripts.ci.policy_source import strip_lean_comments, without_default_selectors
+    # Comments first, exactly as `intake_v2._without_default_selectors` does. `default_selectors` documents that it
+    # takes comment-stripped source; without the strip a design named only in a comment would set the flag.
+    return bool(_SUBMITTED_DESIGN.search(without_default_selectors(strip_lean_comments(source))))
+
 
 def is_policy_file(text: str) -> bool:
     """True when the file declares one of the two policy namespaces: the new format. (The older `Policy.lean` declares `TableGeneration.Submission.Policy`.)"""
@@ -145,6 +169,12 @@ def _run(repo, out_dir, get_changed_files, env, intake, preflight, lock_fd):
                          "--workdir", str(out_dir / "work"), "--verification-out", str(receipt_path), "--out", str(result_path)]
             if summary_data is not None:
                 cmd += ["--summary", str(repo / SUMMARY)]
+            try:
+                submitted_source = (repo / SUBMISSION).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                submitted_source = ""      # intake reports an unreadable submission; do not pre-empt its message
+            if wants_readout_qualification(submitted_source):
+                cmd += ["--qualify-readout"]
             if env.get("POLICY_STAGE_TIMEOUT"):
                 cmd += ["--stage-timeout", env["POLICY_STAGE_TIMEOUT"]]
             if env.get("POLICY_MIRROR_TIMEOUT"):

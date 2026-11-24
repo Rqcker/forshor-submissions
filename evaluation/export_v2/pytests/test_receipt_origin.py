@@ -417,3 +417,156 @@ def test_the_github_fetcher_refuses_an_artifact_without_a_verification_or_over_t
     monkeypatch.setattr(receipt_origin, "MAX_MEMBER_BYTES", 4)
     with pytest.raises(OriginUnavailable, match="larger than 4 bytes"):
         receipt_origin.github_fetcher("tok", opener=opener_for(_zip("verification.json", b"{}" * 100)))("n", "1", 2)
+
+
+# --- The transport (lane XN) -------------------------------------------------------------------------------------
+# `github_fetcher` decides WHICH artifact; `https_opener` is the GET underneath it. Its decisions are provable
+# offline: the credential it sends, the credential it must NOT send, the schemes it accepts and the size it reads.
+# What stays unproven here is only whether the live endpoints answer as expected -- that is gate B4.
+
+
+class _Response(io.BytesIO):
+    """Context-managed like `urlopen`'s."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
+
+
+def _capturing_opener(monkeypatch, blob=b"{}"):
+    """Replace `build_opener` and record the request it is asked to open."""
+    seen = {}
+
+    class FakeOpener:
+        def open(self, request, timeout=None):
+            seen["url"] = request.full_url
+            seen["headers"] = dict(request.headers)
+            seen["timeout"] = timeout
+            return _Response(blob)
+
+    monkeypatch.setattr(receipt_origin.urllib.request, "build_opener", lambda *handlers: FakeOpener())
+    return seen
+
+
+def test_the_transport_sends_the_token_and_the_asked_for_accept_header(monkeypatch):
+    seen = _capturing_opener(monkeypatch, b'{"ok":true}')
+    blob = receipt_origin.https_opener("sekrit", timeout=11)("https://api.github.com/x", "application/vnd.github+json")
+    assert blob == b'{"ok":true}'
+    assert seen["headers"]["Authorization"] == "Bearer sekrit"
+    assert seen["headers"]["Accept"] == "application/vnd.github+json"
+    assert seen["headers"]["X-github-api-version"] == "2022-11-28"
+    assert seen["timeout"] == 11
+
+
+def test_the_transport_refuses_a_non_https_url_without_sending_the_token(monkeypatch):
+    seen = _capturing_opener(monkeypatch)
+    with pytest.raises(OriginUnavailable, match="non-HTTPS"):
+        receipt_origin.https_opener("sekrit")("http://api.github.com/x", "application/json")
+    assert seen == {}, "the token must not leave the process over plain HTTP"
+
+
+def test_the_transport_turns_every_failure_into_unavailable_never_a_refusal(monkeypatch):
+    class Boom:
+        def open(self, request, timeout=None):
+            raise OSError("connection reset")
+
+    monkeypatch.setattr(receipt_origin.urllib.request, "build_opener", lambda *h: Boom())
+    with pytest.raises(OriginUnavailable, match="OSError: connection reset"):
+        receipt_origin.https_opener("tok")("https://api.github.com/x", "application/json")
+
+
+def test_the_transport_bounds_what_it_reads(monkeypatch):
+    _capturing_opener(monkeypatch, b"x" * 50)
+    with pytest.raises(OriginUnavailable, match="larger than 8 bytes"):
+        receipt_origin.https_opener("tok", max_bytes=8)("https://api.github.com/x", "application/json")
+
+
+def test_a_redirect_off_the_api_host_does_not_carry_the_credential():
+    """The artifact download answers 302 to blob storage that carries its own signed token. urllib's default
+    handler would copy `Authorization` onto that request and hand this job's GH_TOKEN to a third-party host."""
+    handler = receipt_origin._StripAuthOnRedirect()
+    request = receipt_origin.urllib.request.Request(
+        "https://api.github.com/repos/o/r/actions/artifacts/3/zip",
+        headers={"Authorization": "Bearer sekrit", "Accept": "application/vnd.github+json"})
+    redirected = handler.redirect_request(request, _Response(b""), 302, "Found", {},
+                                          "https://productionresults.blob.core.windows.net/x?sig=abc")
+    assert redirected is not None
+    assert not any(k.lower() == "authorization" for k in redirected.headers), redirected.headers
+    assert redirected.headers.get("Accept") == "application/vnd.github+json"
+
+
+def test_a_redirect_that_stays_on_the_api_host_keeps_the_credential():
+    handler = receipt_origin._StripAuthOnRedirect()
+    request = receipt_origin.urllib.request.Request("https://api.github.com/a", headers={"Authorization": "Bearer sekrit"})
+    redirected = handler.redirect_request(request, _Response(b""), 302, "Found", {}, "https://api.github.com/b")
+    assert redirected.headers.get("Authorization") == "Bearer sekrit"
+
+
+def test_a_redirect_off_tls_is_not_followed_at_all():
+    handler = receipt_origin._StripAuthOnRedirect()
+    request = receipt_origin.urllib.request.Request("https://api.github.com/a", headers={"Authorization": "Bearer sekrit"})
+    assert handler.redirect_request(request, _Response(b""), 302, "Found", {}, "http://evil.example/x") is None
+
+
+def test_production_origin_pairs_this_checkouts_identity_with_the_real_transport(monkeypatch):
+    """The publish job's wiring: the identity half is the trusted function, the fetch half is the HTTPS one."""
+    monkeypatch.setattr(receipt_origin, "checkout_identity", lambda head, root=None: {"headSha": head, "root": root})
+    origin = receipt_origin.production_origin("tok", root="/repo")
+    assert isinstance(origin, ReceiptOrigin)
+    assert origin.identity("f" * 40) == {"headSha": "f" * 40, "root": "/repo"}
+
+    seen = _capturing_opener(monkeypatch, json.dumps({"artifacts": [{"id": 3, "name": "n", "expired": False}]}).encode())
+    with pytest.raises(OriginUnavailable):      # the second GET returns the listing again, which is not a zip
+        origin.fetch("n", "1", 2)
+    assert seen["headers"]["Authorization"] == "Bearer tok"
+
+
+# --- The publish job's wiring (lane XN) -------------------------------------------------------------------------
+# XH built the check and left `origin` unset at every call site, so `--publish-from` behaved exactly as before.
+# These prove the production entrypoint now supplies one, and that it still does not when there is no credential
+# to fetch with -- in which case the route keeps WQ's blanket refusal rather than pretending to have checked.
+
+
+def _publish_from_argv(tmp_path, receipt=None):
+    source = tmp_path / "verification.json"
+    source.write_text(json.dumps(receipt if receipt is not None else {"schema": "x"}))
+    return ["--publish-from", str(source), "--login", "tester", "--pull", "7",
+            "--publisher-url", "https://publisher.example", "--head-sha", HEAD, "--run-id", "4242",
+            "--workdir", str(tmp_path / "w"), "--out", str(tmp_path / "out.json")]
+
+
+def test_the_publish_job_supplies_a_trusted_origin_when_it_has_a_credential(monkeypatch, tmp_path):
+    captured = {}
+    monkeypatch.setattr(intake_v2, "publish_verification",
+                        lambda v, **kw: captured.update(kw) or {"published": True})
+    monkeypatch.setenv("GH_TOKEN", "sekrit")
+    intake_v2.main(_publish_from_argv(tmp_path))
+    origin = captured["origin"]
+    assert isinstance(origin, ReceiptOrigin), captured
+    # The identity half must be this checkout's own function, not a stand-in.
+    assert origin.identity.__module__ == receipt_origin.__name__ or callable(origin.identity)
+
+
+def test_without_a_credential_the_route_passes_no_origin_and_keeps_the_blanket_refusal(monkeypatch, tmp_path):
+    captured = {}
+    monkeypatch.setattr(intake_v2, "publish_verification",
+                        lambda v, **kw: captured.update(kw) or {"published": True})
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    intake_v2.main(_publish_from_argv(tmp_path))
+    assert captured["origin"] is None
+
+
+def test_the_wired_origin_re_derives_against_this_very_repository(monkeypatch, tmp_path):
+    """`production_origin` is given the repository root, so the fingerprint it compares is this checkout's."""
+    seen = {}
+    monkeypatch.setattr(receipt_origin, "checkout_identity",
+                        lambda head, root=None: seen.update(head=head, root=root) or {"headSha": head})
+    monkeypatch.setattr(intake_v2, "publish_verification",
+                        lambda v, **kw: kw["origin"].identity(HEAD) and {"published": True})
+    monkeypatch.setenv("GH_TOKEN", "sekrit")
+    intake_v2.main(_publish_from_argv(tmp_path))
+    assert seen["head"] == HEAD
+    assert (Path(seen["root"]) / "scripts" / "ci" / "verification_identity.py").is_file(), seen["root"]

@@ -37,6 +37,9 @@ from __future__ import annotations
 
 import io
 import json
+import urllib.error
+import urllib.parse
+import urllib.request
 import zipfile
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional
@@ -58,6 +61,11 @@ MEMBER = "verification.json"
 #: A receipt carries the submitted Lean source (at most 1 MB), the mirror envelope and the compiled document. Eight
 #: mebibytes is far above any real receipt and well below anything that could exhaust the publisher.
 MAX_MEMBER_BYTES = 8 * 1024 * 1024
+
+#: The compressed artifact zip the transport will read before `read_member` bounds the member inside it. The zip
+#: holds the same receipt, so this is the member bound with room for the container; it stops a hostile or broken
+#: response from exhausting the publisher before the member bound can apply.
+MAX_ARTIFACT_BYTES = 64 * 1024 * 1024
 
 REPOSITORY = "zapatacomputing/forshor-submissions"
 
@@ -131,6 +139,67 @@ def github_fetcher(token: str, *, opener: Callable[[str, str], bytes], repositor
 
     del timeout                                           # the opener owns its own timeout
     return fetch
+
+
+class _StripAuthOnRedirect(urllib.request.HTTPRedirectHandler):
+    """Drop the credential when a redirect leaves the API host.
+
+    The artifact download answers 302 to third-party blob storage whose URL already carries its own signed
+    token. `urllib`'s default handler copies every header onto the redirected request, which would send this
+    job's `GH_TOKEN` to that host. Nothing needs it there, so it does not go there.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urllib.parse.urlsplit(newurl).scheme != "https":
+            return None                                   # never downgrade off TLS
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None and (urllib.parse.urlsplit(newurl).hostname
+                                != urllib.parse.urlsplit(req.full_url).hostname):
+            new.remove_header("Authorization")
+        return new
+
+
+def https_opener(token: str, *, timeout: int = 30, max_bytes: int = MAX_ARTIFACT_BYTES) -> Callable[[str, str], bytes]:
+    """The production transport for `github_fetcher`: an authenticated HTTPS GET, bounded and timed.
+
+    Every failure is raised as `OriginUnavailable`, never as a refusal -- the publisher not reaching GitHub says
+    nothing about the submission (`intake_v2` turns it into `Incomplete("publisher", ...)`).
+
+    UNPROVEN AGAINST THE REAL API. The decisions around it are tested offline with a fake transport; that the live
+    endpoints answer as expected is gate B4 and needs a hosted run.
+    """
+    def open_url(url: str, accept: str) -> bytes:
+        if urllib.parse.urlsplit(url).scheme != "https":
+            raise OriginUnavailable(f"refusing a non-HTTPS artifact URL: {url!r}")
+        request = urllib.request.Request(url, method="GET", headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": accept,
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "forshor-submissions-publisher",
+        })
+        opener = urllib.request.build_opener(_StripAuthOnRedirect)
+        try:
+            with opener.open(request, timeout=timeout) as response:
+                # Read one byte past the bound: a truncated read would otherwise look like a short artifact.
+                blob = response.read(max_bytes + 1)
+        except OriginUnavailable:
+            raise
+        except Exception as error:                        # noqa: BLE001  HTTP status, DNS, TLS, timeout, rate limit
+            raise OriginUnavailable(f"the trusted artifact could not be fetched from {url!r}: "
+                                    f"{type(error).__name__}: {error}") from error
+        if len(blob) > max_bytes:
+            raise OriginUnavailable(f"the trusted artifact at {url!r} is larger than {max_bytes} bytes")
+        return blob
+
+    return open_url
+
+
+def production_origin(token: str, *, root: Optional[Any] = None, repository: str = REPOSITORY,
+                      timeout: int = 30) -> "ReceiptOrigin":
+    """The `ReceiptOrigin` the publish job uses: this checkout's identity function and a real HTTPS transport."""
+    return ReceiptOrigin(identity=lambda head_sha: checkout_identity(head_sha, root),
+                         fetch=github_fetcher(token, opener=https_opener(token, timeout=timeout),
+                                              repository=repository, timeout=timeout))
 
 
 def checkout_identity(head_sha: str, root: Optional[Any] = None) -> Dict[str, Any]:

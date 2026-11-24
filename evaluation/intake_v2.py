@@ -878,9 +878,16 @@ def _run_args(a, ap, verification_path):
                                       published_ids=published)
     try:
         if a.publish_from is not None:
+            # A receipt this process did not produce establishes its trusted origin against the GitHub run that did
+            # (lane XH). The token is the trusted publish job's own `GH_TOKEN`, the same one `--archive` uses above;
+            # with no token there is nothing to fetch against, so the route keeps WQ's blanket refusal.
+            origin = None
+            if os.environ.get("GH_TOKEN"):
+                from export_v2 import receipt_origin as _ro
+                origin = _ro.production_origin(os.environ["GH_TOKEN"], root=HERE.parent)
             result = publish_verification(json.loads(a.publish_from.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=token, workdir=a.workdir,
                                           head_sha=a.head_sha, run_id=a.run_id, archive_commit=a.archive_commit, archive_view=archive_view,
-                                          archive_write=archive_write, organizer_baseline=a.organizer_baseline)
+                                          archive_write=archive_write, organizer_baseline=a.organizer_baseline, origin=origin)
         elif a.no_publish:
             source = a.lean_policy.read_bytes().decode("utf-8") if a.lean_policy else None
             v = verify_submission(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=source, summary=summary_text, login=a.login,
