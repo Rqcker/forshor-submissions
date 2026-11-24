@@ -48,7 +48,8 @@ python starter.py examples --check     # prices every example and compares with 
 ## 2. Write a policy
 
 * **PP or PTP:** copy `templates/pp_policy.json` or `templates/ptp_policy.json` and replace the tables and thresholds
-  with your own. Do not declare widths. If you declare a width ladder, the board ignores it and shows a notice (see
+  with your own. Different bands may carry different tables of the same k, selected per width band. Do not declare widths.
+  If you declare a width ladder, the board ignores it and shows a notice (see
   `examples/declared_ladder_ignored.policy.json`).
 * **Full order finding:** the same PP policy. **What you submit is one Lean file, `TableGeneration/Submission/Policy.lean`**
   (a pull request may change that file and, optionally, a LaTeX summary of your policy in `TableGeneration/Submission/summary.tex`, and nothing else; see `SKILL.md`, "Optional LaTeX Summary", and the template `examples/summary.tex`). Write it by hand from `templates/Policy.lean` (ForShor's shipped template, from
@@ -65,7 +66,7 @@ Once the pack and its Python dependencies are installed, local pricing and templ
 ```bash
 python starter.py price my_pp_policy.json            # PP board at exact widths + the full order-finding run
 python starter.py price my_ptp_policy.json           # PTP board at exact widths
-python starter.py price my_pp_policy.json --no-full --delta 3e-4 --json out.json
+python starter.py price my_pp_policy.json --no-full --json out.json   # PP board only, machine-readable
 python starter.py forshor-doc /path/to/policy.json  # a ForShor build's printed document (full run)
 ```
 
