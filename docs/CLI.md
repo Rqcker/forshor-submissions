@@ -49,20 +49,26 @@ JSON (`readout`, `qft`, `modmul`, `synthesis`, `phase_product`, or a
 `submitted*` name) is refused whatever its value, with *table policy JSON cannot
 select circuit design options (…); use the supported Lean policy interface*.
 
-Only the default design is submittable for a score: coherent readout, the exact
-logical QFT, Ross-Selinger synthesis and one-qubit negation. Leaving
-`submittedDesign`, `submittedPrimitive` and `submittedFullRunDesign` out of the
-file gives exactly that, and an explicit default declaration is identical to
-omission. Everything else those three names can say — measured readout, the
-standalone primitives, and the seven non-default full-run profiles — is a local
-qualification route: it is attested and priced locally, it is not accepted by
-hosted intake, and it gets no score. The refusals name the selector
-(*submittedDesign is not accepted as written*, *submittedPrimitive is not accepted for a scored
-submission*, *submittedFullRunDesign is not accepted as
-written*), and a qualified readout receipt offered
-to the publisher is refused with *a semiclassical readout receipt is published only from the trusted verification run that produced it, and this receipt does not come from one*. The full option matrix, with all eight full-run
-profiles and the options that have no selector at all, is in the participant
-starter pack: `evaluation/starter/pack/SUBMISSION_FORMAT.md`, section 2.
+The default design is coherent readout, the exact logical QFT, Ross-Selinger
+synthesis and one-qubit negation. Leaving `submittedDesign`,
+`submittedPrimitive` and `submittedFullRunDesign` out of the file gives exactly
+that, and an explicit default declaration is identical to omission. On the
+PhaseProduct board a submission may instead declare the semiclassical readout,
+`def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }`,
+and beside it one per-family QFT design for the full order-finding run,
+`def submittedFullRunDesign : Shor.FullRunDesign := …`, setting the `data`,
+`work` and `scratch` QFT families. Both are submitted for a score. For such a
+file `check` builds ForShor with the readout (`--balanced --readout submitted`)
+and checks that the compiled design is the one the file declares; it does not
+print the design's price, which the published panel shows. A design may set only
+the QFT families above; any other field, the `exponent` family, or a design
+without the readout declaration is refused before anything is built, with a
+message that starts *submittedFullRunDesign is not accepted as written* and names
+the line and the cause. The standalone synthesis primitives are attested and
+priced locally only: hosted intake refuses them, naming the selector, and they
+get no score. The full option matrix, the QFT design rules and three checked
+examples are in the participant starter pack:
+`evaluation/starter/pack/SUBMISSION_FORMAT.md`, section 2.
 
 A local snapshot commit is made only inside the generated checker so the trusted
 changed-file check has concrete base/head identities. `check` leaves your original

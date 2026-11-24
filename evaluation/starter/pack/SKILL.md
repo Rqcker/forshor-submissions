@@ -158,7 +158,10 @@ The build trees are not in the pack; `harness/LEAN_CHECKS.md` says where they co
   lake exe forshor_policy_submission --balanced > policy.json
   ```
 
-  `--balanced` implies exact widths. Extracting the IR takes 2 to 3 minutes for a k = 5 or 6 policy.
+  `--balanced` implies exact widths. Extracting the IR takes 2 to 3 minutes for a k = 5 or 6 policy. A file that declares
+  the semiclassical readout (with or without a QFT design) is exported with
+  `lake exe forshor_policy_submission --balanced --readout submitted > policy.json`; that measured document is not an input
+  to `starter.py forshor-doc`.
 
 Resource rules:
 - Run one or two Lean processes at a time, under a memory cap (each tree's `scripts/memcap.py`); wait while `pgrep -x lean | wc -l` is 2 or more.
@@ -195,16 +198,19 @@ Apache 2.0 licence. **The boards' numbers are the ones that count:** the site pr
 
 Every circuit-design option is declared in the **Lean source** (`Policy.lean`), never in the table policy JSON.
 **Whether an option can be submitted for a score is the most important thing about it.** `SUBMISSION_FORMAT.md` section 2,
-"The design options, and which of them can be submitted", is the full matrix: the exact declarations, the recogniser's shape and the verbatim refusals. The short form:
+"The design options, and which of them can be submitted", is the full matrix: the exact declarations, the recogniser's shape,
+the QFT design rules and the refusals. The short form:
 
 | Options | Status |
 |---|---|
 | the default design (coherent readout, exact logical QFT, Ross–Selinger synthesis, `oneQubit` negation), whether left out or written out in full; several tables of the same `k` selected per width band | **submittable for a score**: hosted intake accepts, publishes and ranks it |
-| semiclassical (measured) readout; the standalone synthesis primitives `.catalyticB2` and `.adaptiveB3`; any `submittedFullRunDesign` other than `.reference` | **local qualification only, nonpublishing**: attested and priced locally; not accepted by hosted intake; no score |
-| anything else, including any precision other than δ = 1e-2 | no typed selector exists; refused |
+| on the PhaseProduct board: the semiclassical (measured) readout, and beside it a per-family QFT design for the full order-finding run | **submittable for a score**: hosted intake accepts, publishes and ranks it |
+| the standalone synthesis primitives `.catalyticB2` and `.adaptiveB3` | **local only; does not publish**: attested and priced locally; not accepted by hosted intake; no score |
+| anything else, including any precision other than δ = 1e-2 | refused, naming what it found |
 
-**The default design in full.** Leaving the selectors out gives the submittable design. Writing a default out in full changes nothing:
-hosted intake treats an explicit default declaration as **identical to omission** (owner ruling 2026-11-24), so
+**The default design in full.** Leaving the selectors out gives the default path: coherent readout, exact QFT, and Ross–Selinger synthesis, with `oneQubit` negation.
+Writing a default out in full changes nothing:
+hosted intake treats an explicit default declaration as **identical to omission**, so
 `def submittedPrimitive : Shor.PrimitiveSynthesis := .rossSelinger`,
 `def submittedDesign : Shor.SubmissionDesign := { readout := .coherent }` and, on the PhaseProduct board only,
 `def submittedFullRunDesign : Shor.FullRunDesign := .reference` are accepted, build the same document, price the same and
@@ -212,16 +218,40 @@ count as the same submission in either arrival order. The recogniser is exact: o
 board's namespace, ForShor's own type, the default value, nothing else on the statement, once. Prefer **omitting** the
 selectors — it is shorter and cannot be mis-shaped.
 
-**Local qualification is not a way to score.** Each of these is a real typed choice the verifier attests when you run it
-yourself, and none of them has a hosted publication route. Even a receipt from the local readout-qualification route is
-refused by the publisher at its first gate — `a semiclassical readout receipt is published only from the trusted verification run that produced it, and this receipt does not come from one`. Never
-offer one to a user as a submission, and never present its local number as a board number.
+**The semiclassical readout** (PhaseProduct board): `def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }`,
+in the same exact shape. It replaces the exponent register's inverse QFT by measured phases. The full order-finding rows are
+priced on the measured circuit (about 4,094 fewer live qubits, T nearly unchanged); the PhaseProduct row does not change.
 
-**`submittedFullRunDesign` is submittable at `.reference` only.** `Shor.FullRunDesign` is a closed enum; hosted intake
-refuses every other value by name, and there is no way to ask for a combination outside the enum.
+**A per-family QFT design**, beside the readout. One `def submittedFullRunDesign : Shor.FullRunDesign := …` at column 0
+directly in `namespace PolicySubmission`, declared once and mentioned nowhere else, with
+`import ForShor.ShorVerification.Framework.FullRunDesign` in the header. It sets any of the `data`, `work` and `scratch`
+families, each `some ⟨backend, target⟩` with backend `.rossSelinger` or `.catalytic` and target `.exact` or
+`.approximate ⟨units, scale, by decide, by decide, by decide⟩` (the error ceiling `<units>e-<scale>`). The minimal design:
 
-**So a submission is not wasted.** Do not try to build any other per-family QFT mixture, rotation backend or phase-step
-backend, or a precision other than δ = 1e-2. Only δ = 1e-2 is in scope and there is no precision control to set.
+```lean
+def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }
+
+def submittedFullRunDesign : Shor.FullRunDesign :=
+  { data := some ⟨.rossSelinger, .approximate ⟨25, 5, by decide, by decide, by decide⟩⟩ }
+```
+
+`SUBMISSION_FORMAT.md` section 2, "Choose a QFT design", has a catalytic and a mixed example and says what each changes. In
+short: an approximate family lowers T; a catalytic family moves its rotations onto one shared catalyst register of `b`
+qubits, which adds `b` to Q. A design is priced on the full order-finding board at δ = 1e-2 only, with one rotation budget
+across the readout and the design; the row ranks on the design's T and live-qubit peak, and the published panel shows each
+family's backend and, for a catalytic design, the catalyst register's width and T. The `exponent` family is refused under
+the readout (the readout replaces that QFT by measured phases). A design may set only the QFT families above; any other
+field is refused, and the refusal names it. A refusal is raised before anything is priced, names the line and the cause, and
+nothing is published or archived.
+
+**Checking a design.** `./forshor setup` once, then `./forshor check`: it runs the hosted source check, ForShor's build with
+the readout, the check that the compiled design is the one the file declares, and the policy check. Neither it nor
+`starter.py` prints a design's price: `starter.py price` prices the tables under the default design, and `starter.py
+forshor-doc` reads the default (coherent) document only. Tell the user the design's price is the published panel's.
+
+**Local only is not a way to score.** The standalone synthesis primitives are real typed choices the verifier attests when
+you run them yourself, and they have no hosted publication route. Never offer one to a user as a submission, and never
+present its local number as a board number.
 
 **Design options are never JSON.** A policy or band object carrying `readout`, `submittedDesign`, `submittedPrimitive`,
 `submittedFullRunDesign`, `qft`, `modmul`, `phase_product`, `synthesis` or `synthesis_backend` (or their snake_case forms)
@@ -233,8 +263,8 @@ Putting `"readout": "coherent"` in the JSON does not express the default — the
 "This is not a verdict on the policy." Retry it; do not change the policy because of one, and do not report it as a
 rejection or an acceptance.
 
-The refusal messages quoted here and in `SUBMISSION_FORMAT.md` are the ones this pack was built against. Several are
-reachable from more than one cause and **the wording may become more specific**; the rule each one is about does not change.
+The refusal messages quoted here and in `SUBMISSION_FORMAT.md` are the ones this pack was built against. Each says
+what was refused and why; a refusal of the Lean source also names the line.
 
 ## Optional LaTeX Summary
 
@@ -295,7 +325,9 @@ Give the user:
 - the engine agreement;
 - for PP, the full-run single-run T, end-to-end T, Q, score and main ladder;
 - the scanned-width cross-check;
-- any widths notice.
+- any widths notice;
+- for a policy with the semiclassical readout or a QFT design, the design as declared and the fact that its price is the
+  published panel's, not a local number.
 
 Use the trust wording below exactly.
 
@@ -319,6 +351,8 @@ leaf, not the digital leaf the board prices. PTP covers equal-width operands onl
 
 **Full run that passed ForShor's check:** "ForShor policy-verified". This is circuit-level `policy_submission_correct`.
 The census, taken from ForShor's IR, is matched to the compiled circuit at sampled widths, not proved at n = 2048.
+
+**A QFT design:** "ForShor attests the declared design; its approximate or catalysed QFTs are priced, not proved in Lean."
 
 **No level proves the T count.**
 
@@ -361,12 +395,14 @@ you name with `--out` or `--json`.
 | `starter.py template` refuses | a format limit or unsupported option | the template tool writes PP and PTP policies with 1 < k ≤ 8; read the named refusal rather than changing a valid PTP policy to PP |
 | `forshor-doc` prints `DIFFERS` | the printed document does not match the converted policy, or is a scan document | rebuild with `--balanced`. A document without `width_rule` is priced on the upstream cross-check, not the board's IR. |
 | `error: the policy asks for negation 'scratch'` | ForShor's `scratch` method is not priced by the boards or this pack | remove the `negation` key (or set `"oneQubit"`) |
-| `submittedDesign is not accepted as written` | the file asks for measured readout (local qualification only), or writes the `.coherent` default in a shape the recogniser does not take, or mentions the name elsewhere | leave the selector out, or write exactly the default declaration (`SUBMISSION_FORMAT.md` section 2). Measured readout is local qualification only and cannot be published, so there is no submittable variant |
-| `submittedPrimitive is not accepted for a scored submission` | the file asks for `.catalyticB2` or `.adaptiveB3` (local qualification only), or mis-shapes the `.rossSelinger` default, or mentions the name elsewhere | same fix. The standalone primitives have no hosted publication route |
-| `submittedFullRunDesign is not accepted as written` | the file sets `submittedFullRunDesign` to anything but `.reference`, mis-shapes `.reference`, declares it twice, or declares it on the PhaseTripleProduct board (refused there even at `.reference`) | same fix. No other value has a hosted publication route |
-| `table policy JSON cannot select circuit design options (…); use the supported Lean policy interface` | a design key (`readout`, `qft`, `modmul`, `synthesis`, `phase_product`, a `submitted*` name, …) is in the **table JSON** | design options are declared in `Policy.lean` only; delete the key. The default is what you get by writing nothing |
-| `full-run synthesis requires saved semiclassical readout and --balanced --readout submitted` / `full-run and standalone synthesis opt-ins are not jointly qualified` | ForShor refusing a non-`reference` full-run profile outside its qualification mode, or mixed with a standalone primitive | these are local qualification routes with no hosted publication route; a scoring submission does not declare them at all |
-| `a semiclassical readout receipt is published only from the trusted verification run that produced it, and this receipt does not come from one` | a measured-readout receipt was given to the publisher | measured readout is attested and priced locally; it is not accepted by hosted intake and gets no score |
+| `submittedDesign is not accepted as written` | the file declares `submittedDesign` with a value other than `.coherent` or `.semiclassical`, writes either in a shape the recogniser does not take, or mentions the name elsewhere | write exactly `def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }` (or the `.coherent` default, or leave it out), once, at column 0 directly in `namespace PolicySubmission` (`SUBMISSION_FORMAT.md` section 2) |
+| `readout qualification only supports PhaseProduct` | the semiclassical readout declared on the PhaseTripleProduct board | the readout is for the PhaseProduct board only; remove the declaration from a PhaseTripleProduct file |
+| a refusal that starts with `submittedPrimitive` | the file asks for `.catalyticB2` or `.adaptiveB3` (local only), or mis-shapes the `.rossSelinger` default, or mentions the name elsewhere | leave the selector out, or write exactly the default declaration. The standalone primitives have no hosted publication route |
+| `submittedFullRunDesign is not accepted as written: line N, …` | the QFT design breaks a rule, and the rest of the message names it: the file does not declare the semiclassical readout; the design names the `exponent` family or a field other than `data`, `work` and `scratch`; the declaration is not the one admitted form (column 0 directly in `namespace PolicySubmission`, no attribute or modifier line, once, the name mentioned nowhere else); or it is on the PhaseTripleProduct board; or `.reference` is mis-shaped | fix what the message names (`SUBMISSION_FORMAT.md` section 2, "Choose a QFT design"). If you meant the default, delete the declaration |
+| `the compiled full-run design does not match the submitted Lean file: …` | the document the build printed names a different design from the one the file declares (for example, a document from another file) | build and check the file you submit, with `./forshor check` |
+| `Policy.lean imports must be the approved template modules, in the file's header: …` | an import outside the template's three, or `ForShor.ShorVerification.Framework.FullRunDesign` in a file that declares no design (or only the `.reference` default) | keep the template's imports; add the `FullRunDesign` import only with a `submittedFullRunDesign` declaration |
+| `full-run synthesis requires saved semiclassical readout and --balanced --readout submitted` | a manual ForShor build of a file with a QFT design, exported without the readout, or a file that declares the design without the semiclassical readout | declare the readout, and export with `lake exe forshor_policy_submission --balanced --readout submitted` (`./forshor check` does this for you) |
+| `full-run and standalone synthesis opt-ins are not jointly qualified` | a QFT design together with a standalone synthesis primitive | remove `submittedPrimitive`; a design is submitted with the default synthesis |
 | a Lean run is killed for memory or time | over the memory cap, or the stage limit you set | run one or two checks at a time; some are hours long (see Lean Checks). If it persists, report the policy and the record rather than raising the cap. |
 | `rejected`: a missing object file, `Insufficient number of fields`, or a missing file under a temporary directory | an infrastructure failure (an unbuilt PhaseTripleProduct module, a stale harness script, a cleaned temporary directory) | fix the setup and run again; it is not a verdict on the policy |
 
@@ -379,12 +415,13 @@ you name with `--out` or `--json`.
 - Never use `sorry`, `admit`, `axiom`, `native_decide`, `#eval`, `set_option`, macros, `unsafe`, `extern`, `csimp` or
   `implemented_by` in a `Policy.lean`. Never edit any other ForShor file.
 - Never present a policy that asks for `negation: scratch` as priced. Never say Q is Lean-proved for a policy of yours.
-- Never set a design selector to anything but its default, and never offer one as a way to score. Measured readout, the
-  standalone synthesis primitives and every non-`reference` full-run design are local qualification only: attested and
-  priced locally, not accepted by hosted intake, no score. Say that plainly rather than hedging.
+- Never set a selector to a value `SUBMISSION_FORMAT.md` section 2 does not list as submittable, and never offer a standalone
+  synthesis primitive as a way to score: it is local only, attested and priced locally, not accepted by hosted intake, no
+  score. Say that plainly rather than hedging.
 - Never put a design key in the table policy JSON. Design options are declared in `Policy.lean` only.
-- Never promise an option that has no selector (any other per-family QFT mixture, rotation backend or phase-step backend)
-  or any precision other than δ = 1e-2.
+- Never promise a QFT design on the `exponent` family or on any field other than `data`, `work` and `scratch`, a design
+  without the semiclassical readout, or any precision other than δ = 1e-2. Never quote a design's price before the
+  published panel shows it: the pack does not price designs.
 - Never report a timeout or memory stop as a refusal or as a pass. It is incomplete, it is not a verdict, and it may be retried.
 - Never present a local number as final. The site prices the policy again, and its numbers count.
 

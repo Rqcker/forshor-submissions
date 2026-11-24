@@ -48,10 +48,12 @@ cross-check and not the board's own IR.
 
 The circuit-design selectors (`submittedDesign`, `submittedPrimitive`,
 `submittedFullRunDesign`) are deliberately absent from this template. Omitting
-them is the design a submission for a score uses; writing a default out in full
-is identical to omitting it, and every other value is a local, nonpublishing
-qualification route. See `SUBMISSION_FORMAT.md` section 2, "The design options,
-and which of them can be submitted".
+them gives the default design, and writing a default out in full is identical
+to omitting it. A submission for a score may instead declare the semiclassical
+readout and, beside it, a per-family QFT design for the full order-finding run
+(see "Choose a QFT design"); the standalone synthesis primitives are checked
+locally only and do not publish. See `SUBMISSION_FORMAT.md` section 2, "The
+design options, and which of them can be submitted".
 
 ## What `sorted` is, and why it is the only new obligation
 

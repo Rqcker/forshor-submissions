@@ -28,4 +28,6 @@ Without `--seed` the snapshot rows are the starting policies priced by the pack'
 the planner's policies would put their scores in `examples/board_snapshot.json`.
 
 The pack changes whenever `evaluation/engine` does (its pinned outputs and `MANIFEST.json` go with it), so rebuild it after any engine change and after each re-seed.
-Nothing under `evaluation/engine/` is touched by the pack. The site serves the result: copy `forshor-challenge-starter.zip` and `forshor-skill.md` (as `SKILL.md`) into the site's own starter directory and update its `starter-pack.json`.
+Nothing under `evaluation/engine/` is touched by the pack. The site serves the result: copy `forshor-challenge-starter.zip` and `forshor-skill.md` (as `SKILL.md`) into the site's own starter directory, update its `starter-pack.json`
+(the zip's sha256 and size, the skill's sha256, the file count, `built` and `exporterCommit`, all from the build's `MANIFEST.json` and the two files) and the installer's
+pinned zip checksum to match.

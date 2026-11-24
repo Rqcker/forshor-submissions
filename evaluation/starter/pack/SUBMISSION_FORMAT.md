@@ -25,7 +25,7 @@ One JSON object (UTF-8, at most 2,000,000 bytes):
 | `operations` | `["addScaled", dst, src, sign, shift]` (sign +1 or −1, dst ≠ src), `["negate", i]`, `["shiftL", i, n]`, `["shiftR", i, n]` (exact division only), `["phaseProduct", i]`, on registers 0 to k − 1. The program consumes the points in order, restores the registers, and satisfies the exact Toom-Cook identity. |
 | widths | **Do not declare widths.** The board derives the exact widths and prices at them. Any `declared_ladder`, `ladder`, `widths`, `child_width` (and similar) is ignored, with a notice. It is never passed to Lean (`starter.py lean-input` drops it). The derived width of a table is the least width at which every value the program ever holds fits, **intermediate values included**, so a `shiftL` / `shiftR` pair that makes a register briefly larger raises it (see "Widths and shift pairs" below). |
 | `negation` | Optional: `"oneQubit"` (ForShor's default, `Shor.NegationMethod`) or `"scratch"`. The boards, and this pack, price every policy under `oneQubit`. A policy that asks for `scratch` is **refused by `starter.py`** (a number for it would be wrong), and its meaning is in section 3. |
-| `name` | Optional, at most 200 characters. Table JSON is not a circuit-design selection format: a policy or band field requesting readout, QFT, multiplier, primitive-synthesis or full-run-design options is refused whatever its value. The Lean file declares the design, and only the default declarations are accepted there (section 2). |
+| `name` | Optional, at most 200 characters. Table JSON is not a circuit-design selection format: a policy or band field requesting readout, QFT, multiplier, primitive-synthesis or full-run-design options is refused whatever its value. The Lean file declares the design (section 2). |
 
 The site also reads `{"policy": {...}}` and `{"policies": [...]}` (at most 8 policies per file).
 
@@ -51,7 +51,8 @@ The full order-finding board prices every PP policy (section 1). ForShor's Lean 
 * **One file: `TableGeneration/Submission/Policy.lean`, the only file a pull request must change** (the optional `TableGeneration/Submission/summary.tex`, section 6, is the only other file it may carry), at most 1,000,000 bytes. For ForShor's build it is
   copied to `ForShor/ShorVerification/Submission/PolicyTemplate.lean` (ForShor's name for the file); nothing else in the ForShor tree changes.
 * Imports: only the three modules the shipped template imports (`ForShor.ShorVerification.Framework.ToomCookTable`,
-  `ForShor.ShorVerification.Framework.Policy`, `ForShor.ShorVerification.Submission.Decide`).
+  `ForShor.ShorVerification.Framework.Policy`, `ForShor.ShorVerification.Submission.Decide`), plus
+  `ForShor.ShorVerification.Framework.FullRunDesign` in a file that declares `submittedFullRunDesign`.
 * Per band, as in `templates/Policy.lean`: `k` (1 < k ≤ 8), the points in consumption order, the program, and
   the `ShorLoweringSetup` record with C1 to C4 proved (`decide +kernel`). Then
   `def policy : ShorPolicySubmission where bands := [(threshold, setup), ...]`, widest first, with
@@ -62,11 +63,12 @@ The full order-finding board prices every PP policy (section 1). ForShor's Lean 
   and `IO.`/`System.`. On top of this, ForShor's lexical gate (`scripts/check_template_lexical.sh`) applies.
 * ForShor's check proves C1 to C4 by `decide +kernel` and extracts the IR at run time in the compiled exe, so k = 5
   to 8 tables and three or more bands pass.
-* **The design selectors.** The submittable design is the default one: coherent readout, the exact logical QFT, Ross–Selinger
-  synthesis of every rotation and `oneQubit` negation. Leaving the selectors out of the file gives exactly that, and writing a
-  default out in full is accepted too. Every value of every selector is listed, with its real status, under "The design options,
-  and which of them can be submitted" below. Read an option's status before you write a selector: only the default design can be
-  submitted for a score.
+* **The design selectors.** The default design is coherent readout, the exact logical QFT, Ross–Selinger synthesis of every
+  rotation and `oneQubit` negation. Leaving the selectors out of the file gives exactly that, and writing a default out in full
+  is accepted too. On the PhaseProduct board a submission may instead declare the **semiclassical readout** and, beside it, a
+  **per-family QFT design** for the full order-finding run; both are submitted for a score. Every option is listed, with its
+  status, under "The design options, and which of them can be submitted" below. Read an option's status before you write a
+  selector.
 * The document is printed by `lake exe forshor_policy_submission --balanced`: exact register widths
   (`ir.width_rule`) and the balanced IR templates. At the pinned commit the document also prints the policy's `negation` and the per-method
   `negate_charge`. A per-submission rebuild touches only ForShor's `PolicyTemplate` module,
@@ -83,17 +85,17 @@ an option**, because the three are not degrees of the same thing:
 
 | Status | What it means | Hosted intake | Score |
 |---|---|---|---|
-| **Submittable** | the design a submission for a score uses | accepts, verifies, publishes | yes, it ranks on the boards |
-| **Local qualification only, nonpublishing** | the verifier attests the choice on your own machine; there is **no hosted publication route** | refuses, naming the selector | **no score** — attested and priced locally; not accepted by hosted intake |
-| **Anything else** | no typed selector exists; nothing accepts it anywhere | refuses | no score |
+| **Submittable** | a design a submission for a score uses | accepts, verifies, publishes | yes, it ranks on the boards |
+| **Local only; does not publish** | the verifier attests the choice on your own machine; there is no hosted publication route | refuses, naming the selector | **no score** |
+| **Anything else** | no typed selector exists, or the value is not one this section lists | refuses, naming what it found | no score |
 
 #### Submittable for a score
 
 1. **The default design.** Coherent readout, the **exact logical QFT**, **Ross–Selinger** synthesis of every rotation, and
-   `oneQubit` negation. Leaving all three selectors out of `Policy.lean` gives exactly this, and it is what every board row
-   and every pinned example in this pack is priced under.
-2. **An explicit default declaration, which is identical to omission.** Owner ruling of 2026-11-24 (landed in the submissions
-   repository as commit `a4a7609`): hosted intake resolves an explicit default declaration exactly as it resolves omission.
+   `oneQubit` negation. Leaving all three selectors out of `Policy.lean` gives exactly this, and it is what every pinned
+   example in this pack is priced under.
+2. **An explicit default declaration, which is identical to omission.** Hosted intake resolves an explicit default
+   declaration exactly as it resolves omission.
    The explicit file and the omitting file build the same document, price the same, get the same policy digest and count as
    the **same submission in either arrival order**. The three declarations are, verbatim:
 
@@ -121,57 +123,165 @@ an option**, because the three are not degrees of the same thing:
    * written as `def`. An `abbrev`, an indented `def`, or a `def` with no type annotation is not the default declaration.
 
    Anything outside that shape — any other value, a second copy, a decoy namespace, a bare mention of the name anywhere
-   else in the file — is refused with the hosted refusal for that selector, listed below. A refusal of a *mis-shaped default* says
-   the same thing as a refusal of a *real opt-in*: if you meant the default, delete the declaration or rewrite it exactly as
+   else in the file — is refused with the hosted refusal for that selector. A refusal of a *mis-shaped default* says the
+   same thing as a refusal of a *real opt-in*: if you meant the default, delete the declaration or rewrite it exactly as
    above; the value was already the default and you lose nothing.
 3. **Several tables of the same arity `k` in one policy — the relaxed PhaseProduct** (section 1, the `tables per k` row).
    Tables of the same `k` may be selected **per width band**, and the only limit is the 256 bands a submission may have.
    **No verifier change is needed**: C1 to C4 are proved per table and per band, and `sorted` constrains the thresholds
    only. An accepted policy on the boards does this with **11 tables over 22 bands, two different tables at each of
    k = 3, 5, 7 and 8** (the pack's `test_pack_multi_table_same_k` prices exactly that policy).
+4. **The semiclassical (measured) readout, on the PhaseProduct board.** Declared, verbatim, as
 
-#### Local qualification only, nonpublishing
+   ```lean
+   def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }
+   ```
+
+   or in the two-line `where` form with `readout := .semiclassical` indented on the next line, in exactly the recogniser's
+   shape above (column 0, directly in `namespace PolicySubmission`, once). It replaces the inverse QFT on the order-finding
+   run's exponent register by measured phases: one qubit is measured and reused each round, and each round applies one
+   classically controlled phase. **What it changes:** the full order-finding rows are priced on the measured circuit, at every
+   precision. Its live-qubit peak is about 4,094 qubits lower, because the 4,095-qubit exponent register is not held, and its T
+   changes very little. The PhaseProduct board row does not change. The PhaseTripleProduct board does not take the readout:
+   hosted intake refuses it there.
+5. **A per-family QFT design, beside the semiclassical readout.** See "Choose a QFT design" below.
+
+#### Choose a QFT design
+
+On the PhaseProduct board, a policy that declares the semiclassical readout (item 4) may also declare **one** QFT design for
+the full order-finding run, on the reference multiplier:
+
+* **Where.** In `Policy.lean`, as one `def submittedFullRunDesign : Shor.FullRunDesign := …` at **column 0**, directly inside
+  `namespace PolicySubmission`, with no attribute or modifier line before it, declared **once** and with the name mentioned
+  nowhere else in the file. The value may continue on the following indented lines. Add
+  `import ForShor.ShorVerification.Framework.FullRunDesign` to the file's header.
+* **The semiclassical readout declaration is required.** A design without
+  `def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }` is refused.
+* **The families.** A design sets any of three QFT families: `data`, `work` and `scratch`, the QFTs the reference multiplier
+  applies to its data, work and scratch registers (2,049, 2,347 and 4,398 qubits wide at n = 2048). A family you leave out
+  stays exact, with Ross–Selinger synthesis.
+* **Each family** is `some ⟨backend, target⟩`, a `Shor.QftChoice`:
+  * backend `.rossSelinger`: the family's rotations are synthesised with Ross–Selinger, as by default; or `.catalytic`: they
+    are applied from one shared catalyst register instead of being synthesised one by one;
+  * target `.exact`, or `.approximate ⟨units, scale, by decide, by decide, by decide⟩`, an approximate QFT with the error
+    ceiling `units × 10^-scale`, which the verifier writes as `<units>e-<scale>`. For example `⟨25, 5, …⟩` is `25e-5`
+    (2.5 × 10^-4) and `⟨1, 3, …⟩` is `1e-3`. The three `by decide` prove `0 < units`, `units < 10^scale` and
+    `scale ≤ 60`. An approximate QFT of width `w` keeps the controlled rotations up to index
+    `k = max(1, ⌈log2(w / ceiling)⌉)` and drops the smaller ones, so a looser ceiling removes more rotations.
+* **Not the `exponent` family.** The semiclassical readout replaces that QFT by measured phases, so a design that names
+  `exponent` is refused, `exact` included.
+* **Nothing else.** A design may set only the QFT families above; any other field is refused, and the refusal names it.
+
+**Three examples.** Each is a complete block for the end of `namespace PolicySubmission`, before `end PolicySubmission`, in a
+file whose header carries the import above. All three were built with the verifier and checked as written.
+
+The minimal design: `data` approximate at `25e-5`, synthesised as usual.
+
+```lean
+def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }
+
+def submittedFullRunDesign : Shor.FullRunDesign :=
+  { data := some ⟨.rossSelinger, .approximate ⟨25, 5, by decide, by decide, by decide⟩⟩ }
+```
+
+The data QFTs lose their smallest rotations, so the run has fewer rotations to synthesise and its **T falls**. **The qubits do
+not change**: the row keeps the measured readout's live-qubit peak.
+
+A catalytic design: `data` and `work` approximate at `25e-5`, both paid from the catalyst.
+
+```lean
+def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }
+
+def submittedFullRunDesign : Shor.FullRunDesign :=
+  { data := some ⟨.catalytic, .approximate ⟨25, 5, by decide, by decide, by decide⟩⟩,
+    work := some ⟨.catalytic, .approximate ⟨25, 5, by decide, by decide, by decide⟩⟩ }
+```
+
+Both families are banded, and their remaining rotations are applied from the catalyst register rather than synthesised. On
+the template's own policy **T falls further** than with the first example. **The qubits rise by the catalyst register's
+width** `b`.
+
+A mixed design: `data` approximate at `25e-5` and synthesised, `work` approximate at `1e-3` from the catalyst, `scratch` exact
+from the catalyst.
+
+```lean
+def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }
+
+def submittedFullRunDesign : Shor.FullRunDesign :=
+  { data := some ⟨.rossSelinger, .approximate ⟨25, 5, by decide, by decide, by decide⟩⟩,
+    work := some ⟨.catalytic, .approximate ⟨1, 3, by decide, by decide, by decide⟩⟩,
+    scratch := some ⟨.catalytic, .exact⟩ }
+```
+
+`data` is banded as in the first example, `work` is banded more coarsely and catalysed, and `scratch` keeps every rotation but
+takes them from the same catalyst register. There is still **one** catalyst register, shared by `work` and `scratch`, so **the
+qubits rise by its width `b` once**. On the template's own policy **T falls**, by less than in the catalytic example.
+
+Not every choice lowers T. A catalytic family kept `.exact` can cost **more** T than leaving the family out, because each
+catalysed rotation is charged as a worst-case kick, and a very small ceiling can cost more than `.exact`, because the
+approximate QFT is a different construction. Neither `starter.py` nor `./forshor check` prices a design (see "Check it
+locally"), so treat these as directions, not as numbers.
+
+**How a design is priced.**
+
+* On the **full order-finding board at δ = 1e-2 only**. The other precisions of the full board are priced with the
+  semiclassical readout alone, and the PhaseProduct board does not change.
+* **One rotation budget.** The readout and the design change the same run, so the run's rotations are counted once, with
+  the readout's measured phases and the design's banded families together, and the synthesis budget (half of δ) is shared
+  over that one total. A catalytic family's rotations take their share of the same budget.
+* **The catalyst.** Any catalytic family adds **one shared catalyst register of `b` qubits**, live for the whole run and
+  counted in Q. `b` is set by how many rotations the register serves and their share of the error budget. Its T is those
+  rotations' kicks plus one preparation of the register.
+* **The row** ranks on the design's T and its live-qubit peak: the measured readout's peak, plus `b` when a family is
+  catalytic.
+* **The published panel** shows the design beside the readout-only price: each family's backend and target (with its
+  ceiling), and, when a family is catalytic, the catalyst register's width and its T.
+
+**What hosted intake refuses.** Each of these is refused by name, with the line and the cause, before anything is priced. A
+refused submission is not published and nothing is written to the archive.
+
+* a design in a file that does not declare the semiclassical readout;
+* a design on the PhaseTripleProduct board;
+* the `exponent` family;
+* any field other than `data`, `work` and `scratch`; the refusal names the field;
+* a declaration that is not the one form above: a second copy, a nested or other namespace, an attribute or modifier
+  line, the name mentioned anywhere else;
+* a design together with a standalone synthesis primitive (ForShor's build refuses the pair:
+  `full-run and standalone synthesis opt-ins are not jointly qualified`).
+
+The source refusals start with `submittedFullRunDesign is not accepted as written:`, then the line and the rule that failed.
+
+**Check it locally.** In your `forshor-submissions` checkout, run `./forshor setup` once, put the file at
+`TableGeneration/Submission/Policy.lean`, and run `./forshor check`. It runs what hosted verification runs, on your machine:
+
+1. the trusted base's source check on the file, which refuses any of the cases above in seconds, before anything is built;
+2. ForShor's build at the operational pin, with the readout (`--balanced --readout submitted`, chosen because the file
+   declares the semiclassical readout);
+3. a check that the design the build attests is the one your file declares, and that it is a design the pricing takes;
+4. the policy check.
+
+`Local verification passed.` means the hosted verification of the same file will pass. Then `./forshor submit`. Neither command
+prints the design's price: it is computed when the submission is priced, and the published panel shows it. `starter.py price`
+prices the policy's tables under the default design, and `starter.py forshor-doc` reads the default (coherent) document only,
+so neither prices the readout or a design. To build by hand instead, see `harness/LEAN_CHECKS.md`.
+
+#### Local only; does not publish
 
 Each of these is a **real, typed choice that the verifier attests** when you run it yourself. None of them has a hosted
-publication route. For every one: **attested and priced locally; not accepted by hosted intake; no score.** Do not submit
-one, and do not treat its local number as a board number.
+publication route: **attested and priced locally; not accepted by hosted intake; no score.** Do not submit one, and do not
+treat its local number as a board number.
 
-| Option | Declaration | Hosted refusal, verbatim |
+| Option | Declaration | Hosted refusal |
 |---|---|---|
-| Semiclassical (measured) readout | `def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }` (PP and PTP) | `submittedDesign is not accepted as written` |
-| Standalone primitive, catalytic B2 | `def submittedPrimitive : Shor.PrimitiveSynthesis := .catalyticB2` (PP and PTP) | `submittedPrimitive is not accepted for a scored submission` |
-| Standalone primitive, adaptive B3 | `def submittedPrimitive : Shor.PrimitiveSynthesis := .adaptiveB3` (PP and PTP) | `submittedPrimitive is not accepted for a scored submission` |
-| Any full-run design other than `.reference` | `def submittedFullRunDesign : Shor.FullRunDesign := .<value>` (PhaseProduct board; `PTPPolicyCheck` refuses the name outright on PTP) | `submittedFullRunDesign is not accepted as written` |
-
-Even a receipt produced by the local readout-qualification route cannot be published. `publish_verification` refuses
-**every measured receipt at its first gate**, before anything else about the submission is looked at:
-
-```
-a semiclassical readout receipt is published only from the trusted verification run that produced it, and this receipt does not come from one
-```
-
-**`submittedFullRunDesign` is submittable at `.reference` only.** `Shor.FullRunDesign` is a closed enum and `.reference`
-is its default. **`reference` selects nothing**: a `reference` document carries no `submitted_full_run` key, which is exactly
-why the explicit `.reference` declaration is identical to omission. Every other value selects a different modular multiplier
-together with its own QFT and phase-step choices, and hosted intake refuses it by name with the message in the table above.
-
-Every non-`reference` value is **semiclassical by construction**: ForShor's own executable refuses it in any other mode,
-with
-
-```
-full-run synthesis requires saved semiclassical readout and --balanced --readout submitted
-```
-
-and refuses mixing one with a standalone primitive at all, with `full-run and standalone synthesis opt-ins are not jointly
-qualified`. Both reach a participant through hosted intake as `ForShor's check refused the policy: <the last 500 characters>`,
-so the text above is what you see quoted back.
+| Standalone primitive, catalytic B2 | `def submittedPrimitive : Shor.PrimitiveSynthesis := .catalyticB2` (PP and PTP) | refused by name: the message starts with `submittedPrimitive` and names the line and the cause |
+| Standalone primitive, adaptive B3 | `def submittedPrimitive : Shor.PrimitiveSynthesis := .adaptiveB3` (PP and PTP) | the same |
 
 #### Anything else (so you do not waste a submission)
 
-Nothing outside the two lists above can be selected, locally or otherwise. There is no typed selector for it.
+Nothing outside the two lists above can be selected, locally or otherwise.
 
-* **Other circuit-design combinations.** `Shor.FullRunDesign` is a closed enum, so a per-family QFT mixture, a rotation
-  backend or a phase-step backend that is not one of its values cannot be written down.
+* **Any other full-run design field.** A design may set only the `data`, `work` and `scratch` QFT families, as above; any
+  other field is refused, and the refusal names it.
 * **Any precision other than δ = 1e-2.** The boards, the board snapshot, the exporter's row keys and every pinned example in
   this pack are at δ = 0.01, and that is the only precision the boards rank against. There is no precision control to set,
   and `starter.py` exposes none beyond its documented default of 0.01.
@@ -209,8 +319,7 @@ one as either a rejection or an acceptance. Memory and time stops on the hosted 
 **Stopped: memory limit reached** and **Stopped: time limit reached** for the same reason.
 
 **A note on the exact wording.** The refusal messages quoted in this section are the ones this pack was built against.
-They may become **more specific** — several of them are reachable from more than one cause, and work is in progress to
-name the cause. The rule each one is about does not change; the sentence may gain detail.
+Each says what was refused and why; a refusal of the Lean source also names the line.
 
 ## 3. How a submission is priced
 
@@ -234,7 +343,9 @@ a Cuccaro adder, `w + 1` clean qubits, `2w - 3` Toffolis): fewer T and about 4,4
   padded to 2348 × 2348, Step 4's 2348 × 4399 product as two 2348 × 2348 products), m2048, Step 4 `cmpLtNW`, 4095
   modular multiplications, the Qualtran digital-product leaf, Gidney adders, ForShor's negation counts above and Ross–Selinger rotations. The
   end-to-end T is the trial count (386) times the single-run T. Upstream ForShor's own IR (scanned widths, no split)
-  is shown as a labelled cross-check (`forshor_scan_ir`), not as the score.
+  is shown as a labelled cross-check (`forshor_scan_ir`), not as the score. A policy that declares the semiclassical
+  readout, and a QFT design beside it, is priced on the measured circuit as section 2 describes; `starter.py` prices the
+  default design only.
 * **PTP leaf:** the digital triple product (x·y·z computed exactly with two Qualtran products and sign folds, one
   rotation per bit of the product). The schoolbook grid leaf is a labelled cross-check.
 * T counts are Qualtran's. Lean's gate census (Cuccaro adders, grid leaf) is a labelled cross-check. A rotation is
@@ -252,7 +363,8 @@ The PP policy-check level is **not circuit-level**: it proves nothing about the 
 ForShor's lowering, and it is weaker than "ForShor policy-verified". ForShor's PhaseTripleProduct gate-level result is about
 its own sandwich leaf, not the digital leaf the board prices. No level proves the T
 count. The full run's census is ForShor's IR, matched to the compiled circuit at sampled widths, not proved at
-n = 2048.
+n = 2048. For a QFT design, ForShor attests which design the file declares; the approximate or catalysed QFTs are priced,
+not proved in Lean.
 
 ## 5. Resources
 

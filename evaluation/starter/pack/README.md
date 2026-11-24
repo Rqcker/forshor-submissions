@@ -60,11 +60,13 @@ python starter.py examples --check     # prices every example and compares with 
   `oneQubit` only, and `starter.py` refuses a policy that asks for `scratch`.
 * **Circuit-design options** (readout, QFT, rotation-synthesis backend, modular multiplier, the per-step phase backends)
   are declared in the Lean file, **never in the table policy JSON** — a JSON design key is refused whatever its value. They
-  are listed in full in `SUBMISSION_FORMAT.md` section 2, "The design options, and which of them can be submitted":
-  the **default design** is submittable for a score (whether left out or written out in full, plus several tables of
-  the same `k` per width band); **measured readout, the standalone synthesis primitives and any non-default full-run
-  design** are attested and priced locally, are not accepted by hosted intake and get **no score**; anything else has no
-  typed selector at all. Read an option's status before writing a selector, so a submission is not wasted.
+  are listed in full in `SUBMISSION_FORMAT.md` section 2, "The design options, and which of them can be submitted".
+  Submittable for a score: the **default design** (whether left out or written out in full, plus several tables of the
+  same `k` per width band), and, on the PhaseProduct board, the **semiclassical readout** with, beside it, a
+  **per-family QFT design** for the full order-finding run ("Choose a QFT design" there has the declaration and three
+  checked examples). The **standalone synthesis primitives** are attested and priced locally only; they do not publish
+  and get **no score**. Anything else has no typed selector at all. Read an option's status before writing a selector, so
+  a submission is not wasted.
 
 ## 3. Price it
 
@@ -102,6 +104,7 @@ Run `./forshor check` in the submissions checkout, not the unpacked pack. The co
 * PTP: the same input, then `check_ptp_policy.py --widths exact` of the same repository (against ForShor's `Shor.PTP`).
 * Manual ForShor build: use `forshor.ref` in the trusted submissions base's `evaluation/policy-trees.json`. The pack's frozen model pin `21e129a` identifies the pricing baseline, not the verifier checkout. After `lake exe cache get`, use the targets for your policy:
   - **PP:** `lake build PolicySubmission forshor_policy_submission`, then `lake exe forshor_policy_submission --balanced > policy.json`. `starter.py forshor-doc` prices this PP document.
+  - **PP with the semiclassical readout or a QFT design:** the same build, then `lake exe forshor_policy_submission --balanced --readout submitted > policy.json`. `starter.py` does not price this measured document; `./forshor check` checks the design, and its price is the published panel's.
   - **PTP:** `lake build PTPPolicySubmission forshor_ptp_policy_submission`, then `lake exe forshor_ptp_policy_submission > policy.json`. This prints PTP tables, not a full-run document for `forshor-doc`.
 
 The PP policy check and the PhaseTripleProduct harness reject a policy whose thresholds are set too low (stage `threshold`): on the

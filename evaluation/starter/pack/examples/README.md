@@ -18,6 +18,9 @@ These three tables are the only tables the pack carries, and the policies below 
 | `summary.tex` | A template for the optional LaTeX summary of a submission, `TableGeneration/Submission/summary.tex` (see `SKILL.md`, "Optional LaTeX Summary"). A small self-contained document in standard LaTeX; no harness compiles it. Replace its text with your own. |
 | `board_snapshot.json` | The starting rows of the boards at δ = 0.01 when the pack was built (name, T, Q, Q × T): the starting policies, priced by this pack's engine. It is what `starter.py price` ranks against. The page shows the live boards. |
 
+Every example here is priced under the default design. None declares the semiclassical readout or a QFT design: those
+declarations, with three checked examples, are in `SUBMISSION_FORMAT.md` section 2, "Choose a QFT design".
+
 Each `expected/*.json` has, for a policy: the board's T and exact ladder, Q (the live-qubit peak) and the score Q × T, the engines' agreement, the scanned-width cross-check and, for a
 PhaseProduct policy, the full run (T, Q, score, main ladder, trial count and the labelled cross-checks, which are not the score).
 

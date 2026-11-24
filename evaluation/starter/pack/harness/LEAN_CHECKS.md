@@ -99,14 +99,30 @@ table policy JSON, which refuses every design key with `table policy JSON cannot
 `SUBMISSION_FORMAT.md` section 2, "The design options, and which of them can be submitted", is the full matrix; in short:
 
 * **Submittable for a score.** Leaving all three out gives coherent readout, the exact logical QFT, Ross–Selinger synthesis and `oneQubit` negation. Writing a
-  default out in full is accepted and resolves exactly as omission (owner ruling 2026-11-24): `:= .rossSelinger`, `:= { readout := .coherent }` and, on the PhaseProduct
+  default out in full is accepted and resolves exactly as omission: `:= .rossSelinger`, `:= { readout := .coherent }` and, on the PhaseProduct
   board only, `:= .reference`, each as one `def` at column 0 directly in the board's namespace, with ForShor's own type and nothing else on the statement.
-* **Local qualification only.** Semiclassical readout, the standalone synthesis primitives `.catalyticB2` and `.adaptiveB3`, and every `submittedFullRunDesign` other
-  than `.reference`. The builds below attest the choice on your own machine; **hosted intake refuses every one of them and there is no publication route** —
-  attested and priced locally, not accepted by hosted intake, no score. A non-`reference` full-run design also needs saved semiclassical readout and
-  `--balanced --readout submitted`, or ForShor's executable refuses it before anything is printed.
-* **Anything else.** No typed selector exists for any other per-family QFT mixture, rotation backend or phase-step backend, or for any precision other than
-  δ = 1e-2.
+* **Submittable for a score, on the PhaseProduct board: the semiclassical readout and a per-family QFT design.** Declare
+  `def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }` and, beside it, optionally one
+  `def submittedFullRunDesign : Shor.FullRunDesign := …` setting the `data`, `work` and `scratch` QFT families (with
+  `import ForShor.ShorVerification.Framework.FullRunDesign` in the header; the rules and three checked examples are in
+  `SUBMISSION_FORMAT.md` section 2, "Choose a QFT design"). Build as above, then export with the readout:
+
+  ```bash
+  lake exe forshor_policy_submission --balanced --readout submitted > policy.json
+  ```
+
+  The document's schema is `forshor.policy-submission-semiclassical/v1`, and a design appears in it as `submitted_full_run`,
+  with each family's `backend`, `target` and, for an approximate family, `max_error` written `<units>e-<scale>`. Without
+  `--readout submitted`, or without the readout declaration, ForShor refuses a design before printing anything:
+  `full-run synthesis requires saved semiclassical readout and --balanced --readout submitted`. A design together with a
+  standalone primitive is refused with `full-run and standalone synthesis opt-ins are not jointly qualified`.
+  `starter.py forshor-doc` does not read this measured document; `./forshor check` runs the same build and checks the
+  design, and the design's price is the published panel's.
+* **Local only; does not publish.** The standalone synthesis primitives `.catalyticB2` and `.adaptiveB3`. The verifier attests
+  the choice on your own machine; hosted intake refuses it and there is no publication route: attested and priced locally,
+  not accepted by hosted intake, no score.
+* **Anything else.** No typed selector exists for it. A QFT design may set only the `data`, `work` and `scratch` families;
+  any other field is refused, and the refusal names it. There is no precision other than δ = 1e-2.
 
 A `rejected` record is a verdict; a **timeout or memory stop is not**. An incomplete attempt says nothing about the policy and may be retried.
 
