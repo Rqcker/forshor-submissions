@@ -158,25 +158,30 @@ def lean_kind(lean_text: str) -> str:
     return "ptp" if ptp else "pp"
 
 
+def _without_default_selectors(source: str) -> str:
+    """The comment-stripped source with its explicit default selector declarations removed (owner ruling 2026-11-24: an explicit default token, i.e.
+    `.rossSelinger`, `.reference` and `{ readout := .coherent }`, is identical to omission). The recogniser is `scripts/ci/policy_source.py`'s, so the
+    CI source gate, this intake and the publisher re-check cannot disagree; any other mention of a selector is left in the text for the refusals below."""
+    sys.path.insert(0, str(HERE.parent))
+    from scripts.ci.policy_source import strip_lean_comments, without_default_selectors
+    return without_default_selectors(strip_lean_comments(source))
+
+
 def refuse_unqualified_design(source: str) -> None:
     """The old verifier would otherwise compile a new declaration and ignore it."""
-    sys.path.insert(0, str(HERE.parent))
-    from scripts.verifier import strip_lean_comments
-    if re.search(r"(?<![\w'])submittedDesign(?![\w'])", strip_lean_comments(source)):
+    if re.search(r"(?<![\w'])submittedDesign(?![\w'])", _without_default_selectors(source)):
         raise Refused("format", "submittedDesign is not enabled for ordinary submissions; it requires local readout qualification")
 
 
 def refuse_unqualified_primitive(source: str) -> None:
-    sys.path.insert(0, str(HERE.parent))
-    from scripts.verifier import strip_lean_comments
-    if re.search(r"(?<![\w'])submittedPrimitive(?![\w'])", strip_lean_comments(source)):
+    if re.search(r"(?<![\w'])submittedPrimitive(?![\w'])", _without_default_selectors(source)):
         raise Refused("format", "submittedPrimitive requires separate nonpublishing primitive qualification")
 
 
 def check_legacy_full_run_source(source: str) -> None:
     sys.path.insert(0, str(HERE.parent))
     from scripts.ci.policy_source import check_no_full_run_selector, strip_lean_comments
-    check_no_full_run_selector(strip_lean_comments(source))
+    check_no_full_run_selector(strip_lean_comments(source))   # accepts only the explicit default `.reference`, see policy_source.default_selectors
 
 
 def require_legacy_export(check, document: Dict[str, Any]) -> None:
