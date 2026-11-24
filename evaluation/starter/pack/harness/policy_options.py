@@ -13,16 +13,55 @@ DESIGN_KEYS = {"readout", "submittedDesign", "submitted_design", "submitted_read
 COHERENT_ROUTE = "is not supported by the coherent pricing route"
 #: Readouts a dedicated local route qualifies (never published). Anything else is a participant error.
 QUALIFIED_READOUTS = ("semiclassical",)
+#: The anchor both full-run gates below raise, so the two cannot drift apart by a byte. Matched as a PREFIX by
+#: starter/test_pack_validation.py, export_v2/pytests/test_readout_overlay.py and
+#: ForShor_Integration/readiness/pre-push/bind_native_split_mirror.py.
+FULL_RUN_ROUTE = "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"
+#: The only selection object shape the qualification opt-in below will let through.
+FULL_RUN_SELECTION_SCHEMA = "forshor.full-run-selection/v1"
+
+
+def _full_run_selection(document):
+    """(the key is present, the selection) for a compiled document, tolerating a document that is not an object."""
+    if not isinstance(document, dict) or "submitted_full_run" not in document:
+        return False, None
+    return True, document["submitted_full_run"]
 
 
 def check_no_full_run_export(document):
-    if isinstance(document, dict) and "submitted_full_run" in document:
-        selected = document["submitted_full_run"]
+    """The DEFAULT gate, for every shipped route: the key is refused on PRESENCE, whatever it holds.
+
+    Do not weaken this. export_v2/request.py:42 and :84 and intake_v2.py:134, :290 and :324 all call it, and
+    export_v2/pytests/test_readout_overlay.py pins key presence through all of them. The dedicated nonpublishing
+    full-run qualification route uses `allow_qualified_full_run_export` below instead; it is a separate function so
+    that no shipped route can reach the looser test by accident."""
+    present, selected = _full_run_selection(document)
+    if present:
         profile = selected.get("profile") if isinstance(selected, dict) else None
         cause = (f"the export selects the full-run profile {profile!r}" if isinstance(profile, str)
                  else "the export carries a `submitted_full_run` key with no profile")
-        raise ValueError("compiled submitted_full_run metadata requires dedicated nonpublishing full-run "
-                         f"qualification: {cause}")
+        raise ValueError(f"{FULL_RUN_ROUTE}: {cause}")
+
+
+def allow_qualified_full_run_export(document):
+    """The dedicated nonpublishing full-run QUALIFICATION route only, and nothing else calls it.
+
+    The same gate as above, except that a well-formed selection object is let through for conversion
+    (`evaluation/export_v2/full_run_design.py`), which the presence test makes unreachable. `null`, a wrong schema, a
+    missing or empty profile and a non-dict selection stay refused here, and the conversion itself is fail-closed, so
+    this is one of two gates rather than the only one. Absence is accepted, exactly as the default gate accepts it: a
+    policy with no selection is an ordinary policy and this route must not invent one for it.
+
+    This enables QUALIFICATION, not publication. The publication gate is elsewhere and is untouched."""
+    present, selected = _full_run_selection(document)
+    if present and not (isinstance(selected, dict) and selected.get("schema") == FULL_RUN_SELECTION_SCHEMA
+                        and isinstance(selected.get("profile"), str) and selected["profile"]):
+        profile = selected.get("profile") if isinstance(selected, dict) else None
+        cause = (f"the export selects the full-run profile {profile!r}, but not as a well-formed "
+                 f"`{FULL_RUN_SELECTION_SCHEMA}` selection" if isinstance(profile, str) else
+                 f"the export carries a `submitted_full_run` key that is not a `{FULL_RUN_SELECTION_SCHEMA}` "
+                 "selection naming a profile")
+        raise ValueError(f"{FULL_RUN_ROUTE}: {cause}")
 
 
 def check_coherent_export(document):
