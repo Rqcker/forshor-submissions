@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Iterable, Optional
 
 from . import engine
-from .mapping import DELTA_VALUES
+from .mapping import DELTA_VALUES, DESIGN_DELTA
 
 N = 2048
 FULL_KEYS = ("n", "T", "T_base", "rotations", "T_per_rotation", "eps", "toffoli", "clifford", "cnot", "qubits", "layout",
@@ -57,11 +57,23 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
     P = policy.with_widths("exact")
     boards = list(boards)
     if design is not None:
-        # The QFT design surface is qualified at one precision only (QFT-SURFACE-MAPPING.md section 1).
-        if delta_key != "1e-2":
-            raise ValueError(f"a full-run design is priced at delta 1e-2 only, not {delta_key}")
+        # The QFT design surface is qualified at one precision only (QFT-SURFACE-MAPPING.md section 1). This stays a
+        # PRECONDITION on the caller, not a silent drop: scoping the design to the panel it belongs to is
+        # `request._build_request`'s job (it asks for `design=` at `DESIGN_DELTA` and asks for the other three deltas
+        # with no `design` keyword at all, which is the call 792464f made), and a design arriving here at another
+        # delta is a programming error. Dropping it instead would price one thing and report another.
+        if delta_key != DESIGN_DELTA:
+            raise ValueError(f"a full-run design is priced at delta {DESIGN_DELTA} only, not {delta_key}")
         if "full" not in boards:
             raise ValueError("a full-run design belongs to the full order-finding board, which is not being priced")
+        # The measured readout and the QFT design do NOT compose; see `mapping.ranked_price_of` for the three reasons
+        # and for the shipped intake gate that reaches the same conclusion. Refused here so that a view carrying both
+        # overlays is never built and nothing is priced on a precedence nobody has ruled on.
+        if measured:
+            raise ValueError("a measured readout and a full-run QFT design do not compose: each re-prices the whole "
+                             "run from the same frozen coherent census, the per-rotation synthesis rate is nonlinear "
+                             "in the rotation total, and on the exponent register the readout removes the very QFT a "
+                             "design bands. The combination is reported, not priced on a guessed precedence")
     price_full = pricer or eng.fullalg.price_full
     out: Dict[str, Dict[str, Any]] = {}
     for board in boards:

@@ -2,7 +2,10 @@
 
 The policy is priced at all four deltas on the boards it enters (a PhaseProduct policy: pp and full; a PhaseTripleProduct
 policy: ptp only). The request is refused here, before any compute is spent on a hopeless one, if the policy has no valid
-STO mirror evidence: only an accepted policy is ever published."""
+STO mirror evidence: only an accepted policy is ever published.
+
+A compiled full-run QFT design, where one is present, applies to the `mapping.DESIGN_DELTA` panel alone -- the one
+precision that surface is qualified at -- and the other three deltas are priced exactly as they are without it."""
 from __future__ import annotations
 
 from hashlib import sha256
@@ -129,9 +132,12 @@ def _build_request(policy_json, *, model, store, head_sha, pull_number, github_l
                    readout=None, full_run=None, primitive_from=None, log=lambda s: None):
     # First, before any evidence lookup or any pricing: a compiled selection this pipeline cannot convert is
     # reported, never priced as the default, and no part of a request is built for it. A selection that DOES
-    # convert is threaded to the full-run pricer below; a publish request prices all four deltas and the QFT
-    # design surface is qualified at 1e-2 only, so `price_views` refuses it at 3e-4 -- which is the recorded
-    # position that a full-run design is a nonpublishing qualification, not a publishable price.
+    # convert is threaded to the pricing loop below, at `mapping.DESIGN_DELTA` and nowhere else: the QFT design
+    # surface is qualified at that one precision, and the other three deltas of a publish request are the
+    # design-free panels of the same policy that they already are -- the same policy at a different precision,
+    # which is what every panel ever published is. They are priced with no `design` keyword at all, the exact
+    # call 792464f made, so their bytes cannot move. Refusing the whole request instead (which is what a design
+    # at every delta did) meant a design-bearing document could never complete one.
     design = full_run_design.design_of(full_run)
     eng = engine.load()
     policy = eng.tables.Policy.from_json(policy_json)
@@ -153,7 +159,8 @@ def _build_request(policy_json, *, model, store, head_sha, pull_number, github_l
     priced = []
     for delta in mapping.DELTA_KEYS:
         views = pricing.price_views(policy, f"Submission {head_sha[:12]}", delta, boards,
-                                    **({"measured": True} if readout else {}), **({"design": design} if design else {}))
+                                    **({"measured": True} if readout else {}),
+                                    **({"design": design} if design and delta == mapping.DESIGN_DELTA else {}))
         for board in boards:
             log(f"priced {board} {delta}")
             detail = mapping.panel_path(epoch, head_sha, board, delta)
