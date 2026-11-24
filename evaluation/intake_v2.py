@@ -486,6 +486,14 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     if isinstance(printed, dict):
         require_coherent_export(printed)
     if isinstance(v.get("leanSource"), str):
+        # The receipt's two source fields must agree before the gates below are trusted: they rule on `leanSource`, while
+        # `archive_policy.archive_policy` compares BOTH fields against the file at the pull request's head commit. If they
+        # disagree, the gate's verdict is about text that is not the submission. The archive refuses that too, but only
+        # when the publish job runs with `--archive`; nothing checked it on the `archive_write=None` route. Lifted from
+        # `request.rehearse_qualified_request`, whose docstring forbids giving it a production caller: the CHECK moves
+        # here, the trusted-source comparison stays in `archive_policy`.
+        if isinstance(v.get("leanSha256"), str) and v["leanSha256"] != hashlib.sha256(v["leanSource"].encode()).hexdigest():
+            raise Refused("format", "the verification's Lean source does not match its own digest")
         try:
             check_legacy_full_run_source(v["leanSource"])
         except ValueError as error:
