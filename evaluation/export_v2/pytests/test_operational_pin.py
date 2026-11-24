@@ -25,12 +25,12 @@ REPO = Path(__file__).resolve().parents[3]
 EPOCH = "ab1f8887b1b50e56"
 #: The FROZEN model/mirror pin: the ForShor commit the archived STO-mirror evidence was produced at. DO NOT MOVE.
 MODEL_PIN = "21e129aeefc0fd1bbb8fa63402f5799af2490788"
-#: The OPERATIONAL pin: the native candidate this release moves the verifier checkout to. It is also the readout
+#: The OPERATIONAL pin: the ForShor commit the verifier checkout is provisioned at. It is also the readout
 #: verifier pin (`export_v2/readout_overlay.py` -> VERIFIER_PIN); the two are one checkout and must not diverge.
-OPERATIONAL_PIN = "80d7b6b2d0e696df46f1fa6ed928cbd1d9d7d6c5"
+OPERATIONAL_PIN = "3a2b878c7e6194e182e10ad9bc06dec90e027a06"
 #: `sha256` of `export_v2/readout_overlay.py`, which is the `ruleSha256` every measured row carries and which the
 #: published contract pins as a literal on the publisher side. One byte of drift in that file rejects every readout panel.
-READOUT_RULE_SHA256 = "b3c2f317cf68bc47649a634862540177f5fc135d1e6fa543ce9fe4cb1161cd96"
+READOUT_RULE_SHA256 = "892db5df3fba435e93509499862f804dc95d65faaa21aace116775f735f70903"
 
 
 def operational_pin() -> str:
@@ -44,9 +44,9 @@ def model_pin() -> str:
     raise AssertionError("lake-manifest.json has no ForShor package")
 
 
-def test_operational_pin_is_the_native_candidate():
-    # FAILS IF: the DIFF 1 edit to `evaluation/policy-trees.json` (`forshor.ref`: 82e2274... -> 80d7b6b...) is reverted
-    # or moved on again. This is the pin the policy verifier compiles a submission in.
+def test_operational_pin_is_the_released_verifier():
+    # FAILS IF: `evaluation/policy-trees.json` `forshor.ref` (82e2274... -> 80d7b6b... -> 3a2b878...) is reverted or
+    # moved on again without this literal. This is the pin the policy verifier compiles a submission in.
     assert operational_pin() == OPERATIONAL_PIN
 
 
@@ -59,14 +59,14 @@ def test_model_pin_is_still_frozen():
 
 def test_the_two_pins_are_distinct_roles():
     # FAILS IF: someone "tidies" the two pins into one value, e.g. by pointing `policy-trees.json` back at the frozen
-    # model pin or by bumping `lake-manifest.json` to the native candidate. The verifier checkout and the pricing
+    # model pin or by bumping `lake-manifest.json` to the operational pin. The verifier checkout and the pricing
     # baseline are deliberately different commits and the starter pack documents them separately.
     assert operational_pin() != model_pin()
 
 
 def test_epoch_is_unchanged_by_the_pin_move():
     # FAILS IF: any epoch input moves (`lake-manifest.json`, `lean-toolchain`, `evaluation/engine`, STO_COMMIT, the
-    # qualtran version or the engine data fingerprint). The DIFF 1 operational-pin move must leave this untouched; if
+    # qualtran version or the engine data fingerprint). An operational-pin move must leave this untouched; if
     # this goes red after editing `policy-trees.json`, the operational pin has been wired into the model and the move
     # must be reverted rather than re-baselined.
     model = epoch.model_of()
@@ -88,7 +88,7 @@ def test_the_readout_verifier_pin_is_the_operational_pin():
 
     assert readout_overlay.VERIFIER_PIN == operational_pin()
     assert readout_overlay.VERIFIER_PIN == OPERATIONAL_PIN
-    # The readout emitter must actually EXIST in the pinned checkout: 80d7b6b is a strict descendant of the readout
+    # The readout emitter must actually EXIST in the pinned checkout: 3a2b878 is a strict descendant of the readout
     # seed 931bbf16, so `--readout submitted` is supported there. The predecessor 82e2274 precedes every readout
     # commit, which is why the operational move was a precondition for this route and not a hazard to it.
     assert readout_overlay.VERIFIER_PIN != MODEL_PIN, "the readout verifier is not the frozen pricing baseline"

@@ -1,7 +1,7 @@
 """Run from evaluation/: python -m pytest export_v2/pytests -q
 
 The four locally qualified standalone primitive receipts (catalyticB2 and adaptiveB3, each on the PhaseProduct
-and PhaseTripleProduct boards, verifier 80d7b6b2, the operational pin) are the oracle: the overlay must reprice the compiled export
+and PhaseTripleProduct boards, verifier 3a2b878c, the operational pin) are the oracle: the overlay must reprice the compiled export
 to the recorded T, qubits and error ledger without touching the default price. Nothing here publishes.
 """
 from fractions import Fraction
@@ -45,7 +45,7 @@ BASELINE_CASES = {
 
 @pytest.fixture(scope="module")
 def receipts():
-    return json.loads(gzip.decompress((DATA / "primitive_receipts_80d7b6b.json.gz").read_bytes()))
+    return json.loads(gzip.decompress((DATA / "primitive_receipts_3a2b878.json.gz").read_bytes()))
 
 
 def _policy(document, board):
@@ -110,8 +110,8 @@ def test_the_receipt_fixture_is_the_recorded_local_qualification(receipts):
     for name, board, _ in CASES:
         receipt = receipts[name]["receipt"]
         assert receipt["epoch"] == overlay.EPOCH and receipt["verifier"]["base"] == overlay.VERIFIER_PIN
-        # The committed tree of 80d7b6b (`verifier_snapshot` of a clean checkout), not a local dirty byte lock.
-        assert receipt["verifier"]["tree_sha256"] == "35eeaf1d365cbe25191366ef72cea18854b1d35340b9af7d92d1230b3daa3c59"
+        # The committed tree of 3a2b878 (`verifier_snapshot` of a clean checkout), not a local dirty byte lock.
+        assert receipt["verifier"]["tree_sha256"] == "3a9bd7bd54d8deb16d90f3c4d652834f1fc8a55dbf133b8472dc2ccb2a03ca36"
         assert receipt["engineRevision"] == "677cc2e05ab178afff8dc632ff56058a8196a116"
         assert receipt["localOnly"] is True and receipt["publishable"] is False
         assert receipt["selection"]["scope"] == board
@@ -123,7 +123,7 @@ def test_the_primitive_verifier_pin_is_the_operational_pin():
     (`intake_v2._pinned_verifier_or_refused`), and the verifier checkout is provisioned at the operational pin. While
     the two differed every primitive qualification was refused against the shipped checkout."""
     trees = json.loads((Path(__file__).resolve().parents[2] / "policy-trees.json").read_text())
-    assert overlay.VERIFIER_PIN == trees["forshor"]["ref"] == "80d7b6b2d0e696df46f1fa6ed928cbd1d9d7d6c5"
+    assert overlay.VERIFIER_PIN == trees["forshor"]["ref"] == "3a2b878c7e6194e182e10ad9bc06dec90e027a06"
 
 
 # --------------------------------------------------------------------- the four recorded prices

@@ -10,7 +10,7 @@ keeps the route NONPUBLISHING, which is what `scripts/ci/policy_source.py` and `
 publishes)".
 
 REAL PATH vs SEAM. Every price here is the real engine through the real `primitive_overlay.project`, against XA's
-recorded qualification receipts (`data/primitive_receipts_80d7b6b.json.gz`, verifier 80d7b6b2). What is injected is
+recorded qualification receipts (`data/primitive_receipts_3a2b878.json.gz`, verifier 3a2b878c). What is injected is
 ForShor's Lean build alone -- `intake_v2.forshor_build` -- exactly as `test_publication_gate.py` injects it: no Lean
 runs in a pytest. Refusal tests monkeypatch BOTH the engine loader and `price_views` to `pytest.fail`, so a refusal
 that prices or builds anything fails rather than passes quietly.
@@ -54,7 +54,7 @@ BASELINE_DIGEST = "36f1945013af84ba4326e3e1cd4dc8d21c05e0c45dfdc5b4675e435eba6db
 
 @pytest.fixture(scope="module")
 def receipts():
-    return json.loads(gzip.decompress((DATA / "primitive_receipts_80d7b6b.json.gz").read_bytes()))
+    return json.loads(gzip.decompress((DATA / "primitive_receipts_3a2b878.json.gz").read_bytes()))
 
 
 @pytest.fixture(scope="module")
@@ -653,7 +653,7 @@ def test_the_readout_rule_fingerprint_is_unchanged_by_the_primitive_route():
     release -- `readout_overlay.py`'s own header says so."""
     from export_v2 import readout_overlay
     assert sha256(Path(readout_overlay.__file__).read_bytes()).hexdigest() == \
-        "b3c2f317cf68bc47649a634862540177f5fc135d1e6fa543ce9fe4cb1161cd96"
+        "892db5df3fba435e93509499862f804dc95d65faaa21aace116775f735f70903"
 
 
 def test_the_primitive_route_is_recorded_as_nonpublishing_in_the_shipped_source_gate():

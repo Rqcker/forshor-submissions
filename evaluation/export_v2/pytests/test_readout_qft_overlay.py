@@ -43,7 +43,7 @@ def test_the_composed_rule_leaves_both_overlays_byte_for_byte_alone():
     from test_operational_pin import READOUT_RULE_SHA256
 
     assert readout_overlay.rule_fingerprint() == READOUT_RULE_SHA256 \
-        == "b3c2f317cf68bc47649a634862540177f5fc135d1e6fa543ce9fe4cb1161cd96"
+        == "892db5df3fba435e93509499862f804dc95d65faaa21aace116775f735f70903"
     assert composed.rule_fingerprint() == sha256(Path(composed.__file__).read_bytes()).hexdigest()
     assert composed.rule_fingerprint() not in (READOUT_RULE_SHA256, qft_overlay.rule_fingerprint())
     assert composed.component_rules() == {"readout": READOUT_RULE_SHA256, "qft": qft_overlay.rule_fingerprint()}

@@ -1,6 +1,6 @@
 """Exact reference-multiplier readout, using the frozen coherent engine.
 
-Local qualification only: this module does not grant publication authority.
+This module binds evidence; it does not grant publication authority by itself.
 The caller of bind_compiled_readout must obtain the document directly from the
 trusted verifier for the exact source, not from participant-supplied JSON.
 """
@@ -26,7 +26,7 @@ RULE = "exact-reference-readout-v1"
 # panel until the consumer is updated in the SAME change: this is a two-repository change, never a drive-by.
 # `pytests/test_operational_pin.py` transcribes the current digest independently and is the guard that fires the
 # moment the two drift -- if it is red, the published pin is stale, not wrong.
-VERIFIER_PIN = "80d7b6b2d0e696df46f1fa6ed928cbd1d9d7d6c5"
+VERIFIER_PIN = "3a2b878c7e6194e182e10ad9bc06dec90e027a06"
 MEASURED_SCHEMA = "forshor.policy-submission-semiclassical/v1"
 SCHEDULE = {
     "schema": "forshor.readout-loop/v1", "mode": "semiclassical",

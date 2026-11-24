@@ -1,7 +1,7 @@
 """The first REAL verifier-emitted reference-topology QFT design document, and where it stops today.
 
-`data/design_body_submitted_78cb085.json.gz` was produced by the real executable, not written by hand: ForShor
-`78cb085` (public main merged with `aa2a2a0` Port A and `94d4d68`, the design-body emitter) built the recorded measured
+`data/design_body_submitted_3a2b878.json.gz` was produced by the real executable, not written by hand: ForShor
+`3a2b878` (the verifier pin, which emits the per-family QFT design body) built the recorded measured
 fixture's source (`readout_submitted_931bbf1`) plus one declaration,
 
     def submittedFullRunDesign : Shor.FullRunDesign :=
@@ -14,9 +14,9 @@ design-bearing document the verifier can emit is a MEASURED document; there is n
 
 Publishing this document needs the measured readout and the QFT design to COMPOSE (owner ruling
 2026-11-24), which lane Y21 wired: the source gate admits this declaration beside the semiclassical readout, the
-measured route's document gate admits the bound body, and `readout_qft_overlay` prices the two together. What still
-stands between it and production is the operational verifier pin, which must reach a commit that can name a body
-(`80d7b6b` has the closed enum and cannot); that migration is a separate lane. This file pins: every gate admits the
+measured route's document gate admits the bound body, and `readout_qft_overlay` prices the two together. The
+operational verifier pin is a commit that can name a body (`80d7b6b`, the previous pin, had the closed enum and
+could not). This file pins: every gate admits the
 document on the measured route and refuses it everywhere else, the refusals that stay refusals, and the measured
 request it produces -- `fullRun.readoutQft` on the full 1e-2 panel, the archive's `design` key, and the other seven
 panels byte-identical to the readout-only request.
@@ -42,7 +42,7 @@ from policy_options import (FULL_RUN_ROUTE, check_coherent_export, check_measure
                             check_no_full_run_export)
 
 DATA = Path(__file__).parent / "data"
-RECORD = json.loads(gzip.decompress((DATA / "design_body_submitted_78cb085.json.gz").read_bytes()))
+RECORD = json.loads(gzip.decompress((DATA / "design_body_submitted_3a2b878.json.gz").read_bytes()))
 MEASURED = json.loads(gzip.decompress((DATA / "readout_submitted_931bbf1.json.gz").read_bytes()))
 DESIGN = {"data": {"backend": "ross_selinger", "target": "approximate", "max_error": "25e-5"}}
 
@@ -55,7 +55,7 @@ def test_the_record_is_the_verifiers_measured_export_plus_one_selection():
     # The digest is of the executable's stdout, which this re-serialisation reproduces byte for byte.
     stdout = json.dumps(document, separators=(",", ":"), ensure_ascii=False).encode()
     assert hashlib.sha256(stdout).hexdigest() == RECORD["documentSha256"]
-    assert RECORD["verifier"] == "78cb08546c2e148a2614530522daae82565d7806"
+    assert RECORD["verifier"] == "3a2b878c7e6194e182e10ad9bc06dec90e027a06"
     assert {k: v for k, v in document.items() if k != full_run_design.KEY} == MEASURED["document"]
     assert document["schema"] == "forshor.policy-submission-semiclassical/v1"
     assert document["submitted_readout"] == "semiclassical"
