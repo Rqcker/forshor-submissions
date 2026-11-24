@@ -466,3 +466,66 @@ def test_the_planner_reads_the_mode_it_is_given(remote):
     assert ap.plan_readout_variant(index, **binding, readout="semiclassical", mode="pair") == "ef" * 20
     with pytest.raises(ap.DuplicatePolicy):
         ap.plan_readout_variant(index, **binding, readout="coherent", mode="pair")
+
+
+# --- C20 / C21: two archive checks raised byte-identical messages -------------------------------
+# Census: ForShor_Integration/readiness/pre-push/REFUSAL-CENSUS.md. Nothing below changes which
+# submissions are archived or refused; only the reason says which check refused.
+
+def test_a_summary_rule_says_which_copy_of_the_file_it_read(remote):
+    # Production change that would fail this: dropping either parenthetical from the two
+    # summary_tex.problem call sites (github_summary and check_summary). The same three messages
+    # ("empty", the size limit, the UTF-8/control-character rules) are raised once for GitHub's copy
+    # at the head commit and once when the verification is cross-checked against it. An operator
+    # cannot otherwise tell a bad file in the pull request from a verification that carries a
+    # different one. Census C20.
+    _, clone = remote
+    bad = "  \n"
+    with pytest.raises(ap.ArchiveRefused) as cross_check:
+        archive(clone, with_summary(bad), summary=bad)
+    fetched = {"type": "file", "encoding": "base64", "content": base64.encodebytes(bad.encode()).decode()}
+    with pytest.raises(ap.ArchiveRefused) as at_head:
+        ap.github_summary(HEAD, "tok", lambda url, token, payload=None: fetched)
+    for refused in (cross_check, at_head):
+        assert "empty" in str(refused.value), str(refused.value)          # the anchor: summary_tex's own message
+    assert str(cross_check.value) != str(at_head.value)
+    assert "head commit" in str(at_head.value) and "cross-checking" in str(cross_check.value)
+
+
+def test_the_duplicate_refusal_says_which_check_found_the_repeat(remote):
+    # Production change that would fail this: dropping DuplicatePolicy's `source` argument, or
+    # passing the same label from both sites. The readout variant planner and the writer's own
+    # duplicate rules raised a byte-identical message, and the planner's refusal is sometimes caught
+    # as control flow, so an operator could not tell where the repeat was found. Census C21.
+    _, clone = remote
+    archive(clone)
+    # The writer's own rule, reached only when a repeat by ANOTHER participant is set to refuse: the same participant's
+    # repeat is found earlier, by the planner, which is exactly the distinction this patch makes visible.
+    with pytest.raises(ap.DuplicatePolicy) as writer:
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setitem(ap.DUPLICATE_RULES, "other_participant", "refuse")
+            archive(clone, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2,
+                    login="other")
+    with pytest.raises(ap.DuplicatePolicy) as planner:
+        archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2)
+    for refused in (writer, planner):
+        assert "already submitted this exact policy" in str(refused.value), str(refused.value)   # the anchor
+    assert str(writer.value) != str(planner.value)
+    assert planner.value.source == "the readout variant planner", "the same participant's repeat is found by the planner"
+    assert "writing the entry" in writer.value.source
+
+
+def test_the_duplicate_rules_still_refuse_and_accept_exactly_what_they_did(remote):
+    # Production change that would fail this: letting the `source` argument change the duplicate
+    # decision rather than only the reason. The same participant repeating a policy is still
+    # refused, another participant is still archived with the repeat recorded, and
+    # plan_readout_variant still returns (rather than raises) for the other readout.
+    bare, clone = remote
+    archive(clone)
+    before = tip(bare)
+    with pytest.raises(ap.DuplicatePolicy):
+        archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2)
+    assert tip(bare) == before, "nothing was pushed"
+    index = archived_entry({"policies": []})
+    assert ap.plan_readout_variant(index, digest="d" * 16, login="tester", head_sha=HEAD, mode="pair",
+                                   readout="semiclassical", published_ids={"ef" * 20}) == "ef" * 20

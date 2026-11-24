@@ -56,14 +56,21 @@ DUPLICATE_RULES = {"same_participant": "refuse", "other_participant": "allow"}
 
 
 class DuplicatePolicy(ArchiveRefused):
-    """A policy this submission repeats, and a rule that refuses it. `duplicate_of` describes the earlier archived submission."""
+    """A policy this submission repeats, and a rule that refuses it. `duplicate_of` describes the earlier archived submission.
 
-    def __init__(self, duplicate_of: Dict[str, Any]):
+    `source` names which check refused, because the same message was raised from two of them (census C21): the readout
+    variant planner, whose refusal the writer may catch as control flow, and the writer's own duplicate rules. An
+    operator reading a refused run could not tell whether the repeat was found while planning the readout variant or
+    while writing the entry, and those are different places to look."""
+
+    def __init__(self, duplicate_of: Dict[str, Any], source: str = "the archive's duplicate rules"):
         who = "you" if duplicate_of["sameParticipant"] else "another participant"
         super().__init__(f"{who} already submitted this exact policy as pull request #{duplicate_of['pull']} (commit {duplicate_of['policyId'][:7]}, "
                          f"{str(duplicate_of['createdAt'])[:10]}); each policy can be published once"
-                         + (" per participant" if duplicate_of["sameParticipant"] else ""))
+                         + (" per participant" if duplicate_of["sameParticipant"] else "")
+                         + f" (refused by {source})")
         self.duplicate_of = duplicate_of
+        self.source = source
 
 
 def sha256(text: str) -> str:
@@ -92,7 +99,9 @@ def github_summary(head_sha: str, token: str, request_json: Callable[..., Any], 
     data = base64.b64decode(doc["content"])
     why = summary_tex.problem(data)
     if why:
-        raise ArchiveRefused(why)
+        # Census C20: summary_tex.problem's three messages are raised here and again from check_summary below, so each
+        # route says which file it read. Here it is GitHub's copy at the head commit; there it is the carried copy.
+        raise ArchiveRefused(f"{why} (the summary.tex at the pull request's head commit)")
     return data.decode("utf-8")
 
 
@@ -153,7 +162,7 @@ def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head
         if chosen not in ("coherent", "semiclassical") or boards not in (["pp", "full"], ["full", "pp"], ["full"]):
             raise ArchiveRefused("unrecognized circuit or boards in published archive entry")
         if chosen == readout:
-            raise DuplicatePolicy(previous)
+            raise DuplicatePolicy(previous, "the readout variant planner")
         if "pp" in boards and primitive is None:
             primitive = previous["policyId"]
     return primitive
@@ -168,7 +177,7 @@ def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
         raise ArchiveRefused("the verification carries a summary.tex that the pull request's head commit does not have")
     why = summary_tex.problem(summary.encode("utf-8"))
     if why:
-        raise ArchiveRefused(why)
+        raise ArchiveRefused(f"{why} (cross-checking the verification against the head commit)")
     if carried is None:
         raise ArchiveRefused("the pull request's head commit has a summary.tex that the verification does not carry")
     if carried != summary or v.get("summarySha256") != sha256(summary):
@@ -215,7 +224,7 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
         repeats = [r for r in repeats if not r["sameParticipant"]]   # your own copies are all of the other readout, so this is a variant of them
     for repeat in repeats:
         if DUPLICATE_RULES["same_participant" if repeat["sameParticipant"] else "other_participant"] == "refuse":
-            raise DuplicatePolicy(repeat)
+            raise DuplicatePolicy(repeat, "the archive's duplicate rules, while writing the entry")
         if duplicates is not None:
             duplicates.append(repeat)
     if readout != "coherent" or primitive_from is not None:
