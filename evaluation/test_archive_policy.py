@@ -352,3 +352,21 @@ def test_another_participants_unpublished_copy_is_not_reported_as_a_repeat(remot
     archive(clone, login="other")
     got = archive(clone, verification(SOURCE2), head=HEAD2, source=SOURCE2, published_ids=set())
     assert got["added"] is True and got["duplicates"] == []
+
+
+# ---- the readout planner: the same policy measured the other way is a variant of it, not a repeat of it
+
+def archived_entry(index, digest="d" * 16, login="tester", mode="pair", created="2026-11-08T10:00:00Z", **extra):
+    index["policies"].append({"policy_id": "ef" * 20, "digest": digest, "mode": mode,
+                              "source": {"pr_number": 1, "github_login": login, "created_at": created}, **extra})
+    return index
+
+
+def test_the_planner_reads_the_mode_it_is_given(remote):
+    # Fails if plan_readout_variant pins mode="PhaseProduct" again: write_policy must be able to ask about the mode it is archiving.
+    index = archived_entry({"policies": []})
+    binding = dict(digest="d" * 16, login="tester", head_sha=HEAD, published_ids={"ef" * 20})
+    assert ap.plan_readout_variant(index, **binding, readout="semiclassical") is None, "the default mode is still PhaseProduct"
+    assert ap.plan_readout_variant(index, **binding, readout="semiclassical", mode="pair") == "ef" * 20
+    with pytest.raises(ap.DuplicatePolicy):
+        ap.plan_readout_variant(index, **binding, readout="coherent", mode="pair")

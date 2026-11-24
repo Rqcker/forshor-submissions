@@ -127,8 +127,13 @@ def find_duplicates(index: Dict[str, Any], *, digest: str, mode: str, login: str
 
 
 def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head_sha: str,
-                         readout: str, published_ids: Collection[str]) -> Optional[str]:
-    """Local planner, not called by the live archive writer. Return a prior primitive ID, if any.
+                         readout: str, published_ids: Optional[Collection[str]] = None,
+                         mode: str = "PhaseProduct") -> Optional[str]:
+    """How this participant's own earlier archived copies of this policy bear on it. Return a prior primitive ID, if any.
+
+    Raises `DuplicatePolicy` for a repeat with the same readout. `mode` is the
+    board mode to compare on; readout designs exist for PhaseProduct only, but
+    `write_policy` asks about every mode it archives, so the same refusal holds.
 
     Take only visible records into account. Legacy records omit both circuit
     and board metadata and mean coherent readout with a primitive result.
@@ -138,7 +143,7 @@ def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head
         raise ArchiveRefused("unknown readout design")
     records = {p["policy_id"]: p for p in index["policies"]}
     primitive = None
-    for previous in find_duplicates(index, digest=digest, mode="PhaseProduct", login=login, head_sha=head_sha,
+    for previous in find_duplicates(index, digest=digest, mode=mode, login=login, head_sha=head_sha,
                                     published_ids=published_ids):
         if not previous["sameParticipant"]:
             continue
