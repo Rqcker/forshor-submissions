@@ -16,6 +16,11 @@ DELTA_VALUES = {"1e-2": 0.01, "3e-4": 3e-4, "1e-4": 1e-4, "1e-6": 1e-6}
 #: so the scope is stated once.
 DESIGN_DELTA = "1e-2"
 
+#: The numbers a board shows for a row, and so the only ones an overlay can override in `ranked_price_of`. An overlay
+#: that prices some of them (the QFT projection prices `T`) leaves the rest at the engine's; one that prices none of
+#: them cannot move a published row at all.
+SHOWN = ("T", "qubits")
+
 
 def ladder_of(label: str) -> List[Dict[str, Optional[int]]]:
     """'2048:8 -> 279:3 -> 35:leaf' -> [{width, k}], with k None for the base case."""
@@ -237,11 +242,15 @@ def ranked_price_of(full: Raw) -> Raw:
     """The numbers a full-run board shows: the overlay's price when a panel carries one, the engine's own otherwise.
 
     `readout` replaces T and qubits outright, because `readout_overlay.project` returns both for the measured circuit.
-    `qft` prices T ONLY: `qft_overlay.project` states that it does not re-derive a qubit count and that the engine's
-    frozen layout total is a sound UPPER bound on the banded run's qubits (banding removes a QFT's phase-product
-    workspace), so the ranked qubits stays the engine's own number and only T comes from the projection. With neither
-    key this returns the panel's own full-run block unchanged -- the object itself -- which is what every published row
-    was built from.
+    `qft` today prices T ONLY: `qft_overlay.project` states that it does not re-derive a qubit count and that the
+    engine's frozen layout total is a sound UPPER bound on the banded run's qubits (banding removes a QFT's
+    phase-product workspace), so the ranked qubits stays the engine's own number and only T comes from the projection.
+    A projection that DOES model a qubit count carries `qubits` and that number is ranked instead: the Coppersmith band
+    can only lower the count, but the catalytic arm `qft_overlay.parse_design` currently refuses "adds a catalyst
+    register", which would RAISE it and make the engine's total no longer a bound. Reading `qubits` when it is offered
+    is the hook that lets that arm land without publishing a qubit count nobody modelled. With neither overlay key this
+    returns the panel's own full-run block unchanged -- the object itself -- which is what every published row was
+    built from.
 
     THE TWO OVERLAYS DO NOT COMPOSE, and the combination is refused rather than ranked on a guessed precedence. Each
     re-derives the WHOLE run's census from the same frozen coherent result and returns a FINAL price, not a census
@@ -263,9 +272,10 @@ def ranked_price_of(full: Raw) -> Raw:
     if "readout" in full:
         return full["readout"]
     if "qft" in full:
-        # T from the projection, every other shown number from the engine's panel: the projection is the price now
-        # (the owner's Tier 2 ruling), exactly as `readout` is for the measured route, but it prices T alone.
-        return {**full, "T": full["qft"]["T"]}
+        # Every number the projection prices overrides the engine's; every number it does not keeps the engine's. The
+        # projection is the price now (the owner's Tier 2 ruling), exactly as `readout` is for the measured route --
+        # but unlike `readout` it does not necessarily price the whole row, so it overlays rather than replaces.
+        return {**full, **{key: full["qft"][key] for key in SHOWN if key in full["qft"]}}
     return full
 
 

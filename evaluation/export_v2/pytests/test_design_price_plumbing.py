@@ -343,6 +343,19 @@ def test_ranked_price_of_takes_T_from_the_projection_and_qubits_from_the_engine(
     assert priced["ladderLabel"] == ENGINE_FULL["ladderLabel"]
 
 
+def test_a_projection_that_does_model_qubits_ranks_on_them():
+    """THE HOOK FOR LANE WX. `qft_overlay` refuses `backend: "catalytic"` today partly because it "adds a shared
+    catalyst register", which would RAISE the qubit count and make the engine's layout total no longer an upper
+    bound -- so ranking the engine's number would then publish a count nobody modelled. `ranked_price_of`
+    overrides every `mapping.SHOWN` number the projection prices and leaves the rest at the engine's, so WX can
+    add `qubits` to the projection and have it ranked without editing this file. Fails if the ranked qubits is
+    hard-wired to the engine's."""
+    assert mapping.SHOWN == ("T", "qubits")
+    priced = mapping.ranked_price_of({**ENGINE_FULL, "qft": {"T": 4.0, "qubits": 90}})
+    assert priced["T"] == 4.0 and priced["qubits"] == 90
+    assert priced["ladderLabel"] == ENGINE_FULL["ladderLabel"], "a projection cannot restate the ladder"
+
+
 def test_row_of_ranks_a_full_board_on_the_projection_without_the_engine():
     """OBSTACLE 2 at the row, as a unit, so the wiring is pinned without `--runslow`: a full-run panel carrying
     a projection produces a row whose T is the projection's and whose qubits are the engine's. Fails the moment
