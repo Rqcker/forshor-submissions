@@ -302,14 +302,22 @@ def test_a_malformed_full_run_selection_is_refused(selection, measured, publishe
 
 def test_without_the_converter_a_full_run_key_keeps_its_standing_refusal(measured, publisher, monkeypatch, tmp_path):
     """RETAINED, and the seam's own safety: on a checkout with no converter the compiled key is refused exactly as
-    before -- byte-identical message -- and is never priced as the reference pipeline."""
+    before -- the same anchor sentence -- and is never priced as the reference pipeline.
+
+    Integration 2026-11-24 (lane XE): WJ's refusal specificity appends the CAUSE after a colon, and documents the
+    leading sentence (`policy_options.FULL_RUN_ROUTE`) as the anchor the rest of the repository matches as a PREFIX.
+    This assertion was byte-equality against a base that had no cause clause; it now matches the anchor the same way
+    `starter/test_pack_validation.py` does. What is refused, and that nothing is priced, are unchanged."""
     assert intake_v2.compiled_full_run({intake_v2.FULL_RUN_KEY: {"profile": "quotient-exact"}}) == (None, None)
     v = qualify(measured, publisher, monkeypatch, tmp_path)
     monkeypatch.setattr(request, "build_measured_request", lambda *a, **kw: pytest.fail("no converter, no price"))
     printed = {**deepcopy(v["printed"]), intake_v2.FULL_RUN_KEY: {"schema": SELECTION_SCHEMA, "profile": "quotient-exact"}}
     with pytest.raises(intake_v2.Refused) as refusal:
         publish({**deepcopy(v), "printed": printed}, tmp_path, qualified_in_run=True)
-    assert refusal.value.reason == "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"
+    from policy_options import FULL_RUN_ROUTE
+    assert FULL_RUN_ROUTE == "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"
+    assert refusal.value.reason.startswith(FULL_RUN_ROUTE)
+    assert refusal.value.reason == f"{FULL_RUN_ROUTE}: the export selects the full-run profile 'quotient-exact'"
     assert publisher.sent == []
 
 
