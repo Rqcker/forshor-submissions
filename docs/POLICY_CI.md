@@ -50,6 +50,12 @@ GitHub, including archived/reused verification. This operational guard is
 always applied around the mathematical proof cache; it does not change the
 Lean theorems, estimator/model pins, epoch, or the archived proof identity.
 
+## Workflow hardening
+
+Every third-party action in `.github/workflows/` and `.github/actions/` is pinned by full commit SHA; `scripts/ci/test_workflow_pins.py` fails on any other `uses:` (local `./` actions excepted) and lists the few tags still awaiting a resolved SHA. `scripts/ci/test_workflow_security.py` holds the boundaries above in place: no `pull_request_target`, no credentials or write scope in a workflow a pull request starts, the verifier checked out at the base commit, every checkout without a persisted token, and the publisher and notifier running `main` code with the downloaded artifact as data.
+
+There is deliberately no separate changed-files allowlist step in the verify workflow. The path filter only decides what triggers a run; the admitted paths are enforced by the verifier (`scripts/policy_verifier.py`) and again by the trusted publisher against GitHub's own file list (`scripts/ci/table_generation_report.js`), so a pull request that edits a workflow or anything else beside the submission surface is refused before anything is published.
+
 ## Trusted publication
 
 After GitHub confirms the exact source run and PR files, the publisher checks the artifact's source/run metadata and compares the verification's Lean bytes and author with GitHub. For a policy it calls `intake_v2.py --publish-from` using the isolated v2 engine and short-lived Google identity. That call revalidates evidence, archives the policy on `submission-results`, calculates resource values, and publishes into the existing v2 epoch.
