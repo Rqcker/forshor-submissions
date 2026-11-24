@@ -68,7 +68,12 @@ KNOWN_DUPLICATE_COLUMNS = [('check_full_run_selector', 'check_legacy_full_run_so
 #: NO accept/refuse verdict moved: what moved is the full-run refusal text (its leading sentence and causes now state
 #: the rule that failed in a participant's terms), the full-run import refusal's text, and the gate's return value
 #: (`None` -> `False`: it now reports whether a design is declared). The corpus also gained the three design bodies.
-SURFACE_DIGEST = '8a9c4fb0b4213d2074c09ccc0aed1f2d132686c8b59da8d5db12068ac5487b10'
+#: Re-baselined again when the primitive refusal was reworded in participant terms (`8a9c4fb0...` before): over
+#: the same 793 sources NO verdict moved; only `refuse_unqualified_primitive`'s text (162) and the primitive
+#: cause in `selector_cause` (18) changed.
+#: And again when the readout refusal was reworded (`cd211a9b...` before): over the same 793 sources NO verdict
+#: moved; only the readout refusal's text changed.
+SURFACE_DIGEST = 'b8864af1d583cd5c6427eee8eab8ef1add4dec15940727fccd326beeee63b430'
 
 HEADERS = {
     'policy': f'import {POLICY_IMPORT}\n',

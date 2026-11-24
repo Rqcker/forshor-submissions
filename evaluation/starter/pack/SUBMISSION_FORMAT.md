@@ -138,16 +138,16 @@ one, and do not treat its local number as a board number.
 
 | Option | Declaration | Hosted refusal, verbatim |
 |---|---|---|
-| Semiclassical (measured) readout | `def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }` (PP and PTP) | `submittedDesign is not enabled for ordinary submissions; it requires local readout qualification` |
-| Standalone primitive, catalytic B2 | `def submittedPrimitive : Shor.PrimitiveSynthesis := .catalyticB2` (PP and PTP) | `submittedPrimitive requires separate nonpublishing primitive qualification` |
-| Standalone primitive, adaptive B3 | `def submittedPrimitive : Shor.PrimitiveSynthesis := .adaptiveB3` (PP and PTP) | `submittedPrimitive requires separate nonpublishing primitive qualification` |
+| Semiclassical (measured) readout | `def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }` (PP and PTP) | `submittedDesign is not accepted as written` |
+| Standalone primitive, catalytic B2 | `def submittedPrimitive : Shor.PrimitiveSynthesis := .catalyticB2` (PP and PTP) | `submittedPrimitive is not accepted for a scored submission` |
+| Standalone primitive, adaptive B3 | `def submittedPrimitive : Shor.PrimitiveSynthesis := .adaptiveB3` (PP and PTP) | `submittedPrimitive is not accepted for a scored submission` |
 | Any full-run design other than `.reference` | `def submittedFullRunDesign : Shor.FullRunDesign := .<value>` (PhaseProduct board; `PTPPolicyCheck` refuses the name outright on PTP) | `submittedFullRunDesign is not accepted as written` |
 
 Even a receipt produced by the local readout-qualification route cannot be published. `publish_verification` refuses
 **every measured receipt at its first gate**, before anything else about the submission is looked at:
 
 ```
-qualified readout receipts are local only; publishing is not enabled
+a semiclassical readout receipt is published only from the trusted verification run that produced it, and this receipt does not come from one
 ```
 
 **`submittedFullRunDesign` is submittable at `.reference` only.** `Shor.FullRunDesign` is a closed enum and `.reference`

@@ -43,7 +43,7 @@ TWO ORTHOGONAL AXES, per family (owner ruling 2026-11-24). `target` chooses the 
 (`exact` = the engine's native `PolicyQFT` template untouched, `approximate` = a Coppersmith-banded
 `ReferenceQFT`); `backend` chooses the CURRENCY its surviving rotations are paid in (`ross_selinger` =
 the engine's own synthesis law, `catalytic` = merged catalysis). All four corners price, and all four
-price differently. The quotient/split PROFILE customization is not part of this release (deferred),
+price differently. The quotient/split PROFILE customization is not priced here,
 which is why no topology or `modmul` field appears anywhere below.
 
 THE CATALYTIC ARM, and the three things that make it harder than a band
@@ -259,9 +259,8 @@ def parse_design(design):
              f"QFT design must be a mapping with per-family keys {list(FAMILIES)}; got {type(design).__name__}")
     for field in OUT_OF_SCOPE:
         _require(field not in design,
-                 f"QFT overlay refuses the selector field {field!r}: it is a phase-product step, not a QFT "
-                 f"family, and it is not symbolic, deterministic or closed-form. This overlay "
-                 f"prices the QFT families {list(FAMILIES)} only; re-submit without {field!r}")
+                 f"QFT design names the phase-product step {field!r}, which is refused: this design path prices "
+                 f"the QFT families {list(FAMILIES)} only; re-submit without {field!r}")
     unknown = sorted(set(design) - set(FAMILIES))
     _require(not unknown,
              f"QFT design has keys this overlay cannot honour: {unknown} (known families: {list(FAMILIES)})")

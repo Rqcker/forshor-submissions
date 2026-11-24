@@ -50,9 +50,9 @@ def refusal(call, *args):
 
 @pytest.mark.parametrize("refuse,selector,anchor", [
     (intake_v2.refuse_unqualified_design, "submittedDesign",
-     "submittedDesign is not enabled for ordinary submissions; it requires local readout qualification"),
+     "submittedDesign is not accepted as written"),
     (intake_v2.refuse_unqualified_primitive, "submittedPrimitive",
-     "submittedPrimitive requires separate nonpublishing primitive qualification"),
+     "submittedPrimitive is not accepted for a scored submission"),
 ])
 def test_the_selector_anchor_sentence_is_still_the_prefix_of_every_cause(refuse, selector, anchor):
     # Production change that would fail this: rewording or re-ordering the anchor so it is no longer
@@ -62,7 +62,9 @@ def test_the_selector_anchor_sentence_is_still_the_prefix_of_every_cause(refuse,
 
 
 @pytest.mark.parametrize("refuse,selector,value", [
-    (intake_v2.refuse_unqualified_design, "submittedDesign", "{ readout := .semiclassical }"),
+    # Reworded 2026-11-24: the semiclassical readout in its accepted form now gets its own cause (this check was run
+    # without the readout; next test), so a value that IS non-default and not accepted stands in for it here.
+    (intake_v2.refuse_unqualified_design, "submittedDesign", "{ readout := .teleported }"),
     (intake_v2.refuse_unqualified_primitive, "submittedPrimitive", ".quotientExact"),
 ])
 def test_a_non_default_selection_is_sent_to_the_dedicated_route_and_names_the_value(refuse, selector, value):
@@ -75,6 +77,15 @@ def test_a_non_default_selection_is_sent_to_the_dedicated_route_and_names_the_va
     assert classes(reason) == {"UNSUPPORTED"}, reason
     assert value in reason, reason
     assert AT_LINE.search(reason), reason
+
+
+def test_the_semiclassical_readout_on_a_check_without_the_readout_says_so():
+    # Production change that would fail this: telling a participant whose semiclassical declaration is correct to
+    # rewrite it, or sending them to a "qualification" route. The declaration is accepted; this check did not price it.
+    from scripts.ci.policy_source import READOUT_UNPRICED_CAUSE
+    reason = refusal(intake_v2.refuse_unqualified_design, f"{NAMESPACE}def submittedDesign : Shor.SubmissionDesign := "
+                     "{ readout := .semiclassical }\nend PolicySubmission\n").reason
+    assert reason == f"submittedDesign is not accepted as written: line 2, {READOUT_UNPRICED_CAUSE}", reason
 
 
 @pytest.mark.parametrize("refuse,selector,declaration", [
@@ -171,3 +182,12 @@ def test_the_readout_qualification_board_refusal_says_which_entry_refused(tmp_pa
         assert reason.startswith(ANCHOR), reason
     assert at_intake != at_build, (at_intake, at_build)
     assert "intake" in at_intake[len(ANCHOR):] and "build" in at_build[len(ANCHOR):]
+
+
+def test_the_readout_check_without_a_lean_file_says_what_it_needs(tmp_path):
+    # Reworded 2026-11-24: "readout qualification is local only" was false once the semiclassical readout published.
+    # Production change that would fail this: reverting to that wording, or dropping what the check needs.
+    with pytest.raises(intake_v2.Refused, match="the semiclassical readout is checked from Policy.lean, and only a run "
+                                                "that publishes takes a publisher URL"):
+        intake_v2.verify_submission(None, lean_policy=None, login="tester", tree=tmp_path, workdir=tmp_path,
+                                    qualify_readout=True, log=lambda s: None)

@@ -256,12 +256,9 @@ def _design_of_body(body: Any, profile: Optional[str] = None) -> Optional[Dict[s
             f"{named} names an unrecognised {MULTIPLIER_KEY} {multiplier!r} (known: {list(MULTIPLIERS)})")
     if multiplier != MULTIPLIER_REFERENCE:
         raise ValueError(
-            f"{named} selects the multiplier topology {multiplier!r}, which this chain cannot price. "
-            f"`qft_overlay` prices the QFT band only: its families are {list(qft_overlay.FAMILIES)}, it has "
-            f"no topology parameter, and it substitutes banded QFT sites into the engine's frozen "
-            f"REFERENCE census. The multiplier drives both the T cost and the qubit base, so pricing a "
-            f"{multiplier!r} run on reference-topology numbers would report the reference price as if the "
-            f"topology had been honoured. It is reported, never priced as the reference default")
+            f"{named} selects the multiplier topology {multiplier!r}, which is not the reference topology and "
+            f"is refused: a full-run design is priced on the reference topology only, and a {multiplier!r} run "
+            f"is never priced as the reference one")
 
     phases = body.get(PHASE_KEY) or {}
     if phases:

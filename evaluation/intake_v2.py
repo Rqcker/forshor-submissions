@@ -192,12 +192,25 @@ def _selector_cause(residual: str, selector: str) -> tuple:
 
 
 def refuse_unqualified_design(source: str) -> None:
-    """The old verifier would otherwise compile a new declaration and ignore it."""
+    """Refuse a `submittedDesign` declaration on a check that does not price the semiclassical readout.
+
+    The message is the CI source gate's own (`policy_source.declared_readout`) for anything that is not one of the two
+    accepted forms, so the pre-build and the intake refusal name the same line and the same rule. The semiclassical
+    readout in its accepted form is refused here only because this check was run without the readout."""
     residual = _without_default_selectors(source)
     if re.search(r"(?<![\w'])submittedDesign(?![\w'])", residual):
-        number, cause = _selector_cause(residual, "submittedDesign")
-        raise Refused("format", "submittedDesign is not enabled for ordinary submissions; it requires local readout "
-                                f"qualification: line {number}, {cause}")
+        sys.path.insert(0, str(HERE.parent))
+        from scripts.ci.policy_source import READOUT_REFUSAL, READOUT_UNPRICED_CAUSE, declared_readout
+        try:
+            declared_readout(source)
+        except ValueError as error:
+            raise Refused("format", str(error)) from error
+        number = residual.count("\n", 0, re.search(r"(?<![\w'])submittedDesign(?![\w'])", residual).start()) + 1
+        raise Refused("format", f"{READOUT_REFUSAL}: line {number}, {READOUT_UNPRICED_CAUSE}")
+
+
+#: The leading sentence of the refusal for a `submittedPrimitive` declaration on a scored submission.
+PRIMITIVE_SOURCE_REFUSAL = "submittedPrimitive is not accepted for a scored submission"
 
 
 def refuse_unqualified_primitive(source: str) -> None:
@@ -213,8 +226,7 @@ def refuse_unqualified_primitive(source: str) -> None:
     residual = _without_default_selectors(source)
     if re.search(r"(?<![\w'])submittedPrimitive(?![\w'])", residual):
         number, cause = _selector_cause(residual, "submittedPrimitive")
-        raise Refused("format", "submittedPrimitive requires separate nonpublishing primitive qualification: "
-                                f"line {number}, {cause}")
+        raise Refused("format", f"{PRIMITIVE_SOURCE_REFUSAL}: line {number}, {cause}")
 
 
 #: The one top-level key a compiled export names its standalone synthesis primitive in. `rossSelinger` stamps nothing,
@@ -508,7 +520,7 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
         require_legacy_export(check_no_full_run_export, doc)
     elif qualify_readout:
         # A full-run design is admitted on the measured route, bound to this source, and converted now so that a
-        # selection this release does not price is refused by name before the mirror runs.
+        # selection that is not priced is refused by name before the mirror runs.
         require_legacy_export(check_measured_full_run_export, doc)
         check_full_run_binding(lean_text, doc)
         compiled_full_run(doc, measured=True)
@@ -602,7 +614,7 @@ def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree
     if qualify_readout and (lean_policy is None or (url and not publishing)):
         # `publishing`: `run_intake` verifies and publishes in ONE trusted run, so there the publisher URL is the
         # publisher it is about to publish to. A bare `--qualify-readout --no-publish` still touches no network.
-        raise Refused("format", "readout qualification is local only and requires Policy.lean")
+        raise Refused("format", "the semiclassical readout is checked from Policy.lean, and only a run that publishes takes a publisher URL")
     if qualify_primitive and (lean_policy is None or url):
         # NO publishing arm, deliberately, and this is the difference from readout. The standalone primitive route has
         # always been described as nonpublishing (`scripts/ci/policy_source._SELECTOR_CAUSES`, `docs/CLI.md`), the
@@ -777,7 +789,7 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     trusted_origin = None
     if "localReadoutQualification" in v or measured:
         if not qualified_in_run and origin is None:
-            raise Refused("format", "qualified readout receipts are local only; publishing is not enabled")
+            raise Refused("format", "a semiclassical readout receipt is published only from the trusted verification run that produced it, and this receipt does not come from one")
         if not qualified_in_run:
             try:
                 trusted_origin = receipt_origin.establish(v, head_sha=head_sha, run_id=run_id, pull=pull, origin=origin)

@@ -62,19 +62,19 @@ def test_each_explicit_default_passes_every_hosted_source_gate(text):
 
 
 NON_DEFAULTS = [   # (source, gate that must refuse it, the message it always gave)
-    (lean("def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }"), "design", "submittedDesign is not enabled for ordinary submissions"),
-    (lean("def submittedDesign : Shor.SubmissionDesign where\n  readout := .semiclassical"), "design", "submittedDesign is not enabled for ordinary submissions"),
-    (lean(DESIGN, DESIGN), "design", "submittedDesign is not enabled for ordinary submissions"),
-    (lean(DESIGN, "def other := submittedDesign"), "design", "submittedDesign is not enabled for ordinary submissions"),
-    (with_decoy(DESIGN), "design", "submittedDesign is not enabled for ordinary submissions"),
-    (lean("def submittedPrimitive : Shor.PrimitiveSynthesis := .catalyticB2"), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
-    (lean("def submittedPrimitive : Shor.PrimitiveSynthesis := .adaptiveB3"), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
-    (lean("def submittedPrimitive : Shor.PrimitiveSynthesis := .rossSelingerX"), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
-    (lean("def submittedPrimitive := Shor.PrimitiveSynthesis.rossSelinger |> id"), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
-    (lean(PRIM, PRIM), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
-    (with_decoy(PRIM), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
-    (lean("private " + PRIM), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
-    (lean(PRIM, "  |> fun _ => Shor.PrimitiveSynthesis.adaptiveB3"), "primitive", "submittedPrimitive requires separate nonpublishing primitive qualification"),
+    (lean("def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }"), "design", "submittedDesign is not accepted as written"),
+    (lean("def submittedDesign : Shor.SubmissionDesign where\n  readout := .semiclassical"), "design", "submittedDesign is not accepted as written"),
+    (lean(DESIGN, DESIGN), "design", "submittedDesign is not accepted as written"),
+    (lean(DESIGN, "def other := submittedDesign"), "design", "submittedDesign is not accepted as written"),
+    (with_decoy(DESIGN), "design", "submittedDesign is not accepted as written"),
+    (lean("def submittedPrimitive : Shor.PrimitiveSynthesis := .catalyticB2"), "primitive", "submittedPrimitive is not accepted for a scored submission"),
+    (lean("def submittedPrimitive : Shor.PrimitiveSynthesis := .adaptiveB3"), "primitive", "submittedPrimitive is not accepted for a scored submission"),
+    (lean("def submittedPrimitive : Shor.PrimitiveSynthesis := .rossSelingerX"), "primitive", "submittedPrimitive is not accepted for a scored submission"),
+    (lean("def submittedPrimitive := Shor.PrimitiveSynthesis.rossSelinger |> id"), "primitive", "submittedPrimitive is not accepted for a scored submission"),
+    (lean(PRIM, PRIM), "primitive", "submittedPrimitive is not accepted for a scored submission"),
+    (with_decoy(PRIM), "primitive", "submittedPrimitive is not accepted for a scored submission"),
+    (lean("private " + PRIM), "primitive", "submittedPrimitive is not accepted for a scored submission"),
+    (lean(PRIM, "  |> fun _ => Shor.PrimitiveSynthesis.adaptiveB3"), "primitive", "submittedPrimitive is not accepted for a scored submission"),
     (lean(FULL.replace(".reference", ".quotientExact"), imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign is not accepted as written"),
     (lean(FULL, FULL, imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign is not accepted as written"),
     (with_decoy(FULL, imports=FULL_IMPORT), "fullrun", "submittedFullRunDesign is not accepted as written"),
@@ -99,7 +99,7 @@ def test_a_mixed_file_is_refused_for_its_non_default_part_only():
     # Fails if one accepted default declaration disables the check of the others.
     text = lean(PRIM, "def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }")
     intake_v2.refuse_unqualified_primitive(text)
-    with pytest.raises(intake_v2.Refused, match="submittedDesign is not enabled"):
+    with pytest.raises(intake_v2.Refused, match="submittedDesign is not accepted"):
         intake_v2.refuse_unqualified_design(text)
 
 

@@ -62,7 +62,7 @@ def test_the_exponent_family_is_refused_by_name_under_a_measured_readout(value):
     assert set(composed.check_design_under_readout({"data": approx(), "work": EXACT})) == {"data", "work"}
 
 
-@pytest.mark.parametrize("bad,reason", [({"step2": {}}, "selector field 'step2'"),
+@pytest.mark.parametrize("bad,reason", [({"step2": {}}, "phase-product step 'step2'"),
                                         ({"modmul": "reference"}, "cannot honour"),
                                         ({"data": approx("1.5e-6")}, "compiled form"),
                                         ({"data": {"backend": "fallback", "target": "exact"}}, "unrecognised backend")])

@@ -6,18 +6,15 @@ DESIGN_KEYS = {"readout", "submittedDesign", "submitted_design", "submitted_read
                "phase_product", "synthesis", "synthesis_backend"}
 
 
-# A refusal has to say WHICH cause refused, because the causes need different participant actions:
-# an unsupported-but-valid request belongs on another route, a malformed one has to be rewritten.
-# The leading sentence of each message is the anchor the rest of the repository matches on and
-# never changes; the cause follows it after a colon. Nothing here changes what is refused.
+# A refusal says WHICH cause refused, because the causes need different actions: a valid request that this check
+# does not price is named as such, a malformed one has to be rewritten. Each message is a leading sentence followed
+# by the cause after a colon.
 COHERENT_ROUTE = "is not supported by the coherent pricing route"
-#: Readouts a dedicated local route qualifies (never published). Anything else is a participant error.
+#: Readouts that are checked locally but not priced here. Anything else is not a readout mode.
 QUALIFIED_READOUTS = ("semiclassical",)
-#: The anchor both full-run gates below raise, so the two cannot drift apart by a byte. Matched as a PREFIX by
-#: starter/test_pack_validation.py and export_v2/pytests/test_readout_overlay.py, so the leading
-#: sentence must survive any rewording.
-FULL_RUN_ROUTE = "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"
-#: The only selection object shape the qualification opt-in below will let through.
+#: The leading sentence both full-run gates below raise, so the two cannot drift apart.
+FULL_RUN_ROUTE = "compiled submitted_full_run is accepted only together with the semiclassical readout declaration"
+#: The only selection object shape the gates below will let through.
 FULL_RUN_SELECTION_SCHEMA = "forshor.full-run-selection/v1"
 
 
@@ -29,12 +26,12 @@ def _full_run_selection(document):
 
 
 def check_no_full_run_export(document):
-    """The DEFAULT gate, for every shipped route: the key is refused on PRESENCE, whatever it holds.
+    """The default gate: a compiled `submitted_full_run` key is refused on PRESENCE, whatever it holds.
 
-    Do not weaken this. export_v2/request.py:42 and :84 and intake_v2.py:134, :290 and :324 all call it, and
-    export_v2/pytests/test_readout_overlay.py pins key presence through all of them. The dedicated nonpublishing
-    full-run qualification route uses `allow_qualified_full_run_export` below instead; it is a separate function so
-    that no shipped route can reach the looser test by accident."""
+    Every route that does not price the semiclassical readout uses this gate. The measured route uses
+    `check_measured_full_run_export` below instead, and the local full-run check uses
+    `allow_qualified_full_run_export`; they are separate functions so that no other route can reach the looser
+    tests by accident."""
     present, selected = _full_run_selection(document)
     if present:
         profile = selected.get("profile") if isinstance(selected, dict) else None
@@ -44,15 +41,12 @@ def check_no_full_run_export(document):
 
 
 def allow_qualified_full_run_export(document):
-    """The dedicated nonpublishing full-run QUALIFICATION route only, and nothing else calls it.
+    """The local full-run check's gate: it checks a named profile and does not publish.
 
-    The same gate as above, except that a well-formed selection object is let through for conversion
-    (`evaluation/export_v2/full_run_design.py`), which the presence test makes unreachable. `null`, a wrong schema, a
-    missing or empty profile and a non-dict selection stay refused here, and the conversion itself is fail-closed, so
-    this is one of two gates rather than the only one. Absence is accepted, exactly as the default gate accepts it: a
-    policy with no selection is an ordinary policy and this route must not invent one for it.
-
-    This enables QUALIFICATION, not publication. The publication gate is elsewhere and is untouched."""
+    The same gate as above, except that a well-formed selection object naming a profile is let through for
+    conversion, which refuses by name everything it cannot price. `null`, a wrong schema, a missing or empty profile
+    and a non-dict selection stay refused here. Absence is accepted, exactly as the default gate accepts it: a policy
+    with no selection is an ordinary policy."""
     present, selected = _full_run_selection(document)
     if present and not (isinstance(selected, dict) and selected.get("schema") == FULL_RUN_SELECTION_SCHEMA
                         and isinstance(selected.get("profile"), str) and selected["profile"]):
@@ -64,21 +58,19 @@ def allow_qualified_full_run_export(document):
         raise ValueError(f"{FULL_RUN_ROUTE}: {cause}")
 
 
-#: The compiled schema of a measured (semiclassical) export, `export_v2/readout_overlay.MEASURED_SCHEMA`.
+#: The compiled schema of an export built with the semiclassical readout.
 MEASURED_EXPORT_SCHEMA = "forshor.policy-submission-semiclassical/v1"
-#: The anchor the measured gate below raises.
+#: The leading sentence the gate below raises.
 MEASURED_FULL_RUN_REFUSAL = "compiled submitted_full_run is not accepted"
 
 
 def check_measured_full_run_export(document):
-    """The MEASURED publication route's gate (owner ruling 2026-11-24), and only that route's.
+    """The gate for an export compiled with the semiclassical readout, the one export a full-run design can be on.
 
-    The verifier emits a full-run selection only beside a saved semiclassical readout, so a selection is let through
-    for conversion only on a measured export, and only as a well-formed `forshor.full-run-selection/v1` object naming
-    exactly one of a non-empty `profile` or an explicit `design` body. The conversion that follows is fail-closed and
-    refuses by name everything this route does not price (non-reference topologies, the named profiles, rotation
-    and phase-step backends, the `exponent` family under the readout). Absence is accepted: a measured policy with no
-    selection is priced exactly as before. Every other route keeps `check_no_full_run_export`."""
+    The verifier emits a full-run selection only beside the semiclassical readout, so a selection is let through for
+    conversion only on such an export, and only as a well-formed `forshor.full-run-selection/v1` object naming
+    exactly one of a non-empty `profile` or an explicit `design` body. The conversion that follows refuses by name
+    everything it does not price. Absence is accepted: a policy with no selection is priced exactly as before."""
     present, selected = _full_run_selection(document)
     if not present:
         return
@@ -96,11 +88,8 @@ def check_measured_full_run_export(document):
 
 def check_coherent_export(document):
     check_no_full_run_export(document)
-    # Finding F1: `submitted_design in document` raised TypeError for a non-dict and `.get` raised AttributeError,
-    # and `require_legacy_export` catches only ValueError, so intake reported {"failed": true} exit 2 -- an
-    # infrastructure fault -- for a document it had examined and would not price. A document that is not an object is
-    # refused here, in the same class as every other thing this route will not price. `check_no_full_run_export` keeps
-    # its key-presence test and still passes a non-dict through, so the full-run route's accepted set is untouched.
+    # A document that is not a JSON object is refused here with a ValueError, in the same class as every other thing
+    # this check will not price, rather than failing on `in` or `.get` with a TypeError or AttributeError.
     if not isinstance(document, dict):
         raise ValueError(f"the compiled export {COHERENT_ROUTE}: ForShor printed {type(document).__name__} where a "
                          "policy document was expected; this route reads a JSON object")
@@ -111,9 +100,9 @@ def check_coherent_export(document):
                          "this route reads the compiled `submitted_readout` instead")
     selected = document.get("submitted_readout", "coherent")
     if selected != "coherent":
-        cause = ("it is qualified only by the local readout-qualification route, which does not publish"
+        cause = ("it is priced only together with the semiclassical readout, and this check prices the coherent one"
                  if selected in QUALIFIED_READOUTS else
-                 "it is not a readout mode this release offers; the coherent route prices 'coherent' only")
+                 "it is not a readout mode; the coherent route prices 'coherent' only")
         raise ValueError(f"the compiled readout choice {COHERENT_ROUTE}: the export selects "
                          f"submitted_readout {selected!r} and {cause}")
 

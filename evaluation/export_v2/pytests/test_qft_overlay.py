@@ -531,8 +531,10 @@ def test_the_out_of_scope_selector_fields_are_refused_by_name(field):
     rest of the record -- would publish a price for a design that was not priced, and fails this."""
     with pytest.raises(overlay.QftOverlayRefused) as error:
         overlay.parse_design({"exponent": EXACT, field: "whatever"})
-    assert field in str(error.value) and "not symbolic, deterministic or closed-form" in str(error.value)
-    assert "phase-product step" in str(error.value) and f"re-submit without {field!r}" in str(error.value)
+    # Reworded 2026-11-24: the refusal names the step that was asked for and the rule, nothing else. Production change
+    # that would fail this: dropping the step's name or the rule from the refusal.
+    assert f"names the phase-product step {field!r}, which is refused" in str(error.value)
+    assert "prices the QFT families" in str(error.value) and f"re-submit without {field!r}" in str(error.value)
 
 
 def test_an_unknown_family_key_is_refused_rather_than_ignored():

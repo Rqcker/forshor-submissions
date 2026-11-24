@@ -146,7 +146,7 @@ def test_the_ordinary_route_still_refuses_the_selector_this_route_accepts(name, 
     monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **kw: pytest.fail("refused before any compile"))
     with pytest.raises(intake_v2.Refused) as refused:
         intake_v2.policy_from_lean(engine.load(), text, tmp_path, tmp_path)
-    assert refused.value.reason.startswith("submittedPrimitive requires separate nonpublishing primitive qualification")
+    assert refused.value.reason.startswith("submittedPrimitive is not accepted for a scored submission")
     assert "selects the non-default primitive synthesis" in refused.value.reason
 
 
@@ -657,8 +657,10 @@ def test_the_readout_rule_fingerprint_is_unchanged_by_the_primitive_route():
 
 
 def test_the_primitive_route_is_recorded_as_nonpublishing_in_the_shipped_source_gate():
-    """The route this lane opened is the one the shipped gate already named. Red if the two wordings drift apart."""
+    """The route this lane opened is the one the shipped gate already named. Red if the two wordings drift apart.
+    Reworded 2026-11-24 in participant terms (no "nonpublishing"). Production change that would fail this: the source
+    gate's cause no longer saying the qualification is local and does not publish."""
     from scripts.ci.policy_source import _SELECTOR_CAUSES
     _, _, _, route, _ = _SELECTOR_CAUSES["submittedPrimitive"]
-    assert route == ("only the separate nonpublishing primitive-qualification harness qualifies a primitive "
-                     "synthesis (it never publishes)")
+    assert route == ("the standalone primitive qualification runs locally and does not publish, so a scored "
+                     "submission does not declare it")

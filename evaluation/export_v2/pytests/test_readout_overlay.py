@@ -51,9 +51,9 @@ def test_legacy_verification_and_publication_refuse_an_explicit_design(design, t
     source = f"namespace PolicySubmission\ndef submittedDesign := {design}\nend PolicySubmission\n"
     monkeypatch.setattr(intake_v2, "forshor_build", lambda *a, **kw: pytest.fail("no legacy compiler fallback"))
     monkeypatch.setattr(intake_v2, "request_json", lambda *a, **kw: pytest.fail("no publisher request"))
-    with pytest.raises(intake_v2.Refused, match="submittedDesign is not enabled"):
+    with pytest.raises(intake_v2.Refused, match="submittedDesign is not accepted"):
         intake_v2.policy_from_lean(None, source, tmp_path, tmp_path)
-    with pytest.raises(intake_v2.Refused, match="submittedDesign is not enabled"):
+    with pytest.raises(intake_v2.Refused, match="submittedDesign is not accepted"):
         intake_v2.publish_verification({"leanSource": source}, login="tester", pull=1, url="http://unused",
                                        token="unused", workdir=tmp_path)
     intake_v2.refuse_unqualified_design("/- example: submittedDesign -/\n-- submittedDesign")
@@ -219,7 +219,7 @@ def test_local_readout_intake_and_publisher_refusal(measured, monkeypatch, tmp_p
     assert v["forshor"] is None and v["localReadoutQualification"]["mode"] == "semiclassical"
     assert v["localReadoutQualification"]["evidence"]["sourceSha256"] == v["leanSha256"]
     for record in (v, {k: value for k, value in v.items() if k != "localReadoutQualification"}):
-        with pytest.raises(intake_v2.Refused, match="publishing is not enabled"):
+        with pytest.raises(intake_v2.Refused, match="published only from the trusted verification run"):
             intake_v2.publish_verification(record, login="tester", pull=3, url="http://example", token="local", workdir=tmp_path)
 
 

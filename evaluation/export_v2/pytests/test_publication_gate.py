@@ -135,7 +135,7 @@ def test_a_participant_supplied_qualification_is_still_refused(measured, publish
     v = qualify(measured, publisher, monkeypatch, tmp_path)
     receipt = json.loads(json.dumps(v))                   # through a file, as an artifact travels
     for n, record in enumerate((receipt, {k: value for k, value in receipt.items() if k != "localReadoutQualification"})):
-        with pytest.raises(intake_v2.Refused, match="publishing is not enabled"):
+        with pytest.raises(intake_v2.Refused, match="published only from the trusted verification run"):
             publish(record, tmp_path, name=f"receipt{n}")
     assert publisher.sent == []
 
@@ -357,20 +357,19 @@ def test_without_the_converter_a_full_run_key_keeps_its_standing_refusal(measure
         with pytest.raises(intake_v2.Refused) as absent:
             publish({**deepcopy(v), "printed": printed}, tmp_path, qualified_in_run=True)
     from policy_options import FULL_RUN_ROUTE
-    assert FULL_RUN_ROUTE == "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"
+    assert FULL_RUN_ROUTE == "compiled submitted_full_run is accepted only together with the semiclassical readout declaration"
     assert absent.value.reason.startswith(FULL_RUN_ROUTE)
     assert absent.value.reason == f"{FULL_RUN_ROUTE}: the export selects the full-run profile 'quotient-exact'"
 
     # --- the converter-present branch, which is this tree: refused by name, on the topology.
     with pytest.raises(intake_v2.Refused) as present:
         publish({**deepcopy(v), "printed": printed}, tmp_path, qualified_in_run=True)
+    # Reworded 2026-11-24 in participant terms (no internal module names). Production change that would fail this:
+    # reverting the wording, or naming anything but the topology that was asked for.
     assert present.value.reason == (
-        "full-run selection 'quotient-exact' selects the multiplier topology 'quotient_stream', which this chain "
-        "cannot price. `qft_overlay` prices the QFT band only: its families are ['data', 'work', 'scratch', "
-        "'exponent'], it has no topology parameter, and it substitutes banded QFT sites into the engine's frozen "
-        "REFERENCE census. The multiplier drives both the T cost and the qubit base, so pricing a "
-        "'quotient_stream' run on reference-topology numbers would report the reference price as if the topology "
-        "had been honoured. It is reported, never priced as the reference default")
+        "full-run selection 'quotient-exact' selects the multiplier topology 'quotient_stream', which is not the "
+        "reference topology and is refused: a full-run design is priced on the reference topology only, and a "
+        "'quotient_stream' run is never priced as the reference one")
     assert publisher.sent == []
 
 

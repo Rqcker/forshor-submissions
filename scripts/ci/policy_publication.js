@@ -15,7 +15,7 @@ const strictUtf8 = new TextDecoder('utf-8', { fatal: true });
 
 function requireOrdinaryExport(verification) {
   if (Object.hasOwn(verification.printed ?? {}, 'submitted_full_run'))
-    throw new Error('Compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification');
+    throw new Error('Compiled submitted_full_run is accepted only together with the semiclassical readout declaration');
 }
 
 async function content(github, context, path, ref, { strict = false } = {}) {

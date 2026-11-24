@@ -67,7 +67,7 @@ def main():
         assert not out.exists(), "refused price wrote a result"
         for key, error in (
             ("submitted_design", "compiled submitted_design metadata is not supported by the coherent pricing route"),
-            ("submitted_full_run", "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"),
+            ("submitted_full_run", "compiled submitted_full_run is accepted only together with the semiclassical readout declaration"),
         ):
             for value in (None, "malformed", {"modmul": "split_compare"}):
                 path.write_text(json.dumps({**printed, "submitted_readout": "coherent", key: value}))

@@ -152,11 +152,14 @@ _SELECTOR_CAUSES = {
                                re.compile(rf"(?:\.|{_SHOR}FullRunDesign\.)reference(?![\w'])")),
     'submittedPrimitive': ('def submittedPrimitive : Shor.PrimitiveSynthesis := .rossSelinger', 'primitive synthesis',
                            'Ross-Selinger primitive synthesis',
-                           'only the separate nonpublishing primitive-qualification harness qualifies a primitive synthesis (it never publishes)',
+                           'the standalone primitive qualification runs locally and does not publish, so a scored submission does not declare it',
                            re.compile(rf"(?:\.|{_SHOR}PrimitiveSynthesis\.)rossSelinger(?![\w'])")),
     'submittedDesign': ('def submittedDesign : Shor.SubmissionDesign := { readout := .coherent }', 'submission design',
                         'coherent readout design',
-                        'only the local readout-qualification route qualifies a readout design (it never publishes)',
+                        'a submission design is accepted only as the coherent default '
+                        '`def submittedDesign : Shor.SubmissionDesign := { readout := .coherent }` or the semiclassical '
+                        f'readout `{MEASURED_READOUT_FORM}` (or the `where` form of either), as one public `def` at '
+                        'column 0 directly inside the board\'s namespace, declared once',
                         re.compile(r"(?:\.|(?:Shor\.)?Readout\.)coherent(?![\w'])")),
 }
 _SELECTOR_TOKEN = {name: re.compile(rf"(?<![\w']){name}(?![\w'])") for name in _SELECTOR_CAUSES}
@@ -225,7 +228,9 @@ READOUTS = ('coherent', 'semiclassical')
 #: The leading sentence of the refusal for an unrecognised `submittedDesign`. It is `evaluation/intake_v2.py`'s own
 #: `refuse_unqualified_design` anchor: the verifier job decides the readout BEFORE the build and the intake decides it
 #: again DURING the build, and the two must not tell a participant two different things about the same line.
-READOUT_REFUSAL = 'submittedDesign is not enabled for ordinary submissions; it requires local readout qualification'
+READOUT_REFUSAL = 'submittedDesign is not accepted as written'
+#: The cause for the semiclassical readout, declared correctly, on a check that does not price the readout.
+READOUT_UNPRICED_CAUSE = 'this declaration selects the semiclassical readout, and this check was run without the readout'
 
 
 def declared_readout(source):
@@ -400,7 +405,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', nargs='?', type=Path)
     parser.add_argument('--stdin', action='store_true')
-    parser.add_argument('--qualify-full-run', action='store_true', help='Use only in the dedicated nonpublishing qualification harness')
+    parser.add_argument('--qualify-full-run', action='store_true', help='Use only in the local full-run qualification harness, which does not publish')
     parser.add_argument('--artifacts', type=Path, help='Update the trusted preflight report on a source-rule refusal')
     args = parser.parse_args()
     if args.stdin == (args.source is not None):

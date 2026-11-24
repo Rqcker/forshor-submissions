@@ -57,12 +57,10 @@ omission. Everything else those three names can say — measured readout, the
 standalone primitives, and the seven non-default full-run profiles — is a local
 qualification route: it is attested and priced locally, it is not accepted by
 hosted intake, and it gets no score. The refusals name the selector
-(*submittedDesign is not enabled for ordinary submissions; it requires local
-readout qualification*, *submittedPrimitive requires separate nonpublishing
-primitive qualification*, *submittedFullRunDesign is not accepted as
+(*submittedDesign is not accepted as written*, *submittedPrimitive is not accepted for a scored
+submission*, *submittedFullRunDesign is not accepted as
 written*), and a qualified readout receipt offered
-to the publisher is refused with *qualified readout receipts are local only;
-publishing is not enabled*. The full option matrix, with all eight full-run
+to the publisher is refused with *a semiclassical readout receipt is published only from the trusted verification run that produced it, and this receipt does not come from one*. The full option matrix, with all eight full-run
 profiles and the options that have no selector at all, is in the participant
 starter pack: `evaluation/starter/pack/SUBMISSION_FORMAT.md`, section 2.
 

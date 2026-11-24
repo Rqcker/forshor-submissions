@@ -24,12 +24,15 @@ from policy_options import check_coherent_export, check_no_full_run_export  # no
 #: The anchors the rest of the repository already matches on; they must survive every rewording.
 #: starter/test_pack_validation.py and export_v2/pytests/test_readout_overlay.py assert these,
 #: and they are policy_options.FULL_RUN_ROUTE / COHERENT_ROUTE, so no consumer can drift from them.
-FULL_RUN_ANCHOR = "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"
+FULL_RUN_ANCHOR = "compiled submitted_full_run is accepted only together with the semiclassical readout declaration"
 COHERENT_ANCHOR = "is not supported by the coherent pricing route"
 
 #: Cause classes. Each pattern is anchored on a word that names the CAUSE, not the rule.
-QUALIFIED_ROUTE = re.compile(r"readout[- ]qualification route", re.I)     # unsupported-but-valid: use the other route
-UNKNOWN_READOUT = re.compile(r"not a readout (?:mode )?this release offers", re.I)   # participant error
+# Reworded 2026-11-24 without "qualification route": the cause states that the semiclassical readout is priced with the
+# readout. Production change that would fail this: losing that cause, or reverting to the route jargon.
+QUALIFIED_ROUTE = re.compile(r"priced only together with the semiclassical readout", re.I)     # unsupported-but-valid
+# Reworded 2026-11-24 without "this release offers". Production change that would fail this: losing the cause.
+UNKNOWN_READOUT = re.compile(r"it is not a readout mode;", re.I)   # participant error
 LEGACY_KEY = re.compile(r"legacy `?readout`? key", re.I)                  # wrong key
 
 

@@ -269,7 +269,7 @@ def test_a_receipt_with_no_origin_to_check_against_is_refused_as_before(measured
     happens. This is production's behaviour until gate B4 wires the fetcher, and it is why the lift is safe to land."""
     v = qualify(measured, monkeypatch, tmp_path)
     for n, record in enumerate((stamped(v), v)):
-        with pytest.raises(intake_v2.Refused, match="publishing is not enabled"):
+        with pytest.raises(intake_v2.Refused, match="published only from the trusted verification run"):
             publish(record, tmp_path, name=f"noorigin{n}")
     assert publisher.sent == []
 
