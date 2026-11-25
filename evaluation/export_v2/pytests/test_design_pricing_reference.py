@@ -121,6 +121,10 @@ def test_banded_merged_golden_vectors(case, expected):
     x = r["families"][family]
     assert (x["width"], x["count"], x["construction"]) == (w, calls, "bandedMerged")
     assert (x["kMax"], x["b"], x["mergedTBase"], r["catalyst"]["b"]) == (k, b, t, b)
+    # Each addition holds its control ANDs and its adder's carries, two temporaries per kept phase: 2k at the widest.
+    assert x["workspaceQubits"] == 2 * k
+    assert r["workspaceQubits"] == max(0, 2 * k - coh["peak_extra"]) and r["qubitsPeak"] == coh["qubits_peak"] + b + r["workspaceQubits"]
+    assert Fraction(x["errorBound"]) >= ref_band_error(w, calls, k)
     assert r["TBase"] == coh["T_base"] + (t - x["exactTBase"]) * calls
     assert r["rotations"] == coh["rotations"] - x["exactRotations"] * calls       # no rotation is synthesised
 
