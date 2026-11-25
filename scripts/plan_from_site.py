@@ -25,7 +25,7 @@ Bridge (b) of the planner proof (`BandedPolicy/Plan.lean`, PTP planner `PTPPlan/
                                    proves `∀ o, plan … o ≠ sitePolicy` from `plan_ne_of_unsorted`.
             --fault foreign-index  every oracle index replaced by len(tables) (names no listed table): the
                                    reconstruction must FAIL (`oracleOfList` maps it to the leaf; a `Fin` index
-                                   out of range is not expressible at all). This tests only the fallback.
+                                   out of range is not expressible at all). This tests only the leaf mapping.
             --fault foreign-table  site band 0's table replaced by a table NOT in the list (two extra `negate 0`,
                                    same function): the module proves `∀ o, plan … o ≠ sitePolicy` from
                                    `plan_ne_of_foreign`, and the reconstruction must FAIL.

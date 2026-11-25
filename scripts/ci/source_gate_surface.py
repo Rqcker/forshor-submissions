@@ -134,7 +134,7 @@ BODIES = (
     + [(f'fullrun/{n}', b) for n, b in _selector_forms(
         'submittedFullRunDesign', 'FullRunDesign', '.reference', '.quotientExact',
         'def submittedFullRunDesign : Shor.FullRunDesign := Shor.FullRunDesign.reference')]
-    # The one non-default full-run form the gate admits (owner ruling 2026-11-24): a design declared beside the
+    # The one non-default full-run form the gate admits: a design declared beside the
     # semiclassical readout, written across lines the way a structure literal naturally is; and its two neighbours,
     # the same design without the readout declaration and beside it but selecting a multiplier topology.
     + [('fullrun/design-beside-readout', _MEASURED + _DESIGN.format('data := some ⟨.rossSelinger, .exact⟩')),

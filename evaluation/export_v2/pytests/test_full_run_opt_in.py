@@ -1,10 +1,10 @@
 """The full-run opt-in is a SEPARATE gate; the default gate is unchanged and stays the default.
 
 `check_no_full_run_export` refuses a compiled `submitted_full_run` key on PRESENCE, in every
-shipped route (export_v2/request.py:42 and :84, intake_v2.py:134, :290 and :324). That is the
-behaviour the challenge ships and it is not weakened here. The dedicated nonpublishing full-run
+production route (export_v2/request.py:42 and :84, intake_v2.py:134, :290 and :324). That is the
+behaviour the challenge ships and it is not weakened here. The dedicated local-only full-run
 QUALIFICATION route needs a well-formed selection to reach conversion, so it gets its own
-function next to the default one, which no shipped route calls.
+function next to the default one, which no production route calls.
 
 This enables QUALIFICATION, not publication: the publication gate (publish_verification refusing a
 measured receipt, intake_v2.py) is untouched.
@@ -29,7 +29,7 @@ from policy_options import allow_qualified_full_run_export, check_no_full_run_ex
 #: export_v2/pytests/test_readout_overlay.py both match it, and it is
 #: policy_options.FULL_RUN_ROUTE, so the two cannot drift apart by a byte.
 #: Reworded 2026-11-24 to state the rule a participant must follow. Production change that would fail this: reverting the
-#: anchor to the old "requires dedicated nonpublishing full-run qualification" wording.
+#: anchor to its old wording.
 ANCHOR = "compiled submitted_full_run is accepted only together with the semiclassical readout declaration"
 
 WELL_FORMED = {"schema": "forshor.full-run-selection/v1", "profile": "split-step2-fallback-step4-kicks"}
@@ -66,7 +66,7 @@ def refusal(gate, document):
 def test_the_default_gate_still_refuses_every_shape_of_the_key(label, selection):
     # Production change that would fail this: weakening check_no_full_run_export to let a well-formed
     # selection through -- i.e. giving the DEFAULT gate the opt-in's behaviour instead of adding a
-    # second function. Every shipped route calls this one (export_v2/request.py:42 and :84,
+    # second function. Every production route calls this one (export_v2/request.py:42 and :84,
     # intake_v2.py:134, :290 and :324), and test_readout_overlay.py:122-145 pins key presence through
     # all of them. This is THE safety property of the addition.
     reason = refusal(check_no_full_run_export, {"schema": "forshor.policy-submission/v1",
@@ -86,9 +86,8 @@ def test_the_default_gate_still_accepts_absence_and_passes_a_non_dict_document_t
 
 
 def test_the_default_gate_still_names_the_profile_or_says_there_is_none():
-    # Production change that would fail this: dropping lane WI's cause clause from the default gate
-    # while adding the opt-in. The addition must not cost the differentiation already shipped
-    # (census C1).
+    # Production change that would fail this: dropping the cause clause from the default gate
+    # while adding the opt-in. The addition must not cost the differentiation already in place.
     assert "'quotient-exact'" in refusal(check_no_full_run_export, {"submitted_full_run": WELL_FORMED | {"profile": "quotient-exact"}})
     assert "no profile" in refusal(check_no_full_run_export, {"submitted_full_run": None})
 
@@ -98,7 +97,7 @@ def test_the_default_gate_still_names_the_profile_or_says_there_is_none():
 @pytest.mark.parametrize("profile", ["split-step2-fallback-step4-kicks", "quotient-exact", "reference"])
 def test_the_opt_in_lets_a_well_formed_selection_through_for_conversion(profile):
     # Production change that would fail this: removing allow_qualified_full_run_export, or making it
-    # refuse on key presence like the default gate. The dedicated nonpublishing qualification route
+    # refuse on key presence like the default gate. The dedicated local-only qualification route
     # cannot reach the conversion in export_v2/full_run_design.py unless a well-formed selection is
     # allowed past the gate; refusing on presence is exactly why the conversion is unreachable today.
     assert refusal(allow_qualified_full_run_export,
@@ -152,10 +151,8 @@ def test_both_gates_raise_the_same_class_and_the_byte_identical_anchor():
 
 def test_no_shipped_route_calls_the_opt_in():
     # Production change that would fail this: calling allow_qualified_full_run_export from any
-    # production module. It is opt-in for the dedicated nonpublishing qualification route, which does
-    # not exist yet and needs an owner decision on publishing scope
-    # (overnight-native-final-guard-validation/validation.json records publishable: false). Wiring it
-    # into a shipped route would silently let full-run selections past a gate that every shipped route
+    # production module. It is opt-in for a dedicated local-only qualification route, and no such route is
+    # wired. Wiring it into a production route would silently let full-run selections past a gate that every production route
     # relies on. The check is over the AST, not a grep, so a call cannot hide in a string or a comment.
     repo = EVAL.parent
     allowed = {Path(__file__).resolve(), (EVAL / "starter" / "pack" / "harness" / "policy_options.py").resolve()}
@@ -182,7 +179,7 @@ def test_no_shipped_route_calls_the_opt_in():
 def test_every_shipped_route_still_reaches_the_default_gate():
     # Production change that would fail this: swapping check_no_full_run_export for the opt-in at any
     # call site. The five shipped call sites are the paths test_readout_overlay.py:122-145 exercises;
-    # if one of them changed gate, the opt-in would be live in a shipped route.
+    # if one of them changed gate, the opt-in would be live in a production route.
     repo = EVAL.parent
     sites = []
     for relative in ("evaluation/export_v2/request.py", "evaluation/intake_v2.py"):
@@ -196,13 +193,13 @@ def test_every_shipped_route_still_reaches_the_default_gate():
     # entry point, which runs the gate on its compiled export before binding anything. It is the DEFAULT gate, so
     # the invariant this test protects is intact and only the expected count moved.
     #
-    # Lane Y21, 2026-11-24 (owner ruling: a measured readout and a reference-topology design compose). The two MEASURED
+    # The two MEASURED
     # request sites -- `build_measured_request` and `rehearse_qualified_request`'s semiclassical branch -- moved to the
     # measured route's own gate, `check_measured_full_run_export` (pinned by
     # `test_the_measured_gate_is_called_from_the_measured_route_only` below). The default gate keeps
     # `build_primitive_request` and the coherent branch of `rehearse_qualified_request`, so 3 -> 2.
     assert sites.count("evaluation/export_v2/request.py") == 2, sites
-    # Integration 2026-11-24 (lane XE): WQ's publication-gate lift added a FOURTH intake site,
+    # the publication-gate lift added a FOURTH intake site,
     # `publish_verification`'s measured arm (intake_v2.py:613), which rules on a measured export that names a
     # selection this checkout has no converter for. It is the DEFAULT gate, so the invariant this test exists to
     # protect is intact and only the expected count moved; `test_the_opt_in_is_wired_into_no_route` above still
@@ -214,7 +211,7 @@ def test_every_shipped_route_still_reaches_the_default_gate():
     # route keeps the checker it had, so the conditional reads the same name twice. The `_forshor_build` site is
     # unchanged and now covers the primitive route too. All five are the DEFAULT gate.
     #
-    # Lane Y21: `policy_from_lean`'s measured arm moved to the measured gate, so the conditional reads the default
+    # `policy_from_lean`'s measured arm moved to the measured gate, so the conditional reads the default
     # name once rather than twice (5 -> 4). `forshor_record`, `_forshor_build`'s primitive arm, `policy_from_lean`'s
     # primitive arm and `publish_verification`'s converter-absent arm are all still the DEFAULT gate.
     assert sites.count("evaluation/intake_v2.py") == 4, sites

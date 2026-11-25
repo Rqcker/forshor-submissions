@@ -70,7 +70,7 @@ class Coverage(unittest.TestCase):
         observed = sgs.observations()
         differing = [n for n, r in observed.items() if r['validate'] != r['validate_qfr']]
         self.assertTrue(differing, 'validate_qfr must observe a branch the plain row does not')
-        # 345 of 739 before the three admitted-design bodies were added (lane Y21); 390 of 793 with them.
+        # 345 of 739 before the three admitted-design bodies were added; 390 of 793 with them.
         self.assertEqual(len(differing), 390, 'the two rows differ on a known 390 of 793 sources')
 
     def test_selector_cause_is_actually_called_for_every_selector(self):
@@ -93,7 +93,7 @@ class Coverage(unittest.TestCase):
 
 class Digest(unittest.TestCase):
     def test_the_admitted_design_is_admitted_only_beside_the_readout_on_the_phaseproduct_board(self):
-        # Lane Y21 (owner ruling 2026-11-24). Production change that would fail this: admitting the design without the
+        # Production change that would fail this: admitting the design without the
         # readout declaration, on the PhaseTripleProduct board, or with a topology.
         observed = sgs.observations()
         for name, rows in observed.items():
@@ -164,7 +164,7 @@ class QualifyFullRun(unittest.TestCase):
 
     def test_the_audit_partitions_the_whole_corpus(self):
         self.assertEqual(sum(len(v) for v in self.report.values()), CORPUS_SIZE)
-        # Lane Y21 added three full-run bodies (an admitted design beside the readout, the same design alone, and a
+        # Three full-run bodies were added (an admitted design beside the readout, the same design alone, and a
         # topology beside the readout): 261/84/394 over 739 sources became 286/104/403 over 793.
         self.assertEqual(len(self.report['accepts_more']), 286)
         self.assertEqual(len(self.report['cause_changed']), 104)

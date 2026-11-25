@@ -1,6 +1,6 @@
 """A refusal writes nothing: no archive entry may survive a publication that pricing refuses.
 
-THE DEFECT (handoff §5.2, lane Y19). `intake_v2.publish_verification` called `archive_write` BEFORE
+THE DEFECT. `intake_v2.publish_verification` called `archive_write` BEFORE
 `publish_v2_with_recovery` ran `price()`, so every refusal raised while pricing came after the entry had already been
 written to `submission-results`. The reachable case is a measured receipt whose compiled document names a full-run
 selection its own Lean source does not: `compiled_full_run` converts the selection (so the ordinary
@@ -8,8 +8,7 @@ selection its own Lean source does not: `compiled_full_run` converts the selecti
 is written -- with `design=` non-None when the selection is an explicit reference-topology body -- and only then does
 `request.build_measured_request` refuse the document on `check_no_full_run_export`, unconditionally.
 
-This fixes the ORDER only. LANE Y21 (owner ruling 2026-11-24: a measured readout and a reference-topology design
-compose) then moved the verdict for the inconsistent receipt EARLIER, not later: the measured route now admits a
+This fixes the ORDER only. The verdict for the inconsistent receipt is also EARLIER, not later: the measured route now admits a
 selection only when it is bound to the source that declares it, so the receipt below is refused by name at the binding
 gate, before pricing, and a refusal raised while pricing is pinned separately with a pricer that refuses.
 
@@ -137,8 +136,8 @@ def publish(receipt, tmp_path, write):
 
 @pytest.mark.parametrize("case", sorted(INCONSISTENT))
 def test_an_unbound_selection_is_refused_by_name_and_leaves_no_archive_entry(case, measured, publisher, monkeypatch, tmp_path):
-    """THE DEFECT'S RECEIPT. Red before lane Y19: it was refused at pricing with the entry already written. REPLACED by
-    lane Y21: the measured route now admits a full-run selection, so the receipt is refused where it is first wrong --
+    """THE DEFECT'S RECEIPT. It was once refused at pricing with the entry already written. The measured route
+    admits a full-run selection only when it is bound, so the receipt is refused where it is first wrong --
     its document names a selection its own source does not declare -- by name (`FULL_RUN_BINDING_REFUSAL`), before
     the pricer and before the writer. Production change that would fail this: admitting an unbound selection, or
     reaching the archive before ruling on it."""

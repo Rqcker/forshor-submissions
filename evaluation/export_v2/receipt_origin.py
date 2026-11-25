@@ -26,7 +26,7 @@ receipt's say-so:
 
 This is `archive_policy.write_policy`'s principle applied one level up. That gate compares the verification's
 `leanSha256` AND `leanSource` against the file at the pull request's head commit rather than believing either of them;
-lane WQ lifted exactly that agreement check into the hosted path because the gates were otherwise ruling on text that
+the hosted path applies exactly that agreement check because the gates were otherwise ruling on text that
 need not be the submission. Here the whole receipt is compared against the artifact of the recorded run and attempt.
 
 A fetch that does not answer is not a verdict. `OriginUnavailable` is a resource stop the caller reports as

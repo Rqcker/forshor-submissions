@@ -8,10 +8,9 @@ Which production change each test pins is named in the test's docstring. The tes
   `pytests/data/real/1bc92ac6e1e82ba3.policy.json` through the vendored engine and assert the panels are
   byte-identical to 792464f. They never pass a design; what they prove is that the default path is untouched.
 
-LANE WP UPDATE. This file was written expecting lane WM to add a `design=` parameter to the ENGINE's
-`fullalg.price_full`. WM did not: `evaluation/engine` feeds both `engineRevision` and `dataFingerprint`, so
-any edit there -- even a comment -- moves the epoch, and WM qualified the design axis as an out-of-engine
-overlay (`qft_overlay`) instead. `price_full` therefore still has its 792464f signature and the design is
+The engine's `fullalg.price_full` takes no `design=` parameter: `evaluation/engine` feeds both
+`engineRevision` and `dataFingerprint`, so any edit there -- even a comment -- moves the epoch, and the design
+axis is priced by an out-of-engine overlay (`qft_overlay`) instead. `price_full` therefore still has its 792464f signature and the design is
 routed to the overlay by the hook at `pricing.py:52-54`. The seam test below pins that. The end-to-end chain
 this file's two halves were building toward lives in `test_full_run_chain.py`.
 """
@@ -102,9 +101,8 @@ def test_the_profile_transcription_still_reproduces_the_research_bridge():
 
 
 def test_every_profile_carries_the_multiplier_topology_the_audit_bridge_gives_it():
-    """THE MODMUL REGRESSION (lane WS). The audit bridge builds every bundle through its quotient / split
-    constructors, both of which emit `modmul` BESIDE `qft`, and the research mapping gives the same
-    multiplier field for all seven. The topology drives both the T cost and the qubit base, so dropping it
+    """THE MODMUL REGRESSION. Every profile carries `modmul` BESIDE `qft`, the same multiplier field for all
+    seven. The topology drives both the T cost and the qubit base, so dropping it
     prices a quotientStream or splitCompare run on REFERENCE numbers -- a silent default.
 
     Fails if the conversion ever stops carrying `modmul`, which is exactly the defect this test was added
@@ -209,7 +207,7 @@ def test_an_unknown_or_malformed_selection_is_refused(bad):
 
 
 # --------------------------------------------------------------------------------------------------
-# the pricing call (seam: an injected pricer, because the engine has no `design=` until lane WM lands)
+# the pricing call (seam: an injected pricer, because the engine has no `design=` parameter)
 # --------------------------------------------------------------------------------------------------
 
 class FakePolicy:
@@ -253,7 +251,7 @@ def seam(monkeypatch):
 
 def test_no_selection_passes_no_design_argument_at_all(seam):
     """Fails if pricing.price_views starts sending `design=None` to price_full: the vendored engine has no such
-    parameter until lane WM lands, and the default path must call it exactly as 792464f did."""
+    parameter, and the default path must call it exactly as 792464f did."""
     pricing.price_views(FakePolicy(), "t", "1e-2", ["full"])
     pricing.price_views(FakePolicy(), "t", "1e-2", ["full"], design=None)
     assert seam == [{"n": pricing.N, "delta": 0.01, "detail": True}] * 2
@@ -263,10 +261,9 @@ def test_no_selection_passes_no_design_argument_at_all(seam):
 def test_a_design_is_threaded_to_the_qft_overlay_and_never_to_the_engines_pricer(monkeypatch, seam):
     """Fails if pricing.price_views drops the design on the floor, or sends it to `price_full`.
 
-    RESOLVED INTEGRATION CONFLICT (lanes WP and WR, reconciled in wave 2). Two things were settled here.
+    Two things are settled here.
 
-    (1) WO wrote this test against a superseded brief in which lane WM would add `design=` to
-    `fullalg.price_full`. WM instead qualified the axis as an out-of-engine overlay, because
+    (1) The design axis is an out-of-engine overlay, not a `design=` parameter of `fullalg.price_full`, because
     `dataFingerprint` hashes the pricer's SOURCE BYTES and `engineRevision` is a git log over
     `evaluation/engine`, so ANY edit there -- even a comment -- starts a new epoch. `git diff <base> --
     evaluation/engine` is empty on the merged branch and `price_full` still has the 792464f signature
@@ -274,13 +271,11 @@ def test_a_design_is_threaded_to_the_qft_overlay_and_never_to_the_engines_pricer
     an unexpected keyword argument 'design'`. The design reaches `qft_overlay.project(P, full, design)`
     instead -- the hook mirroring `measured` -- and is reported as `view["full"]["qft"]`.
 
-    (2) WP drove this through the PROFILE label 'quotient-banded-data-catalytic-work'. WR's topology gate
-    now refuses every profile label, because all seven non-reference profiles select a non-reference
+    (2) The topology gate refuses every profile label, because all seven non-reference profiles select a non-reference
     multiplier topology the overlay cannot honour, so `design_of` on a profile raises instead of
     returning a design. The threading is therefore exercised through the EXPLICIT per-family design on
-    the reference topology, which is what this release ships. What is being tested -- that a design
-    reaches the overlay and never the engine's pricer -- is unchanged; only the way a design is obtained
-    moved onto the path that still prices."""
+    the reference topology. What is tested is that a design reaches the overlay and never the engine's
+    pricer."""
     seen = []
     monkeypatch.setattr(pricing, "_all_tables", lambda eng, P: [])
     monkeypatch.setitem(sys.modules, "export_v2.qft_overlay", type(sys)("export_v2.qft_overlay"))
@@ -330,26 +325,14 @@ def test_a_refused_selection_prices_nothing_and_builds_no_request(monkeypatch):
 # Recorded at 792464f with the HEAD signature `price_full(P, N, delta, detail=True)`, for the real policy
 # pytests/data/real/1bc92ac6e1e82ba3.policy.json at delta 1e-2.
 #
-# PIN RESTORED (integration wave 2, lane XF). Lane WR replaced the `full` value below with
-# c773f5022e63194d3f95eba8edcd9cf407f846648fd8b03bae98ce53c180b55e, as a "CORRECTED PIN", on the finding
-# that 998ad142... "does NOT reproduce" at 792464f. That finding does not hold, and the original value is
-# restored here. WR's own capture command (kept below) was re-run, unmodified, in four checkouts:
+# The `full` value reproduces at 792464f and on every checkout measured since; the capture command is kept
+# below. c773f5022e63194d3f95eba8edcd9cf407f846648fd8b03bae98ce53c180b55e is NOT this value and reproduces
+# nowhere on the pinned interpreter. These tests, and the four in `test_full_run_design_explicit.py` that
+# import this constant, are `@pytest.mark.slow`, so only `--runslow` collects them.
 #
-#     submissions-INT @ 792464f  -> full 998ad142...   (the base itself)
-#     submissions-XE  @ f56bbc0  -> full 998ad142...   (integration wave 1)
-#     submissions-WR  @ cac3ac9  -> full 998ad142...   (WR'S OWN WORKTREE)
-#     submissions-XF  (this tree, WP+WR merged) -> full 998ad142...
-#
-# It reproduces everywhere, including in the worktree that declared it irreproducible, and c773f502...
-# reproduces nowhere. The consequence of the re-pin was that these two tests, and the four in
-# `test_full_run_design_explicit.py` that import this constant, shipped RED on `prepush/WR-orthogonal-converter`
-# itself (measured: 6 failed, 82 passed with --runslow at cac3ac9). They are `@pytest.mark.slow`, so WR's
-# fast-suite count never collected them and the breakage was invisible to it.
-#
-# 998ad142a47fae05466541a3a92e0851cb86bac91876ce409ec4a98b3e0b19e3 is also the release's HARD GATE for the
-# no-design request, quoted verbatim in the wave 2 brief alongside the `pp` value, so the re-pin would have
-# failed the gate it was meant to protect. The `pp` value was never in dispute and is unchanged.
-# The variants WR ruled out are retained as useful context: `boards=["full"]` alone gives the same value,
+# 998ad142a47fae05466541a3a92e0851cb86bac91876ce409ec4a98b3e0b19e3 is also the HARD GATE for the
+# no-design request, beside the `pp` value.
+# Variants, as context: `boards=["full"]` alone gives the same value,
 # and `measured=True` gives 2a96be24908dbf8ceeec34abd904d0f2ea80e00eb8744694de267dff5d8cbb2d, a third value.
 # Capture command, from the repo root of a 792464f checkout:
 #   python -c "import json,sys;from pathlib import Path;sys.path.insert(0,'evaluation');\

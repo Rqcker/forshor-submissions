@@ -589,7 +589,7 @@ def test_a_lean_verification_carries_the_source_and_the_archive_is_written_befor
         return {"path": "results/policy-submissions/" + "a" * 40, "commit": "c" * 40, "added": True}
     result = intake_v2.publish_verification(json.loads(json.dumps(v)), login="tester", pull=7, url="http://x", token="t", workdir=tmp_path / "w2", head_sha="a" * 40,
                                             run_id="1", archive_commit="a" * 40, archive_write=write, log=lambda s: None)
-    # The third element is the owner's ruling 1: an ORDINARY coherent submission names every axis at its default, which
+    # The third element is the rule 1: an ORDINARY coherent submission names every axis at its default, which
     # `write_policy` writes as the legacy entry it has always written.
     assert order == [("archive", 0, {"readout": "coherent", "primitive": None, "design": None})], \
         "the archive is written once, before anything is sent to the publisher, and told which result it is archiving"
@@ -619,7 +619,7 @@ def test_the_command_line_archives_with_the_head_sha_the_run_and_the_githubs_cop
     monkeypatch.setattr(archive_policy, "archive_policy", lambda checkout, v, **kw: seen.update(archive=(checkout, kw)) or {"path": "p", "commit": "c" * 40, "added": True})
     monkeypatch.setattr(intake_v2, "request_json", lambda url, token, payload=None: seen.update(state_url=url) or {"submissionIds": ["f" * 40, "e" * 40]})
     def publish(v, **kw):
-        # Owner ruling 1: `publish_verification` names the result kind, and the closure carries it through to
+        # the rule: `publish_verification` names the result kind, and the closure carries it through to
         # `archive_policy`. A measured publication is what makes the readout axis non-default; this stands in for one.
         kw["archive_write"](v, readout="semiclassical", primitive=None, design={"data": {"backend": "catalytic", "target": "exact"}})
         return {"published": True}

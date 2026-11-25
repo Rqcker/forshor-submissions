@@ -1,4 +1,4 @@
-"""The sampled Step 2 B3 fallback costing: policy-general, and the three rules that make sampling honest."""
+"""The sample-based Step 2 B3 backend costing: policy-general, and the three rules that make sampling honest."""
 from fractions import Fraction
 import json
 
@@ -68,7 +68,7 @@ def test_invalid_contract_is_refused(tmp_path, bad):
 
 
 def test_the_sample_comes_from_the_policys_own_census_not_a_frozen_bank():
-    """Two policies with different angle inventories are sampled differently, and nothing names a fixture."""
+    """Two policies with different angle inventories are drawn differently, and nothing names a fixture."""
     a = spread_census(40)
     b = spread_census(40, denominator=1 << 21)
     c = contract(sample_total=8, round_size=8)

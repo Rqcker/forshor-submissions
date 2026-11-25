@@ -103,7 +103,7 @@ ARBITRARY = {
 
 @pytest.mark.parametrize("qft,want", list(ARBITRARY.values()), ids=list(ARBITRARY))
 def test_an_arbitrary_per_family_combination_converts(qft, want):
-    """THE TIER 3a UNLOCK. Fails if full_run_design.design_of still only resolves profile labels: these
+    """THE PER-FAMILY UNLOCK. Fails if full_run_design.design_of still only resolves profile labels: these
     combinations have no label in the closed enum and so could not be converted at all before this path
     existed."""
     assert full_run_design.design_of(explicit(qft)) == want
@@ -142,7 +142,7 @@ ALL_EXACT = {f: EXACT for f in ("data", "work", "scratch", "exponent")}
     ALL_EXACT, {"data": EXACT}, {"data": EXACT, "work": None}, {"work": EXACT, "exponent": EXACT},
 ], ids=["all-four", "one-family", "one-family-and-a-null", "two-families"])
 def test_an_all_exact_explicit_design_requests_nothing_and_converts_to_no_design(qft):
-    """THE CRITICAL SEMANTICS (qft_overlay.py:34-40, measured by lane WM). `target: "exact"` means LEAVE
+    """THE CRITICAL SEMANTICS (qft_overlay.py:34-40, measured ). `target: "exact"` means LEAVE
     THIS FAMILY AS THE ENGINE PRICED IT (k_max = None, no substitution), never "substitute the exact
     ladder" -- substituting it costs 14.8x T. A design in which NO family asks for an approximate target
     therefore asks for nothing, and `design_of` must collapse it to None exactly as `reference` collapses.
@@ -162,8 +162,7 @@ REFUSALS = {
     "unknown-backend": (explicit({"data": {"backend": "magic_state_cultivation", "target": "exact"}}),
                         "magic_state_cultivation"),
     "unknown-target": (explicit({"data": {"backend": "ross_selinger", "target": "cheap"}}), "'cheap'"),
-    # NOTE: `catalytic-approximate` and `catalytic-exact` were refusal cases here until lane WX priced the
-    # catalytic arm. They are now CONVERSION cases, re-pointed to
+    # NOTE: `catalytic-approximate` and `catalytic-exact` are CONVERSION cases, not refusals: see
     # `test_a_catalytic_design_converts_on_both_targets_and_is_never_collapsed` below.
     "max-error-float": (explicit({"data": {**band(), "max_error": 1e-6}}), "max_error"),
     "max-error-decimal-point": (explicit({"data": band("1.5e-6")}), "1.5e-6"),
@@ -199,7 +198,7 @@ REFUSALS = {
 @pytest.mark.parametrize("selection,names", list(REFUSALS.values()), ids=list(REFUSALS))
 def test_an_unconvertible_explicit_design_is_refused_and_names_what_it_refused(selection, names):
     """FAIL CLOSED. Fails if full_run_design.design_of ever answers one of these with a design mapping --
-    which would be priced at the Ross-Selinger default, the silent fallback the release forbids -- or
+    which would be priced at the Ross-Selinger default, a silent default -- or
     refuses it without naming the offending value, which makes the refusal unactionable."""
     with pytest.raises(ValueError, match=names):
         full_run_design.design_of(selection)
@@ -209,20 +208,16 @@ def test_an_unconvertible_explicit_design_is_refused_and_names_what_it_refused(s
                                            ({"backend": "catalytic", "target": "exact"}, "exact")],
                          ids=["catalytic-approximate", "catalytic-exact"])
 def test_a_catalytic_design_converts_on_both_targets_and_is_never_collapsed(choice, target):
-    """RE-POINTED (wave 2, lane XF). These two were REFUSAL cases -- `catalytic` was a refusal class,
-    because the arm "re-prices every rotation in the run and adds a catalyst register, which is a separate
-    axis from the QFT band". Lane WX priced that axis (its own share of the synthesis pool, the shared
-    register charged to Q, and `catalyst_prep_T`), so `catalytic` is a CONVERTIBLE backend and the refusal
-    class is gone. They are re-pointed rather than deleted, because what they guard still needs guarding:
-    a catalytic design must not be answered with anything other than a catalytic design.
+    """The catalytic axis is priced (its own share of the synthesis pool, the shared register charged to Q, and
+    `catalyst_prep_T`), so `catalytic` is a CONVERTIBLE backend. What these cases guard: a catalytic design
+    must not be answered with anything other than a catalytic design.
 
-    The `exact` case is the one that matters, and it caught a real integration defect. `backend` and
+    The `exact` case is the one that matters. `backend` and
     `target` are ORTHOGONAL: target picks the construction, backend picks the currency. So a catalytic
     family changes the price even on an exact target -- `qft_overlay.project` counts it as `touched` and
-    the arm re-prices its rotations. WR's "exact means untouched" collapse, written when the band was the
-    only axis, returned None for it, which would have priced a catalysis request at the Ross-Selinger
-    default: measured 1628644042547.186 (engine) against 1641978984650.562 (overlay) at delta 1e-2. The
-    collapse now tests both axes, and this test is what pins that.
+    the arm re-prices its rotations. An "exact means untouched" collapse that tested the band axis alone
+    would return None for it, which would price a catalysis request at the Ross-Selinger default: measured 1628644042547.186 (engine) against 1641978984650.562 (overlay) at delta 1e-2. The
+    collapse tests both axes, and this test is what pins that.
 
     Fails if either the catalytic backend stops converting, or the collapse starts eating it again."""
     design = full_run_design.design_of(explicit({"data": choice}))
@@ -237,10 +232,8 @@ def test_a_catalytic_design_converts_on_both_targets_and_is_never_collapsed(choi
 
 def test_the_refusals_are_the_complete_documented_list():
     """Fails if a refusal class is added to the code without a case above, or dropped from REFUSAL_CLASSES
-    without being made convertible. Keeps the lane report's refusal list honest.
-
-    `catalytic` was dropped from this list in wave 2 because it WAS made convertible, by lane WX; the two
-    cases that covered it are now conversion cases immediately above."""
+    without being made convertible. `catalytic` is not in the list because it is convertible; the two cases
+    that cover it are conversion cases immediately above."""
     assert set(full_run_design.REFUSAL_CLASSES) == {
         "unknown-backend", "unknown-target", "max-error", "phase-product",
         "rotation-backend", "unknown-family", "multiplier", "unknown-body-key", "body-schema",
@@ -269,7 +262,7 @@ def test_the_eight_profile_labels_all_still_resolve_and_the_seven_refuse_by_name
 
 
 # --------------------------------------------------------------------------------------------------
-# the multiplier topology (lane WS's defect)
+# the multiplier topology
 # --------------------------------------------------------------------------------------------------
 
 def test_the_overlay_cannot_honour_a_topology_so_a_non_reference_one_is_refused():
@@ -309,10 +302,10 @@ def test_an_all_exact_design_on_a_NON_reference_topology_is_NOT_the_default_pric
 # --------------------------------------------------------------------------------------------------
 
 #: `fullalg.price_full(sto_reference_policies()[PAIR], 2048, 1e-2, detail=True)` at 792464f
-#: (test_qft_overlay.py:17-20, lane WM's frozen baseline).
+#: (test_qft_overlay.py:17-20, the frozen baseline).
 BASELINE_T = 1938733902110.921
 
-#: Lane WM's measured bands for the four families at eta = 1e-6 on the reference topology.
+#: The measured bands for the four families at eta = 1e-6 on the reference topology.
 K_MAX_AT_1E6 = {"data": 31, "work": 32, "scratch": 33, "exponent": 32}
 
 
@@ -336,7 +329,7 @@ def priced():
 def test_an_arbitrary_combination_prices_through_the_overlay(priced, qft, substituted):
     """THE UNLOCK, end to end. Fails if a design this path converts cannot actually be priced -- i.e. if the
     converted mapping is not the shape `qft_overlay.project` consumes. Asserts a REAL price: the band moves
-    T, every substituted family reports lane WM's measured k_max, and an exact family is reported untouched."""
+    T, every substituted family reports the measured k_max, and an exact family is reported untouched."""
     from export_v2 import qft_overlay
 
     policy, full = priced
@@ -385,9 +378,8 @@ def test_an_all_exact_explicit_design_prices_identically_to_the_engine(priced):
 # --------------------------------------------------------------------------------------------------
 
 #: The 792464f panels for pytests/data/real/1bc92ac6e1e82ba3.policy.json at delta 1e-2. Imported rather
-#: than re-transcribed so the two files cannot drift: see that file's PIN RESTORED note -- lane WO's
-#: `full` value 998ad142... is correct, reproduces at 792464f (and in WR's own worktree), and is the
-#: release's hard gate; WR's re-pin to c773f502... reproduces nowhere and shipped these tests red.
+#: than re-transcribed so the two files cannot drift: see that file's note -- the `full` value 998ad142...
+#: reproduces at 792464f and is the hard gate for the no-design request.
 from test_full_run_design import HEAD_PANELS  # noqa: E402
 
 

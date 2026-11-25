@@ -1,15 +1,13 @@
-"""The standalone primitive gate: what the separate nonpublishing primitive-qualification route now accepts, and
+"""The standalone primitive gate: what the separate local-only primitive-qualification route now accepts, and
 every refusal that makes the lift safe.
 
-Owner-authorised 2026-11-24. `intake_v2.refuse_unqualified_primitive` was called UNCONDITIONALLY, on every route, so
-`submittedPrimitive` was refused everywhere and lane XA's exact standalone pricing -- which reproduces the four
-recorded B2/B3 prices from the compiled export -- was unreachable. Lane WQ marked the gate "n/a - primitive, not
-full-run" in its enumeration and nobody was asked to lift it. This lane lifts it along WQ's proven readout shape and
-keeps the route NONPUBLISHING, which is what `scripts/ci/policy_source.py` and `docs/CLI.md` have always promised:
-"only the separate nonpublishing primitive-qualification harness qualifies a primitive synthesis (it never
-publishes)".
+`intake_v2.refuse_unqualified_primitive` used to be called UNCONDITIONALLY, on every route, so
+`submittedPrimitive` was refused everywhere and the exact standalone pricing -- which reproduces the four
+recorded B2/B3 prices from the compiled export -- was unreachable. The gate is lifted along the readout's shape and
+the route stays LOCAL-ONLY, as `scripts/ci/policy_source.py` says: "the standalone primitive
+qualification runs locally and does not publish".
 
-REAL PATH vs SEAM. Every price here is the real engine through the real `primitive_overlay.project`, against XA's
+REAL PATH vs SEAM. Every price here is the real engine through the real `primitive_overlay.project`, against the
 recorded qualification receipts (`data/primitive_receipts_3a2b878.json.gz`, verifier 3a2b878c). What is injected is
 ForShor's Lean build alone -- `intake_v2.forshor_build` -- exactly as `test_publication_gate.py` injects it: no Lean
 runs in a pytest. Refusal tests monkeypatch BOTH the engine loader and `price_views` to `pytest.fail`, so a refusal
@@ -47,7 +45,7 @@ BY_NAME = {name: rest for name, *rest in (list(c) for c in CASES)}
 MIRROR = {"harness": "check_banded_policy", "widths": "exact", "verdict": "accepted", "recordSha256": "b" * 64,
           "claim": "policy-algebra-and-exact-widths"}
 
-#: XA's pinned baseline: the DEFAULT export price of the two standalone policies on their own board at every delta,
+#: the pinned baseline: the DEFAULT export price of the two standalone policies on their own board at every delta,
 #: captured at 792464f before the overlay existed. The lift must not move one byte of it.
 BASELINE_DIGEST = "36f1945013af84ba4326e3e1cd4dc8d21c05e0c45dfdc5b4675e435eba6dbdd1"
 
@@ -96,7 +94,7 @@ def _banks(receipt):
 
 
 def qualify(receipts, template, name, monkeypatch, tmp_path, *, document=None, source=None):
-    """The receipt the separate nonpublishing primitive harness produces for one recorded compiled export."""
+    """The receipt the separate local-only primitive harness produces for one recorded compiled export."""
     board, backend, *_ = BY_NAME[name]
     compiled = document if document is not None else receipts[name]["compiled"]
     namespace = "PolicySubmission" if board == "pp" else "PTPPolicySubmission"
@@ -197,8 +195,8 @@ def test_the_four_recorded_prices_reach_a_priced_row(name, board, backend, adapt
 @pytest.mark.parametrize("name,board,backend,adaptive,want_t,want_q", CASES)
 def test_the_priced_row_never_carries_an_expectation_without_its_kind(name, board, backend, adaptive, want_t, want_q,
                                                                        receipts, template, monkeypatch, tmp_path):
-    """XA's STRUCTURAL GUARANTEE, preserved at the one place it could be lost. The row's `T` is a bare number with no
-    kind, so B3's 143,366,613 could be read as a worst case. The substitution therefore re-asserts XA's invariant --
+    """The STRUCTURAL GUARANTEE, preserved at the one place it could be lost. The row's `T` is a bare number with no
+    kind, so B3's 143,366,613 could be read as a worst case. The substitution therefore re-asserts the invariant --
     `rankedT` travels with `rankedTKind`, there is no bare `T`, and exactly one of the two kind-specific fields is
     set -- and the kind stays on the panel beside the row. Red if the row is allowed to take `rankedT` alone."""
     v = qualify(receipts, template, name, monkeypatch, tmp_path)
@@ -238,9 +236,9 @@ def test_a_primitive_result_without_its_kind_refuses_at_the_row(broken, reason):
 
 @pytest.mark.parametrize("namespace", ["PolicySubmission", "PTPPolicySubmission"])
 def test_the_explicit_default_resolves_exactly_as_writing_nothing(namespace, template, monkeypatch, tmp_path):
-    """OWNER RULING 2026-11-24 (a4a7609), on BOTH routes. `.rossSelinger` stamps nothing into the compiled document
+    """An explicit default is identical to omission, on BOTH routes. `.rossSelinger` stamps nothing into the compiled document
     (`PrimitiveSynthesis.attest .rossSelinger scope doc = doc` is `rfl`), so a source that declares it compiles to a
-    document with no `submitted_primitive` key and is priced as the default. The recogniser is WJ's generalised
+    document with no `submitted_primitive` key and is priced as the default. The recogniser is the generalised
     `scripts/ci/policy_source.default_selectors`, not a second copy here. Red if this route treats the explicit
     default as a selection, or if the ordinary route starts refusing it."""
     from scripts.ci.policy_source import default_selectors, strip_lean_comments
@@ -265,7 +263,7 @@ def test_the_explicit_default_resolves_exactly_as_writing_nothing(namespace, tem
 
 @pytest.mark.slow
 def test_the_default_export_price_is_still_bit_identical_to_xas_baseline(receipts):
-    """BYTE IDENTITY. The coherent/default path must not move: XA's pinned digest over the default price of both
+    """BYTE IDENTITY. The coherent/default path must not move: the pinned digest over the default price of both
     standalone policies at every delta, captured at 792464f."""
     out = {}
     for name, board in (("b2-pp", "pp"), ("b2-ptp", "ptp")):
@@ -298,7 +296,7 @@ def test_an_unsupported_or_absent_backend_is_refused_and_never_defaulted(backend
 @pytest.mark.parametrize("name,scope", [("b2-pp", "ptp"), ("b2-ptp", "pp"), ("b3-pp", "full"), ("b3-ptp", "invented")])
 def test_a_selector_scoped_to_another_board_is_refused(name, scope, receipts, template, monkeypatch, tmp_path):
     """RETAINED. The selector is board-scoped and must name the board it is compiled for; the `full` order-finding
-    board takes no primitive at all (XA). Red if the scope stops being compared with the document's own board."""
+    board takes no primitive at all. Red if the scope stops being compared with the document's own board."""
     document = deepcopy(receipts[name]["compiled"])
     document["submitted_primitive"] = {**document["submitted_primitive"], "scope": scope}
     monkeypatch.setattr(pricing, "price_views", lambda *a, **kw: pytest.fail("a mis-scoped selector prices nothing"))
@@ -361,7 +359,7 @@ def test_a_delta_outside_the_epoch_is_refused(receipts):
 @pytest.mark.parametrize("route", ["verify", "price"])
 def test_an_epoch_mismatch_is_an_operator_stop_not_a_refusal_of_the_policy(route, receipts, template, monkeypatch,
                                                                            tmp_path):
-    """RETAINED, lane WU's precedent. The primitive rule is qualified for ONE epoch; a checkout at another cannot rule
+    """RETAINED. The primitive rule is qualified for ONE epoch; a checkout at another cannot rule
     on the submission at all. That is `Incomplete` at stage `epoch` -- which `scripts/ci/notify_submitters.js`
     LIMIT_STAGES already reports as incomplete/limits -- and never `Refused`, which would tell the participant their
     policy is what is wrong. Red if the check moves back behind `bind_compiled_primitive`, whose own epoch
@@ -523,21 +521,18 @@ def test_the_cli_refuses_to_publish_a_primitive_qualification(template, tmp_path
 def test_the_primitive_route_never_reaches_the_archive_whatever_the_archive_admits():
     """THE ARCHIVE ANSWER, pinned executably rather than asserted in a report.
 
-    Lane WA added `readout` and `boards` to the index entry for the readout VARIANT planner. A standalone primitive
-    needs nothing analogous TODAY, and the reason is reachability, not generosity: `archive_policy.write_policy` is
+    The index entry carries `readout` and `boards` for the readout VARIANT planner. A standalone primitive
+    needs nothing analogous, and the reason is reachability, not generosity: `archive_policy.write_policy` is
     only ever called through `archive_policy.archive_policy`, which `intake_v2.main` wires in as `archive_write` on
     the `--publish-from` route alone. `--qualify-primitive` requires `--no-publish`, so no primitive verification can
     reach the archive at all. That is the load-bearing guarantee and it is unchanged; the four parser guards that
     enforce it are pinned by `test_the_cli_refuses_to_publish_a_primitive_qualification`.
 
-    INTEGRATION XQ -- XG'S SECOND REASON IS OBSOLETE, BY DESIGN, AND THIS TEST NO LONGER ASSERTS IT. As written on
-    lane XG this test also claimed `plan_readout_variant` "could not accept one anyway", because the `boards`
-    allowlist was exactly `["pp","full"]`, `["full","pp"]` and `["full"]`, making a standalone entry's own list --
-    `["pp"]` or `["ptp"]` -- an `ArchiveRefused`. Lane XO then wrote precisely the archive hunk XG had proposed and
-    declined to write: `BOARD_SETS` now admits `["pp"]` and `["ptp"]`, because a synthesis primitive and a QFT design
-    are results, not repeats. So the allowlist no longer refuses those sets, and asserting that it does would pin a
-    behaviour the release deliberately removed. The reachability guarantee above is what keeps the route off the
-    archive; the allowlist never was a second lock, only a coincidence of WA's narrower vocabulary.
+    The `boards` allowlist is NOT a second lock. It once was exactly `["pp","full"]`, `["full","pp"]` and
+    `["full"]`, which made a standalone entry's own list -- `["pp"]` or `["ptp"]` -- an `ArchiveRefused`.
+    `BOARD_SETS` now admits `["pp"]` and `["ptp"]`, because a synthesis primitive and a QFT design are results, not
+    repeats, so asserting that the allowlist refuses those sets would pin a behaviour that was deliberately removed. The reachability guarantee above is what keeps the route off the
+    archive; the allowlist never was a second lock, only a coincidence of the narrower vocabulary.
 
     What is kept here is the refusal that still holds -- a board set outside `BOARD_SETS` is still refused by name, so
     the planner is not simply permissive -- and the readout variant's own board list is still accepted, so neither
@@ -554,7 +549,7 @@ def test_the_primitive_route_never_reaches_the_archive_whatever_the_archive_admi
                                                    login="tester", head_sha="a" * 40, readout="semiclassical",
                                                    published_ids={"b" * 40})
 
-    # The two boards a standalone primitive is priced on are now ADMITTED by the planner (lane XO), not refused.
+    # The two boards a standalone primitive is priced on are now ADMITTED by the planner, not refused.
     for board in BOARD_SCHEMA:
         assert [board] in [sorted(s) for s in archive_policy.BOARD_SETS], board
         plan([board])                                # reaches a verdict rather than raising on the board set
@@ -568,8 +563,8 @@ def test_the_primitive_route_never_reaches_the_archive_whatever_the_archive_admi
 
 
 def test_the_primitive_refusal_fires_before_the_archive_is_written(receipts, template, monkeypatch, tmp_path):
-    """OWNER RULING 2026-11-24 (ruling 3): a primitive qualification is LOCAL-ONLY BY DESIGN and the archive has no
-    nonpublishing write path -- deliberately. This test pins the ORDERING that makes it true, so it cannot be
+    """A primitive qualification is LOCAL-ONLY BY DESIGN and the archive has no
+    local-only write path -- deliberately. This test pins the ORDERING that makes it true, so it cannot be
     silently inverted later.
 
     The test above argues reachability from the flag sets; this one asserts it inside the one function where both a
@@ -581,10 +576,10 @@ def test_the_primitive_refusal_fires_before_the_archive_is_written(receipts, tem
     It would nevertheless put a local qualification's `Policy.lean`, `policy.json` and index entry on
     `submission-results`, which is a frozen record (AGENTS.md rule 3) and cannot be taken back.
 
-    This is a TRIPWIRE on existing production code, not a non-vacuity check on a hunk this lane wrote: it is red only
-    if the refusal is moved after `archive_write`, or dropped. Said plainly, as lane XO said it for its H5b tripwire.
+    This is a TRIPWIRE on existing production code, not a non-vacuity check: it is red only if the refusal is moved
+    after `archive_write`, or dropped.
 
-    NOT A MISSING PATH. Do not "fix" the red by giving the archive a nonpublishing route. `primitive` and its `tKind`
+    NOT A MISSING PATH. Do not "fix" the red by giving the archive a local-only route. `primitive` and its `tKind`
     are for a PUBLISHED primitive-bearing submission; the qualification receipts carry `localOnly: true` /
     `publishable: false` and the published row's closed field set (`SITE_ROW_FIELDS` in
     `test_design_price_plumbing.py`) has no field for the price. `archive_policy`'s module docstring states the
@@ -611,15 +606,15 @@ def test_the_primitive_refusal_fires_before_the_archive_is_written(receipts, tem
 
 
 def test_no_primitive_bearing_entry_can_be_published_under_the_shipped_site_contract():
-    """THE PUBLISHER ANSWER. The published row schema is closed: a row may carry no primitive key (lane XF's seam
+    """THE PUBLISHER ANSWER. The published row schema is closed: a row may carry no primitive key (the seam
     ruling pins `row_of`'s field set, as `SITE_ROW_FIELDS` in `test_design_price_plumbing.py`), and panel validation
     requires a non-full board's `row.T` and `row.qubits` to EQUAL its panel's. So a primitive price can reach a row
     only by moving the panel's own T and qubits -- which is what `standalone_price_of` does.
 
-    THE PANEL HALF IS NOT THE BLOCKING ONE, and the reason recorded here when this lane landed no longer holds. The
+    THE PANEL HALF IS NOT THE BLOCKING ONE, and the reason once recorded here no longer holds. The
     shipped contract now DOES name an optional primitive block on a policy panel, validated, refused beside a measured
     readout and required absent on the full board. A primitive-bearing PANEL is therefore contract-valid; only the ROW
-    cannot be represented. The route is nonpublishing because the harness that qualifies a primitive never publishes
+    cannot be represented. The route is local-only because the harness that qualifies a primitive never publishes
     (`policy_source._SELECTOR_CAUSES["submittedPrimitive"]`, and the receipts' `localOnly: true` / `publishable:
     false`), NOT because the panel block has nowhere to sit. Keeping the old reason would understate the contract and
     invite the next lane to re-add a field the contract already has.
@@ -657,8 +652,8 @@ def test_the_readout_rule_fingerprint_is_unchanged_by_the_primitive_route():
 
 
 def test_the_primitive_route_is_recorded_as_nonpublishing_in_the_shipped_source_gate():
-    """The route this lane opened is the one the shipped gate already named. Red if the two wordings drift apart.
-    Reworded 2026-11-24 in participant terms (no "nonpublishing"). Production change that would fail this: the source
+    """The local route is the one the source gate already names. Red if the two wordings drift apart.
+    Reworded 2026-11-24 in participant terms. Production change that would fail this: the source
     gate's cause no longer saying the qualification is local and does not publish."""
     from scripts.ci.policy_source import _SELECTOR_CAUSES
     _, _, _, route, _ = _SELECTOR_CAUSES["submittedPrimitive"]

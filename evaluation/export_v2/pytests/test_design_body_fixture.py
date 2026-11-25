@@ -7,13 +7,12 @@ fixture's source (`readout_submitted_931bbf1`) plus one declaration,
     def submittedFullRunDesign : Shor.FullRunDesign :=
       { data := some ⟨.rossSelinger, .approximate ⟨25, 5, by decide, by decide, by decide⟩⟩ }
 
-and `lake exe forshor_policy_submission --balanced --readout submitted` printed this document (lane Y19). The same
+and `lake exe forshor_policy_submission --balanced --readout submitted` printed this document. The same
 build run the way the COHERENT route runs it (`--balanced`, no `--readout submitted`) exited 2 with empty stdout:
 `PolicyMain`'s guard admits a non-reference full-run selection only beside a saved semiclassical readout. So every
 design-bearing document the verifier can emit is a MEASURED document; there is no coherent design document to publish.
 
-Publishing this document needs the measured readout and the QFT design to COMPOSE (owner ruling
-2026-11-24), which lane Y21 wired: the source gate admits this declaration beside the semiclassical readout, the
+Publishing this document needs the measured readout and the QFT design to COMPOSE: the source gate admits this declaration beside the semiclassical readout, the
 measured route's document gate admits the bound body, and `readout_qft_overlay` prices the two together. The
 operational verifier pin is a commit that can name a body (`80d7b6b`, the previous pin, had the closed enum and
 could not). This file pins: every gate admits the
@@ -75,8 +74,7 @@ READOUT_DECLARATION = "def submittedDesign : Shor.SubmissionDesign where\n  read
 
 
 def test_every_gate_admits_it_on_the_measured_route_and_only_there():
-    """REPLACED by lane Y21 (owner ruling 2026-11-24). This was "the shipped gates refuse it at every stage today"; each
-    refusal is replaced by the rule that admits a body its own source declares, beside the semiclassical readout, on the
+    """Each gate applies the rule that admits a body its own source declares, beside the semiclassical readout, on the
     measured route -- and the coherent route keeps refusing it. In order: the CI source gate, intake's own source gate
     (the same function), the measured route's document gate, the source binding, the conversion under the readout.
     Production change that would fail this: admitting the body without the readout declaration, admitting it on the
@@ -95,7 +93,7 @@ def test_every_gate_admits_it_on_the_measured_route_and_only_there():
 
 
 def test_a_design_without_the_readout_declaration_is_refused_by_name():
-    """Owner ruling: the declaration is admitted ONLY beside the semiclassical readout declaration. Positive control
+    """The declaration is admitted ONLY beside the semiclassical readout declaration. Positive control
     above (the same source with it). Production change that would fail this: admitting a design on its own."""
     assert READOUT_DECLARATION in RECORD["source"]
     alone = RECORD["source"].replace(READOUT_DECLARATION, "")
@@ -142,7 +140,7 @@ def test_a_compiled_body_the_readout_cannot_honour_is_refused_by_name(body, name
 
 def test_a_document_whose_selection_its_source_does_not_declare_is_refused():
     """The binding, both ways. Production change that would fail this: trusting a document's selection without its
-    source, which is lane Y19's inconsistent-receipt case."""
+    source, which is the inconsistent-receipt case."""
     with pytest.raises(intake_v2.Refused, match=intake_v2.FULL_RUN_BINDING_REFUSAL):
         intake_v2.check_full_run_binding(MEASURED["source"], RECORD["document"])
     with pytest.raises(intake_v2.Refused, match=intake_v2.FULL_RUN_BINDING_REFUSAL):
@@ -151,7 +149,7 @@ def test_a_document_whose_selection_its_source_does_not_declare_is_refused():
 
 
 def test_the_archive_records_the_design_as_an_index_key(tmp_path):
-    """The real writer, on a real checkout: the design is an index key (lane XO), and never a number."""
+    """The real writer, on a real checkout: the design is an index key, and never a number."""
     (tmp_path / archive_policy.INDEX_PATH).parent.mkdir(parents=True)
     policy_json = intake_v2.policy_from_document(engine.load(), RECORD["document"]).to_json()
     source = RECORD["source"]
@@ -168,7 +166,7 @@ def test_the_archive_records_the_design_as_an_index_key(tmp_path):
 
 @pytest.mark.slow
 def test_the_measured_request_prices_the_design_with_the_readout_and_moves_no_other_panel():
-    """THE ROUTE (lane Y21), end to end in-process: the real document and source through `build_measured_request` --
+    """THE ROUTE, end to end in-process: the real document and source through `build_measured_request` --
     the real readout binding, the real composed pricer. The full 1e-2 panel carries `fullRun.readoutQft` beside the
     readout-only `readout` block and no `qft`; its row ranks the composed T and qubits; and the other seven panels are
     byte-identical to the readout-only request for the same policy. Production change that would fail this: pricing

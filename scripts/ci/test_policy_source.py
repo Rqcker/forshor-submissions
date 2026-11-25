@@ -134,12 +134,11 @@ def source(*declarations, namespace='PolicySubmission', imports=''):
 
 
 class ExplicitDefaults(unittest.TestCase):
-    """Owner ruling 2026-11-24: Ross-Selinger, the reference full run and coherent readout are the defaults, and an
+    """Ross-Selinger, the reference full run and coherent readout are the defaults, and an
     explicit default token is identical to omission. Only those tokens: the grammar is not widened."""
 
-    #: Reworded with the design route (owner rulings 2026-11-24): the old anchor told a participant that a full run
-    #: "requires dedicated nonpublishing full-run qualification", which is false for an accepted design and is not a
-    #: participant's term. Production change that would fail this: reverting the anchor, or dropping the cause after it.
+    #: Reworded with the design route: the old anchor told a participant that a full run needed a separate
+    #: qualification route, which is false for an accepted design and is not a participant's term. Production change that would fail this: reverting the anchor, or dropping the cause after it.
     FULL_REFUSAL = 'submittedFullRunDesign is not accepted as written'
     IMPORT_REFUSAL = 'imports must be the approved template modules'
 
@@ -232,7 +231,7 @@ class RefusalDifferentiation(unittest.TestCase):
 
     Owner priority 2026-11-24: differentiating incorrect policies from correct ones is the
     priority. One message over several causes cannot tell a PARTICIPANT ERROR (rewrite the file)
-    from an UNSUPPORTED-BUT-VALID request (use the dedicated nonpublishing route), and those need
+    from an UNSUPPORTED-BUT-VALID request (use the dedicated local-only route), and those need
     different participant actions. The four causes that used to collide are census collisions
     C5, C6, C7 and C8, enumerated as the class-level patterns below, one per cause, and each
     test drives the one it names.
@@ -273,7 +272,7 @@ class RefusalDifferentiation(unittest.TestCase):
     def test_a_non_default_profile_is_sent_to_the_dedicated_harness_and_names_the_value(self):
         # Production change that would fail this: collapsing check_no_full_run_selector's cause
         # classification back into the single old message. A named profile is a VALID request on
-        # the wrong route, so the participant must be sent to the dedicated nonpublishing harness
+        # the wrong route, so the participant must be sent to the dedicated local-only harness
         # rather than told to rewrite a declaration that is already well formed.
         for value in ('.quotientExact', '.quotientCatalytic', '.splitStep4Kicks',
                       'Shor.FullRunDesign.quotientExact', '.referenceX', 'default', '0'):
@@ -289,7 +288,7 @@ class RefusalDifferentiation(unittest.TestCase):
         # Production change that would fail this: reporting the mis-written default as a non-default
         # selection (or as a bare mention). The value IS the default here, so the participant must
         # rewrite the declaration in the shipped form; sending them to the qualification harness
-        # would waste a nonpublishing run on a policy the ordinary route already accepts.
+        # would waste a local-only run on a policy the ordinary route already accepts.
         for label, text in {
             'private': source('private ' + FULL, imports=FULL_IMPORT),
             'protected': source('protected ' + FULL, imports=FULL_IMPORT),
@@ -451,7 +450,7 @@ class DeclaredReadout(unittest.TestCase):
         return str(caught.exception)
 
     def test_omission_and_the_explicit_default_are_the_same_answer(self):
-        # Owner ruling 2026-11-24, commit a4a7609. Production change that would fail this: recognising the
+        # Production change that would fail this: recognising the
         # declaration by its token instead of by `default_selectors`, which would send `{ readout := .coherent }`
         # down the measured build and change the ForShor build for a submission that asked for the default.
         self.assertEqual(self.readout(source()), 'coherent')
@@ -533,7 +532,7 @@ DESIGN_BODY = 'def submittedFullRunDesign : Shor.FullRunDesign :=\n  { data := s
 
 
 class AdmittedDesign(unittest.TestCase):
-    """Owner ruling 2026-11-24 (lane Y21): the gate admits ONE non-default full-run form -- a reference-topology QFT
+    """the gate admits ONE non-default full-run form -- a reference-topology QFT
     design, `def submittedFullRunDesign : Shor.FullRunDesign := ...` (its value may continue on indented lines), at
     column 0 directly inside `namespace PolicySubmission`, declared once, mentioned nowhere else -- and only beside the
     semiclassical readout declaration. Everything else stays refused by name."""
@@ -559,7 +558,7 @@ class AdmittedDesign(unittest.TestCase):
         self.assertIs(policy_source.declared_full_run(source(MEASURED)), False)
 
     def test_without_the_readout_declaration_it_is_refused_and_named_as_the_design_it_is(self):
-        # Production change that would fail this: admitting a design alone, or (lane Y19's finding) reading only the
+        # Production change that would fail this: admitting a design alone, or reading only the
         # declaration's first line and telling a multi-line design that it "selects the default full run".
         for readout in ('', DESIGN, MEASURED.replace('.semiclassical', '.coherent ')):
             with self.subTest(readout=readout):

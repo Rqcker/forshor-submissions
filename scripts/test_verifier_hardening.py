@@ -249,7 +249,7 @@ def _targets(**env) -> tuple:
 
 
 def test_targets_fall_back_to_this_checkouts_config():
-    # No TABLE_GEN_TARGETS (a local run): the fallback must derive exactly what
+    # No TABLE_GEN_TARGETS (a local run): the default must derive exactly what
     # export_benchmark_config.py would have put in the environment, through the
     # same validator. A second copy of the matrix rules here would drift.
     config = json.loads(

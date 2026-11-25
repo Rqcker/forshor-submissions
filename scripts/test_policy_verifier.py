@@ -417,7 +417,7 @@ class ReadoutQualification(unittest.TestCase):
             self.assertEqual(self.run_pv(text)[2], omitted)
 
     def test_the_explicit_default_readout_is_identical_to_omission(self):
-        # Owner ruling 2026-11-24, commit a4a7609: an explicit default token is identical to omission. Production
+        # an explicit default token is identical to omission. Production
         # change that would fail this: recognising `submittedDesign` by its token rather than through
         # `policy_source.default_selectors`, which would send the default down the measured build.
         for text in (PP, with_design(PP, DESIGN)):

@@ -137,8 +137,8 @@ def test_the_three_selector_cause_classes_never_share_a_message(refuse, selector
 ])
 def test_the_canonical_explicit_default_is_still_accepted(refuse, selector, default):
     # Production change that would fail this: anything in the cause classification that also moves
-    # the ACCEPT/REFUSE boundary. Owner ruling 2026-11-24: an explicit default is identical to
-    # omission, so the canonical declaration must stay silent, exactly as before this lane.
+    # the ACCEPT/REFUSE boundary. an explicit default is identical to
+    # omission, so the canonical declaration must stay silent, exactly as before.
     type_name = "SubmissionDesign" if selector == "submittedDesign" else "PrimitiveSynthesis"
     refuse(f"{NAMESPACE}def {selector} : Shor.{type_name} := {default}\nend PolicySubmission\n")
     refuse(f"{NAMESPACE}def points := #[1, 2, 3]\nend PolicySubmission\n")

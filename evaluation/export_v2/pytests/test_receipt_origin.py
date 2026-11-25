@@ -1,13 +1,13 @@
 """Trusted origin for the `--publish-from` receipt route: what now makes a measured result publishable, and what still refuses it.
 
-PRODUCTION PUBLISHES VIA `--publish-from` (`scripts/ci/publish_policy.py:38-41`), the receipt route. Lane WQ lifted the
-publication gate for the IN-RUN path only (`intake_v2.publish_verification`, guarded by `qualified_in_run`), so a
+PRODUCTION PUBLISHES VIA `--publish-from` (`scripts/ci/publish_policy.py:38-41`), the receipt route. The
+publication gate was first lifted for the IN-RUN path only (`intake_v2.publish_verification`, guarded by `qualified_in_run`), so a
 qualified measured readout could publish from one trusted run that had just verified it, but not through the normal
 two-job split. The standing rule -- hosted intake takes its inputs from the trusted GitHub run and the publisher, never
 from a submitter-supplied receipt -- is preserved here in spirit and sharpened: the receipt is no longer asked to
 vouch for itself, it is COMPARED against the artifact of the run and attempt it names.
 
-THE DEFECT THIS LANE FOUND. The trusted half already produces the proof and the consuming half discarded it:
+THE DEFECT. The trusted half already produces the proof and the consuming half discarded it:
 `scripts/ci/policy_publication.js:96-98` stamps `ciVerification` (verification identity + runId + runAttempt +
 pullRequest) into the file handed to `--publish-from`, and nothing under `evaluation/` ever read it. A trusted stamp
 that no consumer reads is indistinguishable from no stamp at all, and nothing would have caught that;
@@ -124,7 +124,7 @@ def publish(v, tmp_path, name="p", **kw):
 def test_the_two_job_split_publishes_a_measured_result_once_its_origin_is_established(measured, publisher, monkeypatch, tmp_path):
     """THE ACCEPTANCE TEST. REAL PATH: the recorded compiled export, the real readout binding and the real measured
     pricer, published through `--publish-from`'s own function with NO `qualified_in_run` -- the route production uses.
-    Red before this lane: `Refused("publishing is not enabled")`."""
+    Red before the origin check existed: `Refused("publishing is not enabled")`."""
     policy, compiled, source = measured
     v = qualify(measured, monkeypatch, tmp_path)
     receipt, calls = stamped(v), []
@@ -164,7 +164,7 @@ def _payload():
 
 
 def test_the_publisher_reads_the_trusted_stamp_the_trusted_half_already_writes(measured, publisher, monkeypatch, tmp_path):
-    """RETAINED, and the regression guard for the defect this lane found: `ciVerification` was written by
+    """RETAINED, and the regression guard for the defect: `ciVerification` was written by
     `scripts/ci/policy_publication.js:96-98` and read by NOTHING under `evaluation/`. A trusted stamp no consumer reads
     is indistinguishable from no stamp at all. Red if the publisher stops reading it."""
     monkeypatch.setattr(request, "build_measured_request", lambda *a, **kw: pytest.fail("an unstamped receipt prices nothing"))
@@ -265,8 +265,8 @@ def test_a_participant_authored_receipt_is_refused_even_with_a_copied_stamp(meas
 
 
 def test_a_receipt_with_no_origin_to_check_against_is_refused_as_before(measured, publisher, monkeypatch, tmp_path):
-    """RETAINED, byte-for-byte: with no origin wired in, the blanket refusal lane WQ left in place is exactly what
-    happens. This is production's behaviour until gate B4 wires the fetcher, and it is why the lift is safe to land."""
+    """RETAINED, byte-for-byte: with no origin wired in, the blanket refusal is exactly what happens. It is why the
+    lift is safe: no fetcher, no publication."""
     v = qualify(measured, monkeypatch, tmp_path)
     for n, record in enumerate((stamped(v), v)):
         with pytest.raises(intake_v2.Refused, match="published only from the trusted verification run"):

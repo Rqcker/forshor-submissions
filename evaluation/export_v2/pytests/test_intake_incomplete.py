@@ -42,7 +42,7 @@ def test_the_incomplete_stages_are_exactly_the_resource_stops_the_harness_can_re
 
 def test_an_ordinary_verdict_stage_is_not_in_the_incomplete_allow_list():
     # Production change that would fail this: widening INCOMPLETE_STAGES to cover a stage that IS a
-    # verdict on the policy. `threshold` and the unnamed `mirror` fallback must stay refusals
+    # verdict on the policy. `threshold` and the unnamed `mirror` default must stay refusals
     # (exit 1), so the accept/refuse boundary is exactly where it was.
     for stage in ("threshold", "mirror", "parse", "data", "report", "check", "widths", "cert", "replay", "audit"):
         assert stage not in intake_v2.INCOMPLETE_STAGES, stage

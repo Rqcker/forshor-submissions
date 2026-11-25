@@ -38,7 +38,7 @@ def build_measured_request(policy_json: Dict[str, Any], *, compiled, verifier_pi
                            primitive_from=None, **request_args) -> Dict[str, Any]:
     """The measured request: `publish_verification` prices a qualified measured receipt through this entry point.
 
-    A compiled full-run selection is admitted here (owner ruling 2026-11-24), and only here: the verifier emits one
+    A compiled full-run selection is admitted here, and only here: the verifier emits one
     only beside a saved semiclassical readout. It must be well formed (`check_measured_full_run_export`), bound to
     the submitted source (`check_full_run_binding`), and convert through `readout_qft_overlay.design_of_measured`,
     which refuses by name a non-reference topology, a named profile, a rotation or phase-step backend and the

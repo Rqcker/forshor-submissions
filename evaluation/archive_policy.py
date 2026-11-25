@@ -33,12 +33,12 @@ prices by default -- so every row already on the branch keeps exactly the keys i
                 that was priced -- `export_v2.qft_overlay`, at `mapping.DESIGN_DELTA` on the full board
                 only, the other three deltas being the design-free panels of the same policy that they are
 
-`intake_v2.publish_verification` passes all three at the archive call site (owner ruling 2026-11-24, ruling 1). Before that it passed none, so a published MEASURED
+`intake_v2.publish_verification` passes all three at the archive call site. Before that it passed none, so a published MEASURED
 submission was archived as a legacy -- i.e. COHERENT -- entry.
 
 A PRIMITIVE QUALIFICATION IS NOT ARCHIVED, AND THAT IS THE DESIGN
 -----------------------------------------------------------------
-Owner ruling, 2026-11-24 (ruling 3). The `primitive` key above is for a PUBLISHED primitive-bearing submission. It is NOT for a primitive QUALIFICATION, which is
+The `primitive` key above is for a PUBLISHED primitive-bearing submission. It is NOT for a primitive QUALIFICATION, which is
 local-only by design and can never reach this module at all:
 
   * `intake_v2.publish_verification` refuses any receipt carrying `localPrimitiveQualification`, and any compiled document carrying `submitted_primitive`, and that
@@ -46,7 +46,7 @@ local-only by design and can never reach this module at all:
   * `--qualify-primitive` requires `--no-publish`, while `archive_write` is wired on `--publish-from` alone, so the two flag sets do not intersect
     (`test_the_cli_refuses_to_publish_a_primitive_qualification`).
 
-DO NOT ADD A NONPUBLISHING ARCHIVE-WRITE PATH. The absence of one is not missing architecture; it is the route keeping the promise it has always made (the receipts
+DO NOT ADD A LOCAL-ONLY ARCHIVE-WRITE PATH. The absence of one is not missing architecture; it is the route keeping the promise it has always made (the receipts
 carry `localOnly: true` / `publishable: false`, and the published row's closed field set -- `SITE_ROW_FIELDS` in `export_v2/pytests/test_design_price_plumbing.py` --
 names no primitive price, which the publisher's validators reject rather than ignore). This note exists because the opposite reading has had
 to be corrected three times already in this release -- a default-off gate read as "no publication path", a closed enum read as "not expressible", a `staging_*`
@@ -66,7 +66,7 @@ An entry says WHICH result was archived; it has never carried the number, and `c
 `adaptiveB3`'s T is an UNCONDITIONAL EXPECTED value, not a bound, and `catalyticB2`'s is deterministic. `primitive_overlay` makes the two structurally
 uncollapsible -- no bare `T` field, `tKind` plus exactly one of `tDeterministic` / `tExpectedAdaptive` (`primitive_overlay.py:212-217`). A bare `T` on an index
 entry would undo that here, in the one place the result is kept forever. So a primitive-bearing entry records `tKind` -- the overlay's own per-site axis, under
-the overlay's own name (owner ruling 2026-11-24, ruling 2: the per-site axis keeps the short key because it is the one that is structurally enforced and reaches
+the overlay's own name (the per-site axis keeps the short key because it is the one that is structurally enforced and reaches
 production) -- and no number at all. `write_policy` admits the three axes above and nothing else.
 """
 from __future__ import annotations
@@ -282,7 +282,7 @@ def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head
     and board metadata and mean coherent readout with a primitive result.
     Future opt-in entries can carry `readout` and `boards` without backfill.
 
-    THAT OPT-IN HAS ARRIVED (owner ruling 2026-11-24, ruling 1):
+    THAT OPT-IN HAS ARRIVED:
     `intake_v2.publish_verification` now passes the readout, the primitive and
     the design at the archive call site, so a published measured submission
     reaches this planner as the variant it is instead of as the default it is
@@ -361,8 +361,7 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
 
     `primitive` is the declared synthesis primitive (`PRIMITIVE_T_SITE_KIND`; None is the default `rossSelinger`, which stamps nothing and is recorded as no key) and
     `design` the QFT design that was priced (None is no design). They are the same arrangement as `readout`, one axis each, and the planner now compares on all three:
-    a repeat is the same policy priced the same way throughout. A primitive-bearing entry also records `tKind` -- the overlay's per-site axis, under its own name (owner ruling
-    2026-11-24) -- so the one durable record of an `adaptiveB3` price says it is an expectation; it records no number at all, and `check_entry` refuses an entry that would."""
+    a repeat is the same policy priced the same way throughout. A primitive-bearing entry also records `tKind` -- the overlay's per-site axis, under its own name -- so the one durable record of an `adaptiveB3` price says it is an expectation; it records no number at all, and `check_entry` refuses an entry that would."""
     if not HEAD.fullmatch(head_sha):
         raise ArchiveRefused("the head commit is not a 40-hex sha")
     if not source.strip():

@@ -524,7 +524,7 @@ def test_a_primitive_bearing_entry_names_the_primitive_and_what_kind_of_number_i
 
 @pytest.mark.parametrize("primitive,kind", sorted(ap.PRIMITIVE_T_SITE_KIND.items()))
 def test_the_per_site_axis_is_recorded_as_tKind_and_under_no_other_key(primitive, kind, tmp_path):
-    """OWNER RULING 2026-11-24 (ruling 2). The per-site axis (deterministic / expectedAdaptive) is recorded as
+    """The per-site axis (deterministic / expectedAdaptive) is recorded as
     `tKind`, because it is structurally enforced and reaches production -- no bare `T`, exactly one of
     `tDeterministic` / `tExpectedAdaptive`, re-checked in `mapping.standalone_price_of` and again by the
     published contract, whose primitive block is a union DISCRIMINATED on `tKind` with that same vocabulary.

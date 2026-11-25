@@ -1,7 +1,7 @@
 """END TO END: a compiled document's `submitted_full_run` -> a priced panel carrying a `qft` projection.
 
-This is lane WP's deliverable: the join of lane WO (`full_run_design`, the `design=` threading) and lane WM
-(`qft_overlay`, the Coppersmith-banded QFT price) into ONE chain, exercised from the verifier's own output.
+The chain joins `full_run_design` (the conversion and the `design=` threading) and `qft_overlay` (the
+Coppersmith-banded QFT price) into ONE path, exercised from the verifier's own output.
 
     compiled document
       -> full_run_design.selection_of   (key PRESENCE is the test)
@@ -10,61 +10,39 @@ This is lane WP's deliverable: the join of lane WO (`full_run_design`, the `desi
       -> qft_overlay.project            (the hook at pricing.py:52-54, mirroring `measured` at :48-51)
       -> mapping.panel_of               (the panel carries `qft` beside the engine's own price)
 
-Lane WY then removed the two structural obstacles this chain still ran into -- a design-bearing publish request
-raised partway through its four-delta loop, and the projection was never the ranked price. See
-`test_design_price_plumbing.py`; the chain tests below are unchanged except where they stated an obstacle as a
-permanent fact.
+A design-bearing publish request is scoped to `mapping.DESIGN_DELTA`, and the projection is the ranked price;
+`test_design_price_plumbing.py` pins both.
 
-WHAT THIS LANE FOUND, and what these tests therefore pin
+WHAT THESE TESTS PIN
 --------------------------------------------------------------------------------------------------
-The two lanes were written against DIFFERENT contracts and only one of them landed:
-
-* WO threaded the design into the ENGINE (`price_full(..., design=design)`), per a brief that expected lane
-  WM to add that parameter -- the brief whose name `prepush/WM-engine-design-param` still carries.
-* WM did not, and documented why: `evaluation/engine` is an epoch input through BOTH `engineRevision`
+* THE ENGINE IS NEVER ASKED FOR A DESIGN. `evaluation/engine` is an epoch input through BOTH `engineRevision`
   (`epoch.py:91`) and `dataFingerprint` (`full_frontier.py:43-50`, a byte hash of the pricer sources), so an
   additive `design=` parameter could not be default-preserving at the epoch level however carefully written
   (measured: one comment line appended to `site_engine/fullalg.py` moves ab1f8887b1b50e56 to
-  d3bda33d5ddd5dca). WM qualified the axis as an out-of-engine OVERLAY instead.
+  d3bda33d5ddd5dca). The design axis is priced by an out-of-engine OVERLAY instead, so `price_full` keeps its
+  792464f signature (a `design=` keyword raises `TypeError: price_full() got an unexpected keyword argument
+  'design'`). The threading -- the signature, the 1e-2 guard, the full-board guard, the refuse-before-pricing
+  ordering in `request._build_request` -- routes the design to the overlay. `test_the_chain_never_asks_the_
+  engine_for_a_design` pins that.
 
-So `price_full` still has its 792464f signature and WO's engine-side call raised
-`TypeError: price_full() got an unexpected keyword argument 'design'` against the real engine. WP kept all of
-WO's threading -- the signature, the 1e-2 guard, the full-board guard, the refuse-before-pricing ordering in
-`request._build_request` -- and routed the design to the overlay instead. `test_the_chain_never_asks_the_engine_
-for_a_design` pins that, so nobody re-adds the engine-side call.
+* EVERY PROFILE LABEL REFUSES; THE EXPLICIT DESIGN IS WHAT PRICES. Converting a profile to a bare per-family
+  mapping would DROP its multiplier topology: all seven non-reference profiles select `modmul` =
+  `quotient_stream` or `split_compare`, the topology drives both the T cost and the qubit base, and
+  `qft_overlay.project` substitutes QFT sites into the engine's frozen REFERENCE census and has no topology
+  parameter at all. That would price a quotientStream run on reference-topology numbers -- reporting the
+  reference price as if the option had been honoured, a silent default. The TOPOLOGY GATE refuses it instead,
+  by name, so every `quotient-*` and every `split-*` profile label REFUSES. What prices is the EXPLICIT
+  per-family design on the reference topology (`full_run_design`'s second path), which takes any combination
+  of the QFT families. `test_every_profile_label_refuses_and_the_explicit_design_prices` states that as a fact.
 
-EVERY PROFILE LABEL REFUSES; THE EXPLICIT DESIGN IS WHAT SHIPS (integration wave 2, lane XF).
-`full_run_design` once converted three of the seven profiles to a bare per-family mapping. Lane WR found
-that this DROPPED the multiplier topology: all seven non-reference profiles select `modmul` =
-`quotient_stream` or `split_compare`, the topology drives both the T cost and the qubit base, and
-`qft_overlay.project` substitutes QFT sites into the engine's frozen REFERENCE census and has no topology
-parameter at all. Converting a profile therefore priced a quotientStream run on reference-topology numbers
--- reporting the reference price as if the option had been honoured, the one silent default this release
-forbids. WR's TOPOLOGY GATE refuses it instead, by name.
-
-The owner has DROPPED quotient customization from this release (deferred), so this is settled policy, not a
-gap: every `quotient-*` and every `split-*` profile label REFUSES. What ships is the EXPLICIT per-family
-design on the reference topology (`full_run_design`'s second path, the research record's wire shape), which
-prices any combination of the four QFT families. The tests below that need a real design to thread are
-therefore stated against the explicit path; `test_every_profile_label_refuses_and_the_explicit_design_prices`
-states the position as a fact rather than leaving it to be discovered.
-
-AND THE CHAIN DIFFERENTIATES (lane WX), ON THAT PATH. WX priced the catalytic arm, which `qft_overlay` used
-to refuse as "a second axis": the arm's own proportional share of the run-wide synthesis pool, the shared
-catalyst register charged to Q, and `catalyst_prep_T` as a separate unconditional charge. So a design naming
-`backend: "catalytic"` produces a price that DIFFERS from the engine's own -- a genuinely differentiated
-full-run price, which is this release's deliverable.
-
-WX stated that over the two catalytic PROFILE LABELS, which the topology gate refuses. The two facts are
-not in conflict, because the label and the design are different things: what the labels named was a
-per-family QFT combination ATTACHED TO a quotientStream topology, and it is only the topology that cannot
-be honoured. Every one of the three combinations those labels named -- exact/exact, catalytic/catalytic,
-banded-data/catalytic-work -- still prices when expressed as an EXPLICIT reference-topology design, the
-catalytic two differentiating exactly as WX measured. WX's two tests are re-pointed there rather than
-dropped, and WR's gate is not weakened:
-`test_the_catalytic_designs_price_a_differentiated_full_run` and
-`test_the_explicit_design_prices_every_combination_the_profile_labels_named`.
-
+* THE CHAIN DIFFERENTIATES, ON THAT PATH. The catalytic arm is priced: its own proportional share of the
+  run-wide synthesis pool, the shared catalyst register charged to Q, and `catalyst_prep_T` as a separate
+  unconditional charge. So a design naming `backend: "catalytic"` produces a price that DIFFERS from the
+  engine's own. The per-family combinations the profile labels named -- exact/exact, catalytic/catalytic,
+  banded-data/catalytic-work -- all price when expressed as EXPLICIT reference-topology designs; only the
+  quotientStream topology attached to the labels cannot be honoured:
+  `test_the_catalytic_designs_price_a_differentiated_full_run` and
+  `test_the_explicit_design_prices_every_combination_the_profile_labels_named`.
 """
 import copy
 import json
@@ -79,16 +57,16 @@ from export_v2 import canon, full_run_design, mapping, pricing, qft_overlay, req
 DATA = Path(__file__).parent / "data"
 POLICY = DATA / "real/1bc92ac6e1e82ba3.policy.json"
 
-#: Panel sha256 at 792464f for `POLICY` at delta 1e-2, recorded by lane WO and re-verified on this merged
+#: Panel sha256 at 792464f for `POLICY` at delta 1e-2, recorded  and re-verified on this merged
 #: branch. The non-negotiable number: anything that moves it has changed a published price.
 HEAD_PANELS = {"full": "998ad142a47fae05466541a3a92e0851cb86bac91876ce409ec4a98b3e0b19e3",
                "pp": "c83bf7a532a639d1b16d2e1e9b86b26e2bef36e8db96137e2d259a72d527179f"}
 
-#: REFUSED ON THEIR MULTIPLIER TOPOLOGY (lane WR's gate). These three name only QFT families, so they once
+#: REFUSED ON THEIR MULTIPLIER TOPOLOGY. These three name only QFT families, so they once
 #: converted; they select `modmul: quotient_stream`, which `qft_overlay` cannot honour, so they refuse by name.
 REFUSED_BY_TOPOLOGY = ("quotient-exact", "quotient-catalytic", "quotient-banded-data-catalytic-work")
 #: Of those three, the two whose family combination names `backend: "catalytic"`. The LABELS refuse; the
-#: same combinations as EXPLICIT reference-topology designs price, and differentiate (lane WX's arm).
+#: same combinations as EXPLICIT reference-topology designs price, and differentiate.
 CATALYTIC_COMBINATIONS = ("quotient-catalytic", "quotient-banded-data-catalytic-work")
 #: Refused by `full_run_design` itself: they select a rotation or phase-product backend, not a QFT. Two of
 #: these also select `split_compare`; they are refused on the selector, which is checked first.
@@ -119,7 +97,7 @@ def explicit_document(qft, modmul="reference"):
     in the research record's wire shape, inside the envelope the recorded exports already use.
 
     This is the path that prices in this release. Every profile LABEL refuses on its multiplier topology
-    (lane WR), so the chain tests that need a design to thread drive it from here instead."""
+, so the chain tests that need a design to thread drive it from here instead."""
     return {"schema": MEASURED_SCHEMA, "submitted_readout": "semiclassical",
             "submitted_full_run": {"schema": "forshor.full-run-selection/v1",
                                    "design": {"schema": "forshor.design-local/v1",
@@ -127,7 +105,7 @@ def explicit_document(qft, modmul="reference"):
 
 
 def design_from(doc):
-    """The two WO steps of the chain, in order, exactly as `request._build_request` runs them."""
+    """The two conversion steps of the chain, in order, exactly as `request._build_request` runs them."""
     return full_run_design.design_of(full_run_design.selection_of(doc))
 
 
@@ -157,8 +135,8 @@ def test_a_compiled_document_prices_a_panel_carrying_a_qft_projection(policy, ep
     """THE DELIVERABLE. Start at the verifier's compiled document, end at a panel whose full-run price carries
     a `qft` projection, through all four production steps.
 
-    RE-POINTED (wave 2, lane XF): this was parametrized over `PRICES`, the profile labels that used to
-    convert. WR's topology gate refuses every label, so the deliverable is exercised over EXPLICIT
+    RE-POINTED: this was parametrized over `PRICES`, the profile labels that used to
+    convert. the topology gate refuses every label, so the deliverable is exercised over EXPLICIT
     reference-topology designs instead -- which is both what ships and a strictly wider test, since the
     explicit path prices arbitrary per-family combinations rather than three fixed ones.
 
@@ -185,12 +163,12 @@ def test_a_compiled_document_prices_a_panel_carrying_a_qft_projection(policy, ep
 @pytest.mark.slow
 def test_an_all_exact_design_is_bit_identical_to_the_no_selection_baseline(policy, epoch_id):
     """THE REGRESSION GUARD. `target: "exact"` means "leave this family's QFT exactly as the engine priced it"
-    (k_max = None, no substitution), never "substitute the exact ladder" -- lane WM measured that substituting
+    (k_max = None, no substitution), never "substitute the exact ladder" -- substituting
     the exact Draper ladder at w = 4095 takes (37_598_400, 178_191) to (33_533_953, 8_289_333), a 14.8x
     rotation-driven blow-up in T. If `qft_overlay.project` ever starts substituting on an exact target this
     test goes red.
 
-    RE-POINTED (wave 2, lane XF). This drove `quotient-exact`, which WR's topology gate now refuses. The
+    RE-POINTED. This drove `quotient-exact`, which the topology gate now refuses. The
     guard it encodes is about the EXACT TARGET, not about that label, so it is restated over an all-exact
     EXPLICIT design and nothing is lost -- both halves are now checked, at the two layers that own them:
 
@@ -239,7 +217,7 @@ def test_an_all_exact_design_is_bit_identical_to_the_no_selection_baseline(polic
 def test_absent_and_explicit_reference_are_design_none_and_the_byte_identical_baseline(policy, epoch_id, doc, label):
     """Fails if `reference` becomes an all-defaults record (`{}`) instead of None, if `selection_of` stops using
     key PRESENCE as the test, or if the threading perturbs the default price by one byte. Both panels, both
-    boards, against the hashes lane WO recorded at 792464f."""
+    boards, against the hashes recorded at 792464f."""
     design = design_from(doc)
     assert design is None, label
     views = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["pp", "full"], design=design)
@@ -278,13 +256,13 @@ def test_a_refused_selection_prices_nothing_and_builds_no_request(monkeypatch, p
 
 @pytest.mark.parametrize("profile", REFUSED_BY_TOPOLOGY)
 def test_the_three_qft_only_profiles_refuse_on_their_multiplier_topology(profile):
-    """LANE WR'S GATE, and wave 2's headline resolution. These three name only QFT families, so they once
+    """THE TOPOLOGY GATE. These three name only QFT families, so they once
     converted to a bare per-family mapping -- silently dropping the `modmul: quotient_stream` they also
     select. The topology drives both the T cost and the qubit base, and `qft_overlay` substitutes into the
     engine's frozen REFERENCE census, so that conversion priced a quotientStream run on reference numbers.
 
     The refusal must NAME the profile and the topology. Fails if the gate is weakened to let a profile label
-    price again -- which is exactly what wave 2 refused to do to keep two catalytic tests green."""
+    price again."""
     with pytest.raises(ValueError) as caught:
         design_from(document(profile))
     message = str(caught.value)
@@ -294,14 +272,12 @@ def test_the_three_qft_only_profiles_refuse_on_their_multiplier_topology(profile
 
 
 def test_every_profile_label_refuses_and_the_explicit_design_prices(policy=None):
-    """THE RELEASE-DECISION FACT, kept as an assertion so it cannot rot.
+    """THE PROFILE POSITION, kept as an assertion so it cannot rot.
 
-    REWRITTEN in wave 2 (lane XF), from `test_only_quotient_exact_prices_today`. That test said six of the
-    seven profiles refuse and the one that prices is the identity. The position now: ALL SEVEN refuse -- the
-    four selector profiles at `full_run_design`'s `BEYOND_QFT` check, the three QFT-only ones at WR's
-    topology gate -- and `reference` alone converts, to None. Quotient customization is DROPPED from this
-    release by owner decision, deferred; what ships is the explicit per-family design on the reference
-    topology, which prices arbitrary combinations of the four QFT families.
+    ALL SEVEN non-reference profiles refuse -- the four selector profiles at `full_run_design`'s `BEYOND_QFT`
+    check, the three QFT-only ones at the topology gate -- and `reference` alone converts, to None. What prices
+    is the explicit per-family design on the reference topology, which takes arbitrary combinations of the
+    QFT families.
 
     Fails the moment a profile label starts converting again, which is the signal to rewrite this."""
     assert set(full_run_design.PROFILES) == {"reference", *REFUSED_BY_TOPOLOGY, *REFUSED_BY_DESIGN}
@@ -331,19 +307,15 @@ def test_every_profile_label_refuses_and_the_explicit_design_prices(policy=None)
 @pytest.mark.slow
 @pytest.mark.parametrize("named", CATALYTIC_COMBINATIONS)
 def test_the_catalytic_designs_price_a_differentiated_full_run(policy, epoch_id, named):
-    """THE RELEASE DELIVERABLE. The catalytic arm was refused at `qft_overlay.parse_design` as "a second
-    axis"; lane WX priced that axis, so a catalytic design reaches a real price through the same four
-    production steps. It must differ from the engine's own price, must carry a catalyst block with all
+    """THE DIFFERENTIATED PRICE. The catalytic axis is priced, so a catalytic design reaches a real price
+    through the same four production steps. It must differ from the engine's own price, must carry a catalyst block with all
     three of its charges, and must charge the shared register to Q.
 
-    RE-POINTED (wave 2, lane XF) -- from `test_the_catalytic_profiles_price_a_differentiated_full_run`.
-    WX drove this from the two catalytic PROFILE LABELS, which WR's topology gate now refuses: they also
-    select `modmul: quotient_stream`, and the overlay prices against the frozen REFERENCE census. The gate
-    is NOT weakened to keep this green. What the labels named was a per-family QFT COMBINATION attached to
-    a quotientStream topology, and only the topology is unhonourable -- so the identical combination is
-    driven here as an EXPLICIT reference-topology design, taken from the converter's own `QFT_ONLY` table
-    so the two cannot drift. Every assertion WX wrote is preserved verbatim; only the way the design is
-    obtained moved onto the path that ships.
+    The two catalytic PROFILE LABELS are refused by the topology gate: they also select
+    `modmul: quotient_stream`, and the overlay prices against the frozen REFERENCE census. What the labels
+    named was a per-family QFT COMBINATION attached to a quotientStream topology, and only the topology is
+    unhonourable -- so the identical combination is driven here as an EXPLICIT reference-topology design,
+    taken from the converter's own `QFT_ONLY` table so the two cannot drift.
 
     Fails if the catalytic arm is reverted (back to a refusal, or to the Ross-Selinger default), if the
     catalyst register stops being charged to the qubit total, or if the panel stops carrying the block."""
@@ -373,13 +345,11 @@ def test_the_catalytic_designs_price_a_differentiated_full_run(policy, epoch_id,
 def test_the_explicit_design_prices_every_combination_the_profile_labels_named(policy=None):
     """The other half of the release-decision fact: what REFUSES is the label, not the design.
 
-    RE-POINTED (wave 2, lane XF) -- from WX's `test_three_profiles_price_and_four_refuse`, which asserted
-    that three profile labels price. Under WR's topology gate none of them do. The substance of WX's claim
-    survives at the level it is actually true: all three per-family COMBINATIONS those labels named still
+    Under the topology gate no profile label prices. At the level of the pricing: all three per-family COMBINATIONS those labels named still
     convert and price as EXPLICIT reference-topology designs, with the two catalytic ones selecting the
     catalytic backend and `quotient-exact`'s all-exact combination collapsing to the engine's untouched
     default ("exact means untouched"). So nothing about the PRICING was lost when the labels were refused;
-    only the quotientStream topology they also carried was, which is the deferred part.
+    only the quotientStream topology they also carried was.
 
     Fails if the explicit path stops honouring any combination the qualified labels named."""
     for named, qft in full_run_design.QFT_ONLY.items():
@@ -398,8 +368,8 @@ def test_the_explicit_design_prices_every_combination_the_profile_labels_named(p
 
 
 def test_the_chain_never_asks_the_engine_for_a_design(monkeypatch):
-    """Pins lane WP's merge resolution. `evaluation/engine` is an epoch input, `price_full` still has its
-    792464f signature `(P, n, delta, detail, rule, negation)`, and WO's `price_full(..., design=design)` raised
+    """Pins the merge resolution. `evaluation/engine` is an epoch input, `price_full` still has its
+    792464f signature `(P, n, delta, detail, rule, negation)`, and the `price_full(..., design=design)` raised
     TypeError against it. The design reaches the OVERLAY. Fails if the engine-side call is ever re-added."""
     import inspect
     from export_v2 import engine
@@ -437,7 +407,7 @@ def test_the_chain_never_asks_the_engine_for_a_design(monkeypatch):
 
     monkeypatch.setattr(pricing.engine, "load", lambda: Eng)
     monkeypatch.setattr(qft_overlay, "project", lambda P, full, design: seen.append(copy.deepcopy(design)) or {"ok": True})
-    # RE-POINTED (wave 2): driven from the EXPLICIT reference-topology design, since WR's topology gate
+    # RE-POINTED: driven from the EXPLICIT reference-topology design, since the topology gate
     # refuses every profile label. What is pinned -- the design reaches the overlay and the engine's pricer
     # is called exactly as it was at 792464f -- is unchanged.
     design = design_from(explicit_document({"data": BANDED}))
@@ -450,10 +420,8 @@ def test_the_chain_never_asks_the_engine_for_a_design(monkeypatch):
 
 @pytest.mark.parametrize("delta", ["3e-4", "1e-4", "1e-6"])
 def test_a_design_is_refused_at_every_delta_but_1e_2(delta):
-    """WO's guard, still a guard. When this lane wrote it, `request._build_request` passed the design at all
-    four deltas, so this refusal fired partway through the pricing loop and a design-bearing document could not
-    complete a publish request at all -- the STRUCTURAL obstacle lane WY then removed by scoping the design to
-    `mapping.DESIGN_DELTA` in the request and leaving this guard exactly as it is. It stays a precondition on
+    """The delta guard. `request._build_request` scopes the design to `mapping.DESIGN_DELTA`, so a
+    design-bearing document completes a publish request, and this guard stays exactly as it is. It stays a precondition on
     the caller rather than a silent drop; `test_design_price_plumbing.py` pins the scoping and the byte
     identity of the other three panels. Fails if the 1e-2 guard in `price_views` is relaxed."""
     class FakePolicy:
@@ -467,22 +435,21 @@ def test_a_design_is_refused_at_every_delta_but_1e_2(delta):
                             design=design_from(explicit_document({"data": BANDED})))
 
 
-# ------------------------------------------------- the QFT design and a Step 2 fallback share one budget
+# ------------------------------------------------- the QFT design and a Step 2 backend share one budget
 
 
 def test_a_qft_design_and_a_step_2_fallback_cannot_be_asked_for_together(policy=None):
-    """HANDOFF 2 from integration wave 1, settled in wave 2 (lane XF). WT's sampled Step 2 B3 fallback
-    (`export_v2/sampled_fallback.py`) merges without textual conflict -- it adds only new files -- but it
-    overlaps this chain SEMANTICALLY, because both re-divide the same run-wide synthesis pool
+    """A Step 2 B3 backend priced by the Step 2 costing module in `export_v2` (the file read below) would
+    overlap this chain SEMANTICALLY, because both re-divide the same run-wide synthesis pool
     `sto_currency.ROTATION_FRACTION * delta` (measured: ROTATION_FRACTION = 0.5, so the pool is 1/200 at
-    delta 1e-2). Establishing the relationship from the code, rather than settling it by merge order:
+    delta 1e-2). The relationship, established from the code:
 
-    1. WT DOES NOT TAKE ITS OWN SHARE. `sampled_fallback.py` contains no reference to `sto_currency`,
+    1. THAT MODULE DOES NOT TAKE ITS OWN SHARE. It contains no reference to `sto_currency`,
        `ROTATION_FRACTION`, `rotation_eps` or `ts_per_rotation`. It receives `eps` -- "the per-site
        half-diamond" -- as a PARAMETER from its caller, and its `budget_seconds` is a wall-clock budget,
-       not an error budget. It also has no production caller anywhere in the tree: `cost_policy_fallback`
-       and `price_step2_budgeted` are referenced only by `test_sampled_fallback.py`. So there is no live
-       composition today, and WT cannot double-spend on its own.
+       not an error budget. It also has no production caller anywhere in the tree: its two entry points are
+       referenced only by its own test. So there is no live composition, and it cannot double-spend on its
+       own.
 
     2. BUT THE POOL HAS NO SLACK, so a second spender WOULD double-spend. The overlay partitions the pool
        EXACTLY over the whole rotation census: the catalytic arm takes `deltaArm = pool * R_cat / R_total`
@@ -497,13 +464,12 @@ def test_a_qft_design_and_a_step_2_fallback_cannot_be_asked_for_together(policy=
 
     3. SO THE COMBINATION IS REFUSED, and already was, by name, at three independent places. This test pins
        all three together with the reason, so none can be relaxed without confronting the arithmetic above.
-       It is the same call lane WY made for readout + design, for the same reason: two methods that each
-       re-divide one nonlinear budget cannot be composed by picking a precedence.
+       Two methods that each re-divide one nonlinear budget cannot be composed by picking a precedence.
     """
     import re
     from pathlib import Path as _Path
 
-    # 1. WT reads none of the currency, and nothing in production calls it.
+    # 1. That module reads none of the currency, and nothing in production calls it.
     source = _Path(qft_overlay.__file__).parent.joinpath("sampled_fallback.py").read_text()
     for name in ("sto_currency", "ROTATION_FRACTION", "rotation_eps", "ts_per_rotation"):
         assert name not in source, f"sampled_fallback now reads {name}: the budgets may no longer be independent"
@@ -514,7 +480,7 @@ def test_a_qft_design_and_a_step_2_fallback_cannot_be_asked_for_together(policy=
         assert "sampled_fallback" not in text, \
             f"{path.name} now calls the sampled fallback: the double-spend analysis above must be redone"
 
-    # 2. The profile that selects a Step 2 fallback is refused by name, at the design step.
+    # 2. The profile that selects a Step 2 backend is refused by name, at the design step.
     with pytest.raises(ValueError) as profile_refusal:
         design_from(document("quotient-step2-fallback"))
     assert "step2 := fallback" in str(profile_refusal.value)

@@ -3,7 +3,7 @@
 Every test names the production change in `export_v2/qft_overlay.py` that would fail it.
 
 The baseline is HEAD 792464f's own price for the STO reference PhaseProduct policy at n = 2048,
-delta = 1e-2, captured from `fullalg.price_full(P, 2048, 1e-2, detail=True)` BEFORE any of this lane's
+delta = 1e-2, captured from `fullalg.price_full(P, 2048, 1e-2, detail=True)` BEFORE any of this overlay's
 work and unchanged by it (the overlay does not touch `evaluation/engine`, so the engine is still
 byte-identical and these numbers are still the engine's own).
 """
@@ -468,7 +468,7 @@ def test_an_unrecognised_backend_is_refused_and_names_the_family_and_the_value()
 
 
 def test_the_catalytic_backend_parses_rather_than_refusing():
-    """WAS a refusal (lane WM: "a second axis"). It is now PRICED -- the three sub-problems are handled
+    """WAS a refusal ("a second axis"). It is now PRICED -- the three sub-problems are handled
     in `project`: the arm takes its own proportional share of the synthesis pool, the shared catalyst
     register is charged to Q, and `catalyst_prep_T` is a separate unconditional charge. `parse_design`
     must therefore accept the backend on every family and on both targets. The pricing itself is pinned

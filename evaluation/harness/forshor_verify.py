@@ -20,7 +20,7 @@ Stages (each fails closed and names itself):
                These can make the kernel-checked table and the printed table different objects, and add no axiom.
   2 stage      A copy-on-write clone of the trusted ForShor build tree, with only the template replaced.
   3 lean       `lake build PolicySubmission` (C1-C4 per band, `sorted`, `#assert_axioms`, the IR pinned against the compiled
-               circuit at sampled widths) and `lake exe forshor_policy_submission` (prints `policy.json`). Time and peak memory
+               circuit at selected widths) and `lake exe forshor_policy_submission` (prints `policy.json`). Time and peak memory
                are measured.
   4 python     `policy.json` is data, not trusted. The schema, the organiser-fixed constants (bits, trial count, eta, m) against
                the document the trusted tree's own built `forshor_policy_submission` emits (Stage 15: read from the build, never
@@ -37,7 +37,7 @@ Stages (each fails closed and names itself):
                board lists).
 
 What this proves and what it does not. Lean proves each band's table and the policy's soundness (`policy_submission_correct`
-is generic in the policy). The IR that the price reads is checked against the compiled circuit at sampled widths, not at every
+is generic in the policy). The IR that the price reads is checked against the compiled circuit at selected widths, not at every
 width (ForShor says so). The price is Qualtran's count in Python, not Lean. Running this executes the submitter's Lean on this
 machine after the lexical gate: use a disposable VM or container for code you do not trust.
 
@@ -45,7 +45,7 @@ Build tree: `.cache/forshor_latest_build`, ForShor 21e129a (the merge commit of 
 4dc43842), a copy-on-write copy of a warm clone with `forshor_policy_submission` built (Stage 15 made it at 10fe620; swap 002 re-made it). A tree
 older than eb00c5a prints no `negation` and is refused at stage 4b (`REQUIRE_PRINTED_NEGATION`); `$FORSHOR_BUILD` or `--forshor` overrides it.
 `.cache/forshor_main_build`
-(ForShor-main, Lean v4.28.0) is kept as a fallback. Every record names the ForShor commit and toolchain (`forshor`).
+(ForShor-main, Lean v4.28.0) is kept as the alternative tree. Every record names the ForShor commit and toolchain (`forshor`).
 Resources: before Lean starts the harness waits while three or more `lean` processes run (the limit was 2 until the coordinator raised it on 2026-10-28); each stage runs in its own process
 group (killed with its descendants on a timeout or at the memory cap, orphans swept after it returns,
 `harness/pgroup_stage.py`); memory cap 8 GB on the stage's process tree (`top` mem, compressed included).
@@ -79,7 +79,7 @@ from sto_verify import ENV_ALLOW, HarnessError, _clone, _env, python_verify  # n
 from tcost import tables as tt  # noqa: E402
 import pgroup_stage as pg  # noqa: E402
 
-#: Stage 15 (2026-10-28): the latest ForShor (10fe620, Lean v4.36.0-rc1). ForShor-main (v4.28.0) is the fallback.
+#: Stage 15 (2026-10-28): the latest ForShor (10fe620, Lean v4.36.0-rc1). ForShor-main (v4.28.0) is the alternative.
 DEFAULT_FORSHOR = ROOT / ".cache" / "forshor_latest_build"
 FALLBACK_FORSHOR = ROOT / ".cache" / "forshor_main_build"
 PROVENANCE_REL = ".sto_site_forshor.json"          # written by the site when it made the copy (commit, toolchain)

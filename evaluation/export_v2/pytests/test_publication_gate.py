@@ -7,8 +7,8 @@ with the behaviour that must go red if it is removed.
 
 REAL PATH vs SEAM. Every readout test here drives the real `bind_compiled_readout` against the recorded compiled export
 (`data/readout_submitted_931bbf1.json.gz`) and, where marked slow, the real measured pricer. The full-run tests inject a
-double for `export_v2.full_run_design` (WO's converter, which arrives with WP's QFT pricing chain): they exercise this
-file's ROUTING -- accept and forward the design, or refuse by name and price nothing -- not WO's conversion table.
+double for `export_v2.full_run_design` (the converter): they exercise this
+file's ROUTING -- accept and forward the design, or refuse by name and price nothing -- not the conversion table.
 """
 from copy import deepcopy
 import gzip
@@ -168,7 +168,7 @@ def test_a_qualified_run_still_refuses_a_source_that_disagrees_with_its_own_dige
 
 
 def test_the_measured_route_prices_no_delta_the_boards_do_not_publish(measured):
-    """RETAINED. delta = 1e-2 is this lane's only delta, and the overlay prices none the published mapping omits."""
+    """RETAINED. delta = 1e-2 is the design's only delta, and the overlay prices none the published mapping omits."""
     policy, compiled, _ = measured
     assert mapping.DELTA_VALUES["1e-2"] == 0.01
     coherent = engine.load().fullalg.price_full(policy.with_widths("exact"), 2048, 0.01, detail=True)
@@ -179,7 +179,7 @@ def test_the_measured_route_prices_no_delta_the_boards_do_not_publish(measured):
 
 @pytest.mark.parametrize("route", ["verify", "publish"])
 def test_an_epoch_mismatch_is_an_operator_stop_not_a_refusal_of_the_policy(route, measured, publisher, monkeypatch, tmp_path):
-    """RETAINED, and newly ATTRIBUTED (lane WU's proposal). The readout rule is qualified for one epoch; a checkout at
+    """RETAINED, and newly ATTRIBUTED. The readout rule is qualified for one epoch; a checkout at
     another cannot rule on the submission at all. That is `Incomplete` at stage `epoch` -- which
     `scripts/ci/notify_submitters.js` LIMIT_STAGES already reports as incomplete/limits -- and never `Refused`, which
     would tell the participant their policy is what is wrong. Red if the check moves back behind
@@ -200,7 +200,7 @@ def test_an_epoch_mismatch_is_an_operator_stop_not_a_refusal_of_the_policy(route
     assert publisher.sent == []
 
 
-# ---------------------------------------------------------------- full-run selections (SEAM: WO's converter)
+# ---------------------------------------------------------------- full-run selections (SEAM: the converter)
 
 QFT_ONLY = {"quotient-exact": {"data": {"backend": "ross_selinger", "target": "exact"},
                                "work": {"backend": "ross_selinger", "target": "exact"}},
@@ -217,7 +217,7 @@ SELECTION_SCHEMA = "forshor.full-run-selection/v1"
 
 @pytest.fixture
 def converter(monkeypatch):
-    """SEAM. A stand-in for `export_v2.full_run_design` (WO, arriving with WP's chain), faithful to its contract:
+    """SEAM. A stand-in for `export_v2.full_run_design`, faithful to its contract:
     `selection_of` reads the one top-level key, `design_of` converts the three QFT-only profiles and refuses the four
     that select a backend the engine's design cannot express -- BY NAME."""
     module = ModuleType("export_v2.full_run_design")
@@ -275,7 +275,7 @@ def bound(monkeypatch):
 def test_a_convertible_full_run_profile_is_accepted_and_carries_its_design(profile, measured, publisher, converter, monkeypatch, tmp_path):
     """SEAM (routing only): accepted, and the converted design reaches the archive and the measured pricer.
 
-    REPLACED by lane Y21: the measured pricer now re-converts the compiled selection itself (and prices it together
+    The measured pricer re-converts the compiled selection itself (and prices it together
     with the readout), so `publish_verification` no longer hands it a `design` keyword. What reaches the pricer is the
     compiled document carrying the selection; what reaches the archive is the converted design. Production change that
     would fail this: dropping the selection on the way to the pricer, or archiving a design other than the converted one."""
@@ -321,28 +321,25 @@ def test_without_the_converter_a_full_run_key_keeps_its_standing_refusal(measure
     """RETAINED, and the seam's own safety: a compiled full-run key is never priced as the reference pipeline --
     with the converter absent OR present. Both branches of `compiled_full_run` are pinned here.
 
-    Integration 2026-11-24 (lane XE): WJ's refusal specificity appends the CAUSE after a colon, and documents the
+    The refusal appends the CAUSE after a colon, and documents the
     leading sentence (`policy_options.FULL_RUN_ROUTE`) as the anchor the rest of the repository matches as a PREFIX.
     This assertion was byte-equality against a base that had no cause clause; it now matches the anchor the same way
     `starter/test_pack_validation.py` does.
 
-    RE-POINTED, wave 2 (lane XF) -- HANDOFF 1. WQ wrote this test to pin behaviour on a checkout that has NO
-    `export_v2.full_run_design`; wave 2 BRINGS that converter (WP), so the unconditional
-    `compiled_full_run(...) == (None, None)` assertion no longer described this tree. Rather than delete the
-    coverage, the two branches are now pinned separately and both still refuse, for different reasons:
+    The two branches are pinned separately and both refuse, for different reasons:
 
       * CONVERTER ABSENT (`ImportError` branch, `intake_v2.py:247-249`) -- still reachable, still shipped, so still
         tested, by hiding the module. The selection falls through to `check_no_full_run_export` and is refused with
-        WJ's anchor-plus-cause message. This is WQ's original assertion, unchanged.
+        the anchor-plus-cause message.
       * CONVERTER PRESENT (this tree) -- the converter rules on the selection FIRST, at `intake_v2.py:605`, and
-        refuses `quotient-exact` BY NAME on WR's topology gate: every one of the seven non-reference profiles
+        refuses `quotient-exact` BY NAME on the topology gate: every one of the seven non-reference profiles
         selects a non-reference multiplier topology (`quotient_stream` or `split_compare`) that `qft_overlay`
         cannot honour, because it substitutes QFT sites into the engine's frozen REFERENCE census. The refusal is
         now MORE specific, not less: it names the topology instead of only the profile.
 
     Either way nothing is priced -- `build_measured_request` fails the test if reached, and `publisher.sent` stays
     empty. What ships for a design is the EXPLICIT per-family design on the reference topology, never a profile
-    label; `intake_v2.py:278-280`'s source gate (G3) stays closed, so no route accepts a full-run source at all."""
+    label, and the source gate admits a full-run declaration only in its one form beside the readout."""
     v = qualify(measured, publisher, monkeypatch, tmp_path)
     monkeypatch.setattr(request, "build_measured_request", lambda *a, **kw: pytest.fail("refused, so nothing is priced"))
     printed = {**deepcopy(v["printed"]), intake_v2.FULL_RUN_KEY: {"schema": SELECTION_SCHEMA, "profile": "quotient-exact"}}
@@ -375,7 +372,7 @@ def test_without_the_converter_a_full_run_key_keeps_its_standing_refusal(measure
 
 @pytest.mark.parametrize("qualify_readout", [False, True])
 def test_the_full_run_source_gate_admits_only_the_one_form_and_only_beside_the_readout(qualify_readout, measured, publisher, monkeypatch, tmp_path):
-    """REPLACED by lane Y21 (owner ruling 2026-11-24): the source gate was closed on every route; it now admits ONE
+    """The source gate admits ONE
     form -- `def submittedFullRunDesign : Shor.FullRunDesign := ...` beside the semiclassical readout declaration -- and
     keeps refusing everything else before any compile. A declaration of another type is still refused on both routes
     (`intake_v2.policy_from_lean` applies `check_legacy_full_run_source` before `kind` is read). Production change that

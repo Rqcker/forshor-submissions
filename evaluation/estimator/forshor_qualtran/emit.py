@@ -193,7 +193,7 @@ def cached_real_bundle(k: int, m_max: Optional[int] = None, w_max: Optional[int]
     want = {"m_max": m_max or dm, "w_max": w_max or dw}
 
     def usable(doc: Dict[str, Any]) -> bool:
-        # Compare only the keys that WE asked for. The v2 emitter also gives `check_cramer` in
+        # Compare only the keys that we asked for. The v2 emitter also gives `check_cramer` in
         # `opts`. Thus, the v1 equality of the whole dict rejected each bundle that it had just
         # written, and it emitted again on each call. A cache that never hits looks like "the
         # emitter is slow" and not like a bug.

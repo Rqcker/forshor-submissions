@@ -31,7 +31,7 @@ COHERENT_ANCHOR = "is not supported by the coherent pricing route"
 # Reworded 2026-11-24 without "qualification route": the cause states that the semiclassical readout is priced with the
 # readout. Production change that would fail this: losing that cause, or reverting to the route jargon.
 QUALIFIED_ROUTE = re.compile(r"priced only together with the semiclassical readout", re.I)     # unsupported-but-valid
-# Reworded 2026-11-24 without "this release offers". Production change that would fail this: losing the cause.
+# Reworded 2026-11-24 to name the cause only. Production change that would fail this: losing the cause.
 UNKNOWN_READOUT = re.compile(r"it is not a readout mode;", re.I)   # participant error
 LEGACY_KEY = re.compile(r"legacy `?readout`? key", re.I)                  # wrong key
 

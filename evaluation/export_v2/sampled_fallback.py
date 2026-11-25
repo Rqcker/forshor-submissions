@@ -1,9 +1,9 @@
-"""Sampled costing of a Step 2 B3 fallback selection, from the submitted policy's OWN angle inventory.
+"""Sample-based costing of a Step 2 B3 backend selection, from the submitted policy's OWN angle inventory.
 
 Why sampling is allowed here.  The epoch model already costs rotations by a MEASURED MEAN:
 `epoch.model_of()["rotation"]["synthesis"] == "Ross-Selinger measured mean, 3.075*log2(1/eps) + 0.86"`
 (`epoch.py:97`).  The default synthesis method's price is therefore an empirical summary of measured
-syntheses, not a per-site derivation.  A sampled interval for the B3 fallback is the same epistemic
+syntheses, not a per-site derivation.  A sample-based interval for the B3 backend is the same epistemic
 standard, applied to a method whose words must be derived rather than read off a fitted mean: parity with
 Ross-Selinger, not a relaxation of it.
 
@@ -12,7 +12,7 @@ inventory the policy itself declares (turns, multiplicities, sign-bit counts) an
 only: each turn is ranked by sha256(salt | inventory digest | turn) and a stratum keeps its k lowest ranks.
 No seed argument and no source bytes enter it.  Binding the rank to the whole inventory means any change to
 the inventory reshuffles the entire sample (the salt is public, so a per-turn rank alone would let a
-submitter steer which turns are sampled); only global grinding over whole-policy variants remains, which is
+submitter steer which turns are drawn); only global grinding over whole-policy variants remains, which is
 disclosed.  The per-turn certification worker is supplied by the caller, so the synthesis backend is a
 parameter of the costing and not a frozen operator bank.
 
@@ -25,7 +25,7 @@ The three rules that make sampling honest, and where they live:
 2. A RESOURCE STOP IS INCOMPLETE.  Stopping after a whole round that fit the budget is in contract and
    scores.  Overrunning the budget raises `ResourceStop` with `verdict == "INCOMPLETE"`: never a refusal,
    never a pass, and no success receipt is emitted (the raise is the only exit).
-3. AN INTERVAL WITHOUT ITS PROVENANCE IS NOT EVIDENCE.  `cost_policy_fallback` emits the sample count, the
+3. AN INTERVAL WITHOUT ITS PROVENANCE IS NOT EVIDENCE.  The policy costing entry point emits the sample count, the
    inventory digest, the interval, the contract and range bound, and which code priced it; `check_receipt`
    refuses a receipt missing any of them.
 
@@ -35,9 +35,7 @@ resource or success bound.  Sampling runs in whole deterministic rounds, so a sl
 and typically gets a wider endpoint; a retry of an accepted evaluation must reuse the exact receipt
 (`RECEIPT_BINDING`), never re-estimate and keep the better of several time-varying estimates.
 
-Ported from the research lane (`postprocess/synthesis/src/synthback/backends/step2_sampled_costing.py` and
-`src/synthback/stats/{stratified,bounds}.py`, branch `local/prepush-L3`), trimmed to the Step 2 fallback and
-made self-contained so `evaluation/export_v2` keeps no research dependency.  Kept here, outside
+Self-contained, so `evaluation/export_v2` keeps no outside dependency.  Kept here, outside
 `evaluation/engine`, so adding it does not move `engineRevision` (and so the epoch) -- see `pricing.py:16-25`.
 """
 from __future__ import annotations
@@ -66,7 +64,7 @@ SIGN_CLASSES = ("none", "some", "all")
 
 
 class CertificationRefusal(ValueError):
-    """A MISSING CERTIFIED WORD: a sampled turn has no word meeting its allowance (certificate missed it, or
+    """A MISSING CERTIFIED WORD: a drawn turn has no word meeting its allowance (certificate missed it, or
     the search was exhausted under its caps).  An estimate refusal; never a worker failure."""
 
 
@@ -168,7 +166,7 @@ def _mean_var(xs: Tuple[float, ...]) -> Tuple[float, float]:
 def stratified_total(strata, conf: float = 0.95) -> Estimate:
     """Stratified total (Cochran 1977, ch. 5) with a CLT and a union-bounded empirical-Bernstein half-width.
 
-    Var(T) = sum_h N_h^2 (1 - n_h/N_h) s_h^2 / n_h; the finite-population factor makes a stratum sampled in
+    Var(T) = sum_h N_h^2 (1 - n_h/N_h) s_h^2 / n_h; the finite-population factor makes a stratum drawn in
     full exact, and such a stratum contributes no EB width and does not count toward the union bound."""
     if not strata:
         raise ValueError("no strata")
@@ -240,7 +238,7 @@ def allocate(populations: Mapping[Tuple[str, int], int], total: int) -> Dict[Tup
 
 
 def select_sample(turns: Mapping[Fraction, int], signs: Mapping[Fraction, int], *, salt: bytes, total: int):
-    """(sampled turns per stratum, stratum populations, exact eighth-turn sites with multiplicity)."""
+    """(drawn turns per stratum, stratum populations, exact eighth-turn sites with multiplicity)."""
     exact: Dict[Fraction, int] = {}
     groups: Dict[Tuple[str, int], list] = {}
     for t, n in turns.items():
@@ -275,7 +273,7 @@ def multiplicity_range(turns: Mapping[Fraction, int], signs: Mapping[Fraction, i
 
 @dataclass(frozen=True)
 class SampledPrice:
-    ranked_upper: Fraction  # integer-valued; exact T of eighth-turn sites plus the sampled estimate's upper endpoint
+    ranked_upper: Fraction  # integer-valued; exact T of eighth-turn sites plus the sample estimate's upper endpoint
     point: float
     clt_halfwidth: float
     eb_halfwidth: float
@@ -386,7 +384,7 @@ def _runner(worker, workers):
 def price_step2_budgeted(turns, signs, eps: Fraction, contract: Mapping[str, Any], *, budget_seconds, workers: int = 4,
                          worker=None, clock: Callable[[], float] = time.monotonic,
                          allow_out_of_contract: bool = False):
-    """Price a Step 2 B3 fallback from the contract's deterministic sample, as many whole rounds as fit.
+    """Price a Step 2 B3 backend from the contract's deterministic sample, as many whole rounds as fit.
 
     `eps` is the per-site half-diamond; `worker(job=(turn, eps)) -> (turn, words, error, (T_lo, T_hi))` is the
     caller's certified B3 worker, which is what makes this policy-general: the synthesis backend is a
@@ -474,11 +472,11 @@ def check_receipt(receipt: Mapping[str, Any]) -> Mapping[str, Any]:
 def cost_policy_fallback(turns, signs, eps: Fraction, *, worker, contract=None, workers: int = 4,
                          budget_seconds=None, clock: Callable[[], float] = time.monotonic,
                          allow_out_of_contract: bool = False) -> Dict[str, Any]:
-    """Cost an arbitrary policy's Step 2 B3 fallback from its own angle inventory, within a wall budget.
+    """Cost an arbitrary policy's Step 2 B3 backend from its own angle inventory, within a wall budget.
 
     Returns a certified-interval receipt.  Raises `ResourceStop` (INCOMPLETE, no receipt) if the budget was
     overrun, `OutOfContractRefusal` if a stratum's observed span exceeds the contract range,
-    `CertificationRefusal` if a sampled turn has no certified word, `SamplingInfrastructureError` on worker
+    `CertificationRefusal` if a drawn turn has no certified word, `SamplingInfrastructureError` on worker
     failure and `SamplingConfigurationError` on a bad request."""
     contract = load_contract() if contract is None else dict(contract)
     load_contract_fields = (int(contract["sample_total"]), int(contract["round_size"]))

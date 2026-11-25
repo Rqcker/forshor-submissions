@@ -1,7 +1,7 @@
 """The TWO-JOB flow end to end: the verifier job writes a measured receipt, the publish job publishes it.
 
-Lane XH proved the publisher half -- `publish_verification` accepts a receipt once `receipt_origin.establish` proves
-it IS the trusted verifier job's artifact. Two links were missing and both are closed here:
+The publisher half -- `publish_verification` accepts a receipt once `receipt_origin.establish` proves
+it IS the trusted verifier job's artifact -- is pinned in `test_receipt_origin.py`. Two links were missing and both are closed here:
 
   * `scripts/policy_verifier.py` never passed `--qualify-readout`, so the verifier job never PRODUCED a measured
     receipt for the publisher to accept. It now passes it exactly when the submission declares the measured readout,
@@ -149,9 +149,9 @@ def test_the_verifier_job_now_produces_the_measured_receipt_and_the_publisher_pu
     """THE ACCEPTANCE TEST FOR THE WHOLE FLOW. Two jobs, the real route: the verifier job compiles and writes the
     receipt, the publish job establishes its origin and publishes it.
 
-    Red before this lane at the FIRST assertion: `scripts/policy_verifier.py` passed no `--qualify-readout`, so the
+    Red, before the verifier passed the flag, at the FIRST assertion: `scripts/policy_verifier.py` passed no `--qualify-readout`, so the
     receipt carried no `localReadoutQualification` -- there was no measured receipt in existence for the publisher to
-    accept, and XH's whole gate could never fire on a real submission.
+    accept, and the whole gate could never fire on a real submission.
     """
     job = verifier_job(tmp_path, measured_source)
     assert job.code == 0 and job.result["status"] == "success", job.log
@@ -179,7 +179,7 @@ def test_the_flag_is_what_selects_the_checker_and_the_measured_build_is_not_take
     is ever priced is the route that asked for it.
 
     Production change that would fail this: passing `--qualify-readout` unconditionally -- which is precisely the
-    change XH declined to make, because it changes the ForShor build for every submission.
+    change that is deliberately not made, because it changes the ForShor build for every submission.
     """
     job = verifier_job(tmp_path, coherent_source)
     assert "--qualify-readout" not in job.argv
@@ -264,11 +264,11 @@ def test_the_production_transport_keeps_the_token_in_the_header_and_bounds_what_
 
 
 def test_the_transport_refuses_a_non_https_url_before_it_builds_the_token_header():
-    """Integration XQ, carried across from the superseded `ebf21b0`. The scheme is checked BEFORE the request is
+    """The scheme is checked BEFORE the request is
     built, so the header carrying `GH_TOKEN` is never constructed for a URL that would not protect it.
 
     A transport problem, so `OriginUnavailable` and not a verdict. Production change that would fail this: dropping
-    the scheme check, which is how lane XN's transport shipped."""
+    the scheme check."""
     def never(url, headers):
         pytest.fail(f"the token header was built for {url!r}")
 
@@ -279,8 +279,7 @@ def test_the_transport_refuses_a_non_https_url_before_it_builds_the_token_header
 
 
 def test_a_redirect_can_neither_downgrade_off_tls_nor_carry_the_token_to_another_host():
-    """Integration XQ, carried across from the superseded `ebf21b0`: the ONE control that branch had and lane XN's
-    transport did not. Both holes are CPython 3.12's own defaults, not hypotheticals --
+    """Both holes are CPython 3.12's own defaults, not hypotheticals --
     `HTTPRedirectHandler.redirect_request` copies every header but `content-length`/`content-type` onto the new
     request, and `http_error_302` allows `http`, so stock urllib would hand `Authorization: Bearer <GH_TOKEN>` to
     whatever host a 302 names, in cleartext if it names `http`.
@@ -318,7 +317,7 @@ def test_the_production_transport_installs_the_redirect_guard_rather_than_bare_u
     """The guard above is only worth anything if `urllib_opener`'s DEFAULT transport is the opener carrying it. With
     no `urlopen` injected, `build_opener` must be called with `_StripAuthOnRedirect` and its `open` used to send.
 
-    Production change that would fail this: reverting `send` to `urllib.request.urlopen`, which is what lane XN's
+    Production change that would fail this: reverting `send` to `urllib.request.urlopen`, which is what the
     transport did and is why the token could have followed a redirect."""
     import urllib.request
 
@@ -363,8 +362,8 @@ def test_a_transport_failure_reaches_the_publisher_as_unavailable_and_not_as_a_v
 
 
 def test_the_intake_cli_threads_the_origin_through_and_refuses_as_before_without_it(monkeypatch, tmp_path):
-    """`--trusted-origin` is the ONLY thing that supplies an origin, and without it lane WQ's blanket refusal stands
-    (XH's R9). Production change that would fail this: building an origin whenever GH_TOKEN happens to be set, which
+    """`--trusted-origin` is the ONLY thing that supplies an origin, and without it the blanket refusal stands
+    Production change that would fail this: building an origin whenever GH_TOKEN happens to be set, which
     would make a local rehearsal try to fetch."""
     seen = []
     monkeypatch.setattr(intake_v2, "publish_verification", lambda v, **kw: seen.append(kw["origin"]) or {})
@@ -393,14 +392,14 @@ def test_the_origin_flag_belongs_to_the_receipt_route_only(tmp_path):
 
 @pytest.mark.slow
 def test_a_published_measured_submission_is_archived_as_the_measured_result(measured_source, publisher, tmp_path):
-    """OWNER RULING 2026-11-24 (ruling 1), end to end on the receipt the verifier job really wrote.
+    """The archive records which result was published, end to end on the receipt the verifier job really wrote.
 
     `publish_verification` called `archive_write(v)` with NO result kind, so `archive_policy.archive_policy` fell
     back to its own defaults (`readout="coherent"`, no primitive, no design) and this -- a published MEASURED
     submission, the only kind this flow produces -- was archived as a LEGACY entry. `entry_kind` reads a legacy entry
     as the coherent readout, so the one durable record of the result said the wrong thing, and
     `plan_readout_variant` compared this submission against the default it is not: the participant's own coherent
-    copy of the same policy was a REPEAT of it rather than the variant pair lane WA built the planner for.
+    copy of the same policy was a REPEAT of it rather than the variant pair the planner is built for.
 
     The production change that fails this test is reverting the kind arguments at `intake_v2.py`'s `archive_write`
     call: the entry then carries neither `readout` nor `boards` and the first assertion below reads `coherent`.
@@ -447,7 +446,7 @@ def test_a_published_measured_submission_is_archived_as_the_measured_result(meas
 @pytest.mark.slow
 def test_the_archive_reuse_branch_fails_CLOSED_for_a_measured_receipt_and_cannot_publish_one(
         measured_source, publisher, tmp_path):
-    """THE ASSESSMENT XH ASKED FOR, recorded. A measured receipt CAN reach the archive-reuse branch -- nothing on it
+    """THE ARCHIVE-REUSE BRANCH, assessed. A measured receipt CAN reach the archive-reuse branch -- nothing on it
     refuses one (`scripts/test_policy_publication.js`: "a MEASURED verification reaches the archive-reuse branch").
     On that branch `publication.js:119` sets download=false and `policy_publication.prepare` rebuilds the
     verification from `submission-results`, carrying the ORIGINAL run's stamp, so the origin check asks GitHub for

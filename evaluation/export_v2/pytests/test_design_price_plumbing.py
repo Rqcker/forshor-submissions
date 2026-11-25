@@ -1,7 +1,7 @@
 """A design-bearing document reaches a PUBLISHED price: the four-delta request, and the ranked projection.
 
-Lane WP joined the QFT chain and proved, by execution, that it still publishes nothing. Two STRUCTURAL
-obstacles stood between a compiled design and a price on a board, and this module pins both resolutions.
+Two STRUCTURAL obstacles stood between a compiled design and a price on a board, and this module pins both
+resolutions.
 
 OBSTACLE 1 -- THE FOUR-DELTA CONFLICT. `pricing.price_views` refuses a design at any delta but 1e-2, and
 `request._build_request` prices ALL FOUR deltas of `mapping.DELTA_KEYS`, so a publish request carrying a design
@@ -14,18 +14,17 @@ panel ever published is one of them. So the request now scopes the design to the
 all, which is the same call 792464f made, so byte identity is by construction and not by careful arithmetic.
 
 OBSTACLE 2 -- THE PROJECTION WAS NOT THE PRICE. `mapping.row_of` read `full.get("readout", full)`, so the `qft`
-projection was carried as evidence BESIDE the engine's price and never became the ranked number. Lane WP left
-that for an owner decision; the owner has ruled to proceed with Tier 2, so `mapping.ranked_price_of` now takes
-the projection's T as the ranked T for the full board, following the `readout` precedent exactly.
+projection was carried as evidence BESIDE the engine's price and never became the ranked number.
+`mapping.ranked_price_of` now takes the projection's T as the ranked T for the full board, following the
+`readout` precedent exactly.
 
 WHICH TESTS USE A REAL PRICE AND WHICH USE A SEAM
 --------------------------------------------------------------------------------------------------------
-Until lane WX makes the catalytic arm priceable, the ONLY design that survives both gates is `quotient-exact`,
-which is by construction the engine's own price (`target: "exact"` means "leave this family's QFT exactly as
-the engine priced it"). So a real design cannot yet move a number, and a test that only ever saw the real
-design could not tell "the projection is ranked" from "nothing is ranked".
+An all-exact design is by construction the engine's own price (`target: "exact"` means "leave this family's
+QFT exactly as the engine priced it"), and a test that only ever saw such a design could not tell "the
+projection is ranked" from "nothing is ranked".
 
-* REAL PRICE (`@pytest.mark.slow`, real engine, real `quotient-exact` design): that a four-delta publish
+* REAL PRICE (`@pytest.mark.slow`, real engine, a real explicit design): that a four-delta publish
   request COMPLETES at all; that the 1e-2 full row's T is the projection's T; that the three non-1e-2 panels
   and rows are byte-identical to 792464f; that the no-design path is byte-identical to 792464f.
 * SEAM (`qft_overlay.project` monkeypatched to return a DIFFERENTIATED T): that the ranked T actually MOVES
@@ -34,7 +33,7 @@ design could not tell "the projection is ranked" from "nothing is ranked".
   field changed so the shape stays the production shape.
 
 Every sha256 below was measured on the merge base 792464f itself, not inherited: `HEAD_PANELS`/`HEAD_ROWS` at the
-`price_views` level (the form lane WO recorded) and `REQUEST_*` at the whole-request level.
+`price_views` level and `REQUEST_*` at the whole-request level.
 """
 import copy
 import json
@@ -54,7 +53,7 @@ HEAD_SHA = "a" * 40
 
 #: `canon.sha256_hex(mapping.panel_of(pricing.price_views(...)[board], verification={"stoMirror": None,
 #: "forshorPolicy": None}))` for `POLICY` at 792464f, every delta and both boards. The 1e-2 pair is exactly the
-#: number lane WO recorded and lane WP re-verified; the other six were measured the same way on 792464f itself.
+#: recorded number; the other six were measured the same way on 792464f itself.
 HEAD_PANELS = {
     "pp-1e-2": "c83bf7a532a639d1b16d2e1e9b86b26e2bef36e8db96137e2d259a72d527179f",
     "full-1e-2": "998ad142a47fae05466541a3a92e0851cb86bac91876ce409ec4a98b3e0b19e3",
@@ -106,19 +105,14 @@ REQUEST_ROWS = {
 
 MEASURED_SCHEMA = "forshor.policy-submission-semiclassical/v1"
 
-#: RE-POINTED (integration wave 2, lane XF). This file was written when `quotient-exact` was the one
-#: selection that converted, and its design was the identity by construction. Two things moved underneath it:
+#: The design driven here is an EXPLICIT reference-topology one naming the catalytic backend:
 #:
-#:   * lane WR's TOPOLOGY GATE refuses every profile LABEL (all seven select a non-reference `modmul`), so
-#:     `selection("quotient-exact")` no longer converts at all; and
-#:   * "exact means untouched" now collapses an all-exact EXPLICIT design to None, so no converting design
-#:     is the identity any more -- the identity-and-converting combination was only ever reachable through
-#:     the label this release refuses.
+#:   * the TOPOLOGY GATE refuses every profile LABEL (all seven select a non-reference `modmul`), so
+#:     `selection("quotient-exact")` does not convert at all; and
+#:   * "exact means untouched" collapses an all-exact EXPLICIT design to None, so no converting design is the
+#:     identity.
 #:
-#: So the design driven here is an EXPLICIT reference-topology one naming the catalytic backend. That is
-#: exactly the substitution this file's own `_differentiated` seam anticipated ("lane WX is making the
-#: catalytic arm priceable; when it lands this seam can be replaced by a real differentiated design"), so the
-#: plumbing is now exercised against a design that REALLY moves the ranked price rather than a scaled fake.
+#: So the plumbing is exercised against a design that REALLY moves the ranked price rather than a scaled fake.
 PRICED_DESIGN_QFT = {"data": {"backend": "catalytic", "target": "approximate", "max_error": "25e-5"}}
 
 
@@ -205,7 +199,7 @@ def design_request(policy_json):
 
 @pytest.mark.slow
 def test_a_design_bearing_document_completes_a_four_delta_publish_request(design_request):
-    """OBSTACLE 1, THE DELIVERABLE. Before this lane this call raised `ValueError: a full-run design is priced
+    """OBSTACLE 1, THE DELIVERABLE. This call once raised `ValueError: a full-run design is priced
     at delta 1e-2 only, not 3e-4` from inside `_build_request`'s own pricing loop, so a design-bearing document
     could not produce a request at all. Fails if the design is passed at a delta it is not qualified at, or if
     the 1e-2 panel stops carrying the projection.
@@ -262,9 +256,9 @@ def test_a_request_without_a_design_is_byte_identical_to_792464f_end_to_end(no_d
 
 @pytest.mark.slow
 def test_the_recorded_panel_hashes_still_price_at_792464f(policy, epoch_id):
-    """Lane WP's and lane WO's own measurement, re-verified on this branch and extended to all four deltas:
+    """The recorded measurement, re-verified on this branch and extended to all four deltas:
     `price_views` with no design at all, panelled with no mirror evidence. The 1e-2 pair is the recorded
-    998ad142... (full) and c83bf7a5... (pp). Fails if anything in this lane reaches the pricer itself."""
+    998ad142... (full) and c83bf7a5... (pp). Fails if anything here reaches the pricer itself."""
     for delta in mapping.DELTA_KEYS:
         views = pricing.price_views(policy, "Submission aaaaaaaaaaaa", delta, ["pp", "full"])
         for board in ("pp", "full"):
@@ -279,10 +273,10 @@ def test_the_1e_2_full_row_is_ranked_on_the_qft_projection(design_request):
     """OBSTACLE 2, at the real price. The 1e-2 full row's T and qubits are the PROJECTION's, not the panel's
     own engine numbers.
 
-    RE-POINTED (integration wave 2, lane XF). This asserted `identity is True` and that the row hashed to the
+    RE-POINTED. This asserted `identity is True` and that the row hashed to the
     no-design row, because the only design that converted was `quotient-exact` -- the engine's own number by
     construction -- so the test could state the WIRING but not that it MOVES. The design driven here is now a
-    real catalytic one (lane WX), so the wiring is exercised against a price that genuinely differs and the
+    real catalytic one, so the wiring is exercised against a price that genuinely differs and the
     assertions are strictly stronger: the row does not merely read the projection, it reads a DIFFERENT
     number from the panel's. The no-design row remains pinned byte-for-byte, at every delta and on both
     boards, by `test_a_request_without_a_design_is_byte_identical_to_792464f_end_to_end`.
@@ -320,10 +314,8 @@ def _differentiated(factor=0.5):
     """THE SEAM. The real projection with its T scaled, so the plumbing is exercised against a KNOWN
     displacement of the ranked price.
 
-    Wave 2 note (lane XF): this seam was written because "the only design that prices today is
-    `quotient-exact`, which is by construction the engine's own number". That is no longer so -- the design
-    driven here is a real catalytic one that differentiates on its own (lane WX), which is the replacement
-    this docstring anticipated. The seam is KEPT anyway, because it does something the real design cannot:
+    The design driven here is a real catalytic one that differentiates on its own. The seam is KEPT anyway,
+    because it does something the real design cannot:
     it displaces T by an exactly known factor, so the test can assert the ranked price tracks the projection
     QUANTITATIVELY rather than merely differing from the engine's.
 
@@ -404,12 +396,11 @@ def test_ranked_price_of_takes_T_from_the_projection_and_qubits_from_the_engine(
 
 
 def test_a_projection_that_does_model_qubits_ranks_on_them():
-    """THE HOOK FOR LANE WX. `qft_overlay` refuses `backend: "catalytic"` today partly because it "adds a shared
-    catalyst register", which would RAISE the qubit count and make the engine's layout total no longer an upper
-    bound -- so ranking the engine's number would then publish a count nobody modelled. `ranked_price_of`
-    overrides every `mapping.SHOWN` number the projection prices and leaves the rest at the engine's, so WX can
-    add `qubits` to the projection and have it ranked without editing this file. Fails if the ranked qubits is
-    hard-wired to the engine's."""
+    """THE QUBIT HOOK. A catalytic design adds a shared catalyst register, which RAISES the qubit count and
+    makes the engine's layout total no longer an upper bound -- so ranking the engine's number would publish a
+    count nobody modelled. `ranked_price_of` overrides every `mapping.SHOWN` number the projection prices and
+    leaves the rest at the engine's, so a projection that carries `qubits` has it ranked. Fails if the ranked
+    qubits is hard-wired to the engine's."""
     assert mapping.SHOWN == ("T", "qubits")
     priced = mapping.ranked_price_of({**ENGINE_FULL, "qft": {"T": 4.0, "qubits": 90}})
     assert priced["T"] == 4.0 and priced["qubits"] == 90
@@ -440,7 +431,7 @@ SITE_ROW_FIELDS = {"rowId", "origin", "organizerBaseline", "name", "T", "qubits"
 
 
 def test_the_row_names_no_design_and_no_readout_because_the_site_contract_has_no_field_for_either():
-    """THE ROW/DESIGN SEAM (lane XD's finding), settled in integration wave 2 by lane XF.
+    """THE ROW/DESIGN SEAM.
 
     The finding: the leaderboard bot reads a design off the published ROW while `row_of` copies no design key
     onto it, so the bot can never see a design-bearing row. The proposed fix was to add the design identity to
@@ -467,7 +458,7 @@ def test_the_row_names_no_design_and_no_readout_because_the_site_contract_has_no
 
     WHAT DID CHANGE, and why this guard now matters more than the comment it replaces. The bot justifies
     itself partly on "the ranked price at mapping.py:234 still reads `readout`, never `qft`". That is now
-    STALE: lane WY's `ranked_price_of` does read `qft` (the owner's Tier 2 ruling), so a design-bearing
+    STALE: the `ranked_price_of` does read `qft` (the rule), so a design-bearing
     panel's row WOULD silently carry the projection's T and qubits with nothing on the row naming the
     design -- exactly the "announce an option's score as if it were the plain one" harm the bot guards
     against. The only things preventing it are the intake refusals and the absent site field, so this test
@@ -494,12 +485,11 @@ def test_the_row_names_no_design_and_no_readout_because_the_site_contract_has_no
 
 
 def test_a_readout_and_a_coherent_design_projection_side_by_side_still_refuse():
-    """WS found that the two SINGLE overlays do not stack: each re-derives the WHOLE run's census from the same frozen
+    """The two SINGLE overlays do not stack: each re-derives the WHOLE run's census from the same frozen
     coherent result and returns a FINAL price, the synthesis rate `ts_per_rotation(delta, R)` is nonlinear in the
     rotation total so two finals cannot be added, and on the exponent register they contradict each other.
 
-    KEPT by lane Y21, and retargeted: the owner ruled (2026-11-24) that a measured readout and a design COMPOSE, and
-    they do -- through ONE rule, `readout_qft_overlay`, published as `readoutQft` (next test). A panel carrying the
+    A measured readout and a design COMPOSE -- through ONE rule, `readout_qft_overlay`, published as `readoutQft` (next test). A panel carrying the
     uncomposed pair `readout` + `qft` is still refused at the ranked price. Production change that would fail this:
     ranking either single overlay when both are present, i.e. guessing a precedence instead of composing."""
     both = {**ENGINE_FULL, "readout": {"T": 3.0, "qubits": 2}, "qft": {"T": 4.0}}
@@ -511,7 +501,7 @@ def test_a_readout_and_a_coherent_design_projection_side_by_side_still_refuse():
 
 
 def test_a_composed_readout_and_design_price_is_the_ranked_price():
-    """Lane Y21. `readoutQft` replaces T and qubits outright, as `readout` does, and only beside the readout-only block
+    """`readoutQft` replaces T and qubits outright, as `readout` does, and only beside the readout-only block
     it starts from. Production change that would fail this: ranking `readout` (dropping the design the submission
     asked for), or accepting a composed price beside a coherent `qft` projection or without its readout block."""
     composed = {"T": 2.0, "qubits": 3, "mode": "semiclassical-readout-with-qft-design"}
@@ -529,7 +519,7 @@ def test_a_composed_readout_and_design_price_is_the_ranked_price():
 
 @pytest.mark.slow
 def test_the_pricer_composes_a_measured_readout_and_a_design_in_the_same_call(policy_json):
-    """REPLACED by lane Y21: this was the pricer's refusal of the pair; the owner ruled it composes. The measured view
+    """The pricer composes the pair. The measured view
     carries the readout-only `readout` block AND the composed `readoutQft`, and never the coherent `qft` projection;
     the composed price is `readout_qft_overlay.project`'s on the same frozen census. Production change that would fail
     this: stacking the two single overlays, or publishing a coherent-census `qft` price beside a measured circuit."""
@@ -613,11 +603,11 @@ def test_an_overlay_refusal_still_stops_the_whole_request(monkeypatch, policy_js
     must abort the publish request, not fall back to a design-free four-delta price. Fails if scoping the
     design to 1e-2 were implemented as a try/except that skips the panel the overlay refused.
 
-    RE-POINTED (integration wave 2, lane XF), and the refusal is now INJECTED rather than provoked. This was
+    RE-POINTED, and the refusal is now INJECTED rather than provoked. This was
     parametrized over the two catalytic profile labels, on the basis that they converted at
-    `full_run_design` and were refused at `qft_overlay`. Both halves of that moved: WR's topology gate means
+    `full_run_design` and were refused at `qft_overlay`. Both halves of that moved: the topology gate means
     they no longer convert (which is covered by
-    `test_a_refused_selection_still_prices_nothing_and_builds_nothing`), and WX's arm means `catalytic` is no
+    `test_a_refused_selection_still_prices_nothing_and_builds_nothing`), and the arm means `catalytic` is no
     longer refused at the overlay at all -- it is priced. Those were the only inputs that reached an overlay
     refusal from a valid selection; measured on the merged tree, every family and every `max_error` tried
     prices, with the catalyst width b landing in [41, 42] against a qualified range of [4, 126]. The
@@ -636,8 +626,8 @@ def test_an_overlay_refusal_still_stops_the_whole_request(monkeypatch, policy_js
 
 
 def test_the_ranked_projection_did_not_change_the_evidence_shape():
-    """`qft_overlay` belongs to lane WX and `full_run_design` to lane WR; this lane changed neither. The
-    projection is ranked by READING the shape WP plumbed, so a copy of a projection still round-trips."""
+    """The projection is ranked by READING its shape, without changing `qft_overlay` or `full_run_design`, so a
+    copy of a projection still round-trips."""
     projection = {"T": 1.5, "TBase": 1, "rotations": 2, "identity": False, "qubitsUpperBound": 9}
     full = {**ENGINE_FULL, "qft": copy.deepcopy(projection)}
     assert mapping.ranked_price_of(full)["T"] == projection["T"]

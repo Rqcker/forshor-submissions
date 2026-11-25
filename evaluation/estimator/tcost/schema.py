@@ -10,7 +10,7 @@ This module is pure Python, except `rescore_entry`. That function imports the sc
 * `rescore_entry(entry, tcount)`: the trusted re-score. It builds the policy again from the archived band
   tables (replay-checked, bounded), scores it, and returns the result. The callers reject each mismatch.
 * `solo_entry(table, tcount)`: the T score of one table alone (T_solo). This is the T at n of the cheapest policy
-  from only this table and the schoolbook leaf. Promotion selects the fallback table library by T_solo.
+  from only this table and the schoolbook leaf. Promotion selects the secondary table library by T_solo.
 """
 from __future__ import annotations
 

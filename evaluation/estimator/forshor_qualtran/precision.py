@@ -74,7 +74,7 @@ except ImportError:                         # pragma: no cover
 
 
 def exact_arithmetic() -> bool:
-    """Return True if mpmath computes the closed forms (80 dps), and False on the float fallback."""
+    """Return True if mpmath computes the closed forms (80 dps), and False on the float path."""
     return _EXACT
 
 

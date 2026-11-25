@@ -1,4 +1,4 @@
-"""Owner ruling 2026-11-24: Ross-Selinger, the reference full run and coherent readout are ALWAYS the defaults, and an explicit default
+"""Ross-Selinger, the reference full run and coherent readout are ALWAYS the defaults, and an explicit default
 token is identical to omission everywhere, including hosted intake. Only the three default declarations; every other selection stays refused.
 
 Each test names, in a comment, the production change that would make it fail. Lean and the mirror are stubbed: the compiled document is the
