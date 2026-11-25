@@ -169,10 +169,14 @@ the full order-finding run, on the reference multiplier:
     times each and the scratch QFT 16,380 times, and their errors add up. It is taken out of the run's synthesis budget
     (half of δ) before the rest is shared over the rotations, so the allowances of all families together must leave some
     budget: at δ = 1e-2 they must sum to less than `5e-3`, or the design is refused.
+  * **The allowance is charged in full** against the run's error budget, whatever error the family's QFT actually reaches,
+    so a looser allowance is not always cheaper: loosening it can raise T. On the template's own policy, loosening `data`
+    from `25e-5` to `1e-3` raises T by about 5.2 × 10^9. Compare choices with `starter.py forshor-doc` (see "Price it
+    locally").
   * backend `.rossSelinger`: the rotations are synthesised with Ross–Selinger, as by default. `.exact` leaves the family as
     it is. `.approximate` keeps the controlled rotations up to distance `k` and drops the smaller ones, with `k` the
-    smallest band whose dropped angles, summed over every call, fit the allowance; a looser allowance removes more
-    rotations.
+    smallest band whose dropped angles, summed over every call, fit the allowance. A looser allowance removes more
+    rotations, but takes more of the budget from every other rotation (see above).
   * backend `.catalytic`: the family's QFT keeps its structure, but each twiddle is applied as controlled additions into one
     shared phase-gradient register of `b` qubits, with no synthesised rotation. `.approximate` uses the smallest `b` whose
     rounding, summed over every call, fits the allowance (36 to 48 qubits for allowances from `1e-3` to `1e-6`). `.exact`

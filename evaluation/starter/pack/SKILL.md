@@ -235,7 +235,8 @@ directly in `namespace PolicySubmission`, declared once and mentioned nowhere el
 families, each `some ⟨backend, target⟩` with backend `.rossSelinger` or `.catalytic` and target `.exact` or
 `.approximate ⟨units, scale, by decide, by decide, by decide⟩` (the error allowance `<units>e-<scale>`, the family's total
 over every call in the run, taken out of the synthesis budget; all allowances together must stay below half of δ, `5e-3`).
-The minimal design:
+The allowance is charged in full against the run's error budget, so loosening it can raise T; compare choices with
+`starter.py forshor-doc`. The minimal design:
 
 ```lean
 def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }
