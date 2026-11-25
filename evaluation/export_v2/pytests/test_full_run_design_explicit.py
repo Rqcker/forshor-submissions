@@ -143,7 +143,7 @@ ALL_EXACT = {f: EXACT for f in ("data", "work", "scratch", "exponent")}
 ], ids=["all-four", "one-family", "one-family-and-a-null", "two-families"])
 def test_an_all_exact_explicit_design_requests_nothing_and_converts_to_no_design(qft):
     """THE CRITICAL SEMANTICS (qft_overlay.py:34-40, measured ). `target: "exact"` means LEAVE
-    THIS FAMILY AS THE ENGINE PRICED IT (k_max = None, no substitution), never "substitute the exact
+    THIS FAMILY AS THE ENGINE PRICED IT (the native template, no substitution), never "substitute the exact
     ladder" -- substituting it costs 14.8x T. A design in which NO family asks for an approximate target
     therefore asks for nothing, and `design_of` must collapse it to None exactly as `reference` collapses.
     Fails if the explicit path returns a mapping here. What that costs is measured by
@@ -305,8 +305,9 @@ def test_an_all_exact_design_on_a_NON_reference_topology_is_NOT_the_default_pric
 #: (test_qft_overlay.py:17-20, the frozen baseline).
 BASELINE_T = 1938733902110.921
 
-#: The measured bands for the four families at eta = 1e-6 on the reference topology.
-K_MAX_AT_1E6 = {"data": 31, "work": 32, "scratch": 33, "exponent": 32}
+#: The measured bands for the four families at a family-total allowance of 1e-6 on the reference topology (each
+#: family's error summed over its calls: data and work 8190, scratch 16380, exponent 1).
+K_MAX_AT_1E6 = {"data": 46, "work": 46, "scratch": 48, "exponent": 34}
 
 
 @pytest.fixture(scope="module")
@@ -344,7 +345,7 @@ def test_an_arbitrary_combination_prices_through_the_overlay(priced, qft, substi
         assert out["families"][family]["banded"] is True
     for family, choice in qft.items():
         if choice == EXACT:
-            assert out["families"][family]["kMax"] is None
+            assert out["families"][family]["construction"] == "native"
             assert out["families"][family]["target"] == "exact"
 
 

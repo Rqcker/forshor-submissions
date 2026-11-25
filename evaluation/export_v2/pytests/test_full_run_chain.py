@@ -151,7 +151,7 @@ def test_a_compiled_document_prices_a_panel_carrying_a_qft_projection(policy, ep
 
     views = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"], design=design)
     projection = views["full"]["full"]["qft"]
-    assert projection["pricingRule"] == qft_overlay.RULE == "qft-design-axis-v2"
+    assert projection["pricingRule"] == qft_overlay.RULE == "qft-design-axis-v3"
     assert projection["epoch"] == qft_overlay.EPOCH == "ab1f8887b1b50e56"
     assert projection["ruleSha256"] == qft_overlay.rule_fingerprint()
     assert set(projection["families"]) == set(design)
@@ -163,7 +163,7 @@ def test_a_compiled_document_prices_a_panel_carrying_a_qft_projection(policy, ep
 @pytest.mark.slow
 def test_an_all_exact_design_is_bit_identical_to_the_no_selection_baseline(policy, epoch_id):
     """THE REGRESSION GUARD. `target: "exact"` means "leave this family's QFT exactly as the engine priced it"
-    (k_max = None, no substitution), never "substitute the exact ladder" -- substituting
+    (the native template, no substitution), never "substitute the exact ladder" -- substituting
     the exact Draper ladder at w = 4095 takes (37_598_400, 178_191) to (33_533_953, 8_289_333), a 14.8x
     rotation-driven blow-up in T. If `qft_overlay.project` ever starts substituting on an exact target this
     test goes red.
@@ -199,7 +199,7 @@ def test_an_all_exact_design_is_bit_identical_to_the_no_selection_baseline(polic
     engine_price, projection = baseline["full"]["full"], priced["full"]["full"]["qft"]
 
     assert projection["identity"] is True and projection["substituted"] == []
-    assert all(f["target"] == "exact" and f["kMax"] is None and f["banded"] is False
+    assert all(f["target"] == "exact" and f["construction"] == "native" and f["maxError"] is None
                for f in projection["families"].values())
     assert projection["T"] == engine_price["T"]
     assert projection["TBase"] == engine_price["T_base"]
@@ -331,12 +331,11 @@ def test_the_catalytic_designs_price_a_differentiated_full_run(policy, epoch_id,
     assert projection["T"] != full["T"], "a catalytic design must not price at the engine's own number"
     assert projection["catalysed"] == sorted(f for f, c in design.items() if c["backend"] == "catalytic")
     # All three charges present and nonzero.
-    assert catalyst["b"] >= qft_overlay.B_MIN and catalyst["deltaArm"] > 0.0      # its own budget share
+    assert catalyst["b"] >= qft_overlay.B_MIN and float(projection["budget"]["prepBudget"].split("/")[0]) > 0
     assert catalyst["registerQubits"] == catalyst["b"]                            # the shared register
-    assert projection["qubitsPeak"] == full["qubits_peak"] + catalyst["b"]
-    assert catalyst["prepT"] > 0.0                                               # the prep allowance
-    assert catalyst["T"] == catalyst["cellsT"] + catalyst["prepT"]
-    assert projection["rotationsCatalysed"] > 0
+    assert projection["qubitsPeak"] == full["qubits_peak"] + catalyst["b"] + projection["workspaceQubits"]
+    assert catalyst["prepT"] > 0.0 and catalyst["T"] == catalyst["prepT"]         # the preparation
+    assert all(projection["families"][f]["construction"] == "mergedTwiddle" for f in projection["catalysed"])
 
     built = panel(views["full"], epoch_id, "full")
     assert built["fullRun"]["qft"] == projection, "the panel must carry the projection the pricer produced"
@@ -451,16 +450,12 @@ def test_a_qft_design_and_a_step_2_fallback_cannot_be_asked_for_together(policy=
        referenced only by its own test. So there is no live composition, and it cannot double-spend on its
        own.
 
-    2. BUT THE POOL HAS NO SLACK, so a second spender WOULD double-spend. The overlay partitions the pool
-       EXACTLY over the whole rotation census: the catalytic arm takes `deltaArm = pool * R_cat / R_total`
-       and the survivors keep the engine's unchanged eps, which satisfies
-       `R_synth * (pool / R_total) + deltaArm == pool` (measured on the real engine at delta 1e-2:
-       R_total 3802591380 = R_cat 350171640 + R_synth 3452419740, and the identity holds to a residual of
-       -8.7e-19). Every rotation in the run is already allocated. Step 2's phase-product rotations are part
-       of that same census, so pricing them a SECOND time against their own per-site eps would charge the
-       same budget twice and hand the submission free error -- the same defect the catalytic arm's own
-       docstring refuses ("would spend the catalysed rotations' slices twice ... and would hand catalysis
-       free error").
+    2. BUT THE POOL HAS NO SLACK, so a second spender WOULD double-spend. The overlay spends the pool
+       EXACTLY: the families' allowances and the gradient's preparation are carved out of it, and what is
+       left is divided over the whole remaining rotation census (`qft_overlay.price_design`, whose ledger
+       sums to at most the pool). Every rotation in the run is already allocated. Step 2's phase-product
+       rotations are part of that same census, so pricing them a SECOND time against their own per-site eps
+       would charge the same budget twice and hand the submission free error.
 
     3. SO THE COMBINATION IS REFUSED, and already was, by name, at three independent places. This test pins
        all three together with the reason, so none can be relaxed without confronting the arithmetic above.

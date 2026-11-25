@@ -5,6 +5,7 @@ Every test names the production change in `export_v2/readout_qft_overlay.py` tha
 recorded compiled semiclassical fixture `readout_submitted_931bbf1` -- the policy a measured submission really
 carries -- priced by the frozen engine at n = 2048, delta = 1e-2 (`mapping.DESIGN_DELTA`).
 """
+from fractions import Fraction
 import gzip
 from hashlib import sha256
 import json
@@ -81,14 +82,15 @@ def test_the_value_rules_stay_the_qft_overlays_own(bad, reason):
 def test_a_with_no_design_the_composed_price_is_the_readouts_bit_for_bit(priced, design):
     """(a) design=None (and every design asking nothing) reduces EXACTLY to `readout_overlay.project`.
     Production change that would fail this: re-deriving the readout patch instead of taking the pinned rule's,
-    or dividing the pool over any total but the readout's own."""
+    carving a budget when nothing is designed, or dividing the pool over any total but the readout's own."""
     policy, full = priced
     alone = readout_overlay.project(policy, full)
     joint = composed.project(policy, full, design)
     for key in ("T", "TBase", "rotations", "tPerRotation", "eps", "rounds", "iqftTBase", "iqftRotations",
                 "peakExtra", "qubits"):
         assert joint[key] == alone[key], key
-    assert joint["identity"] and joint["catalyst"] is None and joint["rotationsCatalysed"] == 0
+    assert alone["T"] == 3633127264685.6953
+    assert joint["identity"] and joint["catalyst"] is None and joint["budget"] is None
     assert (joint["readoutTBase"], joint["readoutRotations"]) == (alone["TBase"], alone["rotations"])
 
 
@@ -98,18 +100,17 @@ def test_a_with_no_design_the_composed_price_is_the_readouts_bit_for_bit(priced,
                                     {"data": approx(backend="catalytic"), "work": approx(backend="catalytic")},
                                     {"data": {"backend": "catalytic", "target": "exact"}}])
 def test_b_with_the_readout_off_the_joint_rule_is_the_qft_overlays_bit_for_bit(priced, design):
-    """(b) readout off reduces EXACTLY to `qft_overlay.project`, catalytic arm included. Production change that would
-    fail this: the composed rule's census loop drifting from the overlay's (a different association, a different
-    catalytic share, carving a QFT ceiling out of the pool)."""
+    """(b) readout off reduces EXACTLY to `qft_overlay.project`, catalysis included. Production change that would
+    fail this: the composed rule pricing the design with anything but `qft_overlay.price_design`."""
     policy, full = priced
     alone = qft_overlay.project(policy, full, design)
     joint = composed._joint(policy, full, design, readout=False)
-    for key in ("T", "TBase", "rotations", "rotationsSynthesised", "rotationsCatalysed", "tPerRotation", "eps",
-                "families", "substituted", "catalysed", "catalyst", "catalystQubits"):
+    for key in ("T", "TBase", "rotations", "tPerRotation", "eps", "families", "substituted", "catalysed", "catalyst",
+                "catalystQubits", "workspaceQubits", "budget", "identity"):
         assert joint[key] == alone[key], key
 
 
-# --------------------------------------------------------------------------- (c) a combined case, by hand
+# --------------------------------------------------------------------------- (c) combined cases, by hand
 
 
 def _part(full, width):
@@ -120,70 +121,119 @@ def _part(full, width):
     return row["count"], row["rotations"], round(row["T"] - row["rotations"] * full["T_per_rotation"])
 
 
-def _rate(rotations):
-    eps = 0.5 * 1e-2 / rotations
-    return eps, max(1.0, 3.075 * math.log2(1 / eps) + 0.86)
+def _readout_census(full):
+    xw = full["widths"]["xW"]
+    one, iqft_rot, iqft_base = _part(full, xw)
+    assert one == 1
+    return full["T_base"] - iqft_base, full["rotations"] - iqft_rot + (xw - 1)
+
+
+def _omitted(w, depth):
+    return sum(Fraction(w - s + 1, 2 ** s) for s in range(depth + 1, w + 1))
+
+
+def _rs(eps):
+    return max(1.0, 3.075 * math.log2(1 / eps) + 0.86)
 
 
 @pytest.mark.slow
 def test_c_a_banded_data_and_work_design_under_the_readout_is_recomputed_from_the_census_by_hand(priced):
     """(c) The joint rule recomputed independently: the IQFT and the two families' exact parts are read off the frozen
-    coherent rows (not `PolicyQFT`), the band is the engine's `ReferenceQFT` at a hand-computed Coppersmith k, and the
-    rate is the closed form typed out here (not `sto_currency`). Neither overlay module is called.
-    Production change that would fail this: any joint census or division other than the one the docstring states."""
+    coherent rows, the band depth is found here by a linear scan over the family-total bound (each family runs 8190
+    times), the band is counted by its closed form, the two allowances come out of the pool, and the rate is typed
+    out here. Neither overlay's pricing is called. Production change that would fail this: a per-call band, a band
+    counted by the engine's split, or a pool that keeps the allowances."""
     policy, full = priced
-    from l2q_full.bloqs.qft import ReferenceQFT
-    fa = engine.load().fullalg
     w = full["widths"]
-    xw = w["xW"]
-    one, iqft_rot, iqft_base = _part(full, xw)
-    assert one == 1
-    base = full["T_base"] - iqft_base
-    rotations = full["rotations"] - iqft_rot + (xw - 1)
+    base, rotations = _readout_census(full)
+    pi_up = Fraction("3.14159265358979323846264338328")
+    allowance = Fraction(25, 10 ** 5)
     for width in (w["yW"] + 1, w["workW"]):
         count, rot_row, base_row = _part(full, width)
-        k = max(1, math.ceil(math.log2(width / 25e-5)))
-        band = fa.cc.split(ReferenceQFT(width, k_max=k))
-        base += band.base * count - base_row
-        rotations += band.rot * count - rot_row
-    eps, rate = _rate(rotations)
-    by_hand = base + rotations * rate
+        depth = next(d for d in range(2, width + 1) if 2 * pi_up * count * _omitted(width, d) <= allowance)
+        k = depth - 1
+        assert k == 38
+        band_rot = sum(width - d for d in range(3, k + 1))
+        band_base = 4 * sum(width - d for d in range(1, k + 1)) + (width - 2)
+        base += band_base * count - base_row
+        rotations += band_rot * count - rot_row
+    rest = Fraction(1, 200) - 2 * allowance
+    eps = float(rest / rotations)
+    by_hand = base + rotations * _rs(eps)
 
     joint = composed.project(policy, full, {"data": approx(), "work": approx()})
     assert (joint["TBase"], joint["rotations"]) == (base, rotations)
-    assert joint["eps"] == pytest.approx(eps, rel=1e-15)
+    assert joint["eps"] == pytest.approx(eps, rel=1e-15) and Fraction(joint["eps"]) <= rest / rotations
     assert joint["T"] == pytest.approx(by_hand, rel=1e-13)
     assert joint["qubits"] == readout_overlay.project(policy, full)["qubits"]   # banding adds no qubit
 
     # It is a genuinely joint answer: neither overlay alone, nor the two adjustments added.
     ro, qd = readout_overlay.project(policy, full), qft_overlay.project(policy, full, {"data": approx(), "work": approx()})
     stacked = ro["T"] + (qd["T"] - full["T"])
-    assert joint["T"] < ro["T"] and joint["T"] < qd["T"] and joint["T"] != stacked
-    assert abs(joint["T"] - stacked) > 1e4        # the nonlinearity of the rate, not float noise
+    assert joint["T"] < ro["T"] and joint["T"] < qd["T"] and abs(joint["T"] - stacked) > 1e3   # not float noise
 
 
 @pytest.mark.slow
-def test_c_the_catalytic_arm_takes_its_share_of_the_joint_total_by_hand(priced):
-    """(c, catalytic) The arm's share is `pool * R_cat / R_joint`, with the feed-forward rotations IN R_joint and
-    paid Ross-Selinger; b, the kicks and the register are recomputed here from that share. Production change that
-    would fail this: partitioning the pool over the coherent total, or catalysing the feed-forward phases."""
+def test_c_all_three_families_catalysed_under_the_readout_by_hand(priced):
+    """(c, catalytic) The headline design, recomputed here: each family's native template is replaced by its merged
+    twiddle rows (Ands read off the engine's own `twiddle_row_plan` at the family's b, no rotation), the gradient is
+    the widest b, its preparation takes min(pool / 10, (pool - allowances) / 2) and the rest of the pool is divided
+    over the joint total, feed-forward phases included. Production change that would fail this: per-rotation kicks,
+    a catalyst that keeps the families' rotations, or a pool that keeps the allowances."""
     policy, full = priced
-    joint = composed.project(policy, full, {"data": approx(backend="catalytic")})
-    arm = joint["catalyst"]
-    r_joint, r_cat = joint["rotations"], joint["rotationsCatalysed"]
-    assert r_cat == joint["families"]["data"]["bandedRotations"] * joint["families"]["data"]["count"]
-    delta_arm = 0.5 * 1e-2 * r_cat / r_joint
-    cells = delta_arm - 1e-3 * delta_arm
-    b = max(4, math.ceil(math.log2(math.pi * r_cat / cells)))
-    assert arm["deltaArm"] == pytest.approx(delta_arm, rel=1e-15) and arm["b"] == b
-    assert arm["cellsT"] == r_cat * 4 * (b - 1)
-    _, rate = _rate(r_joint)
-    assert joint["T"] == pytest.approx(joint["TBase"] + (r_joint - r_cat) * rate + arm["T"], rel=1e-13)
-    assert joint["qubits"] == readout_overlay.project(policy, full)["qubits"] + b
-    assert joint["rotationsSynthesised"] == r_joint - r_cat >= joint["feedForwardRotations"] == full["widths"]["xW"] - 1
+    eng = engine.load()
+    from l2q_full.catalysis import spec as cs, twiddle as tw
+    w = full["widths"]
+    base, rotations = _readout_census(full)
+    widths = {"data": w["yW"] + 1, "work": w["workW"], "scratch": w["scratchW"]}
+    slices = {"data": 38, "work": 38, "scratch": 40}
+    for family, width in widths.items():
+        count, rot_row, base_row = _part(full, width)
+        ands = sum(n * r.ands for v, n in qft_overlay._ct_levels(width)
+                   for r in tw.twiddle_row_plan(v // 2, v - v // 2, v, slices[family]) if r.active)
+        base += 4 * ands * count - base_row
+        rotations -= rot_row
+    pool, claimed = Fraction(1, 200), 3 * Fraction(25, 10 ** 5)
+    prep = min(pool / 10, (pool - claimed) / 2)
+    rest = pool - claimed - prep
+    prep_t = 37 * cs.ross_selinger_t(float(prep) / 37) + 1.0
+    joint = composed.project(policy, full, {f: approx(backend="catalytic") for f in FAMILIES})
+    assert (joint["TBase"], joint["rotations"]) == (base, rotations)
+    assert joint["catalyst"]["b"] == 40 and joint["catalyst"]["prepT"] == pytest.approx(prep_t, rel=1e-13)
+    assert joint["T"] == pytest.approx(base + rotations * _rs(float(rest / rotations)) + prep_t, rel=1e-13)
+    assert joint["T"] == 1030868607874.368
+    assert joint["qubits"] == readout_overlay.project(policy, full)["qubits"] + 40 == 9248
+    assert joint["workspaceQubits"] == 0 and max(r["workspaceQubits"] for r in joint["families"].values()) == 79
+    assert joint["rotations"] >= joint["feedForwardRotations"] == w["xW"] - 1
+    assert eng.fullalg.sc.ts_per_rotation_eps(joint["eps"]) == joint["tPerRotation"]
 
 
-# --------------------------------------------------------------------------- (d) monotonicity, and its limit
+#: The independent pricer (`policy_design.Evaluator.evaluate`, semiclassical readout, reference topology) on this
+#: fixture's policy: T, gradient width, preparation T. See `test_qft_overlay.py` for the two construction constants.
+RESEARCH = {
+    "all3 rs 25e-5": ({f: approx() for f in FAMILIES}, 1518242573193.455, 0, 0),
+    "all3 cat 25e-5": ({f: approx(backend="catalytic") for f in FAMILIES}, 1030868606681.2103, 40, 680),
+    "all3 cat 1e-3": ({f: approx("1e-3", "catalytic") for f in FAMILIES}, 1043100276335.03, 38, 680),
+    "all3 rs 1e-6": ({f: approx("1e-6") for f in FAMILIES}, 1627067455755.2039, 0, 0),
+    "data rs 1e-3": ({"data": approx("1e-3")}, 3397129077588.8223, 0, 0),
+    "work cat 1e-6": ({"work": approx("1e-6", "catalytic")}, 3273854244450.2227, 46, 753),
+    "scratch cat exact": ({"scratch": {"backend": "catalytic", "target": "exact"}}, 3255593160538.014, 4398, 1511),
+}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("case", sorted(RESEARCH))
+def test_c_the_composed_prices_match_the_independent_pricer(priced, case):
+    policy, full = priced
+    design, research_t, research_b, research_prep = RESEARCH[case]
+    out = composed.project(policy, full, design)
+    construction = sum((r["width"] - 1) * r["count"] for r in out["families"].values() if r["construction"] == "banded")
+    prep = out["catalyst"]["prepT"] if out["catalyst"] else 0.0
+    assert (out["catalyst"]["b"] if out["catalyst"] else 0) == research_b
+    assert out["T"] - research_t - construction - (prep - research_prep) == pytest.approx(0.0, abs=1e-3)
+
+
+# --------------------------------------------------------------------------- (d) monotonicity, and its limits
 
 
 LOOSENING = ("1e-45", "1e-30", "1e-12", "1e-6", "25e-5")
@@ -191,30 +241,39 @@ LOOSENING = ("1e-45", "1e-30", "1e-12", "1e-6", "25e-5")
 
 @pytest.mark.slow
 @pytest.mark.parametrize("family", FAMILIES)
-def test_d_a_looser_ceiling_never_costs_more_and_the_qualified_ceiling_beats_exact(priced, family):
-    """(d) Under the same readout, loosening a family's ceiling never raises T, and at the qualified ceiling 25e-5 the
-    approximate family costs no more than leaving it exact (the readout's own price). Production change that would
-    fail this: a band that grows with the ceiling, or a joint division that penalises substitution."""
+def test_d_a_looser_allowance_never_costs_more_up_to_25e_5_and_beats_exact(priced, family):
+    """(d) Under the same readout, loosening a family's allowance up to 25e-5 never raises T, and there the
+    approximate family costs less than leaving it exact. Production change that would fail this: a band that grows
+    with the allowance."""
     policy, full = priced
     exact = composed.project(policy, full, {family: EXACT})["T"]
     assert exact == readout_overlay.project(policy, full)["T"]
     prices = [composed.project(policy, full, {family: approx(m)})["T"] for m in LOOSENING]
-    assert prices == sorted(prices, reverse=True)
-    assert prices[-1] <= exact
+    assert prices == sorted(prices, reverse=True) and prices[-1] < exact
 
 
 @pytest.mark.slow
-def test_d_approximate_is_a_construction_swap_so_a_tight_enough_ceiling_costs_more_than_exact(priced):
-    """The limit of (d), pinned so nobody claims more. `approximate` REPLACES the native `PolicyQFT` with a banded
-    textbook `ReferenceQFT` (`qft_overlay`'s own docstring), so "approximate <= exact" is not a law: at 1e-60 the
-    data band keeps k = 211 and costs MORE than the untouched family. This is inherited from `qft_overlay` (the same
-    holds with the readout off), not introduced by the composition. Fails if that ever stops being true -- at which
-    point the module docstrings and the report should say approximate is always cheaper."""
+def test_d_the_limits_of_monotonicity_are_pinned(priced):
+    """The limits of (d), pinned so nobody claims more. (1) An allowance is carved from the pool, so a loose one
+    raises every other rotation's rate: banding data at 1e-3 costs MORE than at 25e-5. (2) `approximate` on the
+    Ross-Selinger backend REPLACES the native template with a textbook ladder, so at 1e-60 it costs more than exact."""
     policy, full = priced
+    p25 = composed.project(policy, full, {"data": approx("25e-5")})["T"]
+    p3 = composed.project(policy, full, {"data": approx("1e-3")})["T"]
+    assert p3 > p25
     exact = composed.project(policy, full, {"data": EXACT})["T"]
     tight = composed.project(policy, full, {"data": approx("1e-60")})
-    assert tight["families"]["data"]["kMax"] == 211 and tight["T"] > exact
-    assert qft_overlay.project(policy, full, {"data": approx("1e-60")})["T"] > full["T"]
+    assert tight["families"]["data"]["kMax"] > 200 and tight["T"] > exact
+
+
+@pytest.mark.slow
+def test_allowances_that_exhaust_the_pool_are_refused_by_name_under_the_readout(priced):
+    policy, full = priced
+    with pytest.raises(ValueError, match="'data': '4e-3'.*'work': '1e-3'.*leaves no synthesis budget"):
+        composed.check_design_under_readout({"data": approx("4e-3"), "work": approx("1e-3")})
+    with pytest.raises(qft_overlay.QftOverlayRefused, match="leaves no synthesis budget"):
+        composed.project(policy, full, {"data": approx("4e-3"), "work": approx("1e-3")})
+    assert composed.project(policy, full, {"data": approx("3e-3"), "work": approx("1e-3")})["budget"] is not None
 
 
 # --------------------------------------------------------------------------- the width collision

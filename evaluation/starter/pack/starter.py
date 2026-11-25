@@ -4,7 +4,7 @@
     python starter.py price POLICY.json [--n 2048] [--delta 0.01] [--no-full] [--json OUT.json]
         PP or PTP banded policy (site policy JSON). Board T at EXACT widths (the board derives them; a declared
         width ladder is ignored, with a notice), both engines, the exact ladder; Q, the live-qubit peak the boards
-        rank by, and the score Q x T, with where it would rank on the board's snapshot taken when the pack was built;
+        rank by, and the score Q x T, with where it would rank among the pack's starting policies (not the live board);
         ForShor's scanned widths as a labelled cross-check; for PP also the full order-finding run on ForShor's
         exact-width IR (exact register widths, balanced split for unequal operands), with upstream ForShor's
         scanned-width IR as a cross-check. A policy that asks for a negation method other than the default is refused.
@@ -207,8 +207,8 @@ def full_price(P: tt.Policy, n: int, delta: float, rule: Optional[str] = None) -
 
 
 def rank_on_board(board: str, score: float, n: int, delta: float) -> Optional[Dict[str, Any]]:
-    """Where `score` (Q x T) would stand among the rows of the results board's snapshot taken when this pack was built (delta = 0.01, n = 2048
-    only; the live board is the page). Lower is better; a tie ranks with the earlier row, as the board does."""
+    """Where `score` (Q x T) would stand among the pack's starting policies (`examples/board_snapshot.json`, delta = 0.01, n = 2048 only).
+    It is not the live board, which the page shows. Lower is better; a tie ranks with the earlier row, as the board does."""
     if n != N or delta != DEFAULT_DELTA or not BOARD_SNAPSHOT.is_file():
         return None
     snap = json.loads(BOARD_SNAPSHOT.read_text())
@@ -217,7 +217,7 @@ def rank_on_board(board: str, score: float, n: int, delta: float) -> Optional[Di
         return None
     ahead = sum(1 for r in rows if r["score"] <= score)
     return {"rank": ahead + 1, "of": len(rows) + 1, "best_score": min(r["score"] for r in rows), "snapshot": snap["built"],
-            "note": "against the board's rows at the pack's build date; the page shows the live board"}
+            "note": "against the pack's starting policies only (examples/board_snapshot.json), not the live board; the page shows the live board"}
 
 
 def price_policy(P: tt.Policy, n: int, delta: float, full: bool) -> Dict[str, Any]:
@@ -515,12 +515,19 @@ def show_measured(r: Dict[str, Any]) -> None:
             continue
         print(f"{'':27}readout + QFT design    {_t(rq['T'])} T, {_f(rq['qubits'])} qubits   <- the row")
         for family, f in sorted(rq["families"].items()):
-            what = (f"approximate {f['maxError']}, k_max {f['kMax']}" if f["target"] == "approximate" else "exact")
-            print(f"{'':29}{family:<8} width {f['width']}: {f['backend']}, {what}")
+            what = f"approximate, allowance {f['maxError']}" if f["target"] == "approximate" else "exact"
+            how = {"banded": lambda: f", band k = {f['kMax']}, error bound {f['errorBound']:.3g}",
+                   "mergedTwiddle": lambda: f", catalyst slice b = {f['b']}, error bound {f['errorBound']:.3g}"}
+            print(f"{'':29}{family:<8} width {f['width']}: {f['backend']}, {what}{how.get(f['construction'], str)()}")
+        budget = rq.get("budget")
+        if budget:
+            print(f"{'':29}error budget: pool {budget['pool']} = allowances {budget['allowances']} + catalyst "
+                  f"preparation {budget['prepBudget']} + synthesis {budget['synthesisBudget']}")
         cat = rq.get("catalyst")
         if cat:
-            print(f"{'':29}catalyst register b = {cat['b']} qubits (added to Q), {_t(cat['T'])} T "
-                  f"for {_f(cat['rotationsCatalysed'])} catalysed rotations")
+            print(f"{'':29}catalyst register b = {cat['b']} qubits (added to Q), preparation {_t(cat['prepT'])} T"
+                  + (f"; {_f(rq['workspaceQubits'])} workspace qubits added beyond the readout's peak"
+                     if rq.get("workspaceQubits") else ""))
     rules = r["rules"]
     print("\n  rule fingerprints (sha256, as the published panel carries them)")
     print(f"    readout                 {rules['readout']}")
@@ -564,8 +571,8 @@ def show(r: Dict[str, Any]) -> None:
 
 def _show_rank(r: Optional[Dict[str, Any]], what: str) -> None:
     if r:
-        print(f"                           would rank {r['rank']} of {r['of']} on {what} (best score then {r['best_score']:.6e}; "
-              f"board snapshot {r['snapshot']}; the page shows the live board)")
+        print(f"                           would rank {r['rank']} of {r['of']} among the pack's starting policies on {what} "
+              f"(best score {r['best_score']:.6e}; snapshot {r['snapshot']}); this is not the live board, which the page shows")
 
 
 def _show_full(f: Dict[str, Any]) -> None:

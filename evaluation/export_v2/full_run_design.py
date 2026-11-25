@@ -22,7 +22,7 @@ phase-product step backend, which the contract has no field for; they are REFUSE
 
 THE REMAINING THREE ARE NOT PRICEABLE EITHER. All seven non-reference profiles select a MULTIPLIER TOPOLOGY
 (`modmul`: quotientStream or splitCompare), and the topology drives both the T cost and the qubit base.
-`qft_overlay` prices the QFT BAND ONLY: its families are the four QFT registers, `project`
+`qft_overlay` prices the QFT FAMILIES ONLY: its families are the four QFT registers, `project`
 has no topology parameter, its source names no multiplier at all, and `parse_design` refuses a `modmul`
 key outright. So a profile's topology cannot be honoured, and converting it to a bare family mapping would
 price a quotientStream run on REFERENCE-topology numbers -- reporting the reference price as if the option
@@ -59,18 +59,17 @@ no board is ever priced for it. One validator in the repo, not two.
 `readout` is deliberately not a body key: production carries `submitted_readout` beside
 `submitted_full_run`, and the design record has no readout field.
 
-EXACT MEANS UNTOUCHED, ON THE CONSTRUCTION AXIS. `target: "exact"` is "leave this family as the engine
-priced it" (`k_max = None`, no substitution), never "substitute the exact ladder", which measures at
-14.8x T (see `qft_overlay`). A design in which no family asks for an `approximate`
+EXACT MEANS UNTOUCHED, ON THE ROSS-SELINGER BACKEND. `ross_selinger` + `exact` is "leave this family as the
+engine priced it" (the native template, no substitution), never "substitute the exact ladder" (see
+`qft_overlay`). A design in which no family asks for an `approximate`
 target AND no family asks for the `catalytic` backend therefore asks for nothing at all and converts to
 None, the engine's untouched default, exactly as `reference` does: the same rule that the empty selection
 is not a design.
 
-The `backend` clause of that rule matters: `target` and `backend` are ORTHOGONAL axes -- the first picks
-the construction, the second picks the CURRENCY. A catalytic family changes the price whatever its target,
-so collapsing a catalytic-exact design to None would return the Ross-Selinger default for a submission that
-asked for catalysis (measured: 1628644042547.186 against 1641978984650.562 at delta 1e-2). See
-`_design_of_body`.
+The `backend` clause of that rule matters: `target` and `backend` are ORTHOGONAL axes. A catalytic family
+changes the price whatever its target (an exact one becomes merged additions into a gradient as wide as the
+register), so collapsing a catalytic-exact design to None would return the Ross-Selinger default for a
+submission that asked for catalysis. See `_design_of_body`.
 
 The collapse is applied on THIS path only; the profile path's 8 labels are fixtures whose conversion is
 recorded byte-for-byte. Every one of those labels refuses on its multiplier topology, so the asymmetry has
@@ -229,7 +228,7 @@ def _design_of_body(body: Any, profile: Optional[str] = None) -> Optional[Dict[s
         raise ValueError(
             f"{named} body does not carry schema {DESIGN_SCHEMA}: {body['schema']!r}")
 
-    # THE TOPOLOGY GATE. `qft_overlay` prices the QFT BAND and nothing else: its families are exactly
+    # THE TOPOLOGY GATE. `qft_overlay` prices the QFT families and nothing else: its families are exactly
     # (data, work, scratch, exponent), `project(policy, coherent, design)` has no topology parameter, the
     # module's source contains no occurrence of `modmul`, `multiplier`, `topology`, `quotient` or
     # `splitCompare`, and `parse_design` REFUSES any design carrying a `modmul` key -- even
@@ -284,21 +283,17 @@ def _design_of_body(body: Any, profile: Optional[str] = None) -> Optional[Dict[s
     for family, (_backend, target, max_error) in plan.items():
         if target == "approximate":
             qft_overlay.parse_max_error(family, max_error)
+    qft_overlay.check_budget(plan)
 
     # EXACT MEANS UNTOUCHED -- ON THE CONSTRUCTION AXIS ONLY.
     #
-    # Testing `target == "approximate"` alone is not enough. On the construction axis `target: "exact"` means
-    # k_max = None, no substitution, but `backend` is a second, orthogonal axis: `target` picks the
-    # construction, `backend` picks the CURRENCY. A catalytic family is "touched" by `qft_overlay.project` whatever its target
-    # (`qft_overlay.py:442-443`, `touched = banded | catalytic`), because the arm re-prices that family's
-    # surviving rotations on the catalyst, takes its own share of the synthesis pool, and adds the shared
-    # catalyst register to Q.
-    #
-    # Measured for `{"data": {"backend": "catalytic", "target": "exact"}}` against the
-    # real engine at delta 1e-2: the engine's own T is 1628644042547.186 and the overlay's is
-    # 1641978984650.562. So collapsing that design to None would return the Ross-Selinger default for a
-    # submission that asked for catalysis -- a silent default, which the topology gate also exists to
-    # prevent.
+    # Testing `target == "approximate"` alone is not enough. On the Ross-Selinger backend `target: "exact"` means
+    # the native template, no substitution, but `backend` is a second, orthogonal axis. A catalytic family is
+    # "touched" by `qft_overlay.price_design` whatever its target: its twiddles become merged additions into the
+    # shared gradient (at b = width for `exact`), the gradient's preparation is carved from the synthesis pool, and
+    # the register is added to Q. So collapsing `{"data": {"backend": "catalytic", "target": "exact"}}` to None
+    # would return the Ross-Selinger default for a submission that asked for catalysis -- a silent default, which
+    # the topology gate also exists to prevent.
     #
     # The collapse therefore tests BOTH axes. A design asks for nothing only when no family asks for an
     # approximate target AND no family asks for the catalytic currency.
