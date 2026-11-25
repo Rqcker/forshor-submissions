@@ -106,6 +106,7 @@ an option**, because the three are not degrees of the same thing:
    ```
 
    `submittedDesign` may equivalently use the two-line `where` form, with `readout := .coherent` indented on the next line.
+   Each `def` starts at column 0 in `Policy.lean`: copy it without the indentation this list gives it here.
    `submittedFullRunDesign` is recognised **on the PhaseProduct board only** (`namespace PolicySubmission`); ForShor's
    `PTPPolicyCheck` refuses it on the PhaseTripleProduct board even at `.reference`. The other two are recognised on both
    boards. Declaring `submittedFullRunDesign` is also the only reason the file may add the import
@@ -138,8 +139,8 @@ an option**, because the three are not degrees of the same thing:
    ```
 
    or in the two-line `where` form with `readout := .semiclassical` indented on the next line, in exactly the recogniser's
-   shape above (column 0, directly in `namespace PolicySubmission`, once). It replaces the inverse QFT on the order-finding
-   run's exponent register by measured phases: one qubit is measured and reused each round, and each round applies one
+   shape above (column 0, so without this list's indentation; directly in `namespace PolicySubmission`; once). It
+   replaces the inverse QFT on the order-finding run's exponent register by measured phases: one qubit is measured and reused each round, and each round applies one
    classically controlled phase. **What it changes:** the full order-finding rows are priced on the measured circuit, at every
    precision. Its live-qubit peak is about 4,094 qubits lower, because the 4,095-qubit exponent register is not held, and its T
    changes very little. The PhaseProduct board row does not change. The PhaseTripleProduct board does not take the readout:
@@ -412,8 +413,8 @@ GitHub (`gh auth login`) first:
 2. Put your file at `TableGeneration/Submission/Policy.lean` (and, optionally, `summary.tex` beside it), then
    `./forshor check`: the checks of the hosted verification, run on your machine with the fetched `main`'s code (section 2,
    "Check it locally"). It ends with `Local verification passed.` and prints no price.
-3. `./forshor submit`: checks again if the file changed since the last pass, commits the file on a new `submission/…`
-   branch, pushes it to your fork of the repository (creating the fork if you have none), opens a pull request against
+3. `./forshor submit`: checks again if the file changed since the last pass, commits the file (from `main`, on a new
+   `submission/…` branch), pushes it to your fork of the repository (creating the fork if you have none), opens a pull request against
    `main` titled "Submit a ForShor policy", and follows it (`./forshor status --watch` does the same later; `--no-wait`
    returns at once).
 4. On the pull request, GitHub Actions runs **Policy submission**, job **Verify submission with Lean**: the same checks as
