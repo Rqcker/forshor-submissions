@@ -81,8 +81,8 @@ python starter.py price my_policy.json --no-full --json out.json
 Read the output in this order:
 1. the board T at **exact** widths and the exact ladder (for example `2048:6 -> 364:2 -> ... -> 26:leaf`);
 2. whether the two engines agree;
-3. Q (the live-qubit peak), the score Q × T, and where the score would rank on the board's snapshot taken when the pack was built;
-4. for PP, the full-run single-run T, Q and score Q × T, its main ladder (for example `2348:6 -> 414:3 -> 141:2 -> 72:2 -> 38:leaf`) and where it would rank on the full board;
+3. Q (the live-qubit peak), the score Q × T, and where the score would rank among the pack's starting policies (not the live board; the page shows that);
+4. for PP, the full-run single-run T, Q and score Q × T, its main ladder (for example `2348:6 -> 414:3 -> 141:2 -> 72:2 -> 38:leaf`) and where it would rank among the starting policies on the full board;
 5. the scanned-width cross-check and the static-layout Q (cross-checks, not the score);
 6. any widths notice.
 
@@ -233,7 +233,9 @@ priced on the measured circuit (about 4,094 fewer live qubits, T nearly unchange
 directly in `namespace PolicySubmission`, declared once and mentioned nowhere else, with
 `import ForShor.ShorVerification.Framework.FullRunDesign` in the header. It sets any of the `data`, `work` and `scratch`
 families, each `some ⟨backend, target⟩` with backend `.rossSelinger` or `.catalytic` and target `.exact` or
-`.approximate ⟨units, scale, by decide, by decide, by decide⟩` (the error ceiling `<units>e-<scale>`). The minimal design:
+`.approximate ⟨units, scale, by decide, by decide, by decide⟩` (the error allowance `<units>e-<scale>`, the family's total
+over every call in the run, taken out of the synthesis budget; all allowances together must stay below half of δ, `5e-3`).
+The minimal design:
 
 ```lean
 def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }
@@ -243,10 +245,12 @@ def submittedFullRunDesign : Shor.FullRunDesign :=
 ```
 
 `SUBMISSION_FORMAT.md` section 2, "Choose a QFT design", has a catalytic and a mixed example and says what each changes. In
-short: an approximate family lowers T; a catalytic family moves its rotations onto one shared catalyst register of `b`
-qubits, which adds `b` to Q. A design is priced on the full order-finding board at δ = 1e-2 only, with one rotation budget
-across the readout and the design; the row ranks on the design's T and live-qubit peak, and the published panel shows each
-family's backend and, for a catalytic design, the catalyst register's width and T. The `exponent` family is refused under
+short: an approximate `.rossSelinger` family drops its smallest rotations and lowers T; a `.catalytic` family applies its
+twiddles as controlled additions into one shared catalyst register of `b` qubits, with no synthesised rotation, which adds
+`b` to Q (`b` = the family's width for `.exact`). A design is priced on the full order-finding board at δ = 1e-2 only, with
+one error budget across the readout and the design; the row ranks on the design's T and live-qubit peak, and the published
+panel shows each family's backend, its band or catalyst width, the budget split and, for a catalytic design, the catalyst
+register's width and preparation T. The `exponent` family is refused under
 the readout (the readout replaces that QFT by measured phases). A design may set only the QFT families above; any other
 field is refused, and the refusal names it. A refusal is raised before anything is priced, names the line and the cause, and
 nothing is published or archived.
@@ -254,11 +258,12 @@ nothing is published or archived.
 **Checking a design.** `./forshor setup` once, then `./forshor check`: it runs the hosted source check, ForShor's build with
 the readout, the check that the compiled design is the one the file declares, and the policy check. It prints no price.
 
-**Pricing a design.** Build the file by hand (`harness/LEAN_CHECKS.md`), print the measured document with
-`--balanced --readout submitted`, and run `python starter.py forshor-doc policy.json --source Policy.lean`. It prices the
+**Pricing a design.** Build the file by hand in a ForShor checkout `$F` (`harness/LEAN_CHECKS.md`), print the measured
+document there with `--balanced --readout submitted > policy.json`, and run
+`python starter.py forshor-doc $F/policy.json --source Policy.lean`. It prices the
 document with the boards' own readout and QFT design rules, copied into the pack's `export_v2/` byte for byte, and prints
 each board's row T and Q at the four deltas, the coherent run, the readout alone and the readout with the design (the row at
-δ = 1e-2), each family's band, the catalyst register when there is one, and the rule fingerprints (sha256) the published
+δ = 1e-2), each family's band or catalyst width, the catalyst register when there is one, and the rule fingerprints (sha256) the published
 panel carries. Whatever hosted intake refuses is refused by name, with the same message, and nothing is priced.
 `starter.py price` prices the tables under the default design only.
 

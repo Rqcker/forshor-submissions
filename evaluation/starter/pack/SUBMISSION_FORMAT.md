@@ -19,7 +19,7 @@ One JSON object (UTF-8, at most 2,000,000 bytes):
 |---|---|
 | `mode` | `PhaseProduct` (PP board) or `PhaseTripleProduct` (PTP board). |
 | `bands` | A submission takes 1 to 256 bands, widest first. Thresholds are non-negative integers and strictly decrease. A band serves every width w ≥ its threshold that is below the previous band's threshold. Below the last threshold, the leaf is used. |
-| tables per k | Several bands may carry **different tables of the same k**, selected per width band. There is no separate limit: only the 256 bands. Each band carries its own table and is checked on its own, so nothing about the policy's shape has to change for this — C1 to C4 are proved per table and per band, and `sorted` constrains the thresholds only. An accepted policy on the boards uses 11 tables over 22 bands, with two different tables at each of k = 3, 5, 7 and 8. |
+| tables per k | Several bands may carry **different tables of the same k**, selected per width band. There is no separate limit: only the 256 bands. Each band carries its own table and is checked on its own, so nothing about the policy's shape has to change for this — C1 to C4 are proved per table and per band, and `sorted` constrains the thresholds only. For example, a policy may use 11 tables over 22 bands, with two different tables at each of k = 3, 5, 7 and 8. |
 | `k` | 2 ≤ k ≤ 8 for a submission. A PP table evaluates at 2k − 1 points, a PTP table at 3k − 2. The boards price a policy of any k, but a submission takes 2 ≤ k ≤ 8 for both PP and PTP (section 2). |
 | `point_order` | The order in which the program consumes the points: `"z"` (an integer), `"1/m"` or `"-1/m"`, `"inf"`. Distinct and unisolvent. The site's panel files (`policyJson`) spell this key `pointOrder`; `starter.py` accepts either spelling (a band that carries both with different values is refused). |
 | `operations` | `["addScaled", dst, src, sign, shift]` (sign +1 or −1, dst ≠ src), `["negate", i]`, `["shiftL", i, n]`, `["shiftR", i, n]` (exact division only), `["phaseProduct", i]`, on registers 0 to k − 1. The program consumes the points in order, restores the registers, and satisfies the exact Toom-Cook identity. |
@@ -130,8 +130,8 @@ an option**, because the three are not degrees of the same thing:
 3. **Several tables of the same arity `k` in one policy — the relaxed PhaseProduct** (section 1, the `tables per k` row).
    Tables of the same `k` may be selected **per width band**, and the only limit is the 256 bands a submission may have.
    **No verifier change is needed**: C1 to C4 are proved per table and per band, and `sorted` constrains the thresholds
-   only. An accepted policy on the boards does this with **11 tables over 22 bands, two different tables at each of
-   k = 3, 5, 7 and 8** (the pack's `test_pack_multi_table_same_k` prices exactly that policy).
+   only. For example, a policy may use **11 tables over 22 bands, with two different tables at each of k = 3, 5, 7 and
+   8**.
 4. **The semiclassical (measured) readout, on the PhaseProduct board.** Declared, verbatim, as
 
    ```lean
@@ -161,14 +161,22 @@ the full order-finding run, on the reference multiplier:
 * **The families.** A design sets any of three QFT families: `data`, `work` and `scratch`, the QFTs the reference multiplier
   applies to its data, work and scratch registers (2,049, 2,347 and 4,398 qubits wide at n = 2048). A family you leave out
   stays exact, with Ross–Selinger synthesis.
-* **Each family** is `some ⟨backend, target⟩`, a `Shor.QftChoice`:
-  * backend `.rossSelinger`: the family's rotations are synthesised with Ross–Selinger, as by default; or `.catalytic`: they
-    are applied from one shared catalyst register instead of being synthesised one by one;
-  * target `.exact`, or `.approximate ⟨units, scale, by decide, by decide, by decide⟩`, an approximate QFT with the error
-    ceiling `units × 10^-scale`, which the verifier writes as `<units>e-<scale>`. For example `⟨25, 5, …⟩` is `25e-5`
-    (2.5 × 10^-4) and `⟨1, 3, …⟩` is `1e-3`. The three `by decide` prove `0 < units`, `units < 10^scale` and
-    `scale ≤ 60`. An approximate QFT of width `w` keeps the controlled rotations up to index
-    `k = max(1, ⌈log2(w / ceiling)⌉)` and drops the smaller ones, so a looser ceiling removes more rotations.
+* **Each family** is `some ⟨backend, target⟩`, a `Shor.QftChoice`. The target is `.exact`, or
+  `.approximate ⟨units, scale, by decide, by decide, by decide⟩` with the error allowance `units × 10^-scale`, which the
+  verifier writes as `<units>e-<scale>`. For example `⟨25, 5, …⟩` is `25e-5` (2.5 × 10^-4) and `⟨1, 3, …⟩` is `1e-3`. The
+  three `by decide` prove `0 < units`, `units < 10^scale` and `scale ≤ 60`.
+  * **The allowance is the family's total** over every call in the run, in operator norm: the data and work QFTs run 8,190
+    times each and the scratch QFT 16,380 times, and their errors add up. It is taken out of the run's synthesis budget
+    (half of δ) before the rest is shared over the rotations, so the allowances of all families together must leave some
+    budget: at δ = 1e-2 they must sum to less than `5e-3`, or the design is refused.
+  * backend `.rossSelinger`: the rotations are synthesised with Ross–Selinger, as by default. `.exact` leaves the family as
+    it is. `.approximate` keeps the controlled rotations up to distance `k` and drops the smaller ones, with `k` the
+    smallest band whose dropped angles, summed over every call, fit the allowance; a looser allowance removes more
+    rotations.
+  * backend `.catalytic`: the family's QFT keeps its structure, but each twiddle is applied as controlled additions into one
+    shared phase-gradient register of `b` qubits, with no synthesised rotation. `.approximate` uses the smallest `b` whose
+    rounding, summed over every call, fits the allowance (36 to 48 qubits for allowances from `1e-3` to `1e-6`). `.exact`
+    rounds nothing, so `b` is the family's own width: 2,049, 2,347 or 4,398 qubits.
 * **Not the `exponent` family.** The semiclassical readout replaces that QFT by measured phases, so a design that names
   `exponent` is refused, `exact` included.
 * **Nothing else.** A design may set only the QFT families above; any other field is refused, and the refusal names it.
@@ -188,7 +196,7 @@ def submittedFullRunDesign : Shor.FullRunDesign :=
 The data QFTs lose their smallest rotations, so the run has fewer rotations to synthesise and its **T falls**. **The qubits do
 not change**: the row keeps the measured readout's live-qubit peak.
 
-A catalytic design: `data` and `work` approximate at `25e-5`, both paid from the catalyst.
+A catalytic design: `data` and `work` approximate at `25e-5`, both applied from the catalyst register.
 
 ```lean
 def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }
@@ -198,9 +206,9 @@ def submittedFullRunDesign : Shor.FullRunDesign :=
     work := some ⟨.catalytic, .approximate ⟨25, 5, by decide, by decide, by decide⟩⟩ }
 ```
 
-Both families are banded, and their remaining rotations are applied from the catalyst register rather than synthesised. On
-the template's own policy **T falls further** than with the first example. **The qubits rise by the catalyst register's
-width** `b`.
+Both families' twiddles become additions into the catalyst register, so these QFTs synthesise no rotation at all. On the
+template's own policy **T falls further** than with the first example. **The qubits rise by the catalyst register's width**
+`b` (38 here).
 
 A mixed design: `data` approximate at `25e-5` and synthesised, `work` approximate at `1e-3` from the catalyst, `scratch` exact
 from the catalyst.
@@ -214,29 +222,34 @@ def submittedFullRunDesign : Shor.FullRunDesign :=
     scratch := some ⟨.catalytic, .exact⟩ }
 ```
 
-`data` is banded as in the first example, `work` is banded more coarsely and catalysed, and `scratch` keeps every rotation but
-takes them from the same catalyst register. There is still **one** catalyst register, shared by `work` and `scratch`, so **the
-qubits rise by its width `b` once**. On the template's own policy **T falls**, by less than in the catalytic example.
+`data` is banded as in the first example, `work` is catalysed with a looser allowance, and `scratch` is catalysed exactly.
+There is still **one** catalyst register, shared by `work` and `scratch`, so the qubits rise by its width `b` once, but an
+exact family sets `b` to its own width: here 4,398 qubits, plus the workspace its widest additions need beyond the run's
+peak. On the template's own policy **T falls the most** of the three examples, but **Q more than doubles**, so the score
+Q × T is worse than with the readout alone.
 
-Not every choice lowers T. A catalytic family kept `.exact` can cost **more** T than leaving the family out, because each
-catalysed rotation is charged as a worst-case kick, and a very small ceiling can cost more than `.exact`, because the
-approximate QFT is a different construction. These are directions; `starter.py forshor-doc` prints the numbers for your
-own policy (see "Price it locally").
+Not every choice lowers the score. A catalytic `.exact` family lowers T but adds a register as wide as the QFT; a looser
+allowance takes more of the synthesis budget from every other rotation, so past some point it costs more T, not less; and a
+very small allowance on `.rossSelinger` can cost more than `.exact`, because the approximate QFT is a different
+construction. These are directions; `starter.py forshor-doc` prints the numbers for your own policy (see "Price it
+locally").
 
 **How a design is priced.**
 
 * On the **full order-finding board at δ = 1e-2 only**. The other precisions of the full board are priced with the
   semiclassical readout alone, and the PhaseProduct board does not change.
-* **One rotation budget.** The readout and the design change the same run, so the run's rotations are counted once, with
-  the readout's measured phases and the design's banded families together, and the synthesis budget (half of δ) is shared
-  over that one total. A catalytic family's rotations take their share of the same budget.
+* **One error budget.** The readout and the design change the same run, so the run's rotations are counted once, with the
+  readout's measured phases and the design's families together. The synthesis budget (half of δ) first pays the families'
+  allowances and, when a family is catalytic, the preparation of the catalyst register (a tenth of the budget, or half of
+  what the allowances leave if that is less); the rest is shared over that one rotation total. The panel lists each part.
 * **The catalyst.** Any catalytic family adds **one shared catalyst register of `b` qubits**, live for the whole run and
-  counted in Q. `b` is set by how many rotations the register serves and their share of the error budget. Its T is those
-  rotations' kicks plus one preparation of the register.
+  counted in Q; `b` is the widest catalytic family's. A catalytic family's T is the T of its additions (4 T per AND), and
+  the register's preparation is charged once.
 * **The row** ranks on the design's T and its live-qubit peak: the measured readout's peak, plus `b` when a family is
-  catalytic.
+  catalytic, plus any workspace the widest additions need beyond the readout's peak.
 * **The published panel** shows the design beside the readout-only price: each family's backend and target (with its
-  ceiling), and, when a family is catalytic, the catalyst register's width and its T.
+  allowance), its band `k` or catalyst width `b` and its error bound, the budget split, and, when a family is catalytic, the
+  catalyst register's width and its preparation T.
 
 **What hosted intake refuses.** Each of these is refused by name, with the line and the cause, before anything is priced. A
 refused submission is not published and nothing is written to the archive.
@@ -275,11 +288,11 @@ python starter.py forshor-doc $F/policy.json --source Policy.lean [--json price.
 It prices the document with the boards' own rules, so it prints the numbers the published rows and panel will carry:
 
 * **each board's row T and Q at the four deltas** (or at `--delta`, one of 0.01, 3e-4, 1e-4, 1e-6), with the score Q × T and,
-  at δ = 0.01, where it would rank on the board snapshot;
+  at δ = 0.01, where it would rank among the pack's starting policies (not the live board);
 * on the full order-finding board, the **coherent run** (for comparison), the **semiclassical readout alone**, and, at
   δ = 0.01 when the file declares a design, the **readout with the design**, which is the row; each family's width, backend,
-  target and band;
-* the **catalyst register** (`b`, its T and the rotations it serves) when a family is catalytic;
+  target, and its band `k` or catalyst width `b`;
+* the **catalyst register** (`b`, its preparation T and any added workspace) when a family is catalytic;
 * the **rule fingerprints**: the sha256 of the readout rule, of the readout-with-design rule and of the QFT design rule, as
   the published panel carries them.
 
@@ -353,7 +366,7 @@ exist at any one moment of the circuit. Each recursive level activates the qubit
 its arithmetic's scratch (1 qubit for an addition or for a negation by the one-ancilla increment), the children sharing one pool. A PhaseProduct adds its two operand
 registers, a PhaseTripleProduct its three (and two ancillas for its leaf, as ForShor states them), and the full run its base registers (12,890 at n = 2048). It is a formula
 over the policy's widths, not a Lean-proved count for your own policy (ForShor has checked it for the board's own policies; the page says which). `starter.py price` prints Q,
-the score, the policy's static-layout Q as a cross-check, and where the score would rank against the board's rows when the pack was built.
+the score, the policy's static-layout Q as a cross-check, and where the score would rank among the pack's starting policies (not the live board, which the page shows).
 
 **Negation.** A table that negates a register builds it as the complement plus Gidney's one-ancilla increment (ForShor's `oneQubit`), with ForShor's explicit gate counts:
 Toffoli `12w - 28` (w even) or `10w - 18` (w odd), CNOT `17w - 22` or `17w - 5`, X `5w - 3` or `5w + 1`, one clean qubit. ForShor also has `scratch` (a clean w-register of ones and

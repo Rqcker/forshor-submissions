@@ -1,5 +1,5 @@
-"""Every distinct table of a policy is listed in its panel, even when two bands use different tables of the same arity (PR #132:
-11 tables, 7 arities). The publisher's contract requires the panel's table list to match its trust count (every distinct table)."""
+"""Every distinct table of a policy is listed in its panel, even when two bands use different tables of the same arity (for example,
+11 tables over 7 arities). The publisher's contract requires the panel's table list to match its trust count (every distinct table)."""
 from types import SimpleNamespace
 
 import pytest

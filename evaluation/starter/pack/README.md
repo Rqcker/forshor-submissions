@@ -86,7 +86,7 @@ python starter.py forshor-doc /path/to/policy.json --source Policy.lean   # the 
 * the board's T at the exact widths, with the **exact ladder** (for example `2048:6 -> 364:2 -> 184:2 -> 94:2 -> 49:2 -> 26:leaf`);
 * engine 2's T and whether the two engines agree;
 * Q, the live-qubit peak (a formula over your policy's widths, not Lean-proved for your policy), the score Q × T, the static-layout Q as
-  a cross-check, and where the score would rank on the board's snapshot taken when the pack was built (`examples/board_snapshot.json`);
+  a cross-check, and where the score would rank among the pack's starting policies (`examples/board_snapshot.json`; not the live board, which the page shows);
 * the ForShor scanned-width price, as a labelled cross-check;
 * for PP, the full order-finding single-run T on ForShor's exact-width IR (exact register widths, balanced split),
   its Q (the live-qubit peak, with the static layout as a cross-check) and the score Q × T, the main ladder (the one the balanced Step 2 descends, for example
@@ -99,7 +99,7 @@ vendored unchanged.
 
 `forshor-doc` on a measured document (the semiclassical readout, `--balanced --readout submitted`, with or without a
 per-family QFT design) prints what the published rows and panel will carry: each board's row T and Q at the four deltas,
-the coherent run, the readout alone and the readout with the design (the full-board row at δ = 0.01), each family's band,
+the coherent run, the readout alone and the readout with the design (the full-board row at δ = 0.01), each family's band or catalyst width,
 the catalyst register when a family is catalytic, and the rule fingerprints (sha256). The readout and QFT design rules are
 the boards' own, copied into `export_v2/` byte for byte. `--source` checks the document against your `Policy.lean`; whatever
 hosted intake refuses is refused by name and nothing is priced. `SUBMISSION_FORMAT.md` section 2, "Price it locally", has the details.

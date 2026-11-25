@@ -339,7 +339,7 @@ def prepare(root, base, env):
     ready = storage(root) / 'prepared.json'
     if ready.exists() and json.loads(ready.read_text()).get('base') == base:
         return cache
-    print('Preparing dependencies. The first setup can take several minutes.', flush=True)
+    print('Preparing dependencies. The first setup can take from a few minutes to more than an hour, depending on the machine and the cache.', flush=True)
     logged(root, 'Fetch prebuilt dependencies', ['lake', 'exe', 'cache', 'get'], cache, env)
     logged(root, 'Build trusted checker', ['lake', 'build', 'TableGeneration.Submission.Correctness',
            'TableGeneration.Metrics'], cache, env)

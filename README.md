@@ -22,7 +22,8 @@ cd forshor-submissions
 ./forshor submit
 ```
 
-The first setup prepares pinned Lean and prebuilt dependencies, then warms the trusted checker; it can take several minutes. `check` runs full local verification over your
+The first setup prepares pinned Lean and prebuilt dependencies, then warms the trusted checker. How long the first setup and the first
+`check` take depends on the machine and on what is already cached: from a few minutes to more than an hour (one cold first `check` took 67 minutes). `check` runs full local verification over your
 current edits. `submit` checks freshness, creates or updates a PR, and follows that exact submission through hosted Lean verification, resource estimation, and publication. It
 prints the accepted-source and dashboard links. Refresh the website after publication; acceptance does not guarantee a new winner.
 

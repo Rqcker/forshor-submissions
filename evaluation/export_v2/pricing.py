@@ -15,10 +15,10 @@ FULL_KEYS = ("n", "T", "T_base", "rotations", "T_per_rotation", "eps", "toffoli"
 
 def _all_tables(eng: Any, P: Any) -> list:
     """Every distinct table of the policy (by digest), arity descending, ties in band order. The engine's view keeps one table per
-    arity, which drops tables when two bands use different tables of the same `k` (PR #132: 11 tables, 7 arities), while its trust
-    counts every distinct table, and the contract requires the two to agree. For a policy with one table per arity this is the
-    engine's own list, in the same order, so panels already published are unchanged. Kept here, outside `evaluation/engine`, so the
-    fix does not move `engineRevision` (and so the epoch)."""
+    arity, which drops tables when two bands use different tables of the same `k` (for example, a policy with 11 tables over 7
+    arities), while its trust counts every distinct table, and the contract requires the two to agree. For a policy with one table
+    per arity this is the engine's own list, in the same order, so panels already published are unchanged. Kept here, outside
+    `evaluation/engine`, so the fix does not move `engineRevision` (and so the epoch)."""
     seen: Dict[str, Any] = {}
     for b in P.bands:
         seen.setdefault(b.table.digest, b.table)
@@ -47,7 +47,7 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
     happens either. `pricer` replaces `fullalg.price_full` (a test seam).
 
     A design is NEVER passed to the full-run pricer. The design axis is priced by an out-of-engine OVERLAY
-    (`qft_overlay.project`, constructing in-epoch `ReferenceQFT` with a Coppersmith `k_max` band) precisely because any edit
+    (`qft_overlay.project`, substituting each designed family's census from in-epoch constructions) precisely because any edit
     to `evaluation/engine` -- including an additive `design=` parameter, including a comment -- moves `dataFingerprint` and
     `engineRevision` and so the epoch (`qft_overlay` module docstring: appending one comment line to `site_engine/fullalg.py`
     moves ab1f8887b1b50e56 to d3bda33d5ddd5dca). So the engine prices the coherent reference exactly as it always did, the
