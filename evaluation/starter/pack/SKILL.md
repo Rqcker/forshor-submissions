@@ -144,6 +144,13 @@ A ForShor build's printed document, priced on the board's IR. It must say `agree
 python starter.py forshor-doc /path/to/ForShor/policy.json
 ```
 
+A measured document (the semiclassical readout, with or without a QFT design) is priced the same way, with the file it was
+built from; see "Checking a design" below:
+
+```bash
+python starter.py forshor-doc /path/to/ForShor/policy.json --source Policy.lean
+```
+
 ## Lean Checks (Optional)
 
 The build trees are not in the pack; `harness/LEAN_CHECKS.md` says where they come from and gives the exact commands. In short:
@@ -160,8 +167,8 @@ The build trees are not in the pack; `harness/LEAN_CHECKS.md` says where they co
 
   `--balanced` implies exact widths. Extracting the IR takes 2 to 3 minutes for a k = 5 or 6 policy. A file that declares
   the semiclassical readout (with or without a QFT design) is exported with
-  `lake exe forshor_policy_submission --balanced --readout submitted > policy.json`; that measured document is not an input
-  to `starter.py forshor-doc`.
+  `lake exe forshor_policy_submission --balanced --readout submitted > policy.json`; `starter.py forshor-doc policy.json
+  --source Policy.lean` prices that measured document.
 
 Resource rules:
 - Run one or two Lean processes at a time, under a memory cap (each tree's `scripts/memcap.py`); wait while `pgrep -x lean | wc -l` is 2 or more.
@@ -245,9 +252,15 @@ field is refused, and the refusal names it. A refusal is raised before anything 
 nothing is published or archived.
 
 **Checking a design.** `./forshor setup` once, then `./forshor check`: it runs the hosted source check, ForShor's build with
-the readout, the check that the compiled design is the one the file declares, and the policy check. Neither it nor
-`starter.py` prints a design's price: `starter.py price` prices the tables under the default design, and `starter.py
-forshor-doc` reads the default (coherent) document only. Tell the user the design's price is the published panel's.
+the readout, the check that the compiled design is the one the file declares, and the policy check. It prints no price.
+
+**Pricing a design.** Build the file by hand (`harness/LEAN_CHECKS.md`), print the measured document with
+`--balanced --readout submitted`, and run `python starter.py forshor-doc policy.json --source Policy.lean`. It prices the
+document with the boards' own readout and QFT design rules, copied into the pack's `export_v2/` byte for byte, and prints
+each board's row T and Q at the four deltas, the coherent run, the readout alone and the readout with the design (the row at
+δ = 1e-2), each family's band, the catalyst register when there is one, and the rule fingerprints (sha256) the published
+panel carries. Whatever hosted intake refuses is refused by name, with the same message, and nothing is priced.
+`starter.py price` prices the tables under the default design only.
 
 **Local only is not a way to score.** The standalone synthesis primitives are real typed choices the verifier attests when
 you run them yourself, and they have no hosted publication route. Never offer one to a user as a submission, and never
@@ -326,8 +339,9 @@ Give the user:
 - for PP, the full-run single-run T, end-to-end T, Q, score and main ladder;
 - the scanned-width cross-check;
 - any widths notice;
-- for a policy with the semiclassical readout or a QFT design, the design as declared and the fact that its price is the
-  published panel's, not a local number.
+- for a policy with the semiclassical readout or a QFT design, the design as declared and the `forshor-doc` output for its
+  measured document (row T and Q per board and delta, the readout-only and readout-with-design prices, the catalyst
+  register, the rule fingerprints).
 
 Use the trust wording below exactly.
 
@@ -420,8 +434,8 @@ you name with `--out` or `--json`.
   score. Say that plainly rather than hedging.
 - Never put a design key in the table policy JSON. Design options are declared in `Policy.lean` only.
 - Never promise a QFT design on the `exponent` family or on any field other than `data`, `work` and `scratch`, a design
-  without the semiclassical readout, or any precision other than δ = 1e-2. Never quote a design's price before the
-  published panel shows it: the pack does not price designs.
+  without the semiclassical readout, or any precision other than δ = 1e-2. Quote a design's price only from
+  `starter.py forshor-doc` on the measured document ForShor printed for that file, never from the table JSON.
 - Never report a timeout or memory stop as a refusal or as a pass. It is incomplete, it is not a verdict, and it may be retried.
 - Never present a local number as final. The site prices the policy again, and its numbers count.
 

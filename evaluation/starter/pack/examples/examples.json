@@ -28,6 +28,13 @@
    "expected": "forshor_upstream_scan.json"
   },
   {
+   "name": "ForShor 3a2b878's printed policy.json for the shipped template with the semiclassical readout and a banded data QFT (`--balanced --readout submitted`), checked against the Policy.lean it was built from",
+   "kind": "forshor-doc",
+   "file": "forshor_readout_design.policy.json",
+   "source": "forshor_readout_design.Policy.lean",
+   "expected": "forshor_readout_design.json"
+  },
+  {
    "name": "a declared width ladder is ignored, with a notice",
    "kind": "price",
    "file": "declared_ladder_ignored.policy.json",

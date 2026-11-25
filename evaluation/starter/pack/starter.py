@@ -8,10 +8,14 @@
         ForShor's scanned widths as a labelled cross-check; for PP also the full order-finding run on ForShor's
         exact-width IR (exact register widths, balanced split for unequal operands), with upstream ForShor's
         scanned-width IR as a cross-check. A policy that asks for a negation method other than the default is refused.
-    python starter.py forshor-doc policy.json [--delta 0.01] [--json OUT.json]
+    python starter.py forshor-doc policy.json [--delta 0.01] [--source Policy.lean] [--json OUT.json]
         ForShor's printed policy document (`lake exe forshor_policy_submission --balanced > policy.json`): the full run priced from the document's own IR and from the converted policy; the two must
         agree (the site's harness stage 5). An exact-width document ("exact" width rule) is checked on the board's IR, an
         upstream (scanned-width) document on upstream's IR, the board's cross-check.
+        A semiclassical document (`--balanced --readout submitted`, with or without a per-family QFT design) is priced as the
+        boards price it: each board's row T and Q at the four deltas (or at --delta), the readout alone and the readout with the
+        design, the catalyst register, and the rule fingerprints the published panel carries. Whatever hosted intake refuses
+        is refused by name, with no price. `--source` also checks the export against your Policy.lean.
     python starter.py template POLICY.json [--out Policy.lean] [--forshor FORSHOR_DIR | --lib ForShor]
         a PP site policy written as the submission file, TableGeneration/Submission/Policy.lean (ForShor's PolicyTemplate format). The imports name
         ForShor's Lean library, `ForShor`. `--forshor` checks it against your ForShor checkout.
@@ -38,6 +42,7 @@ HERE = Path(__file__).resolve().parent
 ENGINE = Path(os.environ.get("FORSHOR_STARTER_ENGINE", HERE / "engine")).resolve()
 sys.path.insert(0, str(ENGINE))
 sys.path.insert(0, str(HERE / "harness"))
+sys.path.append(str(HERE))                  # export_v2/: the boards' readout and QFT design rules
 
 import site_engine  # noqa: E402,F401  (binds the vendored Qualtran before anything imports qualtran)
 from site_engine import DEFAULT_DELTA, SITE_MODEL_VERSION  # noqa: E402
@@ -293,17 +298,45 @@ def policy_from_doc(doc: Dict[str, Any], name: str = "forshor-policy") -> tt.Pol
     return tt.Policy(mode=tt.PAIR, bands=tuple(bands), name=name)
 
 
-def forshor_doc(path: Path, delta: float = DEFAULT_DELTA) -> Dict[str, Any]:
+def read_source(path: Optional[Path]) -> Optional[str]:
+    if path is None:
+        return None
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        raise StarterError(f"{path}: file must be UTF-8") from None
+    except OSError as e:
+        raise StarterError(f"cannot read {path}: {e.strerror}") from None
+
+
+def check_source_binding(path: Path, source: Optional[str], doc: Dict[str, Any]) -> None:
+    """With the submitted Policy.lean: hosted intake's check that the export names a full-run design exactly when the file
+    declares one (and the source gate's rules for that declaration)."""
+    if source is None:
+        return
+    import intake_v2
+    try:
+        intake_v2.check_full_run_binding(source, doc)
+    except intake_v2.Refused as error:
+        raise StarterError(f"{path}: {error.reason}") from None
+
+
+def forshor_doc(path: Path, delta: Optional[float] = None, source_path: Optional[Path] = None) -> Dict[str, Any]:
     from site_engine import fullalg as fa
     doc = read_json(path)
     if not isinstance(doc, dict):
         raise StarterError(f"{path}: expected a ForShor policy document (JSON object)")
+    source = read_source(source_path)
+    if doc.get("schema") == MEASURED_SCHEMA:
+        return measured_doc(path, doc, delta, source, source_path)
     if doc.get("schema") != FORSHOR_SCHEMA:
-        raise StarterError(f"{path}: schema {doc.get('schema')!r} is not {FORSHOR_SCHEMA!r} (a ForShor policy document)")
+        raise StarterError(f"{path}: schema {doc.get('schema')!r} is not {FORSHOR_SCHEMA!r} or {MEASURED_SCHEMA!r} (a ForShor policy document)")
+    delta = DEFAULT_DELTA if delta is None else delta
     try:
         check_coherent_export(doc)
     except ValueError as error:
         raise StarterError(f"{path}: {error}") from error
+    check_source_binding(path, source, doc)
     check_negation(doc)
     rule = fa.doc_width_rule(doc)          # "exact": exact-width document (board IR); "scan": the default scan (cross-check IR)
     ref = json.loads((fa.REFERENCE_SCAN if rule == "scan" else fa.REFERENCE).read_text())
@@ -323,6 +356,90 @@ def forshor_doc(path: Path, delta: float = DEFAULT_DELTA) -> Dict[str, Any]:
             "fixed_values_match_forshor": not diffs, "fixed_value_differences": diffs,
             "bands": [{"threshold": b.threshold, "k": b.table.k, "digest": b.table.digest[:12]} for b in P.bands],
             "full_run": r, "T_document": t_doc, "conversion_agrees": t_doc == float(r["T"]), "trust": TRUST}
+
+
+# ------------------------------------------------------------------------- the semiclassical readout
+MEASURED_SCHEMA = "forshor.policy-submission-semiclassical/v1"
+MEASURED_TRUST = ("The readout and the QFT design are priced by the boards' own rules, copied into export_v2/ byte for byte (their sha256 "
+                  "values are the rule fingerprints above, which the published panel carries). T is counted in Python, not proved in Lean. "
+                  "The PhaseProduct board row does not change with the readout or a design. A QFT design is priced on the full "
+                  "order-finding board at delta 0.01 only; the other deltas carry the readout alone. Nothing here checks the policy "
+                  "itself: `./forshor check` runs the Lean build and the policy check.")
+
+
+def _measured_deltas(delta: Optional[float]) -> List[str]:
+    from export_v2 import mapping
+    if delta is None:
+        return list(mapping.DELTA_KEYS)
+    for key, value in mapping.DELTA_VALUES.items():
+        if value == delta:
+            return [key]
+    raise StarterError("a semiclassical readout is priced at the boards' deltas only: 0.01, 3e-4, 1e-4 or 1e-6 "
+                       f"(or leave out --delta for all four); got {delta!r}")
+
+
+def measured_doc(path: Path, doc: Dict[str, Any], delta: Optional[float], source: Optional[str],
+                 source_path: Optional[Path]) -> Dict[str, Any]:
+    """A semiclassical export (`--balanced --readout submitted`), with or without a per-family QFT design, priced as the
+    published request prices it: the same gates in the same order, then the eight panels' rows (`request.build_measured_request`)."""
+    import intake_v2
+    from policy_options import check_measured_full_run_export
+    from export_v2 import epoch, full_run_design, mapping, pricing, readout_overlay, readout_qft_overlay
+    from export_v2 import engine as rules_engine
+    from export_v2.canon import epoch_of
+
+    deltas = _measured_deltas(delta)
+    try:
+        if intake_v2.PRIMITIVE_KEY in doc:
+            raise ValueError(intake_v2.PRIMITIVE_EXPORT_REFUSAL)
+        check_measured_full_run_export(doc)
+        check_source_binding(path, source, doc)
+        selection = full_run_design.selection_of(doc)
+        readout_qft_overlay.design_of_measured(selection)
+        eng = rules_engine.load()
+        policy = intake_v2.policy_from_document(eng, doc)
+        model = epoch.model_of()
+        if policy.mode != eng.tables.PAIR or epoch_of(model) != readout_overlay.EPOCH:
+            raise ValueError("measured pricing supports only PhaseProduct under the current epoch")
+        evidence = readout_overlay.bind_compiled_readout(policy, doc, verifier_pin=readout_overlay.VERIFIER_PIN,
+                                                         lean_source=(source or "").encode("utf-8"))
+        design = full_run_design.design_of(selection)
+        verification = {"stoMirror": None, "forshorPolicy": None, "readout": evidence}
+        rows = []
+        for key in deltas:
+            views = pricing.price_views(policy, "Submission", key, ["pp", "full"], measured=True,
+                                        **({"design": design} if design and key == mapping.DESIGN_DELTA else {}))
+            for board in ("pp", "full"):
+                panel = mapping.panel_of(views[board], epoch=epoch_of(model), row_id="local", board=board, delta=key,
+                                         verification=verification)
+                row = mapping.row_of(panel, origin="submission", name="local", created_at="", pull_request_url=None,
+                                     submission_id=None, detail="")
+                out = {"board": board, "delta": key, "T": row["T"], "qubits": row["qubits"], "score": row["T"] * row["qubits"],
+                       "ladder": row["ladderLabel"]}
+                if board == "full":
+                    run = panel["fullRun"]
+                    out.update(priced_by="readoutQft" if "readoutQft" in run else "readout",
+                               coherent={"T": run["T"], "qubits": run["qubits"]},
+                               readout=run["readout"], **({"readoutQft": run["readoutQft"]} if "readoutQft" in run else {}))
+                if key == mapping.DESIGN_DELTA:
+                    out["rank_on_board"] = rank_on_board(board, out["score"], N, DEFAULT_DELTA)
+                rows.append(out)
+    except StarterError:
+        raise
+    except (KeyError, TypeError, AttributeError, IndexError) as error:
+        raise StarterError(f"{path}: malformed or unsupported ForShor policy document: {type(error).__name__}: {error}") from None
+    except ValueError as error:
+        raise StarterError(f"{path}: {error}") from None
+    composed = next((r["readoutQft"] for r in rows if "readoutQft" in r), None)
+    return {"schema": SCHEMA, "input": Path(path).name, "n": N, "route": "semiclassical", "deltas": deltas,
+            "source": None if source is None else {"file": Path(source_path).name, "sha256": evidence["sourceSha256"],
+                                                   "bound": True},
+            "bands": [{"threshold": b.threshold, "k": b.table.k, "digest": b.table.digest[:12]} for b in policy.bands],
+            "design": design, "epoch": epoch_of(model), "verifier_pin": evidence["verifierPin"],
+            "rules": {"readout": evidence["ruleSha256"],
+                      "readoutQft": composed["ruleSha256"] if composed else None,
+                      "componentRules": composed["componentRules"] if composed else None},
+            "rows": rows, "trust": MEASURED_TRUST}
 
 
 # ------------------------------------------------------------------------------------------- Lean inputs
@@ -364,7 +481,58 @@ def _f(x) -> str:
     return "-" if x is None else f"{x:,.0f}" if isinstance(x, (int, float)) else str(x)
 
 
+def _design_str(design: Optional[Dict[str, Any]]) -> str:
+    if not design:
+        return "no QFT design (every QFT exact, Ross-Selinger)"
+    return "; ".join(f"{family} {v['backend']} {v['target']}" + (f" {v['max_error']}" if v.get("max_error") else "")
+                     for family, v in sorted(design.items()) if v)
+
+
+def _t(x) -> str:
+    return f"{x:,.2f}"
+
+
+def show_measured(r: Dict[str, Any]) -> None:
+    print(f"{r['input']}: semiclassical readout, n = {r['n']}, engine model {r['epoch']}")
+    print(f"  QFT design: {_design_str(r['design'])}")
+    print("  bands " + ", ".join(f"{x['threshold']}:k{x['k']}" for x in r["bands"]))
+    if r["source"]:
+        print(f"  source {r['source']['file']}: the export's full-run design is the one the file declares")
+    else:
+        print("  no --source given: the export is not checked against your Policy.lean")
+    for x in r["rows"]:
+        board = "PhaseProduct board" if x["board"] == "pp" else "full order finding"
+        print(f"\n  {board:<19} delta {x['delta']:<5} {_t(x['T'])} T, Q {_f(x['qubits'])} qubits, score Q x T = {x['score']:.6e}")
+        _show_rank(x.get("rank_on_board"), "this board")
+        if x["board"] != "full":
+            continue
+        ro = x["readout"]
+        print(f"{'':27}coherent readout        {_t(x['coherent']['T'])} T, {_f(x['coherent']['qubits'])} qubits (the engine's run, for comparison)")
+        print(f"{'':27}semiclassical readout   {_t(ro['T'])} T, {_f(ro['qubits'])} qubits"
+              + ("   <- the row" if x["priced_by"] == "readout" else ""))
+        rq = x.get("readoutQft")
+        if rq is None:
+            continue
+        print(f"{'':27}readout + QFT design    {_t(rq['T'])} T, {_f(rq['qubits'])} qubits   <- the row")
+        for family, f in sorted(rq["families"].items()):
+            what = (f"approximate {f['maxError']}, k_max {f['kMax']}" if f["target"] == "approximate" else "exact")
+            print(f"{'':29}{family:<8} width {f['width']}: {f['backend']}, {what}")
+        cat = rq.get("catalyst")
+        if cat:
+            print(f"{'':29}catalyst register b = {cat['b']} qubits (added to Q), {_t(cat['T'])} T "
+                  f"for {_f(cat['rotationsCatalysed'])} catalysed rotations")
+    rules = r["rules"]
+    print("\n  rule fingerprints (sha256, as the published panel carries them)")
+    print(f"    readout                 {rules['readout']}")
+    if rules["readoutQft"]:
+        print(f"    readout + QFT design    {rules['readoutQft']}")
+        print(f"    QFT design (component)  {rules['componentRules']['qft']}")
+    print("\n" + r["trust"])
+
+
 def show(r: Dict[str, Any]) -> None:
+    if r.get("route") == "semiclassical":
+        return show_measured(r)
     print(f"{r['input']}: n = {r['n']}, delta = {r['delta']}")
     if r.get("widths_notice"):
         print("  NOTICE  " + r["widths_notice"])
@@ -424,7 +592,9 @@ def example_list() -> List[Dict[str, Any]]:
 
 def run_example(e: Dict[str, Any]) -> Dict[str, Any]:
     p = EXAMPLES / e["file"]
-    return forshor_doc(p) if e["kind"] == "forshor-doc" else price(p, full=e.get("full", True))
+    if e["kind"] == "forshor-doc":
+        return forshor_doc(p, source_path=EXAMPLES / e["source"] if e.get("source") else None)
+    return price(p, full=e.get("full", True))
 
 
 def _close(a, b, path="") -> List[str]:
@@ -488,9 +658,11 @@ def main(argv=None) -> int:
     a1.add_argument("--delta", type=float, default=DEFAULT_DELTA)
     a1.add_argument("--no-full", action="store_true", help="skip the full order-finding run (PP)")
     a1.add_argument("--json", help="also write the result as JSON here")
-    a2 = sub.add_parser("forshor-doc", help="price ForShor's printed policy.json (full run)")
+    a2 = sub.add_parser("forshor-doc", help="price ForShor's printed policy.json (full run; a semiclassical readout and a QFT design too)")
     a2.add_argument("doc", type=Path)
-    a2.add_argument("--delta", type=float, default=DEFAULT_DELTA)
+    a2.add_argument("--delta", type=float, default=None,
+                    help="default 0.01; a semiclassical readout prices all four of the boards' deltas unless one is given")
+    a2.add_argument("--source", type=Path, help="your Policy.lean: check that the export's full-run design is the one the file declares")
     a2.add_argument("--json")
     a3 = sub.add_parser("template", help="a PP policy as the submission file Policy.lean (ForShor's PolicyTemplate format)")
     a3.add_argument("policy", type=Path)
@@ -506,7 +678,7 @@ def main(argv=None) -> int:
     a5.add_argument("--write-expected", action="store_true", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     try:
-        if a.cmd in {"price", "forshor-doc"} and not (math.isfinite(a.delta) and 1e-15 <= a.delta < 1):
+        if a.cmd in {"price", "forshor-doc"} and a.delta is not None and not (math.isfinite(a.delta) and 1e-15 <= a.delta < 1):
             raise StarterError("delta must be in [1e-15, 1)")
         if a.cmd == "price":
             if not 16 <= a.n <= 1 << 15:
@@ -517,13 +689,15 @@ def main(argv=None) -> int:
                 _emit(r, a.json)
         elif a.cmd == "forshor-doc":
             try:
-                r = forshor_doc(a.doc, a.delta)
+                r = forshor_doc(a.doc, a.delta, a.source)
+            except StarterError:
+                raise
             except (KeyError, TypeError, ValueError, AttributeError, IndexError, OverflowError) as e:
                 raise StarterError(f"{a.doc}: malformed or unsupported ForShor policy document: {e}") from None
             show(r)
             if a.json:
                 _emit(r, a.json)
-            return 0 if r["conversion_agrees"] else 1
+            return 0 if r.get("conversion_agrees", True) else 1
         elif a.cmd == "template":
             _emit(template(a.policy, a.lib, a.forshor), a.out)
         elif a.cmd == "lean-input":

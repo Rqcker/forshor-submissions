@@ -1,0 +1,30 @@
+{
+ "note": "What build_starter_pack.py copies into the pack so that `starter.py forshor-doc` prices a semiclassical readout, with or without a per-family QFT design, with the same code as the published boards. `files` are copied byte for byte (the readout and QFT rules fingerprint their own bytes, and the panels carry those sha256 values). `extracts` are top-level definitions copied verbatim, in source order, from a module whose other parts the pack does not need; `header` lines are import lines of that same module. `written` files are the pack's own. test_pack_local_pricing.py checks every copy against its source.",
+ "files": [
+  {"source": "evaluation/export_v2/__init__.py", "dest": "export_v2/__init__.py"},
+  {"source": "evaluation/export_v2/canon.py", "dest": "export_v2/canon.py"},
+  {"source": "evaluation/export_v2/engine.py", "dest": "export_v2/engine.py"},
+  {"source": "evaluation/export_v2/mapping.py", "dest": "export_v2/mapping.py"},
+  {"source": "evaluation/export_v2/pricing.py", "dest": "export_v2/pricing.py"},
+  {"source": "evaluation/export_v2/full_run_design.py", "dest": "export_v2/full_run_design.py"},
+  {"source": "evaluation/export_v2/qft_overlay.py", "dest": "export_v2/qft_overlay.py"},
+  {"source": "evaluation/export_v2/readout_overlay.py", "dest": "export_v2/readout_overlay.py"},
+  {"source": "evaluation/export_v2/readout_qft_overlay.py", "dest": "export_v2/readout_qft_overlay.py"},
+  {"source": "scripts/ci/policy_source.py", "dest": "scripts/ci/policy_source.py"}
+ ],
+ "extracts": [
+  {"source": "evaluation/intake_v2.py", "dest": "harness/intake_v2.py",
+   "doc": "Definitions copied verbatim from hosted intake (`evaluation/intake_v2.py`): the ones the readout rule and the pack's measured pricing call. Building, the policy check and publication are not part of the pack.",
+   "header": ["from __future__ import annotations", "import sys", "from pathlib import Path", "from typing import Any, Callable, Dict, List, Optional"],
+   "names": ["HERE", "MAX_FORSHOR_K", "MAX_POLICY_BANDS", "Refused", "_point", "policy_from_document", "PRIMITIVE_KEY",
+             "PRIMITIVE_EXPORT_REFUSAL", "check_legacy_full_run_source", "FULL_RUN_BINDING_REFUSAL", "check_full_run_binding",
+             "FULL_RUN_KEY"]},
+  {"source": "scripts/verifier.py", "dest": "scripts/verifier.py",
+   "doc": "The Lean comment stripper, copied verbatim from the trusted verifier (`scripts/verifier.py`), for the source gate in `scripts/ci/policy_source.py`.",
+   "header": ["from __future__ import annotations"],
+   "names": ["_char_literal_end", "_is_word_char", "_scan_raw_string", "strip_lean_comments"]}
+ ],
+ "written": [
+  {"source": "evaluation/starter/vendor/epoch.py", "dest": "export_v2/epoch.py"}
+ ]
+}

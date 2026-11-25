@@ -25,6 +25,9 @@ and nothing else: NO archive table, DP-library table, seeded planner policy or S
     rank. By default the rows are the starting policies priced by the pack's own engine. `--seed` (the exporter's epoch input, forshor.epoch-input/v2) takes them from a
     results seed instead: pass only a seed that lists just the starting policies (the exporter with `--kmy-only`), or the snapshot would show the scores of the policies the challenge removed;
   * examples/expected/*.json: `starter.py examples --write-expected`, run on the PACK's own engine copy;
+  * export_v2/, harness/intake_v2.py, scripts/: the boards' readout and QFT design rules, copied as vendor/vendor.json lists (byte for byte, or verbatim
+    definitions), with export_v2/epoch.py (the pack's own) and export_v2/model.json (the boards' engine model and the pack engine's fingerprint), so
+    `starter.py forshor-doc` prices a semiclassical export with or without a per-family QFT design; test_pack_local_pricing.py checks them;
   * MANIFEST.json: every file with its sha256 and origin, and what the pack was built from.
 
 Nothing is fetched. The Lean build trees are not part of the pack. To confirm what was built, run `python starter.py examples --check`.
@@ -168,6 +171,82 @@ def scrub_paths(pack: Path) -> int:
     return changed
 
 
+VENDOR = HERE / "vendor" / "vendor.json"
+
+
+def top_level_segments(source: str) -> dict:
+    """name -> the exact source lines of each top-level def, class or single-name assignment of a module."""
+    import ast
+    lines = source.splitlines(keepends=True)
+    out = {}
+    for node in ast.parse(source).body:
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            names = [node.name]
+        elif isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            names = [node.targets[0].id]
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            names = [node.target.id]
+        else:
+            continue
+        start = min([node.lineno] + [d.lineno for d in getattr(node, "decorator_list", [])])
+        for name in names:
+            out[name] = "".join(lines[start - 1:node.end_lineno])
+    return out
+
+
+def extract_module(spec: dict) -> str:
+    """A module of top-level definitions copied verbatim, in source order, from `spec["source"]`."""
+    source = (REPO / spec["source"]).read_text(encoding="utf-8")
+    lines = set(source.splitlines())
+    missing = [h for h in spec["header"] if h not in lines]
+    if missing:
+        raise SystemExit(f"{spec['source']}: header lines not in the source: {missing}")
+    segments = top_level_segments(source)
+    absent = [n for n in spec["names"] if n not in segments]
+    if absent:
+        raise SystemExit(f"{spec['source']}: no top-level definition named {absent}")
+    ordered = sorted(spec["names"], key=lambda n: source.index(segments[n]))
+    return ('"""' + spec["doc"] + '"""\n' + "\n".join(spec["header"]) + "\n\n\n"
+            + "\n\n".join(segments[n].rstrip("\n") + "\n" for n in ordered))
+
+
+def vendor_rules(pack: Path, python: str) -> dict:
+    """Copy the published pricing rules into the pack (vendor/vendor.json), and record the boards' engine model beside them.
+
+    Runs after the scrubs, which must not touch these files: the readout and QFT rules fingerprint their own bytes."""
+    spec = json.loads(VENDOR.read_text(encoding="utf-8"))
+    copied = {}
+    for item in spec["files"] + spec["written"]:
+        dest = pack / item["dest"]
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPO / item["source"], dest)
+        copied[item["dest"]] = item["source"]
+    for item in spec["extracts"]:
+        dest = pack / item["dest"]
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(extract_module(item), encoding="utf-8")
+        copied[item["dest"]] = item["source"] + " (extract)"
+    for dest in copied:
+        text = (pack / dest).read_text(encoding="utf-8")
+        if any(pattern.search(text) for pattern, _ in PATH_SCRUBS):
+            raise SystemExit(f"{dest}: a vendored rule names a local path, and its bytes may not be changed")
+    model = json.loads(subprocess.run([python, "-c", "import json; from export_v2 import epoch; print(json.dumps(epoch.model_of()))"],
+                                      cwd=REPO / "evaluation", check=True, capture_output=True, text=True).stdout)
+    fingerprint = subprocess.run([python, "-c", "import sys; sys.path.insert(0, 'engine'); import site_engine; from site_engine import full_frontier; "
+                                  "print(full_frontier.fingerprint())"], cwd=pack, check=True, capture_output=True, text=True).stdout.strip()
+    (pack / "export_v2" / "model.json").write_text(json.dumps({"model": model, "packEngineFingerprint": fingerprint}, indent=1) + "\n")
+    check = subprocess.run([python, "-I", "-c", "import sys; sys.path[:0] = ['.', 'engine']; import site_engine; "
+                            "from export_v2 import canon, epoch, readout_overlay, qft_overlay, readout_qft_overlay; "
+                            "e = canon.epoch_of(epoch.model_of()); "
+                            "assert e == readout_overlay.EPOCH == qft_overlay.EPOCH == readout_qft_overlay.EPOCH, e; print(e)"],
+                           cwd=pack, capture_output=True, text=True)
+    if check.returncode != 0:
+        raise SystemExit("the pack's pricing rules do not accept the boards' engine model:\n" + check.stderr[-2000:])
+    for p in pack.rglob("__pycache__"):
+        shutil.rmtree(p)
+    return {"epoch": check.stdout.strip(), "files": copied}
+
+
 def snapshot(seed_path: Path) -> dict:
     seed = json.loads(seed_path.read_text())
     if seed.get("schema") != "forshor.epoch-input/v2":
@@ -284,7 +363,8 @@ def main() -> int:
     ap.add_argument("--python", default=sys.executable, help="python with the pack's requirements, to pin the example outputs")
     a = ap.parse_args()
 
-    dirty = git("status", "--porcelain", "--", "evaluation/starter", "evaluation/engine")
+    vendored = sorted({x["source"] for k in ("files", "extracts") for x in json.loads(VENDOR.read_text())[k]})
+    dirty = git("status", "--porcelain", "--", "evaluation/starter", "evaluation/engine", *vendored)
     if dirty and not a.allow_dirty:
         raise SystemExit("the pack's source is not committed, so its manifest could not name the commit it was built from:\n" + dirty + "\n(commit it, or pass --allow-dirty for a trial build)")
     pack = a.out / "forshor-challenge-starter"
@@ -294,7 +374,10 @@ def main() -> int:
     copy_engine(pack / "engine")
     print(f"local paths scrubbed in {scrub_paths(pack)} files; archive ids scrubbed from {scrub_archive_ids(pack)} engine source files")
     print(f"engine wording: {reword_engine(pack)} passages reworded")
-    origins = {"pack": "evaluation/starter/pack (hand-written)", "engine": f"evaluation/engine at {git('rev-parse', '--short', 'HEAD')} (tests, caches excluded)"}
+    rules = vendor_rules(pack, a.python)
+    print(f"pricing rules: {len(rules['files'])} files from the repository, engine model {rules['epoch']}")
+    origins = {"pack": "evaluation/starter/pack (hand-written)", "engine": f"evaluation/engine at {git('rev-parse', '--short', 'HEAD')} (tests, caches excluded)",
+               "rules": {"epoch": rules["epoch"], "files": rules["files"]}}
 
     run = lambda *c: subprocess.run([a.python, str(pack / "starter.py"), *c], cwd=pack, check=True, capture_output=True, text=True)
     gen = write_starting_inputs(pack, a.python)

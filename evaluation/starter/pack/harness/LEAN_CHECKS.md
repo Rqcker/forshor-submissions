@@ -116,8 +116,9 @@ table policy JSON, which refuses every design key with `table policy JSON cannot
   `--readout submitted`, or without the readout declaration, ForShor refuses a design before printing anything:
   `full-run synthesis requires saved semiclassical readout and --balanced --readout submitted`. A design together with a
   standalone primitive is refused with `full-run and standalone synthesis opt-ins are not jointly qualified`.
-  `starter.py forshor-doc` does not read this measured document; `./forshor check` runs the same build and checks the
-  design, and the design's price is the published panel's.
+  `python starter.py forshor-doc policy.json --source Policy.lean` prices this measured document as the boards do (row T
+  and Q per board and delta, the readout alone and with the design, the catalyst register, the rule fingerprints);
+  `./forshor check` runs the same build and checks the design.
 * **Local only; does not publish.** The standalone synthesis primitives `.catalyticB2` and `.adaptiveB3`. The verifier attests
   the choice on your own machine; hosted intake refuses it and there is no publication route: attested and priced locally,
   not accepted by hosted intake, no score.

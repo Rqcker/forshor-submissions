@@ -26,8 +26,9 @@ Rotations are priced with Ross–Selinger, 3.075 log2(1/ε) + 0.86 T at ε = 0.5
 | `SKILL.md` | The same workflow, written for AI agents (Claude and others). |
 | `starter.py` | `price`, `forshor-doc`, `template`, `lean-input`, `examples` (see below). |
 | `templates/` | `pp_policy.json` and `ptp_policy.json` (site policy JSON; both price as they stand), their Lean-checker inputs `*.lean-input.json`, `ptp.Policy.lean` (the PhaseTripleProduct submission file, from ForShor's `PTPPolicyTemplate.lean`) and `Policy.lean` (the PhaseProduct submission file: ForShor's shipped template, with the submission limits this challenge applies — `2 ≤ k ≤ 8`, the `--balanced` document the board prices, and a pointer to the design options). |
-| `examples/` | The starting policies (built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024)), as site policy JSON and as submission files (`starting_pp`, `starting_ptp`), ForShor `21e129a`'s printed documents for its own shipped template (a format example, and the cross-check at scanned widths), a policy with a declared ladder (ignored, with a notice), `board_snapshot.json` (the starting rows of the boards) and `expected/*.json` (the pinned outputs `python starter.py examples --check` compares with). |
+| `examples/` | The starting policies (built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024)), as site policy JSON and as submission files (`starting_pp`, `starting_ptp`), ForShor `21e129a`'s printed documents for its own shipped template (a format example, and the cross-check at scanned widths), ForShor `3a2b878`'s measured document for the same template with the semiclassical readout and a banded data QFT (`forshor_readout_design`, with its `Policy.lean`), a policy with a declared ladder (ignored, with a notice), `board_snapshot.json` (the starting rows of the boards) and `expected/*.json` (the pinned outputs `python starter.py examples --check` compares with). |
 | `harness/LEAN_CHECKS.md` | How to run the Lean checks. The build trees are not in the pack; the file says where they come from. |
+| `export_v2/`, `harness/intake_v2.py`, `scripts/` | The boards' readout and QFT design rules and the checks hosted intake applies to a measured document, copied from the submissions repository unchanged (`MANIFEST.json` names each source); `starter.py forshor-doc` uses them. |
 | `harness/policy_to_template.py` | The site's converter from a PP policy to a ForShor template (used by `starter.py template`). |
 | `engine/` | The site's pricing engine, vendored: `tcost` (engine 1), `forshor_qualtran` (engine 2), the full-run pricer `site_engine/fullalg.py` with Lean-To-Qualtran's `PolicyShorCore`, the exact-width functions (`tcost/exact`, and ForShor's rule `fullalg/forshor_exact_width.py`), the two ForShor policy documents (`fullalg/data`: the exact-width one, which is the board's IR, and the default-scan one, the cross-check), Qualtran 0.8.0.dev0, and the table library (used only to name tables). |
 | `MANIFEST.json` | Every file, with its sha256 and the source it was copied from. |
@@ -77,6 +78,7 @@ python starter.py price my_pp_policy.json            # PP board at exact widths 
 python starter.py price my_ptp_policy.json           # PTP board at exact widths
 python starter.py price my_pp_policy.json --no-full --json out.json   # PP board only, machine-readable
 python starter.py forshor-doc /path/to/policy.json  # a ForShor build's printed document (full run)
+python starter.py forshor-doc /path/to/policy.json --source Policy.lean   # the semiclassical readout, with or without a QFT design
 ```
 
 `price` reports:
@@ -95,6 +97,13 @@ Each number comes from the same code the site runs (see `MANIFEST.json`), so a p
 site's boards. The full run is priced locally with the site's own full-run pricer (`engine/site_engine/fullalg.py`),
 vendored unchanged.
 
+`forshor-doc` on a measured document (the semiclassical readout, `--balanced --readout submitted`, with or without a
+per-family QFT design) prints what the published rows and panel will carry: each board's row T and Q at the four deltas,
+the coherent run, the readout alone and the readout with the design (the full-board row at δ = 0.01), each family's band,
+the catalyst register when a family is catalytic, and the rule fingerprints (sha256). The readout and QFT design rules are
+the boards' own, copied into `export_v2/` byte for byte. `--source` checks the document against your `Policy.lean`; whatever
+hosted intake refuses is refused by name and nothing is priced. `SUBMISSION_FORMAT.md` section 2, "Price it locally", has the details.
+
 ## 4. Check it in Lean, then submit
 
 Run `./forshor check` in the submissions checkout, not the unpacked pack. The command uses GitHub sign-in (`gh auth login`) and fetches the trusted base, then runs the Lean checks locally. It does not submit anything. `./forshor submit` opens the submission PR after checking. See `harness/LEAN_CHECKS.md` for manual builds; the Lean trees are not in the pack.
@@ -104,7 +113,7 @@ Run `./forshor check` in the submissions checkout, not the unpacked pack. The co
 * PTP: the same input, then `check_ptp_policy.py --widths exact` of the same repository (against ForShor's `Shor.PTP`).
 * Manual ForShor build: use `forshor.ref` in the trusted submissions base's `evaluation/policy-trees.json`. The pack's frozen model pin `21e129a` identifies the pricing baseline, not the verifier checkout. After `lake exe cache get`, use the targets for your policy:
   - **PP:** `lake build PolicySubmission forshor_policy_submission`, then `lake exe forshor_policy_submission --balanced > policy.json`. `starter.py forshor-doc` prices this PP document.
-  - **PP with the semiclassical readout or a QFT design:** the same build, then `lake exe forshor_policy_submission --balanced --readout submitted > policy.json`. `starter.py` does not price this measured document; `./forshor check` checks the design, and its price is the published panel's.
+  - **PP with the semiclassical readout or a QFT design:** the same build, then `lake exe forshor_policy_submission --balanced --readout submitted > policy.json`. `starter.py forshor-doc policy.json --source Policy.lean` prices this measured document; `./forshor check` checks the design.
   - **PTP:** `lake build PTPPolicySubmission forshor_ptp_policy_submission`, then `lake exe forshor_ptp_policy_submission > policy.json`. This prints PTP tables, not a full-run document for `forshor-doc`.
 
 The PP policy check and the PhaseTripleProduct harness reject a policy whose thresholds are set too low (stage `threshold`): on the

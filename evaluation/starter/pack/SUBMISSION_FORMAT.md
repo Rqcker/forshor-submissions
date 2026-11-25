@@ -219,8 +219,8 @@ qubits rise by its width `b` once**. On the template's own policy **T falls**, b
 
 Not every choice lowers T. A catalytic family kept `.exact` can cost **more** T than leaving the family out, because each
 catalysed rotation is charged as a worst-case kick, and a very small ceiling can cost more than `.exact`, because the
-approximate QFT is a different construction. Neither `starter.py` nor `./forshor check` prices a design (see "Check it
-locally"), so treat these as directions, not as numbers.
+approximate QFT is a different construction. These are directions; `starter.py forshor-doc` prints the numbers for your
+own policy (see "Price it locally").
 
 **How a design is priced.**
 
@@ -261,9 +261,32 @@ The source refusals start with `submittedFullRunDesign is not accepted as writte
 4. the policy check.
 
 `Local verification passed.` means the hosted verification of the same file will pass. Then `./forshor submit`. Neither command
-prints the design's price: it is computed when the submission is priced, and the published panel shows it. `starter.py price`
-prices the policy's tables under the default design, and `starter.py forshor-doc` reads the default (coherent) document only,
-so neither prices the readout or a design. To build by hand instead, see `harness/LEAN_CHECKS.md`.
+prints a price; `starter.py forshor-doc` does.
+
+**Price it locally.** Build the file by hand (`harness/LEAN_CHECKS.md`) and print the measured document:
+`lake exe forshor_policy_submission --balanced --readout submitted > policy.json`. Then, in the pack:
+
+```sh
+python starter.py forshor-doc policy.json --source Policy.lean [--json price.json]
+```
+
+It prices the document with the boards' own rules, so it prints the numbers the published rows and panel will carry:
+
+* **each board's row T and Q at the four deltas** (or at `--delta`, one of 0.01, 3e-4, 1e-4, 1e-6), with the score Q × T and,
+  at δ = 0.01, where it would rank on the board snapshot;
+* on the full order-finding board, the **coherent run** (for comparison), the **semiclassical readout alone**, and, at
+  δ = 0.01 when the file declares a design, the **readout with the design**, which is the row; each family's width, backend,
+  target and band;
+* the **catalyst register** (`b`, its T and the rotations it serves) when a family is catalytic;
+* the **rule fingerprints**: the sha256 of the readout rule, of the readout-with-design rule and of the QFT design rule, as
+  the published panel carries them.
+
+The rules are copied into the pack's `export_v2/` byte for byte, and the pack refuses to price under any other engine model.
+`--source` checks that the document's design is the one your file declares; without it the document is priced as it stands.
+Whatever hosted intake refuses in the document or the file (the `exponent` family, a multiplier topology, a profile, a rotation
+or phase-product step backend, a design without the readout, a design the file does not declare) is refused by name with the
+same message, and nothing is priced. `examples/forshor_readout_design.policy.json` is the first example above, printed for the
+template, with its `Policy.lean` beside it. `starter.py price` prices a policy's tables under the default design only.
 
 #### Local only; does not publish
 

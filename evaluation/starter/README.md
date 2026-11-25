@@ -2,7 +2,9 @@
 
 `pack/` holds the hand-written files of the participant starter pack (README, skill, format document, `starter.py`, ForShor's shipped template, the two ForShor printed documents, Lean-check guide).
 `build_starter_pack.py` assembles the pack from them and from `evaluation/engine`, and writes the rest from the pack's own engine: the starting policies (built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024)), the templates, the submission files, the board
-snapshot and every example's pinned output. It then writes `MANIFEST.json` and the zip.
+snapshot and every example's pinned output. It copies the boards' readout and QFT design rules into the pack (`vendor/vendor.json`: `evaluation/export_v2`'s rules and `scripts/ci/policy_source.py` byte for byte, plus the definitions of
+`evaluation/intake_v2.py` and `scripts/verifier.py` they call, verbatim) with the boards' engine model (`export_v2/model.json`), so `starter.py forshor-doc` prices a semiclassical readout and a
+per-family QFT design as the published panel does. It then writes `MANIFEST.json` and the zip.
 
 **The pack starts from the Kahanamoku-Meyer and Yao (2024) tables and nothing else.** Its `engine/data/` keeps only `kmy_tables/` (PhaseProduct k = 3, PhaseTripleProduct k = 3 and 4); the archive tables, the DP
 library, the seeded planner policies, STO's reference policies, `BestKnown` and every pinned run are left out, an empty `personal_tables/tables.json` stands in for the loader that expects one, and archive
@@ -22,6 +24,8 @@ python evaluation/starter/test_pack_multi_table_same_k.py <dir>/forshor-challeng
                                                                                                # PR #132's 11-table policy prices to its published numbers; a broken k = 7 table is refused
 python evaluation/starter/test_pack_matches_seed.py <dir>/forshor-challenge-starter.zip <epoch-input.json> --python <python>
                                                                                               # the unzipped pack prices every policy of a results seed to the boards' T and Q
+python evaluation/starter/test_pack_local_pricing.py <dir>/forshor-challenge-starter.zip --python <python> [--cases <dir of *.measured.json + *.Policy.lean>]
+                                                                                              # the copied rules are byte-identical; a measured export prices to the published request's rows and blocks; hosted refusals refuse
 ```
 
 Without `--seed` the snapshot rows are the starting policies priced by the pack's own engine. Pass `--seed` only with a seed that lists just the starting policies (the exporter's output with `--kmy-only`); a seed that still lists

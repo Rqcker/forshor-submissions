@@ -60,7 +60,8 @@ and beside it one per-family QFT design for the full order-finding run,
 `work` and `scratch` QFT families. Both are submitted for a score. For such a
 file `check` builds ForShor with the readout (`--balanced --readout submitted`)
 and checks that the compiled design is the one the file declares; it does not
-print the design's price, which the published panel shows. A design may set only
+print a price. The starter pack's `starter.py forshor-doc` prices the measured
+document ForShor prints for the file, with the boards' own rules. A design may set only
 the QFT families above; any other field, the `exponent` family, or a design
 without the readout declaration is refused before anything is built, with a
 message that starts *submittedFullRunDesign is not accepted as written* and names
