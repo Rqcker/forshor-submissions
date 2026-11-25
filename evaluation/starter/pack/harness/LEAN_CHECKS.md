@@ -116,14 +116,14 @@ table policy JSON, which refuses every design key with `table policy JSON cannot
   `--readout submitted`, or without the readout declaration, ForShor refuses a design before printing anything:
   `full-run synthesis requires saved semiclassical readout and --balanced --readout submitted`. A design together with a
   standalone primitive is refused with `full-run and standalone synthesis opt-ins are not jointly qualified`.
-  `python starter.py forshor-doc policy.json --source Policy.lean` prices this measured document as the boards do (row T
+  `cd - && python starter.py forshor-doc $F/policy.json --source Policy.lean` prices this measured document as the boards do (row T
   and Q per board and delta, the readout alone and with the design, the catalyst register, the rule fingerprints);
   `./forshor check` runs the same build and checks the design.
 * **Local only; does not publish.** The standalone synthesis primitives `.catalyticB2` and `.adaptiveB3`. The verifier attests
   the choice on your own machine; hosted intake refuses it and there is no publication route: attested and priced locally,
   not accepted by hosted intake, no score.
 * **Anything else.** No typed selector exists for it. A QFT design may set only the `data`, `work` and `scratch` families;
-  any other field is refused, and the refusal names it. There is no precision other than δ = 1e-2.
+  any other field is refused, and the refusal names it. A QFT design is priced at δ = 1e-2 only.
 
 A `rejected` record is a verdict; a **timeout or memory stop is not**. An incomplete attempt says nothing about the policy and may be retried.
 

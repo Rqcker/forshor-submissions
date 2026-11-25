@@ -263,11 +263,12 @@ The source refusals start with `submittedFullRunDesign is not accepted as writte
 `Local verification passed.` means the hosted verification of the same file will pass. Then `./forshor submit`. Neither command
 prints a price; `starter.py forshor-doc` does.
 
-**Price it locally.** Build the file by hand (`harness/LEAN_CHECKS.md`) and print the measured document:
-`lake exe forshor_policy_submission --balanced --readout submitted > policy.json`. Then, in the pack:
+**Price it locally.** Build the file by hand in a ForShor checkout `$F` at the operational pin (`harness/LEAN_CHECKS.md`,
+section 3) and print the measured document there: `lake exe forshor_policy_submission --balanced --readout submitted >
+policy.json`. Then, in the pack, with the `Policy.lean` you built:
 
 ```sh
-python starter.py forshor-doc policy.json --source Policy.lean [--json price.json]
+python starter.py forshor-doc $F/policy.json --source Policy.lean [--json price.json]
 ```
 
 It prices the document with the boards' own rules, so it prints the numbers the published rows and panel will carry:
@@ -305,9 +306,9 @@ Nothing outside the two lists above can be selected, locally or otherwise.
 
 * **Any other full-run design field.** A design may set only the `data`, `work` and `scratch` QFT families, as above; any
   other field is refused, and the refusal names it.
-* **Any precision other than δ = 1e-2.** The boards, the board snapshot, the exporter's row keys and every pinned example in
-  this pack are at δ = 0.01, and that is the only precision the boards rank against. There is no precision control to set,
-  and `starter.py` exposes none beyond its documented default of 0.01.
+* **A precision.** There is no precision to select. The boards rank at δ = 0.01; each published policy also carries panels at
+  3e-4, 1e-4 and 1e-6. A QFT design is priced at δ = 0.01 only, and the panels at the other three precisions carry the
+  readout alone. `starter.py`'s `--delta` is for looking at those panels, not a choice that is submitted.
 
 ### Where an option is declared: Lean source, never table JSON
 
@@ -367,8 +368,8 @@ a Cuccaro adder, `w + 1` clean qubits, `2w - 3` Toffolis): fewer T and about 4,4
   modular multiplications, the Qualtran digital-product leaf, Gidney adders, ForShor's negation counts above and Ross–Selinger rotations. The
   end-to-end T is the trial count (386) times the single-run T. Upstream ForShor's own IR (scanned widths, no split)
   is shown as a labelled cross-check (`forshor_scan_ir`), not as the score. A policy that declares the semiclassical
-  readout, and a QFT design beside it, is priced on the measured circuit as section 2 describes; `starter.py` prices the
-  default design only.
+  readout, and a QFT design beside it, is priced on the measured circuit as section 2 describes; `starter.py forshor-doc`
+  prices it from the measured document ("Price it locally"), and `starter.py price` prices the default design only.
 * **PTP leaf:** the digital triple product (x·y·z computed exactly with two Qualtran products and sign folds, one
   rotation per bit of the product). The schoolbook grid leaf is a labelled cross-check.
 * T counts are Qualtran's. Lean's gate census (Cuccaro adders, grid leaf) is a labelled cross-check. A rotation is
@@ -398,8 +399,31 @@ are in the repository's instructions, not here.
 ## 6. Sending it
 
 Once installed, the pack prices and prepares policies offline without sign-in; **it does not submit anything**. Run `./forshor check` in the submissions checkout to sign in, fetch the trusted base, and verify locally without opening a pull request. **What you submit is one Lean file, `TableGeneration/Submission/Policy.lean`, holding your policy** (section 2). `starter.py template` writes it for both PhaseProduct (`templates/Policy.lean`) and PhaseTripleProduct (`templates/ptp.Policy.lean`). A pull request may change that file and one optional second file, `TableGeneration/Submission/summary.tex`, and nothing else. The optional summary is LaTeX written for people to read, in its own file (not inside `Policy.lean`): a regular UTF-8 file of at most 100 KiB (102,400 bytes), not empty, with no control characters except tab and line breaks; it cannot be submitted without a policy; the harness never compiles or runs it, and it never affects scoring (template: `examples/summary.tex`; details: `SKILL.md`, "Optional LaTeX Summary"). The submission repository is
-`zapatacomputing/forshor-submissions` (private during the sprint; the challenge page's **Participate** dialog has the commands), and its own instructions win over this file. The boards check the Lean file in Lean and price the policy it
-contains with the same engine as `starter.py price`. Whatever you send, quote the `starter.py price` output you got for the same policy as JSON (and, for a full-run policy, the `forshor-doc` output), and name the pack's build date
+`zapatacomputing/forshor-submissions` (public; the challenge page's **Participate** dialog has the commands), and its own instructions win over this file. The boards check the Lean file in Lean and price the policy it
+contains with the same engine as `starter.py price`.
+
+**How a submission goes in.** Clone the repository (`gh repo clone zapatacomputing/forshor-submissions`) and work inside the
+clone. Its contributor CLI, `./forshor`, needs Python 3.12 or newer, Git and GitHub CLI, and every command signs in with
+GitHub (`gh auth login`) first:
+
+1. `./forshor setup`, once: fetches the trusted `main`, installs its pinned Lean, and builds the trusted checker, ForShor at
+   the operational pin, the policy-check tree and the engine's Python environment under `.git/forshor` (the first time takes
+   a while).
+2. Put your file at `TableGeneration/Submission/Policy.lean` (and, optionally, `summary.tex` beside it), then
+   `./forshor check`: the checks of the hosted verification, run on your machine with the fetched `main`'s code (section 2,
+   "Check it locally"). It ends with `Local verification passed.` and prints no price.
+3. `./forshor submit`: checks again if the file changed since the last pass, commits the file on a new `submission/…`
+   branch, pushes it to your fork of the repository (creating the fork if you have none), opens a pull request against
+   `main` titled "Submit a ForShor policy", and follows it (`./forshor status --watch` does the same later; `--no-wait`
+   returns at once).
+4. On the pull request, GitHub Actions runs **Policy submission**, job **Verify submission with Lean**: the same checks as
+   `./forshor check`, with `main`'s code. A status comment on the pull request follows it, and a refused file is reported
+   there with the check that failed; nothing is published. Verification is admitted one at a time per participant, within
+   hourly and daily limits.
+5. When it passes, **Publish Verified Results** prices the policy (section 3; for the semiclassical readout and a QFT design,
+   the measured circuit, with the design on the full order-finding board at δ = 0.01), publishes its rows and panels to the
+   boards, archives the policy, comments on the pull request and closes it without merging. `./forshor submit` then prints
+   the row's name and boards. Whatever you send, quote the `starter.py price` output you got for the same policy as JSON (and, for a full-run policy, the `forshor-doc` output), and name the pack's build date
 (`MANIFEST.json`). The boards' numbers are the ones that count.
 
 A policy that is accepted appears on the boards under your GitHub handle as `<handle>_sub<N>`, N counting your own submissions from 1; the handle `forshor` is reserved. The boards start with the starting policies, built from the tables in the “Parallel sequences” appendix of Kahanamoku-Meyer and Yao (2024) (named `forshor_sub<N>`), ranked with yours by Q × T, and mark each row "policy check" if the policy has been checked in Lean.

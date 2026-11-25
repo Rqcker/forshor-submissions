@@ -106,14 +106,14 @@ hosted intake refuses is refused by name and nothing is priced. `SUBMISSION_FORM
 
 ## 4. Check it in Lean, then submit
 
-Run `./forshor check` in the submissions checkout, not the unpacked pack. The command uses GitHub sign-in (`gh auth login`) and fetches the trusted base, then runs the Lean checks locally. It does not submit anything. `./forshor submit` opens the submission PR after checking. See `harness/LEAN_CHECKS.md` for manual builds; the Lean trees are not in the pack.
+Run `./forshor check` in the submissions checkout, not the unpacked pack. The command uses GitHub sign-in (`gh auth login`) and fetches the trusted base, then runs the Lean checks locally. It does not submit anything. `./forshor submit` opens the submission PR after checking; on the PR, GitHub Actions verifies the file again and then publishes the result (`SUBMISSION_FORMAT.md` section 6, "How a submission goes in"). See `harness/LEAN_CHECKS.md` for manual builds; the Lean trees are not in the pack.
 
 * PP: `python starter.py lean-input my_pp_policy.json`, then the policy check (`check_banded_policy.py --widths exact`), which is in the `forshor-submissions` repository
   (github.com/zapatacomputing/forshor-submissions, `main`): its `TableGeneration/` and `scripts/` are the policy check's tree. `./forshor check` in a clone of it builds the trees and runs the whole check for you.
 * PTP: the same input, then `check_ptp_policy.py --widths exact` of the same repository (against ForShor's `Shor.PTP`).
 * Manual ForShor build: use `forshor.ref` in the trusted submissions base's `evaluation/policy-trees.json`. The pack's frozen model pin `21e129a` identifies the pricing baseline, not the verifier checkout. After `lake exe cache get`, use the targets for your policy:
   - **PP:** `lake build PolicySubmission forshor_policy_submission`, then `lake exe forshor_policy_submission --balanced > policy.json`. `starter.py forshor-doc` prices this PP document.
-  - **PP with the semiclassical readout or a QFT design:** the same build, then `lake exe forshor_policy_submission --balanced --readout submitted > policy.json`. `starter.py forshor-doc policy.json --source Policy.lean` prices this measured document; `./forshor check` checks the design.
+  - **PP with the semiclassical readout or a QFT design:** the same build, then `lake exe forshor_policy_submission --balanced --readout submitted > policy.json`. `python starter.py forshor-doc $F/policy.json --source Policy.lean` (with `$F` the ForShor checkout and `Policy.lean` the file you built) prices this measured document; `./forshor check` checks the design.
   - **PTP:** `lake build PTPPolicySubmission forshor_ptp_policy_submission`, then `lake exe forshor_ptp_policy_submission > policy.json`. This prints PTP tables, not a full-run document for `forshor-doc`.
 
 The PP policy check and the PhaseTripleProduct harness reject a policy whose thresholds are set too low (stage `threshold`): on the

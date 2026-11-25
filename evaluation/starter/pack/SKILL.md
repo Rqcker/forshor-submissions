@@ -179,8 +179,8 @@ Resource rules:
 ## Submitting
 
 Read `SUBMISSION_FORMAT.md` section 6 first. **This pack prices a policy and prepares it; it does not submit it.** The submission repository is
-`zapatacomputing/forshor-submissions` (private during the sprint; the challenge page's **Participate** dialog has the commands), and its instructions win over this file.
-Once the repository is public, `./forshor submit` creates or reuses the participant's GitHub fork and opens the PR against `zapatacomputing/forshor-submissions/main`; participants do not need upstream Write access. While private, existing authorized staging contributors retain their current route.
+`zapatacomputing/forshor-submissions` (public; the challenge page's **Participate** dialog has the commands), and its instructions win over this file.
+In a clone of it, `./forshor setup` (once) prepares the pinned Lean and the trusted trees, `./forshor check` runs the hosted checks locally, and `./forshor submit` commits the file on a new branch, pushes it to the participant's GitHub fork (creating it if needed) and opens the PR against `zapatacomputing/forshor-submissions/main`; participants do not need upstream Write access. On the PR, **Verify submission with Lean** repeats the checks; when it passes, **Publish Verified Results** prices and publishes the policy, archives it, and closes the PR without merging. `SUBMISSION_FORMAT.md` section 6, "How a submission goes in", has the steps.
 
 Copy the generated Lean policy to `TableGeneration/Submission/Policy.lean` in the submission checkout. The CLI accepts a
 `ShorPolicySubmission` (PhaseProduct) or `PTPPolicy` (PhaseTripleProduct), not the pricing JSON. The design options are
