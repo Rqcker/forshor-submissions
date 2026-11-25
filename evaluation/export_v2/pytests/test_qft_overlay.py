@@ -1,5 +1,5 @@
 """The per-family QFT design overlay: bit-identical defaults, family-total error allowances carved from the
-synthesis pool, the closed-form band, merged catalysis, and fail-closed refusals.
+synthesis pool, the closed-form band, banded merged catalysis, and fail-closed refusals.
 
 Every test names the production change in `export_v2/qft_overlay.py` that would fail it.
 
@@ -35,17 +35,18 @@ def _approx(max_error="25e-5", backend="ross_selinger"):
     return {"backend": backend, "target": "approximate", "max_error": max_error}
 
 
-#: All four families catalytic-approximate at 25e-5 on the STO reference policy.
-CAT25_ALL_T = 532888416954.7944
-CAT25_ALL_B = 40
+#: All four families catalytic-approximate at 25e-5 on the STO reference policy: bands k = 38, 38, 40 and 26
+#: (exponent, 1 call), so the shared register is 40 + 1 = 41 qubits.
+CAT25_ALL_T = 522238606513.8889
+CAT25_ALL_B = 41
 
 #: The independent pricer (`policy_design.Evaluator.evaluate`, coherent readout, reference topology) on the
 #: fixture's policy: `T_total`, gradient width, and its preparation T. Production differs from each by exactly two
-#: construction constants (see `test_the_design_prices_match_the_independent_pricer`).
+#: construction constants (see `test_the_design_prices_match_the_independent_pricer`). Its catalytic arm prices a
+#: different construction (the native template's twiddles rounded to b bits), so catalytic families are checked
+#: against the first-principles reference in `test_design_pricing_reference.py` instead.
 RESEARCH = {
     "all3 rs 25e-5": ({f: _approx() for f in ("data", "work", "scratch")}, 1518352087432.5208, 0, 0),
-    "all3 cat 25e-5": ({f: _approx(backend="catalytic") for f in ("data", "work", "scratch")}, 1030976971636.4377, 40, 680),
-    "data cat exact": ({"data": CATALYTIC_EXACT}, 3485013507482.135, 2049, 1337),
     "scratch rs 25e-5": ({"scratch": _approx()}, 2037029069961.4434, 0, 0),
 }
 
@@ -200,10 +201,11 @@ def test_the_error_ledger_fits_delta_for_every_accepted_design(priced, design):
     bounds = Fraction(0)
     for family, record in out["families"].items():
         allowance = Fraction(record["allowance"])
-        if record["construction"] == "banded":
-            bound = overlay.band_error(record["width"], record["count"], record["kMax"] + 1)
-        else:
-            bound = overlay.twiddle_error(record["width"], record["count"], record["b"])
+        # Both constructions are bands; the merged additions are exact (b = k_max + 1), so they add nothing.
+        assert record["construction"] in ("banded", "bandedMerged")
+        bound = overlay.band_error(record["width"], record["count"], record["kMax"] + 1)
+        if record["construction"] == "bandedMerged":
+            assert record["b"] == record["kMax"] + 1 <= out["catalyst"]["b"]
         assert bound <= allowance and record["errorBound"] >= bound
         bounds += bound
     assert prep == (min(pool / 10, (pool - Fraction(b["allowances"])) / 2) if out["catalyst"] else 0)
@@ -233,42 +235,31 @@ def test_a_design_that_leaves_no_budget_is_refused_at_pricing_too(priced):
     assert overlay.project(policy, full, {"data": _approx("3e-3"), "work": _approx("1e-3")})["identity"] is False
 
 
-# --------------------------------------------------------------------------- Fix B: merged catalysis
+# --------------------------------------------------------------------------- banded merged catalysis
 
 
-def test_the_merged_rows_are_the_engines_own_closed_forms():
-    """A merged twiddle row is one `CtrlAddIntoCatalyst(L, m, carry)` of `m + carry + L - 1` Ands, and a row whose
-    turns are dyadic within b rounds exactly. Checked against the engine's own primitives."""
-    cs, tw = overlay._catalysis()
-    from l2q_full.catalysis.catalyst import ctrl_add_ands
-    for m in (1, 5, 23, 38):
-        assert tw.merged_twiddle_ands(1, m, m + 1, 64) == 2 * m == ctrl_add_ands(m + 1, m, False)
-    assert cs.twiddle_error_turns(1024, 1025, 2049, 2049) == 0
-    assert cs.catalyst_prep_T(40, 1e-4) == 37 * cs.ross_selinger_t(1e-4 / 37) + 1.0
-    assert overlay._ct_levels(5) == ((5, 1), (3, 1), (2, 2))
-
-
-@pytest.mark.slow
-def test_the_native_template_is_exactly_its_twiddles(priced):
-    """The catalytic family replaces the WHOLE native template by merged rows, which is sound only because the
-    template's T and rotations are exactly those of its twiddle phase products (the overlay checks this before
-    substituting). A template with other cost would break the equality."""
-    policy, full = priced
+def test_a_merged_addition_is_the_engines_own_controlled_addition():
+    """Each target's kept phases are ONE `CtrlAddIntoCatalyst(m + 1, m)`: m control Ands plus an (m + 1)-bit adder,
+    2m Ands, 8m T and no rotation by the engine's own cost split. `merged_plan` sums those rows and must equal
+    2 N_cp, N_cp = k (2w - k - 1) / 2 the kept phases; its workspace is the widest row's m + L - 1 = 2k."""
+    _cs, cat = overlay._catalysis()
     fa = engine.load().fullalg
-    lp = fa.to_l2q_full(policy, "exact")
-    spec = fa.HEADLINE.with_(negate=full["negate"])
-    for w in (2049, 2347, 4398):
-        exact = fa.cc.split(fa.pr.PolicyQFT(lp, w, spec))
-        parts = [(n, fa.cc.split(fa.pr.PolicyPhaseProduct(lp, v // 2 + 1, v - v // 2 + 1, convention=spec)))
-                 for v, n in overlay._ct_levels(w)]
-        assert sum(n * s.base for n, s in parts) == exact.base and sum(n * s.rot for n, s in parts) == exact.rot
+    for m in (1, 2, 5, 23, 38, 40):
+        assert cat.ctrl_add_ands(m + 1, m, False) == 2 * m
+        split = fa.cc.split(cat.CtrlAddIntoCatalyst(m + 1, m))
+        assert (int(split.base), int(split.rot)) == (8 * m, 0)
+    for w, k in ((2, 1), (5, 2), (5, 4), (2049, 38), (2347, 38), (4398, 40), (4095, 4094)):
+        p = overlay.merged_plan(w, k)
+        assert p["ands"] == sum(2 * min(k, w - 1 - j) for j in range(w)) == k * (2 * w - k - 1)
+        assert p["workspace"] == 2 * k
+    assert overlay.merged_plan(2049, 38)["ands"] * 4 == 616968 and overlay.merged_plan(4398, 40)["ands"] * 4 == 1400800
 
 
 @pytest.mark.slow
-def test_a_catalytic_family_is_priced_in_merged_additions_not_one_kick_per_rotation(priced):
-    """NO PER-ROTATION KICKS. A catalytic family contributes no rotation and costs 4 T per And of its merged rows;
-    the old one-`b - 1`-And-kick-per-rotation price was dearer than Ross-Selinger. Reinstating per-rotation kicks
-    fails the census and the pinned price, and makes catalysis dearer than the banded twin."""
+def test_a_catalytic_family_is_banded_then_merged_not_one_kick_per_rotation(priced):
+    """NO PER-ROTATION KICKS, NO ROUNDED ROWS. A catalytic family keeps the same band as its Ross-Selinger twin, then
+    applies each target's kept phases as one exact addition: 8 N_cp T per call, no rotation. Reinstating per-rotation
+    kicks or the rounded native rows fails the census and the pinned price, and catalysis must beat the banded twin."""
     policy, full = priced
     cat = overlay.project(policy, full, {f: _approx(backend="catalytic") for f in FOUR})
     rs = overlay.project(policy, full, {f: _approx() for f in FOUR})
@@ -276,34 +267,40 @@ def test_a_catalytic_family_is_priced_in_merged_additions_not_one_kick_per_rotat
     removed = sum(r["exactRotations"] * r["count"] for r in cat["families"].values())
     assert cat["rotations"] == full["rotations"] - removed
     for family, r in cat["families"].items():
-        p = overlay.twiddle_plan(r["width"], r["count"], "approximate", Fraction(25, 10 ** 5))
-        assert (r["b"], r["twiddleAnds"], r["twiddleTBase"]) == (p["b"], p["ands"], 4 * p["ands"])
-        assert "bandedRotations" not in r and r["construction"] == "mergedTwiddle"
-    assert cat["TBase"] == full["T_base"] + sum((r["twiddleTBase"] - r["exactTBase"]) * r["count"]
+        assert r["construction"] == "bandedMerged" and "bandedRotations" not in r
+        assert r["kMax"] == rs["families"][family]["kMax"]                          # the same band
+        assert r["b"] == r["kMax"] + 1 and r["banded"] is True
+        assert r["mergedAnds"] == r["kMax"] * (2 * r["width"] - r["kMax"] - 1) and r["mergedTBase"] == 4 * r["mergedAnds"]
+        assert r["workspaceQubits"] == 2 * r["kMax"] and r["errorBound"] == rs["families"][family]["errorBound"]
+    assert cat["TBase"] == full["T_base"] + sum((r["mergedTBase"] - r["exactTBase"]) * r["count"]
                                                 for r in cat["families"].values())
     assert cat["T"] < rs["T"] < full["T"]
 
 
 @pytest.mark.slow
-def test_the_catalyst_width_is_the_smallest_whose_rounding_fits_each_allowance(priced):
+def test_the_catalyst_width_is_the_widest_band_plus_one(priced):
+    """b = max over the catalytic families of k_max + 1: the narrowest register on which every merged addition is exact.
+    A register one bit short would round the distance-k_max phase without charging it, which fails this."""
     policy, full = priced
     out = overlay.project(policy, full, {"data": _approx("25e-5", "catalytic"), "scratch": _approx("1e-6", "catalytic")})
     for family, r in out["families"].items():
-        allowance = Fraction(r["allowance"])
-        assert overlay.twiddle_error(r["width"], r["count"], r["b"]) <= allowance \
-            < overlay.twiddle_error(r["width"], r["count"], r["b"] - 1)
-    assert out["catalyst"]["b"] == max(r["b"] for r in out["families"].values()) == 48
+        depth = overlay.band_depth(r["width"], r["count"], Fraction(r["allowance"]))
+        assert r["kMax"] == depth - 1 and r["b"] == depth
+    assert out["catalyst"]["b"] == max(r["kMax"] + 1 for r in out["families"].values()) == 49
+    assert out["catalyst"]["bRule"] == overlay.B_RULE and out["catalyst"]["mergeRule"] == overlay.MERGE_RULE
 
 
 @pytest.mark.slow
-def test_catalytic_exact_is_a_full_width_gradient_with_its_qubits_charged(priced):
-    """CATALYTIC EXACT. The rows at b = w round nothing (error 0, no allowance), so the gradient is as wide as the
-    register, and its b qubits -- plus the rows' workspace beyond the run's peak extra -- are charged to Q."""
+def test_catalytic_exact_is_an_unbanded_merged_qft_with_its_qubits_charged(priced):
+    """CATALYTIC EXACT. No band (k_max = w - 1, error 0, no allowance), so the gradient is as wide as the register,
+    and its b qubits -- plus the widest addition's 2 (w - 1) temporaries beyond the run's peak extra -- are charged."""
     policy, full = priced
     out = overlay.project(policy, full, {"work": CATALYTIC_EXACT})
     r = out["families"]["work"]
+    assert r["kMax"] == r["width"] - 1 == 2346 and r["banded"] is False
     assert r["b"] == r["width"] == 2347 and r["errorBound"] == 0.0 and r["allowance"] == "0"
-    assert out["catalystQubits"] == 2347 and r["workspaceQubits"] > full["peak_extra"]
+    assert r["mergedTBase"] == 4 * r["width"] * (r["width"] - 1)
+    assert out["catalystQubits"] == 2347 and r["workspaceQubits"] == 2 * 2346 > full["peak_extra"]
     assert out["workspaceQubits"] == r["workspaceQubits"] - full["peak_extra"]
     assert out["qubitsPeak"] == full["qubits_peak"] + 2347 + out["workspaceQubits"] == out["qubits"]
     assert out["qubitsUpperBound"] == full["qubits"] + 2347 + out["workspaceQubits"]
@@ -315,8 +312,8 @@ def test_one_shared_register_is_charged_once(priced):
     policy, full = priced
     one = overlay.project(policy, full, {"scratch": _approx(backend="catalytic")})
     three = overlay.project(policy, full, {f: _approx(backend="catalytic") for f in ("data", "work", "scratch")})
-    assert one["catalystQubits"] == three["catalystQubits"] == 40 and one["workspaceQubits"] == 0
-    assert one["qubitsPeak"] == three["qubitsPeak"] == BASELINE_QUBITS_PEAK + 40
+    assert one["catalystQubits"] == three["catalystQubits"] == 41 and one["workspaceQubits"] == 0
+    assert one["qubitsPeak"] == three["qubitsPeak"] == BASELINE_QUBITS_PEAK + 41
     assert three["catalyst"]["families"] == ["data", "scratch", "work"]
     assert three["qubitTimesT"] == three["qubitsPeak"] * three["T"]
 
@@ -324,7 +321,7 @@ def test_one_shared_register_is_charged_once(priced):
 @pytest.mark.slow
 def test_the_catalyst_preparation_is_charged_against_its_own_carved_budget(priced):
     policy, full = priced
-    cs, _tw = overlay._catalysis()
+    cs, _cat = overlay._catalysis()
     for design in ({f: CATALYTIC_EXACT for f in FOUR}, {"data": _approx("25e-5", "catalytic")}):
         out = overlay.project(policy, full, design)
         cat = out["catalyst"]
@@ -345,10 +342,9 @@ def test_the_four_axis_combinations_all_price_and_all_differ(priced):
 @pytest.mark.slow
 @pytest.mark.parametrize("case", sorted(RESEARCH))
 def test_the_design_prices_match_the_independent_pricer(measured_policy, case):
-    """PARITY on the measured fixture's policy (coherent readout). Rotations and gradient width equal the independent
-    pricer's; T differs by exactly two construction constants: (w - 1) x calls per banded family (this band charges an
-    And, 4 T, on each distance-1 controlled phase where that pricer charges 3 T) and the gradient preparation (the
-    engine's `catalyst_prep_T` synthesises every b - 3 phase; that pricer omits the ones below its tolerance)."""
+    """PARITY on the measured fixture's policy (coherent readout), Ross-Selinger families. Rotations equal the
+    independent pricer's; T differs by exactly one construction constant: (w - 1) x calls per banded family (this band
+    charges an And, 4 T, on each distance-1 controlled phase where that pricer charges 3 T)."""
     policy, full = measured_policy
     design, research_t, research_b, research_prep = RESEARCH[case]
     out = overlay.project(policy, full, design)
@@ -496,7 +492,7 @@ def test_the_overlay_fingerprints_its_own_bytes():
 def test_the_receipt_carries_the_rule_identity(priced):
     policy, full = priced
     out = overlay.project(policy, full, {"exponent": _approx("1e-6")})
-    assert out["pricingRule"] == overlay.RULE == "qft-design-axis-v3"
+    assert out["pricingRule"] == overlay.RULE == "qft-design-axis-v4"
     assert out["ruleSha256"] == overlay.rule_fingerprint() and out["epoch"] == overlay.EPOCH
     assert out["families"]["exponent"]["realization"].startswith("ReferenceQFT(w, k_max)")
     assert "kMaxSource" not in out

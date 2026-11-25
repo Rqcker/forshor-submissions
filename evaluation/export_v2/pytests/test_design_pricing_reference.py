@@ -6,6 +6,11 @@ re-derivation of the overlay: the band error is the sum of the dropped controlle
 (w - k - 2) 2^-k + 2^(1 - w) turns-of-pi per call, written in its own closed form, with its own bound on pi; the ledger
 is checked semantically (sum <= half of delta), and known-bad rules must fail it. Only the overlay's entry points are
 called; none of its formulas or constants supplies an expectation.
+
+A catalytic family is the same band, its kept phases applied as one controlled addition per target into the shared
+phase-gradient register (Nam, Su & Maslov, npj Quantum Inf. 6, 26 (2020), section V): each kept controlled phase costs
+8 T (4 T to map it onto the addition's operand, 4 T for its bit of the adder), no rotation, and the additions are exact
+on a register of k + 1 bits, so they add no error. Golden vectors below were worked out from that statement alone.
 """
 import math
 import random
@@ -83,6 +88,92 @@ def test_known_bad_band_rules_break_the_ledger(rule):
     assert broken
 
 
+def ref_merged_T_per_call(w, k):
+    """8 T for every kept controlled phase (distances 1..k, w - d of each)."""
+    return 8 * sum(w - d for d in range(1, k + 1))
+
+
+#: (width, calls, max_error or None for exact) -> (k, catalyst width k + 1, T per call), on the recorded fixture's
+#: families. Literals, so a change in either the band or the merged count is caught without trusting a formula.
+GOLDEN_MERGED = [
+    (("data", 2049, 8190, "25e-5"), (38, 39, 616968)),
+    (("work", 2347, 8190, "25e-5"), (38, 39, 707560)),
+    (("scratch", 4398, 16380, "25e-5"), (40, 41, 1400800)),
+    (("data", 2049, 8190, "1e-3"), (36, 37, 584784)),
+    (("work", 2347, 8190, "1e-6"), (46, 47, 855048)),
+    (("scratch", 4398, 16380, "1e-6"), (48, 49, 1679424)),
+    (("data", 2049, 8190, None), (2048, 2049, 16785408)),
+    (("scratch", 4398, 16380, None), (4397, 4398, 77352024)),
+]
+
+
+@pytest.mark.parametrize("case,expected", GOLDEN_MERGED, ids=[f"{c[0]}-{c[3] or 'exact'}" for c, _ in GOLDEN_MERGED])
+def test_banded_merged_golden_vectors(case, expected):
+    family, w, calls, max_error = case
+    k, b, t = expected
+    a = Fraction(0) if max_error is None else Fraction(int(max_error.split("e-")[0]), 10 ** int(max_error.split("e-")[1]))
+    assert (ref_k(w, calls, a) if a else w - 1) == k and ref_merged_T_per_call(w, k) == t and b == k + 1
+    assert ref_band_error(w, calls, k) <= a < (ref_band_error(w, calls, k - 1) if k > 1 else 1)
+    choice = {"backend": "catalytic", "target": "exact"} if max_error is None else \
+        {"backend": "catalytic", "target": "approximate", "max_error": max_error}
+    P, coh = _fixture()
+    r = qo.project(P, coh, {family: choice})
+    x = r["families"][family]
+    assert (x["width"], x["count"], x["construction"]) == (w, calls, "bandedMerged")
+    assert (x["kMax"], x["b"], x["mergedTBase"], r["catalyst"]["b"]) == (k, b, t, b)
+    assert r["TBase"] == coh["T_base"] + (t - x["exactTBase"]) * calls
+    assert r["rotations"] == coh["rotations"] - x["exactRotations"] * calls       # no rotation is synthesised
+
+
+def test_known_bad_catalytic_rules_miss_the_golden_vectors():
+    """A catalysis that kicks each kept phase separately (a b - 1 And addition per phase), or one that rounds onto a
+    register narrower than k + 1 bits, cannot reproduce the golden vectors: the first costs more, the second keeps a
+    shallower band than its catalyst can hold exactly."""
+    for (family, w, calls, max_error), (k, b, t) in GOLDEN_MERGED[:3]:
+        per_rotation = sum(w - d for d in range(1, k + 1)) * 4 * (b - 1)
+        assert per_rotation > t
+        assert b - 1 < k + 1                                 # a one-bit-short register cannot hold the distance-k phase
+
+
+_FIXTURE = {}
+
+
+def _fixture():
+    if not _FIXTURE:
+        import gzip, json
+        from pathlib import Path
+        from intake_v2 import policy_from_document
+        eng = engine.load()
+        doc = json.loads(gzip.decompress((Path(__file__).parent / "data" / "readout_submitted_931bbf1.json.gz").read_bytes()))
+        P = policy_from_document(eng, doc["document"]).with_widths("exact")
+        _FIXTURE["v"] = (P, eng.fullalg.price_full(P, 2048, 0.01, detail=True))
+    return _FIXTURE["v"]
+
+
+def test_the_headline_design_is_recomputed_from_the_census():
+    """All three families catalytic at 25e-5 under the semiclassical readout, from the census and the statement above
+    alone: the three bands, 8 T per kept phase, a 41-qubit register, the pool less the allowances and the register's
+    preparation share, divided once."""
+    from export_v2 import readout_overlay, readout_qft_overlay
+    P, coh = _fixture()
+    m = readout_overlay.project(P, coh)
+    base, rot = m["TBase"], m["rotations"]
+    for (family, w, calls, _e), (k, b, t) in GOLDEN_MERGED[:3]:
+        part = [p for p in coh["parts"] if p["site"] == "qft" and p["xw"] == w and p["zw"] == 0][0]
+        base += (t - round(part["T"] - part["rotations"] * coh["T_per_rotation"]) // calls) * calls
+        rot -= part["rotations"]
+    pool = Fraction(1, 200)
+    claimed = 3 * Fraction(25, 10 ** 5)
+    prep = min(pool / 10, (pool - claimed) / 2)
+    eps = float((pool - claimed - prep) / rot)
+    prep_t = 38 * (3.075 * math.log2(38 / float(prep)) + 0.86) + 1
+    by_hand = base + rot * (3.075 * math.log2(1 / eps) + 0.86) + prep_t
+    j = readout_qft_overlay.project(P, coh, {f: {"backend": "catalytic", "target": "approximate", "max_error": "25e-5"}
+                                             for f in ("data", "work", "scratch")})
+    assert (j["TBase"], j["rotations"], j["catalyst"]["b"], j["qubits"]) == (base, rot, 41, m["qubits"] + 41)
+    assert j["T"] == pytest.approx(by_hand, rel=1e-12) and j["T"] == 1020219052649.4625
+
+
 @pytest.mark.parametrize("seed", SEEDS[:10])
 def test_accepted_designs_fit_half_delta_semantically(seed):
     """On the recorded measured fixture: for every accepted design, the sum of the reference family bounds plus the
@@ -109,10 +200,10 @@ def test_accepted_designs_fit_half_delta_semantically(seed):
     calls = {"data": 8190, "work": 8190, "scratch": 16380}
     spent = Fraction(0)
     for f, x in j["families"].items():
-        if x["construction"] == "banded":
-            spent += ref_band_error(widths[f], calls[f], x["kMax"])
-        else:
-            assert Fraction(x["errorBound"]) <= allowance[f]
-            spent += Fraction(x["errorBound"])
+        # Both constructions are bands; a catalytic family's additions are exact only on k + 1 bits or more.
+        assert x["construction"] in ("banded", "bandedMerged")
+        if x["construction"] == "bandedMerged":
+            assert x["b"] == x["kMax"] + 1 <= j["catalyst"]["b"]
+        spent += ref_band_error(widths[f], calls[f], x["kMax"])
     spent += Fraction(j["budget"]["prepBudget"]) + j["rotations"] * Fraction(j["eps"])
     assert spent <= Fraction(1, 200)

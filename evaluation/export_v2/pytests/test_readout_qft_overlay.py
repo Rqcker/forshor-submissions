@@ -175,49 +175,53 @@ def test_c_a_banded_data_and_work_design_under_the_readout_is_recomputed_from_th
 
 @pytest.mark.slow
 def test_c_all_three_families_catalysed_under_the_readout_by_hand(priced):
-    """(c, catalytic) The headline design, recomputed here: each family's native template is replaced by its merged
-    twiddle rows (Ands read off the engine's own `twiddle_row_plan` at the family's b, no rotation), the gradient is
-    the widest b, its preparation takes min(pool / 10, (pool - allowances) / 2) and the rest of the pool is divided
-    over the joint total, feed-forward phases included. Production change that would fail this: per-rotation kicks,
-    a catalyst that keeps the families' rotations, or a pool that keeps the allowances."""
+    """(c, catalytic) The headline design, recomputed here: each family is banded by a linear scan over its
+    family-total bound (as for the Ross-Selinger twin), then every target's kept phases are one controlled addition of
+    2 min(k, w - 1 - j) Ands (summed here target by target), with no rotation; the gradient is the widest band plus
+    one, its preparation takes min(pool / 10, (pool - allowances) / 2) and the rest of the pool is divided over the
+    joint total, feed-forward phases included. Neither overlay's pricing is called. Production change that would
+    fail this: per-rotation kicks, rounded rows on a narrower gradient, a per-call band, or a pool that keeps the
+    allowances."""
     policy, full = priced
     eng = engine.load()
-    from l2q_full.catalysis import spec as cs, twiddle as tw
+    from l2q_full.catalysis import spec as cs
     w = full["widths"]
     base, rotations = _readout_census(full)
+    pi_up = Fraction("3.14159265358979323846264338328")
+    allowance = Fraction(25, 10 ** 5)
     widths = {"data": w["yW"] + 1, "work": w["workW"], "scratch": w["scratchW"]}
-    slices = {"data": 38, "work": 38, "scratch": 40}
+    bands = {}
     for family, width in widths.items():
         count, rot_row, base_row = _part(full, width)
-        ands = sum(n * r.ands for v, n in qft_overlay._ct_levels(width)
-                   for r in tw.twiddle_row_plan(v // 2, v - v // 2, v, slices[family]) if r.active)
+        depth = next(d for d in range(2, width + 1) if 2 * pi_up * count * _omitted(width, d) <= allowance)
+        k = bands[family] = depth - 1
+        ands = sum(2 * min(k, width - 1 - j) for j in range(width))
         base += 4 * ands * count - base_row
         rotations -= rot_row
-    pool, claimed = Fraction(1, 200), 3 * Fraction(25, 10 ** 5)
+    assert bands == {"data": 38, "work": 38, "scratch": 40}
+    b = max(bands.values()) + 1
+    pool, claimed = Fraction(1, 200), 3 * allowance
     prep = min(pool / 10, (pool - claimed) / 2)
     rest = pool - claimed - prep
-    prep_t = 37 * cs.ross_selinger_t(float(prep) / 37) + 1.0
+    prep_t = (b - 3) * cs.ross_selinger_t(float(prep) / (b - 3)) + 1.0
     joint = composed.project(policy, full, {f: approx(backend="catalytic") for f in FAMILIES})
     assert (joint["TBase"], joint["rotations"]) == (base, rotations)
-    assert joint["catalyst"]["b"] == 40 and joint["catalyst"]["prepT"] == pytest.approx(prep_t, rel=1e-13)
+    assert joint["catalyst"]["b"] == b == 41 and joint["catalyst"]["prepT"] == pytest.approx(prep_t, rel=1e-13)
     assert joint["T"] == pytest.approx(base + rotations * _rs(float(rest / rotations)) + prep_t, rel=1e-13)
-    assert joint["T"] == 1030868607874.368
-    assert joint["qubits"] == readout_overlay.project(policy, full)["qubits"] + 40 == 9248
-    assert joint["workspaceQubits"] == 0 and max(r["workspaceQubits"] for r in joint["families"].values()) == 79
+    assert joint["T"] == 1020219052649.4625
+    assert joint["qubits"] == readout_overlay.project(policy, full)["qubits"] + 41 == 9249
+    assert joint["workspaceQubits"] == 0 and max(r["workspaceQubits"] for r in joint["families"].values()) == 80
     assert joint["rotations"] >= joint["feedForwardRotations"] == w["xW"] - 1
     assert eng.fullalg.sc.ts_per_rotation_eps(joint["eps"]) == joint["tPerRotation"]
 
 
 #: The independent pricer (`policy_design.Evaluator.evaluate`, semiclassical readout, reference topology) on this
-#: fixture's policy: T, gradient width, preparation T. See `test_qft_overlay.py` for the two construction constants.
+#: fixture's policy: T, gradient width, preparation T, Ross-Selinger families (that pricer's catalytic arm is a
+#: different construction). See `test_qft_overlay.py` for the construction constant.
 RESEARCH = {
     "all3 rs 25e-5": ({f: approx() for f in FAMILIES}, 1518242573193.455, 0, 0),
-    "all3 cat 25e-5": ({f: approx(backend="catalytic") for f in FAMILIES}, 1030868606681.2103, 40, 680),
-    "all3 cat 1e-3": ({f: approx("1e-3", "catalytic") for f in FAMILIES}, 1043100276335.03, 38, 680),
     "all3 rs 1e-6": ({f: approx("1e-6") for f in FAMILIES}, 1627067455755.2039, 0, 0),
     "data rs 1e-3": ({"data": approx("1e-3")}, 3397129077588.8223, 0, 0),
-    "work cat 1e-6": ({"work": approx("1e-6", "catalytic")}, 3273854244450.2227, 46, 753),
-    "scratch cat exact": ({"scratch": {"backend": "catalytic", "target": "exact"}}, 3255593160538.014, 4398, 1511),
 }
 
 

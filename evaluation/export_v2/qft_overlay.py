@@ -13,22 +13,28 @@ THE FAMILIES AND THE TWO AXES
 -----------------------------------------------------------------------------------------------------
 The engine prices every `qft` site as `policy_shor_price.PolicyQFT(policy, w, spec)`: the native Lean
 Cooley-Tukey template. `PolicyQFT(w)` is `PolicyQFT(w - w//2)`, `PolicyQFT(w//2)`, one twiddle
-`PolicyPhaseProduct(w//2 + 1, w - w//2 + 1)` and Clifford swaps, so ALL of its T and rotations sit in the
-twiddles of its levels (`_ct_levels`). This overlay does not touch that dispatch: like `readout_overlay`, it
-enumerates the QFT sites itself and substitutes each designed family's census.
+`PolicyPhaseProduct(w//2 + 1, w - w//2 + 1)` and Clifford swaps. This overlay does not touch that dispatch:
+like `readout_overlay`, it enumerates the QFT sites itself and substitutes each designed family's census, the
+whole template's (its exact split is cross-checked against the frozen part first).
 
 `target` and `backend` are orthogonal, and the four corners are four constructions:
 
   ross_selinger / exact        the native template, untouched (the engine's own price, nothing substituted).
   ross_selinger / approximate  a Coppersmith-banded Draper ladder `ReferenceQFT(w, k_max)` (in-epoch,
                                `l2q_full/bloqs/qft.py`), its surviving rotations synthesised Ross-Selinger.
-  catalytic / approximate      the native template with every twiddle merged into controlled additions
-                               into ONE shared phase-gradient register of b qubits: each row of a twiddle
-                               is one `CtrlAddIntoCatalyst(L, m, carry)` (`catalysis/twiddle.twiddle_row_plan`,
-                               And count `m + carry + L - 1`), no rotation anywhere. b is the smallest width
-                               whose rounding fits the family's allowance.
-  catalytic / exact            the same rows at b = w: no row is rounded, so the family's error is 0, and the
-                               register is as wide as the QFT.
+  catalytic / approximate      the SAME band as the Ross-Selinger arm, then each target's kept phases merged
+                               into ONE controlled addition into a shared phase-gradient register (Nam, Su &
+                               Maslov, npj Quantum Inf. 6, 26 (2020), the phase-gradient AQFT; Gidney,
+                               Quantum 2, 74 (2018), the adder). Target j's kept phases CP(pi 2^-d), d = 1..m_j,
+                               m_j = min(k_max, w - 1 - j), multiply to exp(2 pi i x_j V / 2^(m_j + 1)) with
+                               V = sum_d x_{j+d} 2^(m_j - d) the value its controls already hold: one
+                               `CtrlAddIntoCatalyst(m_j + 1, m_j)` into the gradient's top m_j + 1 bits
+                               (`catalysis/catalyst.ctrl_add_ands` = 2 m_j Ands: m_j control Ands and an
+                               (m_j + 1)-bit Gidney adder). The turns are dyadic of resolution <= k_max + 1, so
+                               on a gradient of b >= k_max + 1 bits every addition is EXACT: no rounding, no
+                               rotation, and the family's whole allowance goes to the band.
+  catalytic / exact            the same construction with no band (k_max = w - 1), so the family's error is 0
+                               and the register is as wide as the QFT (b = w).
 
 THE ERROR ALLOWANCE IS THE FAMILY'S TOTAL
 -----------------------------------------------------------------------------------------------------
@@ -38,10 +44,10 @@ run 2 x 4095 times, scratch 4 x 4095), not a per-call ceiling:
   banded     depth = the smallest d with 2 PI_UP * calls * omitted_turns(w, d) <= allowance, and
              k_max = depth - 1 (`ReferenceQFT` keeps the phases of turn 2^-(j+1) for j <= k_max).
              omitted_turns(w, d) = sum over s > d of (w - s + 1) 2^-s is the sum of the dropped angles.
-  catalytic  b = the smallest width with 2 PI_UP * calls * sum_levels nodes * twiddle_error_turns(...) <=
-             allowance, the exact per-row rounding error (`catalysis/spec.twiddle_error_turns`).
+             This rule is the same for both backends: a catalytic family is banded exactly as a
+             Ross-Selinger one, and its merged additions add no error of their own.
 
-PI_UP is a rational upper bound on pi, so both bounds are exact Fractions.
+PI_UP is a rational upper bound on pi, so the bound is an exact Fraction.
 
 The allowances are then taken OUT of the run's synthesis pool before it is divided:
 
@@ -63,12 +69,17 @@ is charged, their rotation is not). A family-total band reaches that depth, so t
 closed form instead: rotations = sum_{d=3..k}(w - d), base T = 4 sum_{d=1..k}(w - d) + (w - 2). The engine's
 base is required to equal the closed form, and its rotation count may only fall short of it.
 
+A catalytic family's census is closed form too: Ands = sum_j ctrl_add_ands(m_j + 1, m_j) = 2 N_cp with
+N_cp = k (2w - k - 1) / 2 the kept phases, so 8 N_cp T per call, 0 rotations, plus w Hadamards and the
+adders' CNOTs (Clifford). The engine's own And count is summed row by row and required to equal 2 N_cp.
+
 QUBITS
 -----------------------------------------------------------------------------------------------------
-The shared gradient register is b qubits (the widest family's slice), live for the whole run, and is added
-once to Q. A merged row also holds `m + carry + L - 1` temporary qubits during the QFT that replaced the
-template's own workspace; when the widest of those exceeds the run's peak extra, the difference is added
-too (`workspaceQubits`). Banding only removes workspace, so the frozen peak stays an upper bound for it.
+The shared gradient register is b = max_f (k_max_f + 1) qubits, live for the whole run, and is added once
+to Q. A merged addition also holds `m + L - 1` = 2 m_j temporary qubits (its control Ands and the adder's
+carries) during the QFT that replaced the template's own workspace, at most 2 k_max per family; when the widest
+of those exceeds the run's peak extra, the difference is added too (`workspaceQubits`). Banding only removes
+workspace, so the frozen peak stays an upper bound for it.
 
 SCOPE. QFT families only: `data`, `work`, `scratch`, `exponent`. The four phase-product steps --
 `step1`, `step2`, `step4` and `step5` -- are fields of the same compiled selector record but are not
@@ -78,9 +89,7 @@ FAIL CLOSED. An unrecognised backend, an unparseable `max_error`, an out-of-scop
 overlay cannot honour, or allowances that leave no synthesis budget RAISE and name the family and the
 offending value. A request that cannot be honoured is reported, never priced at the default.
 """
-from collections import Counter
 from fractions import Fraction
-from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path
 import math
@@ -91,7 +100,7 @@ from .canon import epoch_of
 from .mapping import DELTA_VALUES
 
 EPOCH = "ab1f8887b1b50e56"
-RULE = "qft-design-axis-v3"
+RULE = "qft-design-axis-v4"
 
 #: The QFT register families this overlay prices, and the layout width each one's QFT site runs at
 #: (`site_engine/fullalg.py:187-199` `_site_label`: "QFT on data+1", "QFT on work", "Step 4 cmpLtNW:
@@ -112,8 +121,12 @@ PI_UP = Fraction("3.14159265358979323846264338328")
 #: The smallest catalyst `catalyst_prep_T` prices with a genuine rotation (`b - 3 >= 1`).
 B_MIN = 4
 #: How the shared register's width follows from the families.
-B_RULE = ("the widest catalytic family's slice: for each family the smallest b whose twiddle rounding over all its "
-          "calls fits its allowance (b = width for an exact family)")
+B_RULE = ("the widest catalytic family's band plus one: b = max over the catalytic families of k_max + 1, on which "
+          "every merged addition is exact (k_max = width - 1 for an exact family)")
+#: How a catalytic family's kept phases are applied.
+MERGE_RULE = ("per call, for each target j one CtrlAddIntoCatalyst(m_j + 1, m_j) of 2 m_j Ands into the gradient's top "
+              "m_j + 1 bits, m_j = min(k_max, w - 1 - j): 8 N_cp T with N_cp = k_max (2 w - k_max - 1) / 2, no rotation, "
+              "no rounding; workspace 2 k_max")
 BAND_RULE = ("k_max = depth - 1, depth the smallest d with 2 PI_UP calls omitted_turns(w, d) <= the family's allowance; "
              "rotations sum_{d=3..k}(w - d), base T 4 sum_{d=1..k}(w - d) + (w - 2)")
 #: The share of the pool reserved for preparing the gradient, and its cap (the research ledger's own).
@@ -145,15 +158,16 @@ def rule_fingerprint():
 
 
 def _catalysis():
-    """`l2q_full.catalysis.spec` and `.twiddle`, the in-epoch merged-catalysis closed forms. Importable once
-    `engine.load()` has put `fullalg` on `sys.path`. Reading engine modules does not move the epoch."""
+    """`l2q_full.catalysis.spec` and `.catalyst`, the in-epoch catalysis closed forms (`catalyst_prep_T`,
+    `ctrl_add_ands`). Importable once `engine.load()` has put `fullalg` on `sys.path`. Reading engine modules does
+    not move the epoch."""
     engine.load()
     try:
-        from l2q_full.catalysis import spec, twiddle
+        from l2q_full.catalysis import catalyst, spec
     except ImportError as error:                     # pragma: no cover - the vendored tree always has it
         _refuse(f"backend 'catalytic' needs the in-epoch l2q_full.catalysis modules, which did not import "
                 f"({error}); it is reported as unpriced, never priced as 'ross_selinger'")
-    return spec, twiddle
+    return spec, catalyst
 
 
 # ----------------------------------------------------------------------------- the error allowance
@@ -227,53 +241,20 @@ def band_census(w, k):
     return 4 * controlled + (w - 2 if k >= 2 else 0), rotations
 
 
-# ----------------------------------------------------------------------------- the merged-twiddle construction
+# ----------------------------------------------------------------------------- the banded merged construction
 
 
-@lru_cache(maxsize=None)
-def _ct_levels(w):
-    """`((width, nodes), ...)` of `PolicyQFT(w)`'s recursion, widest first, for the nodes that carry a twiddle
-    (width >= 2): the split is `PolicyQFT.build_call_graph`'s, `w//2` and `w - w//2`."""
-    pending, out = Counter({w: 1}), []
-    while pending:
-        v = max(pending)
-        n = pending.pop(v)
-        if v >= 2:
-            out.append((v, n))
-            pending[v // 2] += n
-            pending[v - v // 2] += n
-    return tuple(out)
-
-
-def twiddle_error(w, calls, b):
-    """Exact operator-norm bound of `calls` merged-twiddle QFTs of width `w` on a b-bit gradient."""
-    cs, _tw = _catalysis()
-    return 2 * PI_UP * calls * sum(n * cs.twiddle_error_turns(v // 2, v - v // 2, v, b) for v, n in _ct_levels(w))
-
-
-def twiddle_plan(w, calls, target, allowance):
-    """`{b, ands, workspace, error}` for one catalytic family: b by bisection on the exact rounding bound (b = w
-    for `exact`), `ands` per call over every active row of every level, `workspace` the widest row's
-    temporaries `m + carry + L - 1`."""
-    _cs, tw = _catalysis()
-    if target == "exact":
-        b = w
-    else:
-        lo, b = 0, w
-        while lo + 1 < b:
-            mid = (lo + b) // 2
-            if twiddle_error(w, calls, mid) <= allowance:
-                b = mid
-            else:
-                lo = mid
-    error = twiddle_error(w, calls, b)
-    ands = workspace = 0
-    for v, n in _ct_levels(w):
-        for row in tw.twiddle_row_plan(v // 2, v - v // 2, v, b):
-            if row.active:
-                ands += n * row.ands
-                workspace = max(workspace, row.m + (row.carry_j is not None) + row.L - 1)
-    return {"b": b, "ands": ands, "workspace": workspace, "error": error}
+def merged_plan(w, k):
+    """`{ands, workspace}` of one banded merged QFT of width `w` keeping distances 1..k: per target j one
+    `CtrlAddIntoCatalyst(m_j + 1, m_j)`, m_j = min(k, w - 1 - j), its Ands from the engine's own `ctrl_add_ands`
+    (w - k targets keep all k controls, and one target keeps each m = 1..k-1); workspace = the widest addition's
+    temporaries `m + L - 1`."""
+    _cs, cat = _catalysis()
+    k = min(k, w - 1)
+    ands = (w - k) * cat.ctrl_add_ands(k + 1, k, False) + sum(cat.ctrl_add_ands(m + 1, m, False) for m in range(1, k))
+    _require(ands == k * (2 * w - k - 1),
+             f"the merged additions of a width-{w} band at k_max = {k} count {ands} Ands, not 2 N_cp = {k * (2 * w - k - 1)}")
+    return {"ands": ands, "workspace": k + (k + 1) - 1}
 
 
 # ----------------------------------------------------------------------------- the design mapping
@@ -456,26 +437,23 @@ def price_design(policy, coherent, plan, *, base, rotations, peak_extra, refuse=
                              realization="ReferenceQFT(w, k_max): a Coppersmith-banded Draper ladder replacing the "
                                          "native template at this site; rotations counted in closed form")
             else:
-                # The native template's whole cost is its twiddles (module docstring): check it before replacing them.
-                levels = _ct_levels(w)
-                twiddles = [fa.cc.split(fa.pr.PolicyPhaseProduct(lp, v // 2 + 1, v - v // 2 + 1, convention=spec))
-                            for v, _n in levels]
-                need(sum(n * t.base for (_v, n), t in zip(levels, twiddles)) == exact.base
-                     and sum(n * t.rot for (_v, n), t in zip(levels, twiddles)) == exact.rot,
-                     f"QFT family {family!r}: PolicyQFT({w}) is not the sum of its twiddles, so they cannot be "
-                     f"replaced by merged rows")
-                p = twiddle_plan(w, count, target, allowance)
-                error = p["error"]
-                need(p["b"] >= B_MIN, f"QFT family {family!r}: a catalyst of {p['b']} qubits is below {B_MIN}")
+                # Banded exactly as the Ross-Selinger arm (an exact family keeps every distance: allowance 0, depth w),
+                # then each target's kept phases are one exact addition into the shared gradient.
+                depth = band_depth(w, count, allowance)
+                k = depth - 1
+                need(k >= 1, f"QFT family {family!r}: max_error {max_error!r} admits a band of depth {depth}, "
+                             f"which keeps no controlled phase; it is reported, not priced")
+                p = merged_plan(w, k)
+                error = band_error(w, count, depth)
                 base += (4 * p["ands"] - exact.base) * count
                 rotations -= exact.rot * count
-                b_needed = max(b_needed, p["b"])
+                b_needed = max(b_needed, k + 1)
                 workspace = max(workspace, p["workspace"])
                 catalysed.append(family)
-                entry.update(construction="mergedTwiddle", b=p["b"], twiddleAnds=p["ands"],
-                             twiddleTBase=4 * p["ands"], workspaceQubits=p["workspace"],
-                             realization="the native template with each twiddle row one CtrlAddIntoCatalyst into the "
-                                         "shared gradient (catalysis/twiddle.twiddle_row_plan); no rotation")
+                entry.update(construction="bandedMerged", kMax=k, banded=bool(k < w - 1), b=k + 1,
+                             mergedAnds=p["ands"], mergedTBase=4 * p["ands"], workspaceQubits=p["workspace"],
+                             realization="the band's kept phases, per target one CtrlAddIntoCatalyst(m + 1, m) into the "
+                                         "shared gradient's top m + 1 bits, exact on b = k_max + 1 bits; no rotation")
             need(error <= allowance,
                  f"QFT family {family!r}: its error bound {float(error)!r} exceeds its max_error {max_error!r}")
             error_bounds[family] = error
@@ -508,18 +486,19 @@ def price_design(policy, coherent, plan, *, base, rotations, peak_extra, refuse=
 
     catalyst, prep_t = None, 0.0
     if catalysed:
-        cs, _tw = _catalysis()
+        cs, _cat = _catalysis()
         b = b_needed
+        need(b >= B_MIN, f"QFT families {catalysed}: a catalyst of {b} qubits is below {B_MIN}")
         prep_rotations = b - 3
         need(0 < prep / prep_rotations < 1,
              f"QFT families {catalysed}: a catalyst of width {b} would prepare {prep_rotations} rotations against "
              f"a budget of {float(prep)!r}, which is not a usable per-rotation tolerance")
         prep_t = float(cs.catalyst_prep_T(b, float(prep)))
         need(prep_t > 0.0, f"QFT families {catalysed}: catalyst_prep_T({b}) is {prep_t!r}")
-        catalyst = {"backend": "catalytic", "families": catalysed, "b": b, "bRule": B_RULE, "registerQubits": b,
-                    "prepBudget": str(prep), "prepRotations": prep_rotations, "prepT": prep_t, "T": prep_t,
-                    "spec": "l2q_full/catalysis/twiddle.py twiddle_row_plan; spec.py twiddle_error_turns, "
-                            "catalyst_prep_T",
+        catalyst = {"backend": "catalytic", "families": catalysed, "b": b, "bRule": B_RULE, "mergeRule": MERGE_RULE,
+                    "registerQubits": b, "prepBudget": str(prep), "prepRotations": prep_rotations, "prepT": prep_t,
+                    "T": prep_t,
+                    "spec": "l2q_full/catalysis/catalyst.py CtrlAddIntoCatalyst, ctrl_add_ands; spec.py catalyst_prep_T",
                     "realization": "one shared PhaseGradientState(b), prepared once (b - 3 Ross-Selinger rotations "
                                    "against the prep budget, plus 1 T), live for the whole run and restored after "
                                    "every addition"}
@@ -559,7 +538,7 @@ def project(policy, coherent, design=None):
                  "(the pool less the families' allowances and the gradient's preparation) over the rotations",
         "catalystQubits": j["catalystQubits"], "workspaceQubits": j["workspaceQubits"],
         "qubitsPeak": peak, "qubitsUpperBound": int(coherent["qubits"]) + added, "qubitTimesT": peak * j["T"],
-        "qubitsNote": "the engine's frozen peak and layout plus the shared catalyst register, plus any merged-row "
+        "qubitsNote": "the engine's frozen peak and layout plus the shared catalyst register, plus any merged-addition "
                       "workspace beyond the run's peak extra. Banding only removes workspace.",
         # `mapping.ranked_price_of` ranks the projection's `qubits` when it offers one: only when the design adds
         # qubits (a catalyst), and then the PEAK, the unit of the panel's own `qubits`.

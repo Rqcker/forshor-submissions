@@ -23,8 +23,9 @@ finals:
   recycled control plus the registers without the exponent plus the multiplier's measured peak.
 * `qft_overlay.price_design` touches the QFT part of each DESIGNED family (`data` at yW+1, `work` at workW,
   `scratch` at scratchW): a Ross-Selinger approximate family is replaced by its closed-form band, a catalytic
-  family by its merged twiddle rows (no rotations), and the families' error allowances (plus the gradient's
-  preparation budget when a catalyst exists) are taken out of the pool before it is divided.
+  family by the same band with each target's kept phases one exact controlled addition into the shared gradient
+  (no rotations), and the families' error allowances (plus the gradient's preparation budget when a catalyst
+  exists) are taken out of the pool before it is divided.
 
 THE JOINT RULE
 -----------------------------------------------------------------------------------------------------
@@ -37,14 +38,14 @@ readout's patched census to `qft_overlay.price_design`, the same function `qft_o
     R_joint     = readoutRotations + sum_f (designed_f.rot - exact_f.rot) * count_f
     rest        = pool - sum allowances - prep,   eps = rest / R_joint   (the feed-forward phases are in R_joint)
     T_joint     = TBase_joint + R_joint * ts_per_rotation_eps(eps) + catalyst.T
-    qubits      = readout_overlay's measured qubits + catalyst b + any merged-row workspace beyond its peak extra
+    qubits      = readout_overlay's measured qubits + catalyst b + any merged-addition workspace beyond its peak extra
 
 With no design it IS `readout_overlay.project`'s numbers, and with the readout off it IS `qft_overlay.project`'s,
 bit for bit (`pytests/test_readout_qft_overlay.py` pins both reductions against the real engine).
 
 THE QUBIT BOUND. `readout_overlay`'s measured count is the multiplier's peak, and banding only REMOVES a QFT's
 workspace, so the measured count stays an upper bound for a banded run. The catalyst register is an ADDITION
-and is charged, and so is any merged-row workspace beyond the measured peak extra.
+and is charged, and so is any merged-addition workspace beyond the measured peak extra.
 
 THE EXPONENT FAMILY IS REFUSED BY NAME under a measured readout -- any value, `exact` included -- and never
 re-interpreted as a choice about the feed-forward phases. Justification, from the code:
@@ -55,8 +56,8 @@ re-interpreted as a choice about the feed-forward phases. Justification, from th
      one: the semiclassical loop applies ONE single-qubit phase per round whatever the band (a truncated
      dyadic angle is still one rotation), so substituting `ReferenceQFT(xW, k_max)` -- a coherent ladder of
      controlled rotations -- would subtract rotations the measured circuit never had. Catalysing them would
-     price classically-controlled constant phases as `qft_overlay`'s merged twiddle rows, which is not the
-     circuit either. The readout rule already prices every feed-forward phase, at the run's
+     price classically-controlled constant phases as `qft_overlay`'s quantum-controlled additions, which is not
+     the circuit either. The readout rule already prices every feed-forward phase, at the run's
      Ross-Selinger rate, with no catalyst and no scratch.
   3. `exact` is not a harmless no-op here: for `qft_overlay` it means "leave the exponent QFT as the engine
      priced it", and under a semiclassical readout that QFT is not in the circuit, so the request names a
@@ -76,7 +77,7 @@ from .canon import epoch_of
 from .mapping import DELTA_VALUES
 
 EPOCH = "ab1f8887b1b50e56"
-RULE = "readout-qft-compose-v2"
+RULE = "readout-qft-compose-v3"
 MODE = "semiclassical-readout-with-qft-design"
 
 

@@ -151,7 +151,7 @@ def test_a_compiled_document_prices_a_panel_carrying_a_qft_projection(policy, ep
 
     views = pricing.price_views(policy, "Submission aaaaaaaaaaaa", "1e-2", ["full"], design=design)
     projection = views["full"]["full"]["qft"]
-    assert projection["pricingRule"] == qft_overlay.RULE == "qft-design-axis-v3"
+    assert projection["pricingRule"] == qft_overlay.RULE == "qft-design-axis-v4"
     assert projection["epoch"] == qft_overlay.EPOCH == "ab1f8887b1b50e56"
     assert projection["ruleSha256"] == qft_overlay.rule_fingerprint()
     assert set(projection["families"]) == set(design)
@@ -335,7 +335,7 @@ def test_the_catalytic_designs_price_a_differentiated_full_run(policy, epoch_id,
     assert catalyst["registerQubits"] == catalyst["b"]                            # the shared register
     assert projection["qubitsPeak"] == full["qubits_peak"] + catalyst["b"] + projection["workspaceQubits"]
     assert catalyst["prepT"] > 0.0 and catalyst["T"] == catalyst["prepT"]         # the preparation
-    assert all(projection["families"][f]["construction"] == "mergedTwiddle" for f in projection["catalysed"])
+    assert all(projection["families"][f]["construction"] == "bandedMerged" for f in projection["catalysed"])
 
     built = panel(views["full"], epoch_id, "full")
     assert built["fullRun"]["qft"] == projection, "the panel must carry the projection the pricer produced"
