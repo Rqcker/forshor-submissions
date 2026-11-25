@@ -43,9 +43,11 @@ readout's patched census to `qft_overlay.price_design`, the same function `qft_o
 With no design it IS `readout_overlay.project`'s numbers, and with the readout off it IS `qft_overlay.project`'s,
 bit for bit (`pytests/test_readout_qft_overlay.py` pins both reductions against the real engine).
 
-THE QUBIT BOUND. `readout_overlay`'s measured count is the multiplier's peak, and banding only REMOVES a QFT's
-workspace, so the measured count stays an upper bound for a banded run. The catalyst register is an ADDITION
-and is charged, and so is any merged-addition workspace beyond the measured peak extra.
+THE QUBIT BOUND. `readout_overlay`'s measured count is the multiplier's peak: the maximum over its sequential phases,
+three of which are the data, work and scratch QFTs. `qft_overlay.price_design` replaces each designed QFT site's extra on
+that timeline (a catalytic family's merged additions hold 2 k_max temporaries, which can exceed what the native template
+held at that site) and charges whatever the new maximum exceeds the measured peak extra by. The catalyst register is
+an ADDITION and is charged too.
 
 THE EXPONENT FAMILY IS REFUSED BY NAME under a measured readout -- any value, `exact` included -- and never
 re-interpreted as a choice about the feed-forward phases. Justification, from the code:
@@ -201,6 +203,7 @@ def project(policy, coherent, design):
                  "base - exactTBase) * count) and rotations = readoutRotations + sum(families: (designed rotations - "
                  "exactRotations) * count); tPerRotation divides the synthesis budget (the pool less the families' "
                  "allowances and the gradient's preparation) once over that joint total",
-        "qubitsNote": "the measured circuit's qubits (readoutQubits) plus catalystQubits and workspaceQubits. Banding "
-                      "only REMOVES workspace, so the measured count stays an upper bound for it",
+        "qubitsNote": "the measured circuit's qubits (readoutQubits) plus catalystQubits and workspaceQubits: whatever the "
+                      "design's QFT sites (a catalytic family's 2 k_max addition temporaries per call) add to the measured "
+                      "live-qubit peak; where they stay under the peak set by the other steps they add nothing",
     }

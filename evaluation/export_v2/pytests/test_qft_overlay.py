@@ -307,6 +307,40 @@ def test_catalytic_exact_is_an_unbanded_merged_qft_with_its_qubits_charged(price
     assert Fraction(out["budget"]["prepBudget"]) == Fraction(1, 2000)     # pool / 10: nothing else is claimed
 
 
+def test_the_qubits_are_re_derived_site_by_site_on_the_live_qubit_timeline():
+    """A merged addition holds 2 k_max temporaries, which can be MORE than the native template held at that QFT site.
+    The design's qubits are therefore the timeline's new maximum less the run's peak extra: nothing while every site
+    stays under the peak the other steps set, the excess when one does not. A Ross-Selinger band never adds (its ladder
+    needs one And temporary). A timeline that does not reproduce the run's peak extra is refused, not guessed."""
+    sites = {0: 394, "work": 66, "data": 78, 3: 393, 4: 3, "scratch": 91, 6: 391, 7: 393}
+    assert overlay.site_excess(sites, 394, {"work": 76, "data": 76, "scratch": 80}) == 0      # work grows 66 -> 76, under 394
+    assert overlay.site_excess(sites, 394, {"work": 400}) == 6                                # a site above the peak: charged
+    assert overlay.site_excess(sites, 394, {"scratch": 2 * 4397}) == 2 * 4397 - 394
+    assert overlay.site_excess(sites, 394, {"data": None, "work": None, "scratch": None}) == 0
+    assert overlay.site_excess({**sites, "work": 0}, 394, {"work": None}) == 0
+    with pytest.raises(overlay.QftOverlayRefused, match="live-qubit timeline's peak 394 is not the run's peak extra 412"):
+        overlay.site_excess(sites, 412, {"work": 76})
+    with pytest.raises(overlay.QftOverlayRefused, match="no site on the live-qubit timeline"):
+        overlay.site_excess(sites, 394, {"exponent": 10})
+
+
+@pytest.mark.slow
+def test_the_timeline_reproduces_the_runs_peak_and_charges_only_an_excess(measured_policy):
+    """On the measured fixture's policy the engine's timeline reproduces the coherent peak extra (with the exponent QFT)
+    and the readout's (without it); the three catalysed sites at 25e-5 (2 k = 76, 76, 80) stay under it and add nothing,
+    while an exact catalytic data family's 2 x 2048 temporaries exceed it by exactly that much."""
+    policy, full = measured_policy
+    fa = engine.load().fullalg
+    coherent_sites = overlay._site_extras(fa, policy, full, measured=False)
+    measured_sites = overlay._site_extras(fa, policy, full, measured=True)
+    assert max(coherent_sites.values()) == full["peak_extra"] == 412 and "exponent" not in measured_sites
+    assert {f: measured_sites[f] for f in ("work", "data", "scratch")} == {"work": 106, "data": 116, "scratch": 118}
+    cat = overlay.project(policy, full, {f: _approx(backend="catalytic") for f in ("data", "work", "scratch")})
+    assert cat["workspaceQubits"] == 0 and max(r["workspaceQubits"] for r in cat["families"].values()) == 80
+    exact = overlay.project(policy, full, {"data": CATALYTIC_EXACT})
+    assert exact["workspaceQubits"] == 2 * 2048 - 412 and exact["qubitsPeak"] == full["qubits_peak"] + 2049 + 2 * 2048 - 412
+
+
 @pytest.mark.slow
 def test_one_shared_register_is_charged_once(priced):
     policy, full = priced

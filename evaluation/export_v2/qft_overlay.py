@@ -76,10 +76,16 @@ adders' CNOTs (Clifford). The engine's own And count is summed row by row and re
 QUBITS
 -----------------------------------------------------------------------------------------------------
 The shared gradient register is b = max_f (k_max_f + 1) qubits, live for the whole run, and is added once
-to Q. A merged addition also holds `m + L - 1` = 2 m_j temporary qubits (its control Ands and the adder's
-carries) during the QFT that replaced the template's own workspace, at most 2 k_max per family; when the widest
-of those exceeds the run's peak extra, the difference is added too (`workspaceQubits`). Banding only removes
-workspace, so the frozen peak stays an upper bound for it.
+to Q. Beyond it, a merged addition holds `m + L - 1` = 2 m_j temporary qubits (its control Ands and the adder's
+carries), at most 2 k_max per call. That can be MORE than the native template needed at the same site (on some
+policies a QFT site's extra grows), so the qubits are re-derived from the engine's own live-qubit timeline
+(`policy_peak.modmul_phase_peaks`: the multiplication's eight sequential phases, three of them the data, work and
+scratch QFTs; the coherent run adds the exponent QFT, `qft_peak(xW)`). The timeline must reproduce the run's peak
+extra; each designed QFT site's extra is then replaced -- a catalytic family's by its 2 k_max, a Ross-Selinger band's
+by max(native, 1) (its ladder needs one And temporary at a time) -- and whatever the new maximum exceeds the frozen
+peak extra by is added (`workspaceQubits`). On the offered designs the merged additions' temporaries stay under the
+run's existing peak at every QFT site (the peak is set by a phase-product step), so they add no qubits; an exact
+catalytic family's 2 (w - 1) does exceed it, and the excess is charged.
 
 SCOPE. QFT families only: `data`, `work`, `scratch`, `exponent`. The four phase-product steps --
 `step1`, `step2`, `step4` and `step5` -- are fields of the same compiled selector record but are not
@@ -371,6 +377,37 @@ def _check_reference(fa, coherent, label):
              f"result's own `qubits_peak` and `qubits`")
 
 
+#: The index of each family's QFT among `policy_peak.modmul_phase_peaks`' eight sequential phases.
+SITE_PHASE = {"work": 1, "data": 2, "scratch": 5}
+
+
+def _site_extras(fa, policy, coherent, measured):
+    """`{site: native extra qubits}` from the engine's live-qubit timeline: the multiplication's eight phases, plus the
+    exponent QFT on the coherent run (the semiclassical readout removes it). Keys are the families' names for the four
+    QFT sites and the phase index otherwise."""
+    lp = fa.to_l2q_full(policy, "exact")
+    w = coherent["widths"]
+    phases = fa.ppk.modmul_phase_peaks(lp, w["yW"], w["workW"], w["scratchW"], coherent["negate"])
+    sites = {next((f for f, i in SITE_PHASE.items() if i == j), j): int(v) for j, v in enumerate(phases)}
+    if not measured:
+        sites["exponent"] = int(fa.ppk.qft_peak(lp, w["xW"], coherent["negate"]))
+    return sites
+
+
+def site_excess(sites, peak_extra, workspace, need=_require):
+    """The qubits a design adds beyond the run's peak extra: each designed QFT site's extra replaced (`workspace[family]`:
+    a catalytic family's 2 k_max merged-addition temporaries, or None for a Ross-Selinger band, max(native, 1)), the new
+    maximum over the sequential sites, less the frozen peak extra. The native timeline must reproduce that peak extra."""
+    need(max(sites.values()) == int(peak_extra),
+         f"QFT design: the live-qubit timeline's peak {max(sites.values())} is not the run's peak extra {peak_extra}; "
+         f"the design's qubits cannot be re-derived, so it is reported as unpriced")
+    new = dict(sites)
+    for family, ws in workspace.items():
+        need(family in new, f"QFT family {family!r} has no site on the live-qubit timeline")
+        new[family] = max(new[family], 1) if ws is None else ws
+    return max(0, max(new.values()) - int(peak_extra))
+
+
 def price_design(policy, coherent, plan, *, base, rotations, peak_extra, refuse=_refuse, skip_width=None):
     """The design's census patch and the ONE division of the pool, from a starting census `(base, rotations)`.
 
@@ -387,7 +424,7 @@ def price_design(policy, coherent, plan, *, base, rotations, peak_extra, refuse=
     delta = coherent["delta"]
     delta_key, delta_exact = _delta_exact(delta)
     families, error_bounds = {}, {}
-    claimed, b_needed, workspace, catalysed = Fraction(0), 0, 0, []
+    claimed, b_needed, catalysed, site_workspace = Fraction(0), 0, [], {}
 
     for family, (backend, target, max_error) in plan.items():
         if backend == "ross_selinger" and target == "exact":
@@ -432,6 +469,7 @@ def price_design(policy, coherent, plan, *, base, rotations, peak_extra, refuse=
                 error = band_error(w, count, depth)
                 base += (band_base - exact.base) * count
                 rotations += (band_rot - exact.rot) * count
+                site_workspace[family] = None             # the ladder: one And temporary at a time
                 entry.update(construction="banded", kMax=k, banded=bool(k < w - 1),
                              bandedTBase=band_base, bandedRotations=band_rot,
                              realization="ReferenceQFT(w, k_max): a Coppersmith-banded Draper ladder replacing the "
@@ -448,7 +486,7 @@ def price_design(policy, coherent, plan, *, base, rotations, peak_extra, refuse=
                 base += (4 * p["ands"] - exact.base) * count
                 rotations -= exact.rot * count
                 b_needed = max(b_needed, k + 1)
-                workspace = max(workspace, p["workspace"])
+                site_workspace[family] = p["workspace"]
                 catalysed.append(family)
                 entry.update(construction="bandedMerged", kMax=k, banded=bool(k < w - 1), b=k + 1,
                              mergedAnds=p["ands"], mergedTBase=4 * p["ands"], workspaceQubits=p["workspace"],
@@ -503,7 +541,9 @@ def price_design(policy, coherent, plan, *, base, rotations, peak_extra, refuse=
                                    "against the prep budget, plus 1 T), live for the whole run and restored after "
                                    "every addition"}
     total = base + rotations * rate + prep_t
-    extra = max(0, workspace - int(peak_extra)) if catalysed else 0
+    extra = 0
+    if designed:
+        extra = site_excess(_site_extras(fa, policy, coherent, skip_width is not None), peak_extra, site_workspace, need)
     budget = None
     if not identity:
         budget = {"delta": delta_key, "pool": str(pool), "allowances": str(claimed), "prepBudget": str(prep),
@@ -538,8 +578,9 @@ def project(policy, coherent, design=None):
                  "(the pool less the families' allowances and the gradient's preparation) over the rotations",
         "catalystQubits": j["catalystQubits"], "workspaceQubits": j["workspaceQubits"],
         "qubitsPeak": peak, "qubitsUpperBound": int(coherent["qubits"]) + added, "qubitTimesT": peak * j["T"],
-        "qubitsNote": "the engine's frozen peak and layout plus the shared catalyst register, plus any merged-addition "
-                      "workspace beyond the run's peak extra. Banding only removes workspace.",
+        "qubitsNote": "the engine's frozen peak and layout plus the shared catalyst register, plus whatever the design's QFT "
+                      "sites (a catalytic family's 2 k_max addition temporaries per call) add to the run's live-qubit peak; "
+                      "where they stay under the peak set by the other steps they add nothing.",
         # `mapping.ranked_price_of` ranks the projection's `qubits` when it offers one: only when the design adds
         # qubits (a catalyst), and then the PEAK, the unit of the panel's own `qubits`.
         **({"qubits": peak} if added else {}),
