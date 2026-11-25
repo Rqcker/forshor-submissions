@@ -517,7 +517,8 @@ def show_measured(r: Dict[str, Any]) -> None:
         for family, f in sorted(rq["families"].items()):
             what = f"approximate, allowance {f['maxError']}" if f["target"] == "approximate" else "exact"
             how = {"banded": lambda: f", band k = {f['kMax']}, error bound {f['errorBound']:.3g}",
-                   "mergedTwiddle": lambda: f", catalyst slice b = {f['b']}, error bound {f['errorBound']:.3g}"}
+                   "bandedMerged": lambda: f", band k = {f['kMax']} (needs a catalyst of {f['b']} qubits), "
+                                           f"error bound {f['errorBound']:.3g}"}
             print(f"{'':29}{family:<8} width {f['width']}: {f['backend']}, {what}{how.get(f['construction'], str)()}")
         budget = rq.get("budget")
         if budget:

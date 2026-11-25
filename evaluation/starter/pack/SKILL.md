@@ -246,11 +246,12 @@ def submittedFullRunDesign : Shor.FullRunDesign :=
 ```
 
 `SUBMISSION_FORMAT.md` section 2, "Choose a QFT design", has a catalytic and a mixed example and says what each changes. In
-short: an approximate `.rossSelinger` family drops its smallest rotations and lowers T; a `.catalytic` family applies its
-twiddles as controlled additions into one shared catalyst register of `b` qubits, with no synthesised rotation, which adds
-`b` to Q (`b` = the family's width for `.exact`). A design is priced on the full order-finding board at δ = 1e-2 only, with
+short: an approximate family drops the rotations below its band, whose depth is set by its allowance; a `.rossSelinger`
+family then synthesises the kept rotations, and a `.catalytic` family applies each target's kept phases as one controlled
+addition into a shared catalyst register of `b` qubits, with no synthesised rotation, which adds `b` to Q (`b` = the
+largest band plus one; the family's width for `.exact`). A design is priced on the full order-finding board at δ = 1e-2 only, with
 one error budget across the readout and the design; the row ranks on the design's T and live-qubit peak, and the published
-panel shows each family's backend, its band or catalyst width, the budget split and, for a catalytic design, the catalyst
+panel shows each family's backend, its band (and catalyst width), the budget split and, for a catalytic design, the catalyst
 register's width and preparation T. The `exponent` family is refused under
 the readout (the readout replaces that QFT by measured phases). A design may set only the QFT families above; any other
 field is refused, and the refusal names it. A refusal is raised before anything is priced, names the line and the cause, and
@@ -264,7 +265,7 @@ document there with `--balanced --readout submitted > policy.json`, and run
 `python starter.py forshor-doc $F/policy.json --source Policy.lean`. It prices the
 document with the boards' own readout and QFT design rules, copied into the pack's `export_v2/` byte for byte, and prints
 each board's row T and Q at the four deltas, the coherent run, the readout alone and the readout with the design (the row at
-δ = 1e-2), each family's band or catalyst width, the catalyst register when there is one, and the rule fingerprints (sha256) the published
+δ = 1e-2), each family's band (and catalyst width), the catalyst register when there is one, and the rule fingerprints (sha256) the published
 panel carries. Whatever hosted intake refuses is refused by name, with the same message, and nothing is priced.
 `starter.py price` prices the tables under the default design only.
 

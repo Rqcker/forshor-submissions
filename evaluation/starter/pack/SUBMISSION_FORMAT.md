@@ -173,14 +173,17 @@ the full order-finding run, on the reference multiplier:
     so a looser allowance is not always cheaper: loosening it can raise T. On the template's own policy, loosening `data`
     from `25e-5` to `1e-3` raises T by about 5.2 × 10^9. Compare choices with `starter.py forshor-doc` (see "Price it
     locally").
-  * backend `.rossSelinger`: the rotations are synthesised with Ross–Selinger, as by default. `.exact` leaves the family as
-    it is. `.approximate` keeps the controlled rotations up to distance `k` and drops the smaller ones, with `k` the
-    smallest band whose dropped angles, summed over every call, fit the allowance. A looser allowance removes more
-    rotations, but takes more of the budget from every other rotation (see above).
-  * backend `.catalytic`: the family's QFT keeps its structure, but each twiddle is applied as controlled additions into one
-    shared phase-gradient register of `b` qubits, with no synthesised rotation. `.approximate` uses the smallest `b` whose
-    rounding, summed over every call, fits the allowance (36 to 48 qubits for allowances from `1e-3` to `1e-6`). `.exact`
-    rounds nothing, so `b` is the family's own width: 2,049, 2,347 or 4,398 qubits.
+  * **`.approximate` bands the QFT**, whatever the backend: it drops the controlled rotations below its band, keeping those up
+    to distance `k`, with `k` the smallest band whose dropped angles, summed over every call, fit the allowance. A looser
+    allowance drops more rotations, but takes more of the budget from every other rotation (see above). `.exact` keeps
+    every rotation.
+  * backend `.rossSelinger`: the kept rotations are synthesised with Ross–Selinger, as by default. `.exact` leaves the family
+    as it is.
+  * backend `.catalytic`: each target qubit's kept phases are applied as one controlled addition into a shared catalyst
+    register (a phase-gradient register), with no synthesised rotation. On a register of `k + 1` qubits these additions are
+    exact, so the whole allowance goes to the band. The register is shared by every catalytic family, and its width `b` is
+    the largest `k + 1` among them (37 to 49 qubits for allowances from `1e-3` to `1e-6`). `.exact` keeps every phase, so
+    `b` is the family's own width: 2,049, 2,347 or 4,398 qubits.
 * **Not the `exponent` family.** The semiclassical readout replaces that QFT by measured phases, so a design that names
   `exponent` is refused, `exact` included.
 * **Nothing else.** A design may set only the QFT families above; any other field is refused, and the refusal names it.
@@ -210,9 +213,9 @@ def submittedFullRunDesign : Shor.FullRunDesign :=
     work := some ⟨.catalytic, .approximate ⟨25, 5, by decide, by decide, by decide⟩⟩ }
 ```
 
-Both families' twiddles become additions into the catalyst register, so these QFTs synthesise no rotation at all. On the
-template's own policy **T falls further** than with the first example. **The qubits rise by the catalyst register's width**
-`b` (38 here).
+Both families are banded as in the first example, and each target's kept phases become one addition into the catalyst
+register, so these QFTs synthesise no rotation at all. On the template's own policy **T falls further** than with the first
+example. **The qubits rise by the catalyst register's width** `b` (39 here: the band, 38, plus one).
 
 A mixed design: `data` approximate at `25e-5` and synthesised, `work` approximate at `1e-3` from the catalyst, `scratch` exact
 from the catalyst.
@@ -226,16 +229,17 @@ def submittedFullRunDesign : Shor.FullRunDesign :=
     scratch := some ⟨.catalytic, .exact⟩ }
 ```
 
-`data` is banded as in the first example, `work` is catalysed with a looser allowance, and `scratch` is catalysed exactly.
-There is still **one** catalyst register, shared by `work` and `scratch`, so the qubits rise by its width `b` once, but an
-exact family sets `b` to its own width: here 4,398 qubits, plus the workspace its widest additions need beyond the run's
-peak. On the template's own policy **T falls the most** of the three examples, but **Q more than doubles**, so the score
+`data` is banded and synthesised as in the first example, `work` is banded with a looser allowance and catalysed, and
+`scratch` is catalysed with no band. There is still **one** catalyst register, shared by `work` and `scratch`, so the qubits
+rise by its width `b` once, but an exact family sets `b` to its own width: here 4,398 qubits, plus the workspace its widest
+additions need beyond the run's peak (two temporary qubits for each phase an addition carries, so about twice the QFT's
+width). On the template's own policy **T falls the most** of the three examples, but **Q more than doubles**, so the score
 Q × T is worse than with the readout alone.
 
-Not every choice lowers the score. A catalytic `.exact` family lowers T but adds a register as wide as the QFT; a looser
-allowance takes more of the synthesis budget from every other rotation, so past some point it costs more T, not less; and a
-very small allowance on `.rossSelinger` can cost more than `.exact`, because the approximate QFT is a different
-construction. These are directions; `starter.py forshor-doc` prints the numbers for your own policy (see "Price it
+Not every choice lowers the score. A catalytic `.exact` family lowers T but adds a register as wide as the QFT, and
+workspace for its widest additions; a looser allowance takes more of the synthesis budget from every other rotation, so past
+some point it costs more T, not less; and a very small allowance on `.rossSelinger` can cost more than `.exact`, because the
+approximate QFT is a different construction. These are directions; `starter.py forshor-doc` prints the numbers for your own policy (see "Price it
 locally").
 
 **How a design is priced.**
@@ -247,13 +251,14 @@ locally").
   allowances and, when a family is catalytic, the preparation of the catalyst register (a tenth of the budget, or half of
   what the allowances leave if that is less); the rest is shared over that one rotation total. The panel lists each part.
 * **The catalyst.** Any catalytic family adds **one shared catalyst register of `b` qubits**, live for the whole run and
-  counted in Q; `b` is the widest catalytic family's. A catalytic family's T is the T of its additions (4 T per AND), and
-  the register's preparation is charged once.
+  counted in Q; `b` is the largest band plus one among the catalytic families (the family's width for `.exact`). A
+  catalytic family's T is the T of its additions: each target's addition costs two ANDs per kept phase (one to bring the
+  phase's control into the addition, one in the adder), 4 T per AND. The register's preparation is charged once.
 * **The row** ranks on the design's T and its live-qubit peak: the measured readout's peak, plus `b` when a family is
   catalytic, plus any workspace the widest additions need beyond the readout's peak.
 * **The published panel** shows the design beside the readout-only price: each family's backend and target (with its
-  allowance), its band `k` or catalyst width `b` and its error bound, the budget split, and, when a family is catalytic, the
-  catalyst register's width and its preparation T.
+  allowance), its band `k` (and, for a catalytic family, the width `k + 1` it needs) and its error bound, the budget split,
+  and, when a family is catalytic, the catalyst register's width and its preparation T.
 
 **What hosted intake refuses.** Each of these is refused by name, with the line and the cause, before anything is priced. A
 refused submission is not published and nothing is written to the archive.
@@ -295,7 +300,7 @@ It prices the document with the boards' own rules, so it prints the numbers the 
   at δ = 0.01, where it would rank among the pack's starting policies (not the live board);
 * on the full order-finding board, the **coherent run** (for comparison), the **semiclassical readout alone**, and, at
   δ = 0.01 when the file declares a design, the **readout with the design**, which is the row; each family's width, backend,
-  target, and its band `k` or catalyst width `b`;
+  target, and its band `k` (and catalyst width for a catalytic family);
 * the **catalyst register** (`b`, its preparation T and any added workspace) when a family is catalytic;
 * the **rule fingerprints**: the sha256 of the readout rule, of the readout-with-design rule and of the QFT design rule, as
   the published panel carries them.

@@ -99,7 +99,7 @@ vendored unchanged.
 
 `forshor-doc` on a measured document (the semiclassical readout, `--balanced --readout submitted`, with or without a
 per-family QFT design) prints what the published rows and panel will carry: each board's row T and Q at the four deltas,
-the coherent run, the readout alone and the readout with the design (the full-board row at δ = 0.01), each family's band or catalyst width,
+the coherent run, the readout alone and the readout with the design (the full-board row at δ = 0.01), each family's band (and catalyst width),
 the catalyst register when a family is catalytic, and the rule fingerprints (sha256). The readout and QFT design rules are
 the boards' own, copied into `export_v2/` byte for byte. `--source` checks the document against your `Policy.lean`; whatever
 hosted intake refuses is refused by name and nothing is priced. `SUBMISSION_FORMAT.md` section 2, "Price it locally", has the details.
