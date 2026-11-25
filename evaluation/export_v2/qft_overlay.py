@@ -1,6 +1,6 @@
 """The compiled QFT design axis -- construction band x synthesis backend -- priced on the frozen coherent engine.
 
-Local qualification only: this module does not grant publication authority, and it is NOT an epoch
+This module does not grant publication authority by itself, and it is NOT an epoch
 input. It lives outside `evaluation/engine` for the same reason `pricing._all_tables` does -- so that
 pricing a new design axis does not move `engineRevision` (`epoch.py:91`, `git log -1 -- evaluation/engine`)
 nor `dataFingerprint` (`full_frontier.py:43-50`, a hash of the SOURCE BYTES of `site_engine/fullalg.py`
@@ -39,7 +39,7 @@ makes the all-exact design bit-identical to today's price, and it is what `qft.p
 default `None` keeps the exact full ladder, "the previous behaviour, unchanged". Only an `approximate`
 target substitutes anything.
 
-TWO ORTHOGONAL AXES, per family (owner ruling 2026-11-24). `target` chooses the CONSTRUCTION
+TWO ORTHOGONAL AXES, per family. `target` chooses the CONSTRUCTION
 (`exact` = the engine's native `PolicyQFT` template untouched, `approximate` = a Coppersmith-banded
 `ReferenceQFT`); `backend` chooses the CURRENCY its surviving rotations are paid in (`ross_selinger` =
 the engine's own synthesis law, `catalytic` = merged catalysis). All four corners price, and all four
@@ -58,7 +58,7 @@ geometry, no resolution -- so the ONLY sound price for a catalysed site is
 been pricing, including the merged twiddle rows that would in fact be cheaper.
 
 Three charges, all three priced here. Pricing catalytic on Ross-Selinger currency, or omitting any of
-these, would be the silent default the release rule forbids:
+these, would be a silent default, which is never allowed:
 
   1. ITS OWN SHARE OF THE RUN-WIDE SYNTHESIS BUDGET. There is one pool, `ROTATION_FRACTION * delta`
      (`sto_currency.py`: 0.5 * delta, = 1/200 at delta = 1e-2), and the engine divides it EVENLY over
@@ -167,7 +167,7 @@ MAX_ERROR_RE = re.compile(r"([0-9]+)e-([0-9]+)")
 
 
 class QftOverlayRefused(ValueError):
-    """A QFT design request this overlay will not price. Never a fallback to the default price."""
+    """A QFT design request this overlay will not price. It is reported, never priced at the default."""
 
 
 def _refuse(message):
@@ -193,7 +193,7 @@ def _engine_aqft_k_max():
     loaded. It lives at `engine/paper_model/py/precision_policy.py:84` -- inside the epoch, and already
     hashed into it -- but `engine/paper_model/py` is NOT on the site engine's `sys.path`, so a plain
     import fails; it is loaded by file path instead. Reading an engine file does not move the epoch.
-    Returns None when absent, and `aqft_k_max` then falls back to the mirror below."""
+    Returns None when absent, and `aqft_k_max` then uses the mirror below."""
     import importlib.util
 
     path = Path(engine.load().engine_dir) / "paper_model" / "py" / "precision_policy.py"
@@ -293,8 +293,8 @@ def parse_design(design):
                      f"QFT family {family!r}: target 'exact' takes no 'max_error' (got "
                      f"{dict(value).get('max_error')!r}); an exact QFT has no band")
             max_error = None
-        # `backend: "catalytic"` IS honoured, on both targets (lane WX; it was refused here as "a
-        # second axis" before the three charges in the module docstring were priced). The axes are
+        # `backend: "catalytic"` IS honoured, on both targets: the three charges in the module docstring
+        # are priced. The axes are
         # orthogonal: `target` picks the construction, `backend` picks the currency. The arm itself can
         # still refuse at pricing time -- a family with no rotations to catalyse, or a catalyst width
         # outside the spec's qualified range -- and does so by name.
@@ -425,8 +425,8 @@ def project(policy, coherent, design=None):
     eng = engine.load()
     fa = eng.fullalg
     # EPOCH GUARD (`readout_overlay.py:95`). export_v2 is not an epoch input, so an overlay price is
-    # only honest against the engine model it was qualified on. The owner is deliberately NOT moving
-    # the epoch, so this holds; if it ever fails, the overlay refuses rather than prices.
+    # only honest against the engine model it was qualified on. If the model ever differs, the overlay
+    # refuses rather than prices.
     _require(epoch_of(epoch.model_of()) == EPOCH,
              f"QFT overlay is qualified against engine model {EPOCH} only; this tree's model is "
              f"{epoch_of(epoch.model_of())}, so the band is reported as unpriced")
@@ -548,21 +548,16 @@ def project(policy, coherent, design=None):
         "qubitsNote": "the engine's frozen peak and layout plus catalystQubits. Banding only REMOVES "
                       "phase-product workspace, so the frozen totals stay an upper bound for it and "
                       "are not re-derived; the shared catalyst register is added because it is not.",
-        # THE QUBIT HOOK (integration wave 2, lane XF). `mapping.ranked_price_of` overlays onto the row
-        # every key of `mapping.SHOWN` == ("T", "qubits") that the projection offers, and documents the
-        # `qubits` key as "the hook that lets that arm land without publishing a qubit count nobody
-        # modelled" -- written for exactly this arm. But the arm reports its qubits as `qubitsPeak` and
-        # `qubitsUpperBound`, NOT as `qubits`, so the hook never fired: measured on the merged tree, a
-        # catalytic design ranked at the engine's 44930 while the projection's own bound was 44972, i.e.
-        # charge 2 (the shared catalyst register, "live for the whole run", feeding the ranked Q x T) did
-        # not reach the ledger row at all. The generalisation was inert for the one projection it was
-        # generalised for.
+        # THE QUBIT HOOK. `mapping.ranked_price_of` overlays onto the row every key of `mapping.SHOWN` ==
+        # ("T", "qubits") that the projection offers. `qubitsPeak` and `qubitsUpperBound` alone would not
+        # reach the row: a catalytic design would rank at the engine's 44930 while the projection's own bound
+        # is 44972, i.e. charge 2 (the shared catalyst register, "live for the whole run", feeding the ranked
+        # Q x T) would be missing from the ledger row.
         #
         # So the projection names `qubits` -- and only when a catalyst actually exists, which is exactly
-        # when the engine's frozen total stops being an upper bound. A band-only projection still offers
-        # no `qubits`, so the engine's number is ranked for it, which is what `ranked_price_of` argues for
-        # (banding can only LOWER the count). No edit to `mapping.py` is needed; this closes WY's hook
-        # through WY's own mechanism.
+        # when the engine's frozen total stops being an upper bound. A band-only projection offers no
+        # `qubits`, so the engine's number is ranked for it, which is what `ranked_price_of` argues for
+        # (banding can only LOWER the count).
         #
         # THE VALUE IS THE PEAK, not the layout total. `ranked_price_of` overlays onto the PANEL's
         # full-run block, where `mapping.full_run_of:130` sets `"qubits": f["qubits_peak"]` and carries

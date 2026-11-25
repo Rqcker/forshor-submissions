@@ -40,7 +40,7 @@ HEADER_END = re.compile(r'^(?:namespace|open|section|end|def|abbrev|theorem|lemm
 FULL_RUN_SELECTOR = re.compile(r"(?<![\w'])submittedFullRunDesign(?![\w'])")
 
 
-# Explicit default selections. Owner ruling 2026-11-24: Ross-Selinger, the reference full run and coherent readout are
+# Explicit default selections. Ross-Selinger, the reference full run and coherent readout are
 # the defaults, and an explicit default token is identical to omission (Lean's resolvers return the default when the
 # declaration is absent, and attest the document unchanged when it is the default). Only these exact declarations are
 # recognised: one `def` at column 0 directly inside the board's namespace, annotated with the repo's type, with the
@@ -122,7 +122,7 @@ def without_default_selectors(text):
 
 
 # A refusal has to name WHICH cause refused, because the causes need different participant actions: a
-# non-default profile is a valid request on the wrong route (the dedicated nonpublishing harness), a
+# non-default profile is a valid request this route does not accept, a
 # mis-written default only has to be rewritten, and a bare mention has to be deleted. The leading
 # sentence of each message is the anchor the rest of the repository matches on and never changes; the
 # cause follows it after a colon. Classification happens only AFTER the refusal is decided, so nothing
@@ -133,10 +133,8 @@ SHIPPED_FULL_RUN_FORM = 'def submittedFullRunDesign : Shor.FullRunDesign := .ref
 FULL_RUN_REFUSAL = 'submittedFullRunDesign is not accepted as written'
 #: The one readout declaration a full-run design is accepted beside, as a participant writes it.
 MEASURED_READOUT_FORM = 'def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }'
-#: Finding F5: this used to end "one import command per line", a rule the gate has never enforced -- `import A B` with
-#: both modules approved is accepted, because `validate` only tests membership and never `len(modules)`. Enforcing the
-#: promise would refuse sources that are accepted today, which is a change to the accepted set and out of scope here,
-#: so the message is corrected to what the gate actually checks: every module named on an `import` line, however many
+#: The message says what the gate checks -- `import A B` with both modules approved is accepted, because `validate`
+#: only tests membership and never `len(modules)`: every module named on an `import` line, however many
 #: there are, must be an approved template module, and every `import` must be in the header. The leading clause
 #: ("imports must be the approved template modules") is the anchor other code matches on and is unchanged.
 IMPORT_REFUSAL = 'Policy.lean imports must be the approved template modules, in the file\'s header'
@@ -244,7 +242,7 @@ def declared_readout(source):
     Three answers, no fourth:
 
       * `coherent` -- the declaration is omitted, OR it is the explicit default `{ readout := .coherent }`, which
-        owner ruling 2026-11-24 makes identical to omission. Both leave no `submittedDesign` in the residual.
+        is identical to omission. Both leave no `submittedDesign` in the residual.
       * `semiclassical` -- the measured declaration, in the one shipped form, consumed by the same walker under the
         same discipline (`default_selectors`).
       * `ValueError` -- anything else: another value, a mis-written default, a bare mention, a second declaration.
@@ -264,8 +262,8 @@ def declared_readout(source):
 
 #: The one non-default full-run declaration this gate admits: a public `def` at column 0 directly inside
 #: `namespace PolicySubmission`, typed with the repo's type, whose value (which may continue on the following
-#: indented lines) Lean then type-checks and serializes. Owner ruling 2026-11-24: admit any declaration the pinned
-#: verifier will serialize, bound to the source, and ONLY beside the semiclassical readout declaration -- the
+#: indented lines) Lean then type-checks and serializes. Any declaration the pinned
+#: verifier will serialize is admitted, bound to the source, and ONLY beside the semiclassical readout declaration -- the
 #: verifier itself emits a design only on the measured route (`--readout submitted`).
 _DESIGN_DECL = re.compile(rf"def[ \t]+submittedFullRunDesign[ \t]*:[ \t]*{_SHOR}FullRunDesign[ \t]*(?::=|where)(?![\w'])")
 #: Field and constructor names of the full-run record OUTSIDE the QFT backend axis, and the qualified profiles, each
@@ -377,7 +375,7 @@ def validate(source, *, qualify_full_run=False):
         if re.match(r'import\b', line):
             # Same four refusal conditions as before, in the same order, each now naming its own cause: an
             # unapproved module and a misplaced or empty import are participant errors, while the full-run
-            # framework is a valid request that belongs on the dedicated nonpublishing route.
+            # framework is a valid import only beside the design it is needed for.
             modules = line.split()[1:]
             if not header:
                 raise ValueError(f'{IMPORT_REFUSAL}: line {number} is an `import` after the header; every import '

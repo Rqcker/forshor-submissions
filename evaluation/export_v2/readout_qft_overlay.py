@@ -1,6 +1,6 @@
 """A measured (semiclassical) readout and a full-run QFT design, priced TOGETHER in one census.
 
-Local qualification only: this module does not grant publication authority, and it is NOT an epoch input (it
+This module does not grant publication authority by itself, and it is NOT an epoch input (it
 lives in `export_v2` for the reason `qft_overlay` does). It changes neither overlay it composes:
 `readout_overlay.py` is a cross-repository byte pin (its sha256 is the published readout `ruleSha256`) and
 `qft_overlay.py`'s own fingerprint is carried by every design-only panel, so both are imported, never edited.
@@ -71,7 +71,7 @@ A design family whose width coincides with the readout's register (xW) is refuse
 part would be the one the readout removed.
 
 FAIL CLOSED. Every refusal is a `ReadoutQftRefused` (a `qft_overlay.QftOverlayRefused`, so a `ValueError`)
-naming the family and the value. Nothing here falls back to either overlay alone.
+naming the family and the value. Nothing here is priced by either overlay alone.
 """
 from hashlib import sha256
 from pathlib import Path
@@ -86,7 +86,7 @@ MODE = "semiclassical-readout-with-qft-design"
 
 
 class ReadoutQftRefused(qft_overlay.QftOverlayRefused):
-    """A measured readout + QFT design request this rule will not price. Never a fallback to either overlay."""
+    """A measured readout + QFT design request this rule will not price. It is never priced by either overlay alone."""
 
 
 def _refuse(message):

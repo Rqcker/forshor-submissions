@@ -123,8 +123,8 @@ def full_run_of(view: Raw, lean_peak: Any = False) -> Raw:
         **({"readout": f["readout"]} if "readout" in f else {}),
         # Same shape as `readout` directly above: present only when `price_views` was given a full-run design, so every
         # panel priced without one -- which is every panel ever published -- is byte-identical. The panel keeps the
-        # engine's own coherent price in `T` beside it; which of the two a BOARD shows is `ranked_price_of`, and since
-        # the owner's Tier 2 ruling that is the projection's T, exactly as it is `readout`'s for the measured route.
+        # engine's own coherent price in `T` beside it; which of the two a BOARD shows is `ranked_price_of`, and that is
+        # the projection's T, exactly as it is `readout`'s for the measured route.
         **({"qft": f["qft"]} if "qft" in f else {}),
         # A measured readout priced together with a QFT design (`readout_qft_overlay`): present only on that panel,
         # beside the readout-only `readout` block it starts from, and never beside `qft`.
@@ -252,18 +252,17 @@ def ranked_price_of(full: Raw) -> Raw:
     """The numbers a full-run board shows: the overlay's price when a panel carries one, the engine's own otherwise.
 
     `readout` replaces T and qubits outright, because `readout_overlay.project` returns both for the measured circuit.
-    `qft` today prices T ONLY: `qft_overlay.project` states that it does not re-derive a qubit count and that the
-    engine's frozen layout total is a sound UPPER bound on the banded run's qubits (banding removes a QFT's
-    phase-product workspace), so the ranked qubits stays the engine's own number and only T comes from the projection.
-    A projection that DOES model a qubit count carries `qubits` and that number is ranked instead: the Coppersmith band
-    can only lower the count, but the catalytic arm `qft_overlay.parse_design` currently refuses "adds a catalyst
-    register", which would RAISE it and make the engine's total no longer a bound. Reading `qubits` when it is offered
-    is the hook that lets that arm land without publishing a qubit count nobody modelled. With neither overlay key this
+    A band-only `qft` prices T ONLY: `qft_overlay.project` does not re-derive a qubit count, and the engine's frozen
+    layout total is a sound UPPER bound on the banded run's qubits (banding removes a QFT's phase-product workspace), so
+    the ranked qubits stays the engine's own number and only T comes from the projection. A projection that DOES model a
+    qubit count carries `qubits` and that number is ranked instead: the Coppersmith band can only lower the count, but
+    the catalytic arm adds a catalyst register, which RAISES it and makes the engine's total no longer a bound, so the
+    catalytic projection offers `qubits`. With neither overlay key this
     returns the panel's own full-run block unchanged -- the object itself -- which is what every published row was
     built from.
 
     A MEASURED READOUT WITH A DESIGN is ranked from `readoutQft`, the one composed price
-    (`readout_qft_overlay.project`, owner ruling 2026-11-24): both census patches applied together and the pool divided
+    (`readout_qft_overlay.project`): both census patches applied together and the pool divided
     once over the joint rotation total. It replaces T and qubits outright, as `readout` does, and it is only ever
     present beside the readout-only `readout` block it starts from.
 
@@ -288,7 +287,7 @@ def ranked_price_of(full: Raw) -> Raw:
         return full["readout"]
     if "qft" in full:
         # Every number the projection prices overrides the engine's; every number it does not keeps the engine's. The
-        # projection is the price now (the owner's Tier 2 ruling), exactly as `readout` is for the measured route --
+        # projection is the price, exactly as `readout` is for the measured route --
         # but unlike `readout` it does not necessarily price the whole row, so it overlays rather than replaces.
         return {**full, **{key: full["qft"][key] for key in SHOWN if key in full["qft"]}}
     return full

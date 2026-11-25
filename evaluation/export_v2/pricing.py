@@ -46,7 +46,7 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
     the arguments it was called with before this parameter existed, not with `design=None`, and with None nothing else
     happens either. `pricer` replaces `fullalg.price_full` (a test seam).
 
-    A design is NEVER passed to the full-run pricer. Lane WM qualified the design axis as an out-of-engine OVERLAY
+    A design is NEVER passed to the full-run pricer. The design axis is priced by an out-of-engine OVERLAY
     (`qft_overlay.project`, constructing in-epoch `ReferenceQFT` with a Coppersmith `k_max` band) precisely because any edit
     to `evaluation/engine` -- including an additive `design=` parameter, including a comment -- moves `dataFingerprint` and
     `engineRevision` and so the epoch (`qft_overlay` module docstring: appending one comment line to `site_engine/fullalg.py`
@@ -55,12 +55,12 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
     overlay's answer is reported as `view["full"]["qft"]`. `fullalg.price_full` has no `design` parameter and must not grow
     one.
 
-    `primitive` is the compiled `submitted_primitive` selector (lane XA) and `preparation` its attested catalyst words,
+    `primitive` is the compiled `submitted_primitive` selector and `preparation` its attested catalyst words,
     for the STANDALONE B2/B3 primitive on the single-product boards. Both default to None, and with None the
     single-product branch is the call it has always been -- no key is added to the view, so every panel ever published is
     byte-identical. Like `measured` and `design`, the primitive is priced OUTSIDE the engine, by
     `primitive_overlay.project`, on top of the frozen default view; the engine's own default price in that view is not
-    touched, which is what lets XA's baseline digest stand unmoved."""
+    touched, which is what keeps the default panels' digests unmoved."""
     eng = engine.load()
     delta = DELTA_VALUES[delta_key]
     P = policy.with_widths("exact")
@@ -75,8 +75,8 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
             raise ValueError(f"a full-run design is priced at delta {DESIGN_DELTA} only, not {delta_key}")
         if "full" not in boards:
             raise ValueError("a full-run design belongs to the full order-finding board, which is not being priced")
-        # A measured readout WITH a design is priced by ONE rule, `readout_qft_overlay.project` (owner ruling
-        # 2026-11-24): both census patches applied together and the synthesis pool divided once over the joint
+        # A measured readout WITH a design is priced by ONE rule, `readout_qft_overlay.project`:
+        # both census patches applied together and the synthesis pool divided once over the joint
         # rotation total. The two single overlays are never stacked, and a measured view never carries `qft`.
     price_full = pricer or eng.fullalg.price_full
     out: Dict[str, Dict[str, Any]] = {}
@@ -106,7 +106,7 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
                 raise ValueError(f"a {P.mode} policy does not belong on the {board} board")
             view = eng.policy_view.view(P, N, delta, title)
             if primitive:
-                # LANE XA's HOOK, applied in integration wave 2. The same shape as the two full-board hooks
+                # The standalone primitive's hook. The same shape as the two full-board hooks
                 # above: the engine prices the default exactly as it always did, and the overlay is applied
                 # ON TOP of that frozen view, so a request naming no primitive is byte-identical. The
                 # overlay prices the standalone B2/B3 primitive on the single-product boards only, which is

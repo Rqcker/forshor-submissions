@@ -162,7 +162,7 @@ def lean_kind(lean_text: str) -> str:
     ptp = re.search(r"^\s*namespace\s+PTPPolicySubmission\b", lean_text, re.M)
     if bool(pp) == bool(ptp):
         # Which of the two mistakes it is decides the edit: a file with neither is missing the declaration, a file with
-        # both has to drop one. One message for the two sent half the participants to the wrong line (census C14).
+        # both has to drop one. One message for the two sent half the participants to the wrong line.
         raise Refused("format", "the Lean file must declare exactly one of `namespace PolicySubmission` (PhaseProduct) and "
                                 "`namespace PTPPolicySubmission` (PhaseTripleProduct); this file declares "
                                 + ("both" if pp else "neither"))
@@ -170,7 +170,7 @@ def lean_kind(lean_text: str) -> str:
 
 
 def _without_default_selectors(source: str) -> str:
-    """The comment-stripped source with its explicit default selector declarations removed (owner ruling 2026-11-24: an explicit default token, i.e.
+    """The comment-stripped source with its explicit default selector declarations removed (an explicit default token, i.e.
     `.rossSelinger`, `.reference` and `{ readout := .coherent }`, is identical to omission). The recogniser is `scripts/ci/policy_source.py`'s, so the
     CI source gate, this intake and the publisher re-check cannot disagree; any other mention of a selector is left in the text for the refusals below."""
     sys.path.insert(0, str(HERE.parent))
@@ -215,13 +215,12 @@ PRIMITIVE_SOURCE_REFUSAL = "submittedPrimitive is not accepted for a scored subm
 
 def refuse_unqualified_primitive(source: str) -> None:
     """The standing refusal for every ORDINARY route: byte-identical, and still called wherever a primitive is not
-    being qualified. `policy_from_lean(..., qualify_primitive=True)` is the separate nonpublishing route the message
-    has always pointed at (`scripts/ci/policy_source._SELECTOR_CAUSES`, `docs/CLI.md`); before 2026-11-24 that route
-    did not exist, so the refusal was unconditional and the exact standalone pricing was unreachable.
+    being qualified. `policy_from_lean(..., qualify_primitive=True)` is the separate local route, which does not
+    publish, that the message points at (`scripts/ci/policy_source._SELECTOR_CAUSES`, `docs/CLI.md`).
 
     The explicit default is NOT a selection: `_without_default_selectors` consumes `def submittedPrimitive :
-    Shor.PrimitiveSynthesis := .rossSelinger` first (owner ruling 2026-11-24, commit a4a7609, recognised by the
-    generalised `policy_source.default_selectors`), so an explicit default reaches this refusal on no route and is
+    Shor.PrimitiveSynthesis := .rossSelinger` first (recognised by
+    `policy_source.default_selectors`), so an explicit default reaches this refusal on no route and is
     priced exactly as writing nothing is."""
     residual = _without_default_selectors(source)
     if re.search(r"(?<![\w'])submittedPrimitive(?![\w'])", residual):
@@ -291,7 +290,7 @@ def compiled_full_run(printed: Any, *, measured: bool = False) -> tuple:
     answer in two cases, and both are deliberate:
 
       * the document names no selection at all -- the reference pipeline, priced exactly as it always was;
-      * this checkout has no `export_v2.full_run_design` converter (WO's module, arriving with WP's QFT pricing chain).
+      * this checkout has no `export_v2.full_run_design` converter.
         Then a document that DOES name a selection falls through to `check_no_full_run_export`, which refuses it with
         the standing message. A selection is never read as the default and never priced as one.
 
@@ -320,7 +319,7 @@ def require_readout_epoch(model: Dict[str, Any]) -> None:
     at stage `epoch`, which `scripts/ci/notify_submitters.js` (LIMIT_STAGES) already reports to the submitter as
     incomplete/limits. Checked BEFORE `bind_compiled_readout`, whose own epoch `ValueError` would otherwise surface as
     `Refused("forshor", ...)` -- telling a participant their policy is wrong when the engine checkout is the thing that
-    does not match. Proposed by lane WU; the cause belongs to the operator, so the message says so."""
+    does not match. The cause belongs to the operator, so the message says so."""
     from export_v2.canon import epoch_of
     from export_v2.readout_overlay import EPOCH as READOUT_EPOCH
     if epoch_of(model) != READOUT_EPOCH:
@@ -477,7 +476,7 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
     check the same tables in the STO mirror and price them. Only exact widths and the default negation are priced, so a file that asks for anything else is refused
     rather than priced as something it is not.
 
-    `qualify_primitive` is the separate NONPUBLISHING standalone-primitive route (owner-authorised 2026-11-24). On it,
+    `qualify_primitive` is the separate standalone-primitive route, which does NOT publish. On it,
     and only on it, `submittedPrimitive` is not refused and a compiled `submitted_primitive` export is admitted, to be
     bound and priced by `export_v2.primitive_overlay`. Every other route keeps both refusals byte-identical, and the
     explicit default is identical to omission on all of them."""
@@ -616,8 +615,8 @@ def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree
         # publisher it is about to publish to. A bare `--qualify-readout --no-publish` still touches no network.
         raise Refused("format", "the semiclassical readout is checked from Policy.lean, and only a run that publishes takes a publisher URL")
     if qualify_primitive and (lean_policy is None or url):
-        # NO publishing arm, deliberately, and this is the difference from readout. The standalone primitive route has
-        # always been described as nonpublishing (`scripts/ci/policy_source._SELECTOR_CAUSES`, `docs/CLI.md`), the
+        # NO publishing arm, deliberately, and this is the difference from readout. The standalone primitive route
+        # does not publish (`scripts/ci/policy_source._SELECTOR_CAUSES`, `docs/CLI.md`), the
         # recorded qualification receipts carry `localOnly: true` / `publishable: false`, and the site contract has no
         # field for a primitive price on either the row or the panel -- so there is no publisher to talk to and a URL
         # is refused outright rather than silently ignored.
@@ -651,7 +650,7 @@ def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree
             pass
         else:
             # No selector in the compiled export IS the default: `.rossSelinger` stamps nothing, so this is the plain
-            # coherent policy and is checked and priced exactly as an ordinary submission is (owner ruling a4a7609).
+            # coherent policy and is checked and priced exactly as an ordinary submission is.
             require_coherent_export(printed)
     readout = None
     if qualify_readout:
@@ -778,7 +777,7 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     # pending. It exists now, so a qualified measured document THIS RUN's trusted verifier produced is priced on the
     # measured path below (`qualified_in_run`, set only by `run_intake`, which just ran the verifier itself).
     #
-    # Lane XH: production publishes through `--publish-from`, where `qualified_in_run` is false by construction, so the
+    # Production publishes through `--publish-from`, where `qualified_in_run` is false by construction, so the
     # refusal below also closed the ONLY route production uses. A receipt still vouches for nothing -- but it no longer
     # has to. `scripts/ci/policy_publication.js:96-98` already stamps the trusted `ciVerification` receipt into the
     # file this route is handed, and `receipt_origin.establish` turns that stamp into a proof by re-deriving the
@@ -801,14 +800,14 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
                 raise Incomplete("publisher", str(error)) from error
             log(f"  trusted origin: artifact {trusted_origin['artifact']} of run {trusted_origin['runId']} "
                 f"attempt {trusted_origin['runAttempt']}, at this checkout's verification fingerprint")
-    # RETAINED, and NOT lifted with the source gate (owner-authorised 2026-11-24). The standalone primitive route is
-    # nonpublishing, which is what it has always promised: the recorded qualification receipts carry
+    # RETAINED, and NOT lifted with the source gate. The standalone primitive route does
+    # not publish: the recorded qualification receipts carry
     # `localOnly: true` / `publishable: false`, and the published ROW's field set is closed and names no primitive
     # price or its kind -- transcribed into this repository as `SITE_ROW_FIELDS` in
     # `export_v2/pytests/test_design_price_plumbing.py`, where the publisher's validators are shown to REJECT an
     # unrecognised row key rather than ignore it. So a primitive-bearing row cannot be represented, let alone ranked.
     # (The PANEL half is not the blocking one: an optional primitive block on a policy panel
-    # is contract-valid and validated. The route is nonpublishing because the qualifying harness never publishes.)
+    # is contract-valid and validated. The route does not publish because the qualifying harness never publishes.)
     # Both halves are guarded, because either alone would be enough to publish a standalone price as if it were the
     # plain one: the receipt's qualification key AND the compiled selector.
     #
@@ -947,7 +946,7 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
 
     archived = None
     if archive_write is not None:                               # the policy joins the archive first: the publisher wants its head among the accepted ids
-        # OWNER RULING 2026-11-24 (ruling 1): the archive records WHICH RESULT was published, on every axis
+        # The archive records WHICH RESULT was published, on every axis
         # `archive_policy.KIND_DEFAULT` admits, and this call is where those values are. Until now it passed none of
         # them, so a published MEASURED submission was archived as a LEGACY entry -- which `entry_kind` reads as the
         # coherent readout. Three consequences, in the one record that is kept forever: the wrong readout was
@@ -962,12 +961,11 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
         # and `design` is what `compiled_full_run` converted the full-run selection to -- the same object `price()`
         # hands the publisher, so the archive and the board cannot disagree about which result was priced.
         #
-        # `primitive` is None, and that is RULING 3 rather than an omission: the standalone primitive route is
-        # nonpublishing and its refusal above fires before this line, so no primitive value exists HERE to pass. It is
-        # named explicitly so the axis is visibly considered and the published primitive-bearing case has one place to
-        # fill in; `archive_policy`'s module docstring states the ruling.
+        # `primitive` is None, deliberately rather than by omission: the standalone primitive route does not
+        # publish and its refusal above fires before this line, so no primitive value exists HERE to pass. It is
+        # named explicitly so the axis is visibly considered; `archive_policy`'s module docstring states the rule.
         #
-        # A REFUSAL WRITES NOTHING (lane Y19). The request is priced HERE, before the entry is written, so every
+        # A REFUSAL WRITES NOTHING. The request is priced HERE, before the entry is written, so every
         # refusal pricing can raise -- e.g. `build_measured_request`'s unconditional `check_no_full_run_export` for a
         # receipt whose document names a selection its own source does not -- is raised with the archive untouched.
         # The recovery loop below then reuses this request instead of pricing again. Only the order moves: the request
@@ -1055,7 +1053,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if a.no_publish and a.publisher_url:
             ap.error("--qualify-readout with --no-publish is local only: it takes no publisher URL")
     if a.qualify_primitive:
-        # Unlike --qualify-readout there is no single-trusted-run publishing arm: the route is nonpublishing, so the
+        # Unlike --qualify-readout there is no single-trusted-run publishing arm: the route does not publish, so the
         # flag combination that would publish is refused by the parser rather than later by the publisher.
         if a.qualify_readout:
             ap.error("--qualify-primitive and --qualify-readout are separate qualification routes and do not combine")

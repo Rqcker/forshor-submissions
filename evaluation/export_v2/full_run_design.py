@@ -1,30 +1,27 @@
 """The verifier's compiled full-run selection -> the engine's `design` argument.
 
 The compiled document names the selection in ONE top-level key, `submitted_full_run`, whose value is
-`{"schema": "forshor.full-run-selection/v1", "profile": "<label>"}`. Evidence, from the recorded fixtures:
+`{"schema": "forshor.full-run-selection/v1", "profile": "<label>"}` or
+`{"schema": "forshor.full-run-selection/v1", "design": {...}}`. Evidence, from the recorded fixtures:
 
 * the recorded compiled export carries exactly that object for each of the seven native profiles (and
   `submitted_readout: "semiclassical"` beside it);
 * the recorded explicit-reference export carries NO such key, because the verifier emits the object only
-  when the selection is not `.reference`;
-* the audit and replay scripts that produced those records assert that pair.
+  when the selection is not `.reference`.
 
 `reference` therefore means NO design at all -- the selection is absent, not an all-defaults record. **The
 empty selection is not a design.** Both the absent key and an explicit `reference` convert to `design = None`,
 which is the engine's untouched default path. That asymmetry is the whole point of this module and it is
 pinned here by `pytests/test_full_run_design.py` and `pytests/test_full_run_design_explicit.py`.
 
-The per-profile designs below are a transcription of the existing research<->production bridge: the audit
-script's own `EXACT` / `CAT` / `BAND` constants and its case table, which is how that mapping was established.
+The per-profile designs below transcribe what each profile selects: its QFT families and its multiplier.
 
 What this pipeline can convert. The engine contract's `design` is a mapping over the QFT families
 (`data`, `work`, `scratch`, `exponent`) only. Four of the seven profiles select a rotation backend or a
 phase-product step backend, which the contract has no field for; they are REFUSED by name.
 
-THE REMAINING THREE ARE ALSO NOT PRICEABLE TODAY, and this is the headline for the release. All seven
-non-reference profiles select a MULTIPLIER TOPOLOGY (`modmul`: quotientStream or splitCompare) -- the audit
-script emits it beside `qft` for every bundle, and the research mapping lists it for all seven. The topology
-drives both the T cost and the qubit base on the research side.
+THE REMAINING THREE ARE NOT PRICEABLE EITHER. All seven non-reference profiles select a MULTIPLIER TOPOLOGY
+(`modmul`: quotientStream or splitCompare), and the topology drives both the T cost and the qubit base.
 `qft_overlay` prices the QFT BAND ONLY: its families are the four QFT registers, `project`
 has no topology parameter, its source names no multiplier at all, and `parse_design` refuses a `modmul`
 key outright. So a profile's topology cannot be honoured, and converting it to a bare family mapping would
@@ -36,14 +33,13 @@ path below. A selection that is reported is never priced as the default.
 
 THE SECOND PATH: an EXPLICIT per-family design
 --------------------------------------------------------------------------------------------------
-The profile path above resolves a CLOSED ENUM of 8 labels, so it can only name the combinations that have
-already been qualified -- 3 of them priceable. That narrowness is the enum's, not the pricing's:
-`qft_overlay.parse_design` already accepts an arbitrary mapping with independent `data` / `work` /
-`scratch` / `exponent` keys and prices any combination of them. So a selection may instead carry an
-explicit design BODY, and then an arbitrary combination converts.
+The profile path above resolves a CLOSED ENUM of 8 labels, so it can only name fixed combinations. That
+narrowness is the enum's, not the pricing's: `qft_overlay.parse_design` already accepts an arbitrary mapping
+with independent `data` / `work` / `scratch` / `exponent` keys and prices any combination of them. So a
+selection may instead carry an explicit design BODY, and then an arbitrary combination converts.
 
-The wire shape is not invented here. It is the research record's own serialized form -- the only serializer
-that exists for this record -- inside the envelope the recorded compiled exports already use:
+The wire shape is not invented here. It is the verifier's own serialized form, inside the envelope the
+recorded compiled exports already use:
 
     "submitted_full_run": {"schema": "forshor.full-run-selection/v1",
                            "design": {"schema": "forshor.design-local/v1",
@@ -52,7 +48,7 @@ that exists for this record -- inside the envelope the recorded compiled exports
                                                        "target": "approximate", "max_error": "1e-6"},
                                               "work": {"backend": "ross_selinger", "target": "exact"}}}}
 
-`profile` and `design` are alternatives: exactly one. A family's value is exactly what the research record's
+`profile` and `design` are alternatives: exactly one. A family's value is exactly what the verifier's
 per-family choice emits -- `{"backend", "target": "exact"}` or
 `{"backend", "target": "approximate", "max_error": "<units>e-<scale>"}` -- which is already
 `qft_overlay.parse_design`'s contract, so this module does not restate the value rules: it performs the
@@ -60,26 +56,25 @@ SHAPE translation (envelope and nested design body -> the flat per-family mappin
 validation to the overlay, eagerly, so a design that cannot be honoured is refused at conversion time and
 no board is ever priced for it. One validator in the repo, not two.
 
-`readout` is deliberately not a body key: the research record takes it as a PARAMETER rather than a field,
-because that document has no separate key for it, whereas production carries `submitted_readout` beside
-`submitted_full_run`. The production-side design record has no readout field either.
+`readout` is deliberately not a body key: production carries `submitted_readout` beside
+`submitted_full_run`, and the design record has no readout field.
 
 EXACT MEANS UNTOUCHED, ON THE CONSTRUCTION AXIS. `target: "exact"` is "leave this family as the engine
-priced it" (`k_max = None`, no substitution), never "substitute the exact ladder" -- lane WM measured that
-substitution at 14.8x T (see `qft_overlay`). A design in which no family asks for an `approximate`
+priced it" (`k_max = None`, no substitution), never "substitute the exact ladder", which measures at
+14.8x T (see `qft_overlay`). A design in which no family asks for an `approximate`
 target AND no family asks for the `catalytic` backend therefore asks for nothing at all and converts to
 None, the engine's untouched default, exactly as `reference` does: the same rule that the empty selection
 is not a design.
 
-The `backend` clause of that rule is wave 2's integration fix, and it matters: `target` and `backend` are
-ORTHOGONAL axes -- the first picks the construction, the second picks the CURRENCY. Once lane WX priced the
-catalytic arm, a catalytic family changes the price whatever its target, so collapsing a catalytic-exact
-design to None would have returned the Ross-Selinger default for a submission that asked for catalysis
-(measured: 1628644042547.186 against 1641978984650.562 at delta 1e-2). See `_design_of_body`.
+The `backend` clause of that rule matters: `target` and `backend` are ORTHOGONAL axes -- the first picks
+the construction, the second picks the CURRENCY. A catalytic family changes the price whatever its target,
+so collapsing a catalytic-exact design to None would return the Ross-Selinger default for a submission that
+asked for catalysis (measured: 1628644042547.186 against 1641978984650.562 at delta 1e-2). See
+`_design_of_body`.
 
-The collapse is applied on THIS path only; the profile path's 8 labels are already-qualified fixtures whose
-conversion is recorded byte-for-byte. Today every one of those labels refuses on its multiplier topology,
-so the asymmetry is moot in this release.
+The collapse is applied on THIS path only; the profile path's 8 labels are fixtures whose conversion is
+recorded byte-for-byte. Every one of those labels refuses on its multiplier topology, so the asymmetry has
+no effect.
 """
 from __future__ import annotations
 
@@ -90,7 +85,7 @@ KEY = "submitted_full_run"
 SELECTION_SCHEMA = "forshor.full-run-selection/v1"
 REFERENCE = "reference"
 
-# --- the explicit-design path. Every name below is a WIRE KEY transcribed from the research record's
+# --- the explicit-design path. Every name below is a WIRE KEY transcribed from the verifier's
 # serializer, not a choice made here: renaming any of them silently stops matching a compiled selection.
 # `pytests/test_full_run_design_explicit.py` pins this key set and the accepted value sets.
 PROFILE_KEY = "profile"                     # the closed-enum path
@@ -121,7 +116,7 @@ REFUSAL_CLASSES = (
     "profile-and-design",   # both paths named at once, or neither
 )
 
-# Transcribed from the audit script's own constants. The ceiling 25e-5 = 1/4000 is the error ceiling of
+# The profiles' per-family choices. The ceiling 25e-5 = 1/4000 is the error ceiling of
 # every approximate case in the qualified surface.
 RS_EXACT = {"backend": "ross_selinger", "target": "exact"}
 CATALYTIC = {"backend": "catalytic", "target": "approximate", "max_error": "25e-5"}
@@ -135,12 +130,11 @@ QFT_ONLY: Dict[str, Dict[str, Any]] = {
     "quotient-banded-data-catalytic-work": {"data": BANDED, "work": CATALYTIC},
 }
 
-# THE MULTIPLIER TOPOLOGY each profile selects, which must NOT be dropped. The audit script builds every
-# bundle through its quotient / split constructors, both of which emit a `modmul` key beside the `qft`
-# object, and the research mapping gives the same multiplier field for all seven.
+# THE MULTIPLIER TOPOLOGY each profile selects, which must NOT be dropped: every profile carries a `modmul`
+# key beside its `qft` object.
 # The topology is not cosmetic: it drives both the T cost and the qubit base, so a conversion that drops it
-# prices a quotientStream or splitCompare run on REFERENCE-topology numbers -- the silent default the
-# release forbids. `reference` names no topology at all: the selection is absent, not an all-defaults record.
+# prices a quotientStream or splitCompare run on REFERENCE-topology numbers -- a silent default, which is
+# never allowed. `reference` names no topology at all: the selection is absent, not an all-defaults record.
 PROFILE_TOPOLOGY: Dict[str, Optional[str]] = {
     REFERENCE: None,
     "quotient-exact": "quotient_stream",
@@ -167,11 +161,9 @@ BEYOND_QFT: Dict[str, str] = {
 
 PROFILES = (REFERENCE, *QFT_ONLY, *BEYOND_QFT)
 
-#: Each profile's design in the shape the audit script itself builds -- `modmul` BESIDE `qft`, which is
-#: also the research record's shape and the explicit path's wire shape. Profiles are
+#: Each profile's design in the explicit path's wire shape -- `modmul` BESIDE `qft`. Profiles are
 #: converted through exactly the same reader as an explicit design, so the topology cannot be dropped on
-#: one path and honoured on the other, and so a profile becomes priceable the moment the overlay can
-#: honour its topology -- without another edit here.
+#: one path and honoured on the other.
 PROFILE_DESIGN: Dict[str, Dict[str, Any]] = {
     profile: {MULTIPLIER_KEY: PROFILE_TOPOLOGY[profile], QFT_KEY: families}
     for profile, families in QFT_ONLY.items()
@@ -246,9 +238,9 @@ def _design_of_body(body: Any, profile: Optional[str] = None) -> Optional[Dict[s
     # topology only: the reference one, implicitly, by pricing against the reference census.
     #
     # A non-reference topology therefore CANNOT be priced by this chain. The multiplier drives both the T
-    # cost and the qubit base on the research side, so pricing a quotientStream or
+    # cost and the qubit base, so pricing a quotientStream or
     # splitCompare run on reference-topology numbers would silently report the reference price as if the
-    # option had been honoured. That is the silent default the release forbids, so it is refused BY NAME.
+    # option had been honoured. That would be a silent default, so it is refused BY NAME.
     # `modmul` is NOT dropped here: it is read, and it decides.
     multiplier = body.get(MULTIPLIER_KEY) or MULTIPLIER_REFERENCE
     if multiplier not in MULTIPLIERS:
@@ -295,22 +287,20 @@ def _design_of_body(body: Any, profile: Optional[str] = None) -> Optional[Dict[s
 
     # EXACT MEANS UNTOUCHED -- ON THE CONSTRUCTION AXIS ONLY.
     #
-    # INTEGRATION FIX (wave 2, lane XF). This collapse read `not any(target == "approximate")`, written when
-    # the band was the only axis: `target: "exact"` meant k_max = None, no substitution, so a design with no
-    # approximate target genuinely asked for nothing. Lane WX then priced the CATALYTIC arm, and `backend`
-    # is a second, orthogonal axis: `target` picks the construction, `backend` picks the CURRENCY. A
-    # catalytic family is "touched" by `qft_overlay.project` whatever its target
+    # Testing `target == "approximate"` alone is not enough. On the construction axis `target: "exact"` means
+    # k_max = None, no substitution, but `backend` is a second, orthogonal axis: `target` picks the
+    # construction, `backend` picks the CURRENCY. A catalytic family is "touched" by `qft_overlay.project` whatever its target
     # (`qft_overlay.py:442-443`, `touched = banded | catalytic`), because the arm re-prices that family's
     # surviving rotations on the catalyst, takes its own share of the synthesis pool, and adds the shared
     # catalyst register to Q.
     #
-    # Measured on the merged tree, for `{"data": {"backend": "catalytic", "target": "exact"}}` against the
+    # Measured for `{"data": {"backend": "catalytic", "target": "exact"}}` against the
     # real engine at delta 1e-2: the engine's own T is 1628644042547.186 and the overlay's is
-    # 1641978984650.562. So collapsing that design to None returned the Ross-Selinger default for a
-    # submission that asked for catalysis -- the silent default this release forbids, and the one thing both
-    # the topology gate and the catalytic refusal it replaced exist to prevent.
+    # 1641978984650.562. So collapsing that design to None would return the Ross-Selinger default for a
+    # submission that asked for catalysis -- a silent default, which the topology gate also exists to
+    # prevent.
     #
-    # The collapse therefore now tests BOTH axes. A design asks for nothing only when no family asks for an
+    # The collapse therefore tests BOTH axes. A design asks for nothing only when no family asks for an
     # approximate target AND no family asks for the catalytic currency.
     if not any(target == "approximate" or backend == "catalytic"
                for backend, target, _m in plan.values()):
@@ -357,6 +347,6 @@ def design_of(selection: Optional[Any]) -> Optional[Dict[str, Any]]:
             f"not priced as defaults.")
     if profile in PROFILE_DESIGN:
         # Through the SAME reader as an explicit design, carrying `modmul`. Every one of these selects
-        # quotientStream, so today every one of them is refused on its topology (see `_design_of_body`).
+        # quotientStream, so every one of them is refused on its topology (see `_design_of_body`).
         return _design_of_body(PROFILE_DESIGN[profile], profile=profile)
     raise ValueError(f"unrecognised full-run selection {profile!r}: this pipeline converts only {sorted(PROFILES)}")
