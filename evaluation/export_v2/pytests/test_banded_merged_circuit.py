@@ -12,11 +12,14 @@ Two independent roots for what `qft_overlay.merged_plan` prices:
   gates it executes are the closed forms.
 """
 import math
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
 
-from export_v2 import engine, qft_overlay as qo
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from export_v2 import engine, qft_overlay as qo  # noqa: E402
 
 
 def ladder(n, k):
